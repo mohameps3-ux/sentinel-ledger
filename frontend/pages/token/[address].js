@@ -13,6 +13,7 @@ import { DeployerPanel } from "../../components/token/DeployerPanel";
 import { LiveFlowPanel } from "../../components/token/LiveFlowPanel";
 import { WatchlistButton } from "../../components/token/WatchlistButton";
 import { NotesPanel } from "../../components/token/NotesPanel";
+import { ExpandablePanel } from "../../components/token/ExpandablePanel";
 
 export default function TokenPage() {
   const router = useRouter();
@@ -51,19 +52,31 @@ export default function TokenPage() {
         />
         <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
       </div>
+
       <DecisionPanel analysis={analysis} />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ChartPanel address={address} />
+
+      <ChartPanel address={address} />
+
+      <ExpandablePanel title="⚡ Momentum Indicators" icon="📈" defaultOpen={false}>
         <MomentumPanel market={market} />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <HoldersPanel holders={{ top10Percentage: 0, totalHolders: 0 }} />
-        <DeployerPanel deployer={null} />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      </ExpandablePanel>
+
+      <ExpandablePanel title="👥 Holders Distribution" icon="👥" defaultOpen={false}>
+        <HoldersPanel holders={data?.holders} />
+      </ExpandablePanel>
+
+      <ExpandablePanel title="🔍 Deployer Intelligence" icon="🔍" defaultOpen={false}>
+        <DeployerPanel deployer={data?.deployer} />
+      </ExpandablePanel>
+
+      <ExpandablePanel title="📡 Live Transactions" icon="⚡" defaultOpen={true}>
         <LiveFlowPanel transactions={transactions} />
+      </ExpandablePanel>
+
+      <ExpandablePanel title="🧠 Smart Money Activity" icon="🐋" defaultOpen={false}>
         <SmartMoneyPanel />
-      </div>
+      </ExpandablePanel>
+
       {hasToken && <NotesPanel tokenAddress={address} initialNote={note} />}
     </div>
   );

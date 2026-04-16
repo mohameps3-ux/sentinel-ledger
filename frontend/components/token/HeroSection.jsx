@@ -2,18 +2,16 @@ import { GradeBadge } from "./GradeBadge";
 
 export function HeroSection({ symbol, price, priceChange, grade, confidence }) {
   return (
-    <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-      <div className="flex justify-between items-start flex-wrap gap-3">
+    <div className="glass-card p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">{symbol}</h1>
-          <div className="text-2xl font-bold mt-2">${price}</div>
-          <div
-            className={`text-sm ${
-              priceChange >= 0 ? "text-green-500" : "text-red-500"
-            }`}
-          >
-            {priceChange >= 0 ? "+" : ""}
-            {priceChange}%
+          <h1 className="text-4xl font-black gradient-text">{symbol}</h1>
+          <div className="flex items-baseline gap-3 mt-2">
+            <span className="text-3xl font-bold">${price?.toLocaleString()}</span>
+            <span className={`text-sm font-medium ${priceChange >= 0 ? "text-green-500" : "text-red-500"}`}>
+              {priceChange >= 0 ? "+" : ""}
+              {priceChange}%
+            </span>
           </div>
         </div>
         <GradeBadge grade={grade} confidence={confidence} />
