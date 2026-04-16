@@ -13,19 +13,19 @@ export function NotesPanel({ tokenAddress, initialNote }) {
   };
 
   return (
-    <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-      <h3 className="text-lg font-bold mb-3">📝 Private Notes</h3>
+    <div className="glass-card p-6">
+      <h3 className="text-lg font-bold mb-3">Private Notes</h3>
       <textarea
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Your thoughts on this token..."
-        className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-sm"
+        className="w-full bg-[#0E1318] border soft-divider rounded-xl p-3 text-sm"
         rows="3"
       />
       <button
         onClick={handleSave}
         disabled={isLoading}
-        className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm transition"
+        className="mt-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 rounded-xl text-sm transition"
       >
         {saved ? "✓ Saved" : "Save Note"}
       </button>

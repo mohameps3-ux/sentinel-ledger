@@ -14,6 +14,7 @@ import { LiveFlowPanel } from "../../components/token/LiveFlowPanel";
 import { WatchlistButton } from "../../components/token/WatchlistButton";
 import { NotesPanel } from "../../components/token/NotesPanel";
 import { ExpandablePanel } from "../../components/token/ExpandablePanel";
+import { BarChart3, CandlestickChart, Radar, ShieldAlert, Users } from "lucide-react";
 
 export default function TokenPage() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function TokenPage() {
   const note = privateData?.notes || "";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-6">
       <div className="flex flex-wrap justify-between items-start gap-4">
         <HeroSection
           symbol={market.symbol}
@@ -49,33 +50,42 @@ export default function TokenPage() {
           priceChange={market.priceChange24h}
           grade={analysis.grade}
           confidence={analysis.confidence}
+          tokenAddress={address}
         />
         <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
       </div>
 
-      <DecisionPanel analysis={analysis} />
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <section className="xl:col-span-5 space-y-6">
+          <ChartPanel address={address} />
+        </section>
 
-      <ChartPanel address={address} />
+        <section className="xl:col-span-4 space-y-4">
+          <DecisionPanel analysis={analysis} />
 
-      <ExpandablePanel title="⚡ Momentum Indicators" icon="📈" defaultOpen={false}>
-        <MomentumPanel market={market} />
-      </ExpandablePanel>
+          <ExpandablePanel title="Momentum Indicators" icon={BarChart3} defaultOpen={false}>
+            <MomentumPanel market={market} />
+          </ExpandablePanel>
 
-      <ExpandablePanel title="👥 Holders Distribution" icon="👥" defaultOpen={false}>
-        <HoldersPanel holders={token?.holders} />
-      </ExpandablePanel>
+          <ExpandablePanel title="Holders Distribution" icon={Users} defaultOpen={false}>
+            <HoldersPanel holders={token?.holders} />
+          </ExpandablePanel>
 
-      <ExpandablePanel title="🔍 Deployer Intelligence" icon="🔍" defaultOpen={false}>
-        <DeployerPanel deployer={token?.deployer} />
-      </ExpandablePanel>
+          <ExpandablePanel title="Deployer Intelligence" icon={ShieldAlert} defaultOpen={false}>
+            <DeployerPanel deployer={token?.deployer} />
+          </ExpandablePanel>
+        </section>
 
-      <ExpandablePanel title="📡 Live Transactions" icon="⚡" defaultOpen={true}>
-        <LiveFlowPanel transactions={transactions} />
-      </ExpandablePanel>
+        <section className="xl:col-span-3 space-y-4">
+          <ExpandablePanel title="Live Transactions" icon={CandlestickChart} defaultOpen={true}>
+            <LiveFlowPanel transactions={transactions} />
+          </ExpandablePanel>
 
-      <ExpandablePanel title="🧠 Smart Money Activity" icon="🐋" defaultOpen={false}>
-        <SmartMoneyPanel tokenAddress={address} />
-      </ExpandablePanel>
+          <ExpandablePanel title="Smart Money Activity" icon={Radar} defaultOpen={true}>
+            <SmartMoneyPanel tokenAddress={address} />
+          </ExpandablePanel>
+        </section>
+      </div>
 
       {hasToken && <NotesPanel tokenAddress={address} initialNote={note} />}
     </div>
