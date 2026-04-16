@@ -62,11 +62,11 @@ export default function TokenPage() {
       </ExpandablePanel>
 
       <ExpandablePanel title="👥 Holders Distribution" icon="👥" defaultOpen={false}>
-        <HoldersPanel holders={data?.holders} />
+        <HoldersPanel holders={token?.holders} />
       </ExpandablePanel>
 
       <ExpandablePanel title="🔍 Deployer Intelligence" icon="🔍" defaultOpen={false}>
-        <DeployerPanel deployer={data?.deployer} />
+        <DeployerPanel deployer={token?.deployer} />
       </ExpandablePanel>
 
       <ExpandablePanel title="📡 Live Transactions" icon="⚡" defaultOpen={true}>
