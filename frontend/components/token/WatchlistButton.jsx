@@ -22,16 +22,17 @@ export function WatchlistButton({ tokenAddress, isWatchlisted: initial }) {
 
   return (
     <button
+      type="button"
       onClick={handleToggle}
       disabled={isLoading}
-      className={`px-4 py-2 rounded-xl transition inline-flex items-center gap-2 ${
+      className={
         isWatchlisted
-          ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:opacity-90"
-          : "bg-[#13171A] border soft-divider text-gray-300 hover:bg-[#1a1f25]"
-      }`}
+          ? "btn-pro inline-flex items-center gap-2 disabled:opacity-50"
+          : "btn-ghost inline-flex items-center gap-2 disabled:opacity-50"
+      }
     >
-      <Star size={15} />
-      {isWatchlisted ? "In Watchlist" : "Add to Watchlist"}
+      <Star size={16} />
+      {isWatchlisted ? "In watchlist" : "Add to watchlist"}
     </button>
   );
 }

@@ -6,6 +6,7 @@ import { useTokenCompare } from "../hooks/useTokenCompare";
 import { useTokenData } from "../hooks/useTokenData";
 import { useWatchlist } from "../hooks/useWatchlist";
 import { formatDateTime, formatUsdWhole } from "../lib/formatStable";
+import { ProButton } from "../components/ui/ProButton";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -149,35 +150,49 @@ export default function ComparePage() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-6">
-      <section className="glass-card p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <ArrowLeftRight size={18} className="text-purple-300" />
-          <h1 className="text-2xl font-bold">Token Compare Lab</h1>
+    <div className="sl-container sl-container-wide py-8 md:py-10 space-y-8">
+      <section className="glass-card sl-inset">
+        <div className="flex items-start gap-4 mb-8">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-600/25 to-cyan-600/15 border border-purple-500/25 flex items-center justify-center shrink-0">
+            <ArrowLeftRight size={22} className="text-purple-200" />
+          </div>
+          <div>
+            <p className="sl-label">Laboratory</p>
+            <h1 className="sl-h1 text-white mt-1">Token compare lab</h1>
+            <p className="sl-body sl-muted mt-2 max-w-2xl">
+              Paste two mints and run a full differential — grades, liquidity, holders and deployer risk.
+            </p>
+          </div>
         </div>
-        <form onSubmit={onCompare} className="grid md:grid-cols-[1fr_1fr_auto] gap-3">
-          <input
-            value={leftAddress}
-            onChange={(e) => setLeftAddress(e.target.value)}
-            placeholder="Token A mint address"
-            className="h-11 rounded-xl bg-[#0E1318] border soft-divider px-4 text-sm focus:outline-none focus:border-purple-500"
-          />
-          <input
-            value={rightAddress}
-            onChange={(e) => setRightAddress(e.target.value)}
-            placeholder="Token B mint address"
-            className="h-11 rounded-xl bg-[#0E1318] border soft-divider px-4 text-sm focus:outline-none focus:border-purple-500"
-          />
-          <button className="h-11 px-5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 font-semibold hover:opacity-90 transition">
+        <form onSubmit={onCompare} className="grid md:grid-cols-[1fr_1fr_auto] gap-4 items-stretch md:items-end">
+          <div>
+            <p className="sl-label mb-2">Token A</p>
+            <input
+              value={leftAddress}
+              onChange={(e) => setLeftAddress(e.target.value)}
+              placeholder="Mint address…"
+              className="sl-input h-12 px-4"
+            />
+          </div>
+          <div>
+            <p className="sl-label mb-2">Token B</p>
+            <input
+              value={rightAddress}
+              onChange={(e) => setRightAddress(e.target.value)}
+              placeholder="Mint address…"
+              className="sl-input h-12 px-4"
+            />
+          </div>
+          <ProButton type="submit" className="h-12 md:mb-0 w-full md:w-auto justify-center">
             Compare
-          </button>
+          </ProButton>
         </form>
       </section>
 
-      <section className="glass-card p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <Star size={16} className="text-purple-300" />
-          <h2 className="text-lg font-semibold">Watchlist Comparables</h2>
+      <section className="glass-card sl-inset">
+        <div className="flex items-center gap-3 mb-5">
+          <Star size={18} className="text-purple-300" />
+          <h2 className="sl-h2 text-white">Watchlist comparables</h2>
         </div>
         {!watchlistLocal.length ? (
           <div className="text-sm text-gray-500">No cached watchlist yet. Add tokens from compare cards below.</div>
@@ -199,33 +214,45 @@ export default function ComparePage() {
 
       <section className="grid md:grid-cols-2 gap-4">
         {[leftToken, rightToken].map((token, idx) => (
-          <div key={idx} className="glass-card p-4">
+          <div key={idx} className="glass-card sl-inset flex flex-col gap-5">
             {!token ? (
-              <div className="text-sm text-gray-500">No data available yet.</div>
+              <div className="sl-body sl-muted py-6 text-center">No data available yet.</div>
             ) : (
               <>
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-lg font-semibold">{token.market?.symbol || "TOKEN"}</div>
-                    <div className="text-xs text-gray-500 mono">{(idx === 0 ? leftAddress : rightAddress).slice(0, 6)}...{(idx === 0 ? leftAddress : rightAddress).slice(-4)}</div>
+                    <p className="sl-label">Symbol</p>
+                    <div className="sl-h2 text-white mt-1">{token.market?.symbol || "TOKEN"}</div>
+                    <div className="text-[12px] text-gray-500 mono mt-2">
+                      {(idx === 0 ? leftAddress : rightAddress).slice(0, 6)}…
+                      {(idx === 0 ? leftAddress : rightAddress).slice(-4)}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-xs text-gray-500">Sentinel Score</div>
-                    <div className="text-2xl font-bold">{idx === 0 ? leftScore : rightScore}</div>
+                  <div className="text-right shrink-0">
+                    <p className="sl-label">Sentinel score</p>
+                    <div className="text-3xl font-bold text-white mt-1">{idx === 0 ? leftScore : rightScore}</div>
                   </div>
                 </div>
-                <div className="mt-3 text-sm text-gray-300">
-                  Grade: <span className="font-semibold">{token.analysis?.grade || "-"}</span> · Confidence:{" "}
-                  <span className="font-semibold">{safeNum(token.analysis?.confidence)}%</span>
+                <div className="sl-divider" />
+                <div className="sl-body text-gray-300">
+                  Grade <span className="font-semibold text-white">{token.analysis?.grade || "—"}</span>
+                  <span className="text-gray-600 mx-2">·</span>
+                  Confidence{" "}
+                  <span className="font-semibold text-white">{safeNum(token.analysis?.confidence)}%</span>
                 </div>
                 <button
+                  type="button"
                   onClick={() => toggleWatch(idx === 0 ? leftAddress : rightAddress)}
                   disabled={isLoading}
-                  className="mt-3 h-9 px-3 rounded-lg text-xs border soft-divider hover:bg-white/5 transition"
+                  className={
+                    watchlistLocal.includes((idx === 0 ? leftAddress : rightAddress).trim())
+                      ? "btn-ghost self-start !py-2 !text-[13px]"
+                      : "btn-pro btn-pro-sm self-start"
+                  }
                 >
                   {watchlistLocal.includes((idx === 0 ? leftAddress : rightAddress).trim())
-                    ? "Remove from Watchlist"
-                    : "Add to Watchlist"}
+                    ? "Remove from watchlist"
+                    : "Add to watchlist"}
                 </button>
               </>
             )}
@@ -233,8 +260,8 @@ export default function ComparePage() {
         ))}
       </section>
 
-      <section className="glass-card p-5">
-        <h2 className="text-lg font-semibold mb-3">Differential metrics</h2>
+      <section className="glass-card sl-inset">
+        <h2 className="sl-h2 text-white mb-6">Differential metrics</h2>
         {!leftToken || !rightToken ? (
           <div className="text-sm text-gray-500">Load both tokens to see side-by-side metrics.</div>
         ) : (

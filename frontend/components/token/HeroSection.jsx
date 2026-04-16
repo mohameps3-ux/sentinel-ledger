@@ -3,6 +3,7 @@ import { ArrowUpRight, Bell, Copy } from "lucide-react";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { formatTokenPrice } from "../../lib/formatStable";
+import { ProButton } from "../ui/ProButton";
 
 export function HeroSection({ symbol, price, priceChange, grade, confidence, tokenAddress }) {
   const up = Number(priceChange || 0) >= 0;
@@ -14,20 +15,20 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
     if (score >= 85) {
       return {
         className: "risk-badge-success",
-        label: "✅ ALTO POTENCIAL",
+        label: "Alto potencial",
         tooltip: "High viability based on current sentinel metrics."
       };
     }
     if (score >= 70) {
       return {
         className: "risk-badge-warning",
-        label: "👀 VIGILAR",
+        label: "Vigilar",
         tooltip: "Mixed signal. Watch liquidity and holder concentration."
       };
     }
     return {
       className: "risk-badge-danger",
-      label: "⚠️ ALTO RIESGO",
+      label: "Alto riesgo",
       tooltip: "High risk profile from current contract and market data."
     };
   }, [confidence]);
@@ -69,76 +70,85 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
 
   return (
     <>
-      <div className="glass-card glass-card-hover p-6 w-full">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
-        <div>
-          <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent">
-            {symbol}
-          </h1>
-          <div className="flex items-center gap-3 mt-3">
-            <span className="text-3xl md:text-4xl font-extrabold">${formatTokenPrice(price)}</span>
-            <span
-              className={`inline-flex items-center gap-1 text-sm font-semibold px-2.5 py-1 rounded-full ${
-                up ? "text-emerald-300 bg-emerald-500/10" : "text-red-300 bg-red-500/10"
-              }`}
-            >
-              <ArrowUpRight size={14} className={!up ? "rotate-90" : ""} />
-              {up ? "+" : ""}
-              {priceChange}%
-            </span>
-            <span className={riskMeta.className} title={riskMeta.tooltip}>
-              {riskMeta.label}
-            </span>
+      <div className="glass-card glass-card-hover sl-inset w-full">
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2 min-w-0 flex-1">
+              <p className="sl-label">Token</p>
+              <h1 className="sl-h1 text-white tracking-tight">{symbol || "—"}</h1>
+              <p className="mono text-[12px] text-gray-500 break-all max-w-2xl leading-relaxed">{tokenAddress}</p>
+            </div>
+            <div className="shrink-0 flex flex-col items-end gap-3">
+              <GradeBadge grade={grade} confidence={confidence} />
+            </div>
+          </div>
+
+          <div className="sl-divider" />
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div>
+              <p className="sl-label mb-2">Price</p>
+              <p className="text-2xl md:text-3xl font-bold text-white tracking-tight">${formatTokenPrice(price)}</p>
+            </div>
+            <div>
+              <p className="sl-label mb-2">24h change</p>
+              <p
+                className={`text-xl md:text-2xl font-semibold inline-flex items-center gap-2 ${
+                  up ? "text-emerald-300" : "text-red-300"
+                }`}
+              >
+                <ArrowUpRight size={22} className={!up ? "rotate-90" : ""} />
+                {up ? "+" : ""}
+                {priceChange}%
+              </p>
+            </div>
+            <div className="flex flex-col justify-end">
+              <p className="sl-label mb-2">Risk band</p>
+              <span className={`${riskMeta.className} w-fit`} title={riskMeta.tooltip}>
+                {riskMeta.label}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3 pt-1">
+            <ProButton variant="ghost" type="button" onClick={handleShare}>
+              <Copy size={16} />
+              Share link
+            </ProButton>
+            <ProButton type="button" onClick={handleAlert}>
+              <Bell size={16} />
+              Set alert
+            </ProButton>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <GradeBadge grade={grade} confidence={confidence} />
-          <button
-            onClick={handleShare}
-            className="h-10 px-3 rounded-xl border soft-divider text-sm text-gray-200 hover:bg-white/5 transition inline-flex items-center gap-2"
-          >
-            <Copy size={15} />
-            Share
-          </button>
-          <button
-            onClick={handleAlert}
-            className="h-10 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-sm font-semibold hover:opacity-90 transition inline-flex items-center gap-2"
-          >
-            <Bell size={15} />
-            Alert
-          </button>
-        </div>
-      </div>
       </div>
 
       {showAlertModal && (
-        <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-card w-full max-w-md p-5">
-            <h3 className="text-lg font-semibold mb-2">Configure Alert</h3>
-            <p className="text-sm text-gray-400 mb-4">Token: {symbol || tokenAddress}</p>
-            <label className="block text-sm mb-2">Alert type</label>
-            <select
-              value={alertType}
-              onChange={(e) => setAlertType(e.target.value)}
-              className="w-full bg-[#0E1318] border soft-divider rounded-xl h-10 px-3 text-sm mb-4"
-            >
-              <option value="grade">Grade change</option>
-              <option value="volume">Abnormal volume</option>
-              <option value="selloff">Massive sell pressure</option>
-            </select>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowAlertModal(false)}
-                className="h-9 px-3 rounded-lg border soft-divider text-sm hover:bg-white/5 transition"
+        <div className="fixed inset-0 z-[70] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-card sl-inset w-full max-w-md space-y-5">
+            <div>
+              <h3 className="sl-h2 text-white mb-1">Configure alert</h3>
+              <p className="sl-body sl-muted">Token: {symbol || tokenAddress}</p>
+            </div>
+            <div>
+              <label className="sl-label mb-2 block">Alert type</label>
+              <select
+                value={alertType}
+                onChange={(e) => setAlertType(e.target.value)}
+                className="sl-input h-11 px-3 w-full"
               >
+                <option value="grade">Grade change</option>
+                <option value="volume">Abnormal volume</option>
+                <option value="selloff">Massive sell pressure</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-3 pt-1">
+              <ProButton variant="ghost" type="button" onClick={() => setShowAlertModal(false)}>
                 Cancel
-              </button>
-              <button
-                onClick={saveAlert}
-                className="h-9 px-3 rounded-lg text-sm bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 transition"
-              >
-                Save Alert
-              </button>
+              </ProButton>
+              <ProButton type="button" onClick={saveAlert}>
+                Save alert
+              </ProButton>
             </div>
           </div>
         </div>
@@ -146,4 +156,3 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
     </>
   );
 }
-

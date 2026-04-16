@@ -100,7 +100,9 @@ router.get("/:address", async (req, res) => {
         analysis,
         holders: {
           top10Percentage: holdersData.top10Percentage || 0,
-          totalHolders: holdersData.totalHolders || 0
+          totalHolders: holdersData.totalHolders || 0,
+          holderCountSource: holdersData.holderCountSource || null,
+          largestAccountsSampled: holdersData.largestAccountsSampled ?? 0
         },
         deployer: deployerData,
         walletIntel,

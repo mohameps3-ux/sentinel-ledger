@@ -1,3 +1,4 @@
+const { tierFromScore } = require("../lib/smartMoneyTier");
 const { getMarketData } = require("./marketData");
 const { getLargestTokenAccountOwners } = require("./onChainService");
 const {
@@ -187,6 +188,11 @@ async function buildOnChainSmartMoney(tokenMint, options = {}) {
 
   const anyBirdeye = wallets.some((w) => w.pnlSource === "birdeye");
 
+  wallets = wallets.map((w) => ({
+    ...w,
+    ...tierFromScore(w.confidence ?? w.winRate)
+  }));
+
   return {
     wallets,
     meta: {
@@ -194,6 +200,11 @@ async function buildOnChainSmartMoney(tokenMint, options = {}) {
       heliusTxSample: txs.length,
       whaleAccounts: holdersPack.owners.length,
       pnlProvider: anyBirdeye ? "birdeye" : null,
+      eliteCount: wallets.filter((w) => w.tier === 1).length,
+      activeCount: wallets.filter((w) => w.tier === 2).length,
+      competitiveLens: true,
+      tierLegend:
+        "Elite / Active / Scout = relative strength on this mint (flow, recency, whale overlap; Birdeye upgrades when realized PnL exists). Not financial advice.",
       metricLabel: anyBirdeye
         ? "On-chain activity + Birdeye realized PnL for this token (per wallet). Bar score blends flow + profitability."
         : process.env.BIRDEYE_API_KEY

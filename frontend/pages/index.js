@@ -1,19 +1,62 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import { ArrowUpRight, Flame, Radar, ShieldCheck, Zap } from "lucide-react";
+import {
+  ArrowUpRight,
+  BarChart3,
+  Flame,
+  Radar,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+  Waves,
+  Zap
+} from "lucide-react";
 import { formatTokenPrice } from "../lib/formatStable";
+import { ProButton } from "../components/ui/ProButton";
 
 const TRENDING_MOCK = [
-  { symbol: "BONK", grade: "B", price: 0.000028, change: 12.1 },
-  { symbol: "WIF", grade: "A", price: 2.13, change: 8.6 },
-  { symbol: "JUP", grade: "A+", price: 1.22, change: 5.3 },
-  { symbol: "POPCAT", grade: "C", price: 0.65, change: -3.1 }
+  {
+    symbol: "BONK",
+    mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+    grade: "B",
+    price: 0.000028,
+    change: 12.1,
+    volLabel: "$2.1M",
+    flowLabel: "Buy pressure ↑"
+  },
+  {
+    symbol: "WIF",
+    mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
+    grade: "A",
+    price: 2.13,
+    change: 8.6,
+    volLabel: "$48M",
+    flowLabel: "Smart inflow $1.2M"
+  },
+  {
+    symbol: "JUP",
+    mint: "JUPyiwrYJFksjQVdKWvHJHGzS76nqbwsjZBM74fATFc",
+    grade: "A+",
+    price: 1.22,
+    change: 5.3,
+    volLabel: "$31M",
+    flowLabel: "Liquidity deep"
+  },
+  {
+    symbol: "POPCAT",
+    mint: "7GCihgDB8fe6KNjn2MYtkzZcRjXd3ngw7tF5RbwimQyg",
+    grade: "C",
+    price: 0.65,
+    change: -3.1,
+    volLabel: "$890K",
+    flowLabel: "Mixed flow"
+  }
 ];
 
 function gradeClass(grade) {
-  if (grade === "A+" || grade === "A") return "bg-emerald-500/15 text-emerald-300";
-  if (grade === "B" || grade === "C") return "bg-amber-500/15 text-amber-300";
-  return "bg-red-500/15 text-red-300";
+  if (grade === "A+" || grade === "A") return "bg-emerald-500/15 text-emerald-300 border-emerald-500/25";
+  if (grade === "B" || grade === "C") return "bg-amber-500/15 text-amber-200 border-amber-500/25";
+  return "bg-red-500/15 text-red-300 border-red-500/25";
 }
 
 export default function Home() {
@@ -60,113 +103,218 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen px-4">
-      <div className="max-w-[1280px] mx-auto pt-8 pb-10 space-y-8">
-        <section className="glass-card glass-card-hover p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-5xl md:text-6xl font-black bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent mb-4">
-              SENTINEL LEDGER
+    <div className="min-h-screen">
+      <div className="sl-container py-10 md:py-14">
+        {/* Hero */}
+        <section className="sl-section glass-card glass-card-hover sl-inset">
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <p className="sl-label mb-3 inline-flex items-center gap-2 justify-center">
+              <Sparkles size={14} className="text-purple-400" />
+              Solana intelligence
+            </p>
+            <h1 className="sl-display bg-gradient-to-r from-purple-400 via-violet-300 to-cyan-300 bg-clip-text text-transparent mb-4">
+              Sentinel Ledger
             </h1>
-            <p className="text-gray-400 text-lg">Real-time on-chain intelligence for Solana traders.</p>
+            <p className="sl-body sl-muted max-w-lg mx-auto">
+              Scout tokens like a pro desk: grades, flow, deployers and risk — in one layout built for decisions.
+            </p>
           </div>
 
-          <form onSubmit={handleSearch} className="w-full max-w-3xl mx-auto relative">
-            <input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Paste Solana token mint address..."
-              className="w-full bg-[#0E1318] border soft-divider rounded-xl h-14 px-5 pr-32 text-base focus:outline-none focus:border-purple-600 transition-all text-white"
-            />
-            <button className="absolute right-2 top-2 bottom-2 px-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 rounded-xl font-bold transition-all">
-              SCOUT
-            </button>
-          </form>
-          {error && <p className="text-red-400 text-sm mt-3 text-center">{error}</p>}
-          {!!recentSearches.length && (
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-              {recentSearches.map((item) => (
-                <button
-                  key={item}
-                  onClick={() => router.push(`/token/${item}`)}
-                  className="text-xs mono px-2.5 py-1 rounded-full bg-white/5 border soft-divider text-gray-300 hover:text-white hover:border-purple-500/40 transition"
-                >
-                  {item.slice(0, 6)}...{item.slice(-4)}
-                </button>
-              ))}
+          <form onSubmit={handleSearch} className="w-full max-w-2xl mx-auto">
+            <p className="sl-label mb-2 text-left">Token mint</p>
+            <div className="relative flex flex-col sm:flex-row gap-3">
+              <input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Paste Solana token mint (32–44 chars)…"
+                className="sl-input h-14 sm:flex-1 sm:min-w-0 pr-4"
+              />
+              <ProButton type="submit" className="h-14 sm:h-auto sm:px-8 shrink-0 justify-center">
+                Scout token
+              </ProButton>
             </div>
-          )}
-        </section>
-
-        <section className="glass-card p-5 md:p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Flame className="text-orange-400" size={18} />
-            <h2 className="text-lg font-semibold">Trending Tokens</h2>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {TRENDING_MOCK.map((token) => (
-              <div
-                key={token.symbol}
-                className="bg-[#0E1318] border soft-divider rounded-xl px-4 py-3 flex items-center justify-between"
-              >
-                <div>
-                  <div className="font-semibold">{token.symbol}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">${formatTokenPrice(token.price)}</div>
-                </div>
-                <div className="text-right flex items-center gap-2">
-                  <span className={`text-xs px-2 py-1 rounded-full font-semibold ${gradeClass(token.grade)}`}>
-                    {token.grade}
-                  </span>
-                  <span className={`text-sm font-semibold ${token.change >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                    {token.change >= 0 ? "+" : ""}
-                    {token.change}%
-                  </span>
-                  <ArrowUpRight size={14} className={token.change < 0 ? "rotate-90 text-red-300" : "text-emerald-300"} />
+            {error ? <p className="text-red-400 sl-body mt-3 text-center">{error}</p> : null}
+            {!!recentSearches.length && (
+              <div className="mt-6">
+                <p className="sl-label mb-3 text-left">Recent</p>
+                <div className="flex flex-wrap gap-2">
+                  {recentSearches.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => router.push(`/token/${item}`)}
+                      className="mono text-xs px-3 py-2 rounded-[10px] bg-white/[0.04] border border-white/[0.08] text-gray-300 hover:text-white hover:border-purple-500/35 transition"
+                    >
+                      {item.slice(0, 6)}…{item.slice(-4)}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </form>
         </section>
 
-        <section className="grid md:grid-cols-3 gap-4">
-          <div className="glass-card p-4">
-            <div className="text-xs text-gray-500 mb-2 inline-flex items-center gap-2"><Radar size={13} /> Market mood</div>
-            <div className={`text-xl font-semibold ${marketMood.className}`}>{marketMood.label}</div>
-          </div>
-          <div className="glass-card p-4">
-            <div className="text-xs text-gray-500 mb-2 inline-flex items-center gap-2"><ShieldCheck size={13} /> Engine status</div>
-            <div className="text-xl font-semibold text-emerald-300">Operational</div>
-          </div>
-          <div className="glass-card p-4">
-            <div className="text-xs text-gray-500 mb-2 inline-flex items-center gap-2"><Zap size={13} /> Scan speed</div>
-            <div className="text-xl font-semibold text-blue-300">~1.2s avg</div>
-          </div>
-        </section>
-
-        <section className="glass-card p-5 md:p-6">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold">Compare Two Tokens</h2>
-              <p className="text-sm text-gray-500">Run side-by-side score differential before entering a position.</p>
+        {/* Trending */}
+        <section className="sl-section">
+          <div className="glass-card sl-inset">
+            <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500/25 to-amber-600/15 border border-orange-500/25 flex items-center justify-center shrink-0">
+                  <Flame className="text-orange-300" size={22} />
+                </div>
+                <div>
+                  <p className="sl-label">Pulse</p>
+                  <h2 className="sl-h2 text-white mt-0.5">Trending tokens</h2>
+                  <p className="sl-body sl-muted mt-2 max-w-xl">
+                    Snapshot rows — tap analyze to open the full desk for that mint.
+                  </p>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={() => router.push("/compare")}
-              className="h-10 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-sm font-semibold hover:opacity-90 transition"
-            >
-              Open Compare Lab
-            </button>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {TRENDING_MOCK.map((token) => (
+                <div
+                  key={token.symbol}
+                  className="sl-nested sl-inset flex flex-col gap-5 min-h-[200px]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="sl-label">Symbol</p>
+                      <p className="sl-h1 text-white mt-1">{token.symbol}</p>
+                    </div>
+                    <span
+                      className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border ${gradeClass(token.grade)}`}
+                    >
+                      {token.grade}
+                    </span>
+                  </div>
+
+                  <div className="sl-divider" />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="sl-label mb-1">Price</p>
+                      <p className="text-lg font-semibold text-white tracking-tight">
+                        ${formatTokenPrice(token.price)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="sl-label mb-1">24h</p>
+                      <p
+                        className={`text-lg font-semibold inline-flex items-center gap-1 ${
+                          token.change >= 0 ? "text-emerald-300" : "text-red-300"
+                        }`}
+                      >
+                        <ArrowUpRight
+                          size={18}
+                          className={token.change < 0 ? "rotate-90" : ""}
+                        />
+                        {token.change >= 0 ? "+" : ""}
+                        {token.change}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3 rounded-[10px] bg-white/[0.03] border border-white/[0.06] px-3 py-3">
+                      <BarChart3 size={18} className="text-cyan-400 shrink-0" />
+                      <div>
+                        <p className="sl-label !text-[10px]">Volume</p>
+                        <p className="sl-body font-medium text-gray-100">{token.volLabel}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-[10px] bg-white/[0.03] border border-white/[0.06] px-3 py-3">
+                      <Waves size={18} className="text-purple-300 shrink-0" />
+                      <div>
+                        <p className="sl-label !text-[10px]">Flow</p>
+                        <p className="sl-body font-medium text-gray-200">{token.flowLabel}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto pt-1">
+                    <ProButton
+                      type="button"
+                      className="w-full sm:w-auto justify-center"
+                      onClick={() => router.push(`/token/${token.mint}`)}
+                    >
+                      <TrendingUp size={16} />
+                      Analyze
+                    </ProButton>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
-        <section className="glass-card p-5 md:p-6">
-          <h2 className="text-lg font-semibold mb-3">Recent Alerts</h2>
+        {/* KPI strip */}
+        <section className="sl-section">
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="glass-card sl-inset flex flex-col gap-3">
+              <div className="flex items-center gap-3 text-gray-400">
+                <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                  <Radar size={18} className="text-sky-400" />
+                </div>
+                <span className="sl-label !normal-case !tracking-normal text-gray-500">Market mood</span>
+              </div>
+              <p className={`sl-h2 ${marketMood.className}`}>{marketMood.label}</p>
+            </div>
+            <div className="glass-card sl-inset flex flex-col gap-3">
+              <div className="flex items-center gap-3 text-gray-400">
+                <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                  <ShieldCheck size={18} className="text-emerald-400" />
+                </div>
+                <span className="sl-label !normal-case !tracking-normal text-gray-500">Engine</span>
+              </div>
+              <p className="sl-h2 text-emerald-300">Operational</p>
+            </div>
+            <div className="glass-card sl-inset flex flex-col gap-3">
+              <div className="flex items-center gap-3 text-gray-400">
+                <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                  <Zap size={18} className="text-violet-400" />
+                </div>
+                <span className="sl-label !normal-case !tracking-normal text-gray-500">Scan speed</span>
+              </div>
+              <p className="sl-h2 text-cyan-300">~1.2s avg</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Compare CTA */}
+        <section className="sl-section">
+          <div className="glass-card sl-inset flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+            <div className="max-w-xl space-y-2">
+              <p className="sl-label">Laboratory</p>
+              <h2 className="sl-h2 text-white">Compare two tokens</h2>
+              <p className="sl-body sl-muted">
+                Side-by-side grades, liquidity and deployer risk — before you size a position.
+              </p>
+            </div>
+            <ProButton type="button" onClick={() => router.push("/compare")} className="self-start lg:self-center">
+              Open compare lab
+            </ProButton>
+          </div>
+        </section>
+
+        {/* Alerts */}
+        <section className="glass-card sl-inset">
+          <h2 className="sl-h2 text-white mb-2">Recent alerts</h2>
+          <p className="sl-body sl-muted mb-6">Saved locally when you connect a wallet.</p>
           {!alerts.length ? (
-            <div className="text-sm text-gray-500">No alerts configured yet.</div>
+            <div className="sl-nested sl-inset sl-body sl-muted text-center py-10">No alerts configured yet.</div>
           ) : (
-            <div className="space-y-2">
+            <div className="flex flex-col gap-3">
               {alerts.map((item, idx) => (
-                <div key={`${item.tokenAddress}-${idx}`} className="bg-[#0E1318] border soft-divider rounded-xl px-3 py-2 text-sm">
-                  <span className="mono text-gray-200">{(item.symbol || item.tokenAddress || "").slice(0, 12)}</span>
-                  <span className="text-gray-500"> · {item.alertType}</span>
+                <div
+                  key={`${item.tokenAddress}-${idx}`}
+                  className="sl-nested sl-inset flex flex-wrap items-center justify-between gap-3"
+                >
+                  <span className="mono sl-body text-gray-100 font-medium">
+                    {(item.symbol || item.tokenAddress || "").slice(0, 14)}
+                  </span>
+                  <span className="sl-label !normal-case">{item.alertType}</span>
                 </div>
               ))}
             </div>
@@ -176,4 +324,3 @@ export default function Home() {
     </div>
   );
 }
-

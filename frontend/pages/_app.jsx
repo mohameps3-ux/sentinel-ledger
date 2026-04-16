@@ -29,11 +29,11 @@ export default function App({ Component, pageProps }) {
           <QueryClientProvider client={queryClient}>
             <div className="min-h-screen bg-[#0B0E11] text-white">
               <Navbar />
-              <main className="pt-24">
+              <main className="pt-[88px] md:pt-24 pb-10">
                 <Component {...pageProps} />
               </main>
-              <footer className="border-t soft-divider mt-12">
-                <div className="max-w-[1400px] mx-auto px-4 py-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
+              <footer className="border-t border-[#2a2f36] mt-16">
+                <div className="sl-container sl-container-wide py-10 flex flex-wrap items-center justify-between gap-4 sl-body text-gray-500">
                   <span>Sentinel Ledger</span>
                   <div className="flex items-center gap-4">
                     <Link href="/terms" className="hover:text-gray-300 transition">Terms</Link>

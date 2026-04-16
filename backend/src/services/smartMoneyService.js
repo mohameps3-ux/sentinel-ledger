@@ -1,5 +1,6 @@
 const redis = require("../lib/cache");
 const { getSupabase } = require("../lib/supabase");
+const { tierFromScore } = require("../lib/smartMoneyTier");
 const { getMarketData } = require("./marketData");
 const { buildOnChainSmartMoney } = require("./smartMoneyOnChain");
 
@@ -9,6 +10,7 @@ const CACHE_TTL_SECONDS = 600;
 const CACHE_PREFIX = "smartmoney:onchain:v2:";
 
 function mapSmartWallet(wallet, signal) {
+  const confidence = Number(signal?.confidence || wallet.confidence || wallet.win_rate || 0);
   return {
     wallet: wallet.wallet_address,
     winRate: Number(wallet.win_rate || 0),
@@ -17,7 +19,8 @@ function mapSmartWallet(wallet, signal) {
     recentHits: Number(wallet.recent_hits || 0),
     lastSeen: wallet.last_seen || null,
     lastAction: signal?.last_action || "unknown",
-    confidence: Number(signal?.confidence || wallet.confidence || 0)
+    confidence,
+    ...tierFromScore(confidence)
   };
 }
 

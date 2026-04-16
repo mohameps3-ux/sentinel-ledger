@@ -66,9 +66,9 @@ export default function TokenPage() {
   const note = privateData?.notes || "";
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-6">
+    <div className="sl-container sl-container-wide py-8 md:py-10 space-y-8">
       <WalletThreatBanner walletIntel={token.walletIntel} />
-      <div className="flex flex-wrap justify-between items-start gap-4">
+      <div className="flex flex-wrap justify-between items-start gap-6">
         <HeroSection
           symbol={market.symbol}
           price={market.price}
@@ -80,22 +80,25 @@ export default function TokenPage() {
         <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="glass-card p-3">
-          <div className="text-xs text-gray-500">Liquidity</div>
-          <div className="font-semibold">${formatUsdWhole(market.liquidity)}</div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
+          <div className="sl-label">Liquidity</div>
+          <div className="text-lg font-semibold text-white tracking-tight">${formatUsdWhole(market.liquidity)}</div>
         </div>
-        <div className="glass-card p-3">
-          <div className="text-xs text-gray-500">24h Volume</div>
-          <div className="font-semibold">${formatUsdWhole(market.volume24h)}</div>
+        <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
+          <div className="sl-label">24h volume</div>
+          <div className="text-lg font-semibold text-white tracking-tight">${formatUsdWhole(market.volume24h)}</div>
         </div>
-        <div className="glass-card p-3">
-          <div className="text-xs text-gray-500">FDV</div>
-          <div className="font-semibold">${formatUsdWhole(market.marketCap)}</div>
+        <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
+          <div className="sl-label">FDV</div>
+          <div className="text-lg font-semibold text-white tracking-tight">${formatUsdWhole(market.marketCap)}</div>
         </div>
-        <div className="glass-card p-3">
-          <div className="text-xs text-gray-500 inline-flex items-center gap-1"><Activity size={12} /> Live feed</div>
-          <div className={`font-semibold ${isConnected ? "text-emerald-300" : "text-amber-300"}`}>
+        <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
+          <div className="sl-label inline-flex items-center gap-2">
+            <Activity size={14} className="text-gray-500" />
+            Live feed
+          </div>
+          <div className={`text-lg font-semibold ${isConnected ? "text-emerald-300" : "text-amber-300"}`}>
             {isConnected ? "Connected" : "Reconnecting"}
           </div>
         </div>
@@ -108,7 +111,7 @@ export default function TokenPage() {
         deployer={token?.deployer}
       />
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         <section id="chart" className="xl:col-span-5 space-y-6 xl:sticky xl:top-28 h-fit">
           <ChartPanel address={address} />
         </section>

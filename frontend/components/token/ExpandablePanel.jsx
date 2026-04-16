@@ -8,32 +8,33 @@ export function ExpandablePanel({ title, icon, children, defaultOpen = false, ba
   return (
     <div className="glass-card overflow-hidden transition-all duration-300">
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center px-5 py-4 text-left hover:bg-white/[0.02] transition"
+        className="w-full flex justify-between items-center gap-4 px-6 py-5 text-left hover:bg-white/[0.025] transition"
       >
-        <span className="flex items-center gap-3">
+        <span className="flex flex-wrap items-center gap-3 sm:gap-4 min-w-0">
           {Icon ? (
-            <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600/25 to-blue-600/20 border border-purple-500/20 flex items-center justify-center">
-              <Icon size={18} className="text-purple-300" />
+            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600/25 to-cyan-600/15 border border-purple-500/25 flex items-center justify-center shrink-0">
+              <Icon size={19} className="text-purple-200" />
             </span>
           ) : null}
-          <span className="font-semibold text-gray-100">
+          <span className="sl-h2 text-white min-w-0">
             {title}
           </span>
           {badge ? (
-            <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300">
+            <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-200 border border-purple-500/25">
               {badge}
             </span>
           ) : null}
         </span>
-        <span className={`transform transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}>
-          <ChevronDown size={18} className="text-gray-400" />
+        <span className={`shrink-0 transform transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}>
+          <ChevronDown size={20} className="text-gray-400" />
         </span>
       </button>
       <div
         className={`transition-all duration-300 overflow-hidden ${isOpen ? "max-h-[1200px]" : "max-h-0"}`}
       >
-        <div className="border-t soft-divider p-5">
+        <div className="border-t border-[#2a2f36] px-6 py-6 bg-[#0e1318]/40">
           {children}
         </div>
       </div>

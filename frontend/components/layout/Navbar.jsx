@@ -35,8 +35,8 @@ export function Navbar() {
   }, []);
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-[#0B0E11]/90 backdrop-blur-xl border-b soft-divider">
-      <div className="max-w-[1400px] mx-auto px-4 md:px-6 h-20 flex items-center justify-between gap-4">
+    <nav className="fixed top-0 w-full z-50 bg-[#0B0E11]/92 backdrop-blur-xl border-b border-[#2a2f36]">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 h-[72px] md:h-20 flex items-center justify-between gap-4">
         <Link
           href="/"
           className="flex items-center gap-2 text-lg md:text-xl font-black bg-gradient-to-r from-purple-500 to-blue-400 bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(129,140,248,0.35)]"
@@ -45,16 +45,19 @@ export function Navbar() {
           SENTINEL LEDGER
         </Link>
 
-        <form onSubmit={onSearch} className="hidden md:flex flex-1 max-w-xl relative">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+        <form onSubmit={onSearch} className="hidden md:flex flex-1 max-w-xl relative items-center gap-2">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10" />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search Solana token mint..."
-            className="w-full h-11 rounded-xl bg-[#13171A] border soft-divider pl-11 pr-28 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:border-purple-500 transition"
+            placeholder="Search Solana token mint…"
+            className="sl-input w-full h-11 pl-11 pr-[7.5rem] text-sm placeholder:text-gray-500"
           />
-          <button className="absolute right-1.5 top-1.5 h-8 px-4 rounded-lg text-xs font-semibold bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 transition">
+          <button
+            type="submit"
+            className="btn-pro btn-pro-sm absolute right-1.5 top-1/2 -translate-y-1/2"
+          >
             Analyze
           </button>
         </form>
@@ -89,10 +92,10 @@ export function Navbar() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search token mint..."
-              className="w-full h-10 rounded-xl bg-[#13171A] border soft-divider pl-9 pr-20 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:border-purple-500 transition"
+              placeholder="Search token mint…"
+              className="sl-input w-full h-10 pl-9 pr-[4.5rem] text-sm placeholder:text-gray-500"
             />
-            <button className="absolute right-1.5 top-1.5 h-7 px-3 rounded-lg text-xs font-semibold bg-gradient-to-r from-purple-600 to-blue-600">
+            <button type="submit" className="btn-pro btn-pro-sm absolute right-1.5 top-1/2 -translate-y-1/2 !py-1.5 !px-3">
               Go
             </button>
           </form>

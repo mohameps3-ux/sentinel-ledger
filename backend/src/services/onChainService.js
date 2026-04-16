@@ -42,7 +42,31 @@ async function getTokenSecurity(mintAddress) {
   return { mintEnabled: false, freezeEnabled: false };
 }
 
+async function fetchBirdeyeHolderCount(mintAddress) {
+  const key = process.env.BIRDEYE_API_KEY;
+  if (!key || !mintAddress) return null;
+  try {
+    const { data } = await axios.get("https://public-api.birdeye.so/defi/token_overview", {
+      params: { address: mintAddress },
+      headers: { "X-API-KEY": key, "x-chain": "solana", accept: "application/json" },
+      timeout: 6000
+    });
+    const raw =
+      data?.data?.holder ??
+      data?.data?.holders ??
+      data?.data?.uniqueWallet24h ??
+      data?.data?.numberMarkets;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+  } catch (e) {
+    console.warn("Birdeye holder count:", e.message);
+    return null;
+  }
+}
+
 async function getHolderConcentration(mintAddress) {
+  const birdeyeHolders = await fetchBirdeyeHolderCount(mintAddress);
+
   for (const rpcUrl of getRpcUrls()) {
     try {
       const holdersResponse = await rpcPost(rpcUrl, {
@@ -67,15 +91,26 @@ async function getHolderConcentration(mintAddress) {
       if (supply <= 0 && topAccounts.length === 0) continue;
       const top10Percentage = supply > 0 ? (top10TotalUi / supply) * 100 : 0;
 
-      // Approximate holder count from largest accounts returned by RPC call.
-      const totalHolders = topAccounts.length;
+      const totalHolders = birdeyeHolders != null ? birdeyeHolders : 0;
+      const holderCountSource = birdeyeHolders != null ? "birdeye" : null;
+      const largestAccountsSampled = topAccounts.length;
 
-      return { top10Percentage: Math.min(top10Percentage, 100), totalHolders };
+      return {
+        top10Percentage: Math.min(top10Percentage, 100),
+        totalHolders,
+        holderCountSource,
+        largestAccountsSampled
+      };
     } catch (error) {
       console.error(`Holders RPC error (${rpcUrl}):`, error.message);
     }
   }
-  return { top10Percentage: 0, totalHolders: 0 };
+  return {
+    top10Percentage: 0,
+    totalHolders: birdeyeHolders || 0,
+    holderCountSource: birdeyeHolders != null ? "birdeye" : null,
+    largestAccountsSampled: 0
+  };
 }
 
 /**
