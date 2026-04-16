@@ -142,6 +142,21 @@ export default function Home() {
         </section>
 
         <section className="glass-card p-5 md:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Compare Two Tokens</h2>
+              <p className="text-sm text-gray-500">Run side-by-side score differential before entering a position.</p>
+            </div>
+            <button
+              onClick={() => router.push("/compare")}
+              className="h-10 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-sm font-semibold hover:opacity-90 transition"
+            >
+              Open Compare Lab
+            </button>
+          </div>
+        </section>
+
+        <section className="glass-card p-5 md:p-6">
           <h2 className="text-lg font-semibold mb-3">Recent Alerts</h2>
           {!alerts.length ? (
             <div className="text-sm text-gray-500">No alerts configured yet.</div>

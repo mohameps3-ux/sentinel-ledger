@@ -73,6 +73,9 @@ export function Navbar() {
           <Link href="/privacy" className="text-sm text-gray-400 hover:text-white transition hidden sm:block">
             Privacy
           </Link>
+          <Link href="/compare" className="text-sm text-gray-400 hover:text-white transition hidden sm:block">
+            Compare
+          </Link>
           <WalletButton />
         </div>
       </div>

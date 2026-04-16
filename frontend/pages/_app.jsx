@@ -35,6 +35,7 @@ export default function App({ Component, pageProps }) {
                   <div className="flex items-center gap-4">
                     <Link href="/terms" className="hover:text-gray-300 transition">Terms</Link>
                     <Link href="/privacy" className="hover:text-gray-300 transition">Privacy</Link>
+                    <Link href="/compare" className="hover:text-gray-300 transition">Compare</Link>
                     <a href="https://x.com" target="_blank" rel="noreferrer" className="hover:text-gray-300 transition">Twitter</a>
                     <a href="https://github.com/mohameps3-ux/sentinel-ledger" target="_blank" rel="noreferrer" className="hover:text-gray-300 transition">GitHub</a>
                   </div>
