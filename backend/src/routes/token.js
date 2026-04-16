@@ -38,6 +38,14 @@ router.get("/:address", async (req, res) => {
     let deployerData = null;
     if (deployerAddress) {
       deployerData = await getDeployerInfo(deployerAddress);
+      if (!deployerData) {
+        deployerData = {
+          address: deployerAddress,
+          totalLaunches: 0,
+          rugCount: 0,
+          riskScore: 0
+        };
+      }
     }
 
     let privateData = { isWatchlist: false, notes: null };

@@ -25,3 +25,17 @@ Frontend:
 
 Ejecuta `supabase/schema.sql` en tu proyecto Supabase (SQL editor).
 
+## Recovery express (produccion)
+
+Si ves errores intermitentes (ej. `Service Unavailable`), usa el script:
+
+1. Solo chequeo (frontend + token page + backend health):
+   - `powershell -ExecutionPolicy Bypass -File "scripts/recover-prod.ps1"`
+2. Chequeo + redeploy forzado en Vercel (sin cache):
+   - `powershell -ExecutionPolicy Bypass -File "scripts/recover-prod.ps1" -Redeploy`
+
+Notas:
+- Requiere `vercel` CLI instalada y sesion iniciada para `-Redeploy`.
+- El script limpia DNS local por defecto (`ipconfig /flushdns`).
+- URL canónica frontend: `https://sentinel-ledger-ochre.vercel.app`.
+
