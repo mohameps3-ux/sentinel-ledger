@@ -13,6 +13,7 @@ const heliusWebhookRouter = require("./routes/heliusWebhook");
 const watchlistRouter = require("./routes/watchlist");
 const smartWalletsRouter = require("./routes/smartWallets");
 const { startDeployerWorker } = require("./queues/deployerWorker");
+const { startTelegramBot } = require("./bots/telegramBot");
 
 const app = express();
 const server = http.createServer(app);
@@ -54,6 +55,7 @@ io.on("connection", (socket) => {
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
   startDeployerWorker();
+  startTelegramBot();
   console.log(`Sentinel Ledger backend on :${port}`);
 });
 

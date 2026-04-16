@@ -4,6 +4,7 @@ const { getMarketData } = require("../services/marketData");
 const { getAnalysis } = require("../services/riskEngine");
 const { getHolderConcentration } = require("../services/onChainService");
 const { getDeployerInfo, updateDeployerReputation } = require("../services/deployerService");
+const { sendGradeAlert } = require("../bots/telegramBot");
 const { getSupabase } = require("../lib/supabase");
 
 const router = express.Router();
@@ -18,6 +19,9 @@ router.get("/:address", async (req, res) => {
       return res.status(404).json({ ok: false, error: "Token not found" });
 
     const analysis = await getAnalysis(address, marketData);
+    sendGradeAlert(address, analysis, marketData).catch((e) =>
+      console.error("Telegram alert send failed:", e.message)
+    );
     const holdersData = await getHolderConcentration(address);
 
     let deployerAddress = marketData.deployerAddress || null;

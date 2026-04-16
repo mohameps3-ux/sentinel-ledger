@@ -1,0 +1,143 @@
+const { Telegraf } = require("telegraf");
+const redis = require("../lib/cache");
+const { getSupabase } = require("../lib/supabase");
+const { getMarketData } = require("../services/marketData");
+const { getAnalysis } = require("../services/riskEngine");
+
+let bot = null;
+
+function buildScanMessage(address, marketData, analysis) {
+  const grade = analysis?.grade || "?";
+  const confidence = analysis?.confidence ?? 0;
+  const symbol = marketData?.symbol || "TOKEN";
+  const pros = (analysis?.pros || []).slice(0, 2).map((p) => `+ ${p}`).join("\n");
+  const cons = (analysis?.cons || []).slice(0, 2).map((c) => `- ${c}`).join("\n");
+
+  return [
+    `🛰️ Sentinel Scan: ${symbol}`,
+    `Mint: ${address}`,
+    `Grade: ${grade} (${confidence}%)`,
+    `Price: $${Number(marketData?.price || 0).toLocaleString()}`,
+    "",
+    pros ? `Pros:\n${pros}` : "",
+    cons ? `Cons:\n${cons}` : ""
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function sendGradeAlert(tokenAddress, analysis, marketData) {
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!bot || !chatId) return;
+  if (!analysis || !["A+", "A"].includes(analysis.grade)) return;
+
+  const cooldownKey = `tg:grade-alert:${tokenAddress}:${analysis.grade}`;
+  const seen = await redis.get(cooldownKey);
+  if (seen) return;
+
+  const msg = [
+    "🚨 Sentinel Grade Alert",
+    `Token: ${marketData?.symbol || "TOKEN"} (${tokenAddress})`,
+    `Grade: ${analysis.grade} (${analysis.confidence}%)`,
+    `Price: $${Number(marketData?.price || 0).toLocaleString()}`
+  ].join("\n");
+
+  await bot.telegram.sendMessage(chatId, msg);
+  await redis.set(cooldownKey, "1", { ex: 60 * 30 });
+}
+
+function startTelegramBot() {
+  if (bot) return bot;
+
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    console.warn("Telegram bot disabled: TELEGRAM_BOT_TOKEN missing.");
+    return null;
+  }
+
+  bot = new Telegraf(token);
+
+  bot.start(async (ctx) => {
+    const supabase = getSupabase();
+    const telegramId = String(ctx.from?.id || "");
+    const telegramUsername = ctx.from?.username || null;
+
+    try {
+      // Best-effort binding by telegram_id only.
+      const { error } = await supabase
+        .from("users")
+        .upsert(
+          {
+            wallet_address: `tg_${telegramId}`,
+            telegram_id: telegramId,
+            telegram_username: telegramUsername
+          },
+          { onConflict: "wallet_address" }
+        );
+      if (error) {
+        // Ignore if user model is managed elsewhere.
+      }
+    } catch (e) {
+      // noop
+    }
+
+    return ctx.reply(
+      "Welcome to Sentinel Ledger Bot.\nUse /scan <mint> to analyze a token or /watchlist to view your saved tokens."
+    );
+  });
+
+  bot.command("scan", async (ctx) => {
+    const parts = (ctx.message?.text || "").trim().split(/\s+/);
+    const address = parts[1];
+    if (!address) return ctx.reply("Usage: /scan <token_mint_address>");
+
+    try {
+      const marketData = await getMarketData(address);
+      if (!marketData) return ctx.reply("Token not found.");
+      const analysis = await getAnalysis(address, marketData);
+      return ctx.reply(buildScanMessage(address, marketData, analysis));
+    } catch (error) {
+      return ctx.reply("Scan failed. Try again in a moment.");
+    }
+  });
+
+  bot.command("watchlist", async (ctx) => {
+    try {
+      const supabase = getSupabase();
+      const telegramId = String(ctx.from?.id || "");
+      const { data: user } = await supabase
+        .from("users")
+        .select("id")
+        .eq("telegram_id", telegramId)
+        .maybeSingle();
+      if (!user) return ctx.reply("No watchlist linked yet.");
+
+      const { data: items } = await supabase
+        .from("watchlists")
+        .select("token_address,note")
+        .eq("user_id", user.id)
+        .order("added_at", { ascending: false })
+        .limit(10);
+
+      if (!items?.length) return ctx.reply("Your watchlist is empty.");
+      const msg = items
+        .map((i, idx) => `${idx + 1}. ${i.token_address}${i.note ? ` — ${i.note}` : ""}`)
+        .join("\n");
+      return ctx.reply(`📌 Your Watchlist\n${msg}`);
+    } catch (error) {
+      return ctx.reply("Failed to load watchlist.");
+    }
+  });
+
+  bot.launch().then(() => {
+    console.log("Telegram bot started.");
+  });
+
+  process.once("SIGINT", () => bot.stop("SIGINT"));
+  process.once("SIGTERM", () => bot.stop("SIGTERM"));
+
+  return bot;
+}
+
+module.exports = { startTelegramBot, sendGradeAlert };
+
