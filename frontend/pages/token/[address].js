@@ -15,6 +15,7 @@ import { WatchlistButton } from "../../components/token/WatchlistButton";
 import { NotesPanel } from "../../components/token/NotesPanel";
 import { ExpandablePanel } from "../../components/token/ExpandablePanel";
 import { ActionBar } from "../../components/token/ActionBar";
+import { TradeReadinessPanel } from "../../components/token/TradeReadinessPanel";
 import { BarChart3, CandlestickChart, Radar, ShieldAlert, Users, Activity } from "lucide-react";
 
 export default function TokenPage() {
@@ -88,6 +89,13 @@ export default function TokenPage() {
           </div>
         </div>
       </div>
+
+      <TradeReadinessPanel
+        analysis={analysis}
+        market={market}
+        holders={token?.holders}
+        deployer={token?.deployer}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <section id="chart" className="xl:col-span-5 space-y-6 xl:sticky xl:top-28 h-fit">

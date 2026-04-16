@@ -27,6 +27,12 @@ export function DecisionPanel({ analysis }) {
   const [open, setOpen] = useState(false);
   if (!analysis) return <div className="glass-card p-6 skeleton-shimmer h-40" />;
   const { grade, confidence, pros, cons } = analysis;
+  const thesis =
+    grade === "A+" || grade === "A"
+      ? "Momentum and structure align for aggressive monitoring."
+      : grade === "B" || grade === "C"
+        ? "Mixed setup: wait for stronger confirmation before sizing."
+        : "Current downside risk dominates the upside case.";
 
   return (
     <>
@@ -40,6 +46,8 @@ export function DecisionPanel({ analysis }) {
             <GradeBadge grade={grade} confidence={confidence} />
           </div>
         </div>
+
+        <p className="text-sm text-gray-300 mb-5">{thesis}</p>
 
         <div className="grid md:grid-cols-2 gap-6">
           {pros?.length > 0 && (
