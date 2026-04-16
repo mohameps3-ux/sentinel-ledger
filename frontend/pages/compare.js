@@ -1,7 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import { ArrowLeftRight, CheckCircle2, MinusCircle, TrendingUp } from "lucide-react";
+import toast from "react-hot-toast";
+import { ArrowLeftRight, BellRing, CheckCircle2, MinusCircle, Star, TrendingUp } from "lucide-react";
 import { useTokenCompare } from "../hooks/useTokenCompare";
+import { useTokenData } from "../hooks/useTokenData";
+import { useWatchlist } from "../hooks/useWatchlist";
+
+const SOL_MINT = "So11111111111111111111111111111111111111112";
+const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 function safeNum(value) {
   const n = Number(value || 0);
@@ -41,14 +47,67 @@ export default function ComparePage() {
   const rightParam = typeof router.query.right === "string" ? router.query.right : "";
   const [leftAddress, setLeftAddress] = useState(leftParam);
   const [rightAddress, setRightAddress] = useState(rightParam);
+  const [watchlistLocal, setWatchlistLocal] = useState([]);
+  const [rotationAlerts, setRotationAlerts] = useState([]);
+  const { addToWatchlist, removeFromWatchlist, isLoading } = useWatchlist();
 
   const { leftQuery, rightQuery } = useTokenCompare(leftAddress, rightAddress);
+  const solQuery = useTokenData(SOL_MINT);
+  const usdcQuery = useTokenData(USDC_MINT);
   const leftToken = leftQuery.data?.data;
   const rightToken = rightQuery.data?.data;
+  const solToken = solQuery.data?.data;
+  const usdcToken = usdcQuery.data?.data;
 
   const leftScore = useMemo(() => scoreToken(leftToken), [leftToken]);
   const rightScore = useMemo(() => scoreToken(rightToken), [rightToken]);
+  const solScore = useMemo(() => scoreToken(solToken), [solToken]);
+  const usdcScore = useMemo(() => scoreToken(usdcToken), [usdcToken]);
   const winner = leftScore === rightScore ? "tie" : leftScore > rightScore ? "left" : "right";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = JSON.parse(localStorage.getItem("sentinel-watchlist-cache") || "[]");
+      setWatchlistLocal(saved);
+      const savedAlerts = JSON.parse(localStorage.getItem("sentinel-rotation-alerts") || "[]");
+      setRotationAlerts(savedAlerts.slice(0, 8));
+    } catch (_) {
+      setWatchlistLocal([]);
+      setRotationAlerts([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!leftToken || !rightToken) return;
+    const pairKey = [leftAddress.trim(), rightAddress.trim()].sort().join("|");
+    if (!pairKey.includes("|")) return;
+    const storageKey = "sentinel-compare-last-winner";
+    let map = {};
+    try {
+      map = JSON.parse(localStorage.getItem(storageKey) || "{}");
+    } catch (_) {}
+
+    const prevWinner = map[pairKey];
+    if (prevWinner && prevWinner !== winner && winner !== "tie") {
+      const selected = winner === "left" ? leftToken.market?.symbol : rightToken.market?.symbol;
+      const alert = {
+        id: `${Date.now()}-${pairKey}`,
+        pairKey,
+        selected,
+        from: prevWinner,
+        to: winner,
+        createdAt: Date.now()
+      };
+      const nextAlerts = [alert, ...rotationAlerts].slice(0, 8);
+      setRotationAlerts(nextAlerts);
+      localStorage.setItem("sentinel-rotation-alerts", JSON.stringify(nextAlerts));
+      toast(`Rotation alert: edge moved to ${selected}`);
+    }
+    map[pairKey] = winner;
+    localStorage.setItem(storageKey, JSON.stringify(map));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [winner, leftToken, rightToken]);
 
   const onCompare = (e) => {
     e.preventDefault();
@@ -57,6 +116,35 @@ export default function ComparePage() {
       undefined,
       { shallow: true }
     );
+  };
+
+  const toggleWatch = async (address) => {
+    const mint = (address || "").trim();
+    if (mint.length < 32) return;
+    try {
+      const exists = watchlistLocal.includes(mint);
+      if (exists) {
+        await removeFromWatchlist(mint);
+        const next = watchlistLocal.filter((w) => w !== mint);
+        setWatchlistLocal(next);
+        localStorage.setItem("sentinel-watchlist-cache", JSON.stringify(next));
+        toast.success("Removed from watchlist.");
+      } else {
+        await addToWatchlist(mint);
+        const next = [mint, ...watchlistLocal.filter((w) => w !== mint)].slice(0, 20);
+        setWatchlistLocal(next);
+        localStorage.setItem("sentinel-watchlist-cache", JSON.stringify(next));
+        toast.success("Added to watchlist.");
+      }
+    } catch (_) {
+      toast.error("Connect wallet/login for watchlist sync.");
+    }
+  };
+
+  const loadFromWatchlist = (mint) => {
+    if (!leftAddress) setLeftAddress(mint);
+    else if (!rightAddress) setRightAddress(mint);
+    else setRightAddress(mint);
   };
 
   return (
@@ -85,6 +173,29 @@ export default function ComparePage() {
         </form>
       </section>
 
+      <section className="glass-card p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Star size={16} className="text-purple-300" />
+          <h2 className="text-lg font-semibold">Watchlist Comparables</h2>
+        </div>
+        {!watchlistLocal.length ? (
+          <div className="text-sm text-gray-500">No cached watchlist yet. Add tokens from compare cards below.</div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {watchlistLocal.map((mint) => (
+              <button
+                key={mint}
+                onClick={() => loadFromWatchlist(mint)}
+                className="text-xs mono px-2.5 py-1 rounded-full bg-white/5 border soft-divider text-gray-300 hover:text-white hover:border-purple-500/40 transition"
+                title={mint}
+              >
+                {mint.slice(0, 6)}...{mint.slice(-4)}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="grid md:grid-cols-2 gap-4">
         {[leftToken, rightToken].map((token, idx) => (
           <div key={idx} className="glass-card p-4">
@@ -106,6 +217,15 @@ export default function ComparePage() {
                   Grade: <span className="font-semibold">{token.analysis?.grade || "-"}</span> · Confidence:{" "}
                   <span className="font-semibold">{safeNum(token.analysis?.confidence)}%</span>
                 </div>
+                <button
+                  onClick={() => toggleWatch(idx === 0 ? leftAddress : rightAddress)}
+                  disabled={isLoading}
+                  className="mt-3 h-9 px-3 rounded-lg text-xs border soft-divider hover:bg-white/5 transition"
+                >
+                  {watchlistLocal.includes((idx === 0 ? leftAddress : rightAddress).trim())
+                    ? "Remove from Watchlist"
+                    : "Add to Watchlist"}
+                </button>
               </>
             )}
           </div>
@@ -166,6 +286,33 @@ export default function ComparePage() {
       </section>
 
       <section className="glass-card p-5">
+        <h2 className="text-lg font-semibold mb-3">Benchmark vs SOL / USDC</h2>
+        {!leftToken || !rightToken ? (
+          <div className="text-sm text-gray-500">Load both tokens to benchmark against majors.</div>
+        ) : (
+          <div className="space-y-2 text-sm">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-3 pb-2 mb-1 border-b soft-divider text-xs uppercase tracking-wide text-gray-500">
+              <span>Relative edge</span>
+              <span>A</span>
+              <span>B</span>
+            </div>
+            <MetricRow
+              label="vs SOL score delta"
+              left={leftScore - solScore}
+              right={rightScore - solScore}
+              formatter={(v) => `${v >= 0 ? "+" : ""}${v}`}
+            />
+            <MetricRow
+              label="vs USDC score delta"
+              left={leftScore - usdcScore}
+              right={rightScore - usdcScore}
+              formatter={(v) => `${v >= 0 ? "+" : ""}${v}`}
+            />
+          </div>
+        )}
+      </section>
+
+      <section className="glass-card p-5">
         <h2 className="text-lg font-semibold mb-2">Entry / Exit ranking</h2>
         {!leftToken || !rightToken ? (
           <div className="text-sm text-gray-500">Ranking appears after both tokens are loaded.</div>
@@ -184,6 +331,26 @@ export default function ComparePage() {
               <TrendingUp size={14} />
               Keep the weaker setup in watchlist and wait for confirmation before sizing.
             </div>
+          </div>
+        )}
+      </section>
+
+      <section className="glass-card p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <BellRing size={16} className="text-purple-300" />
+          <h2 className="text-lg font-semibold">Rotation Alerts</h2>
+        </div>
+        {!rotationAlerts.length ? (
+          <div className="text-sm text-gray-500">No rotation changes detected yet.</div>
+        ) : (
+          <div className="space-y-2">
+            {rotationAlerts.map((alert) => (
+              <div key={alert.id} className="bg-[#0E1318] border soft-divider rounded-xl px-3 py-2 text-sm">
+                <span className="text-gray-300">Edge rotated to </span>
+                <span className="text-emerald-300 font-semibold">{alert.selected}</span>
+                <span className="text-gray-500"> · {new Date(alert.createdAt).toLocaleString()}</span>
+              </div>
+            ))}
           </div>
         )}
       </section>
