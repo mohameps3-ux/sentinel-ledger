@@ -23,7 +23,7 @@ export function LiveFlowPanel({ transactions = [] }) {
         </button>
       </div>
       <div className="max-h-96 overflow-y-auto">
-      <div className="grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-gray-500 bg-[#0E1318]">
+      <div className="hidden md:grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-gray-500 bg-[#0E1318]">
         <span>Type</span>
         <span>Wallet</span>
         <span className="text-right">Amount</span>
@@ -34,35 +34,59 @@ export function LiveFlowPanel({ transactions = [] }) {
         <div className="text-gray-500 text-sm text-center py-6">Waiting for swaps...</div>
       )}
       {transactions.map((tx, idx) => (
-        <div
-          key={idx}
-          className={`grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-sm ${
-            idx % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"
-          }`}
-        >
-          <span
-            className={`w-fit text-xs font-bold px-2 py-0.5 rounded-full ${
-              tx.type === "buy" ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"
-            }`}
+        <div key={idx} className={`${idx % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"}`}>
+          <div
+            className="hidden md:grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-sm"
           >
-            <span className="inline-flex items-center gap-1">
-              {tx.type === "buy" ? <ArrowUp size={11} /> : <ArrowDown size={11} />}
-              {tx.type === "buy" ? "BUY" : "SELL"}
+            <span
+              className={`w-fit text-xs font-bold px-2 py-0.5 rounded-full ${
+                tx.type === "buy" ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"
+              }`}
+            >
+              <span className="inline-flex items-center gap-1">
+                {tx.type === "buy" ? <ArrowUp size={11} /> : <ArrowDown size={11} />}
+                {tx.type === "buy" ? "BUY" : "SELL"}
+              </span>
             </span>
-          </span>
-          <span className="mono text-gray-300">{shortWallet(tx.wallet || tx.trader || tx.from)}</span>
-          <span className="text-right mono">{Number(tx.amount || 0).toFixed(2)}</span>
-          <span className="text-gray-500 text-xs text-right">
-            {new Date(tx.timestamp).toLocaleTimeString()}
-          </span>
-          <a
-            href={tx.signature ? `https://solscan.io/tx/${tx.signature}` : "#"}
-            target="_blank"
-            rel="noreferrer"
-            className={`text-right inline-flex justify-end items-center ${tx.signature ? "text-blue-300 hover:text-blue-200" : "text-gray-600 pointer-events-none"}`}
-          >
-            <ExternalLink size={14} />
-          </a>
+            <span className="mono text-gray-300">{shortWallet(tx.wallet || tx.trader || tx.from)}</span>
+            <span className="text-right mono">{Number(tx.amount || 0).toFixed(2)}</span>
+            <span className="text-gray-500 text-xs text-right">
+              {new Date(tx.timestamp).toLocaleTimeString()}
+            </span>
+            <a
+              href={tx.signature ? `https://solscan.io/tx/${tx.signature}` : "#"}
+              target="_blank"
+              rel="noreferrer"
+              className={`text-right inline-flex justify-end items-center ${tx.signature ? "text-blue-300 hover:text-blue-200" : "text-gray-600 pointer-events-none"}`}
+            >
+              <ExternalLink size={14} />
+            </a>
+          </div>
+
+          <div className="md:hidden px-3 py-2 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span
+                className={`w-fit text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                  tx.type === "buy" ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"
+                }`}
+              >
+                {tx.type === "buy" ? "BUY" : "SELL"}
+              </span>
+              <span className="text-[11px] text-gray-500">{new Date(tx.timestamp).toLocaleTimeString()}</span>
+            </div>
+            <div className="text-xs mono text-gray-300">{shortWallet(tx.wallet || tx.trader || tx.from)}</div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm mono">{Number(tx.amount || 0).toFixed(2)} tokens</span>
+              <a
+                href={tx.signature ? `https://solscan.io/tx/${tx.signature}` : "#"}
+                target="_blank"
+                rel="noreferrer"
+                className={`text-blue-300 text-xs ${tx.signature ? "" : "pointer-events-none text-gray-600"}`}
+              >
+                Solscan
+              </a>
+            </div>
+          </div>
         </div>
       ))}
       </div>
