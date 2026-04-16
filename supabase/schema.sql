@@ -77,10 +77,35 @@ create table if not exists smart_wallet_signals (
   created_at timestamptz not null default now()
 );
 
+create table if not exists support_tickets (
+  id uuid primary key default gen_random_uuid(),
+  channel varchar(30) not null default 'webhook',
+  user_external_id varchar(120) not null,
+  intent varchar(40) not null default 'general',
+  status varchar(20) not null default 'open',
+  priority varchar(20) not null default 'normal',
+  user_message text not null,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists bot_events (
+  id uuid primary key default gen_random_uuid(),
+  channel varchar(30) not null default 'webhook',
+  user_external_id varchar(120) not null,
+  intent varchar(40) not null default 'general',
+  message text not null,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_users_wallet on users(wallet_address);
 create index if not exists idx_tokens_address on tokens_analyzed(token_address);
 create index if not exists idx_watchlists_user on watchlists(user_id);
 create index if not exists idx_alerts_user on alerts(user_id);
 create index if not exists idx_smart_wallet_signals_token on smart_wallet_signals(token_address);
 create index if not exists idx_smart_wallet_signals_wallet on smart_wallet_signals(wallet_address);
+create index if not exists idx_support_tickets_created_at on support_tickets(created_at desc);
+create index if not exists idx_support_tickets_status on support_tickets(status);
+create index if not exists idx_bot_events_created_at on bot_events(created_at desc);
 

@@ -76,6 +76,9 @@ export function Navbar() {
           <Link href="/compare" className="text-sm text-gray-400 hover:text-white transition hidden sm:block">
             Compare
           </Link>
+          <Link href="/ops" className="text-sm text-gray-400 hover:text-white transition hidden sm:block">
+            Ops
+          </Link>
           <WalletButton />
         </div>
       </div>

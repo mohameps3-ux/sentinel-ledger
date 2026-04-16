@@ -46,6 +46,13 @@ async function sendGradeAlert(tokenAddress, analysis, marketData) {
   await redis.set(cooldownKey, "1", { ex: 60 * 30 });
 }
 
+async function sendTelegramText(text) {
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!bot || !chatId || !text) return false;
+  await bot.telegram.sendMessage(chatId, text);
+  return true;
+}
+
 function startTelegramBot() {
   if (bot) return bot;
 
@@ -129,6 +136,10 @@ function startTelegramBot() {
     }
   });
 
+  bot.command("support", async (ctx) => {
+    return ctx.reply("Describe your issue in one message and we will escalate it to Sentinel support.");
+  });
+
   bot.launch().then(() => {
     console.log("Telegram bot started.");
   });
@@ -139,5 +150,5 @@ function startTelegramBot() {
   return bot;
 }
 
-module.exports = { startTelegramBot, sendGradeAlert };
+module.exports = { startTelegramBot, sendGradeAlert, sendTelegramText };
 
