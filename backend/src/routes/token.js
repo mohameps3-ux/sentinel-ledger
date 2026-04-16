@@ -1,0 +1,64 @@
+const express = require("express");
+const jwt = require("jsonwebtoken");
+const { getMarketData } = require("../services/marketData");
+const { getAnalysis } = require("../services/riskEngine");
+const { getSupabase } = require("../lib/supabase");
+
+const router = express.Router();
+
+router.get("/:address", async (req, res) => {
+  try {
+    const { address } = req.params;
+    const authHeader = req.headers.authorization;
+
+    const marketData = await getMarketData(address);
+    if (!marketData)
+      return res.status(404).json({ ok: false, error: "Token not found" });
+
+    const analysis = await getAnalysis(address, marketData);
+
+    let privateData = { isWatchlist: false, notes: null };
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const supabase = getSupabase();
+        const { data: watch } = await supabase
+          .from("watchlists")
+          .select("note")
+          .eq("user_id", decoded.userId)
+          .eq("token_address", address)
+          .maybeSingle();
+        if (watch) privateData = { isWatchlist: true, notes: watch.note };
+      } catch (e) {
+        // ignore optional auth errors
+      }
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        market: {
+          price: marketData.price,
+          liquidity: marketData.liquidity,
+          marketCap: marketData.marketCap,
+          volume24h: marketData.volume24h,
+          priceChange24h: marketData.priceChange24h,
+          symbol: marketData.symbol,
+          name: marketData.name,
+          lpLocked: marketData.lpLocked,
+          lpLockDuration: marketData.lpLockDuration
+        },
+        analysis,
+        private: privateData
+      },
+      meta: { cached: marketData._source === "cache", staleSeconds: 0 }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ ok: false, error: "Server error" });
+  }
+});
+
+module.exports = router;
+
