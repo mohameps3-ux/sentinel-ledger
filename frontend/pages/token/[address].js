@@ -14,6 +14,7 @@ import { LiveFlowPanel } from "../../components/token/LiveFlowPanel";
 import { WatchlistButton } from "../../components/token/WatchlistButton";
 import { NotesPanel } from "../../components/token/NotesPanel";
 import { ExpandablePanel } from "../../components/token/ExpandablePanel";
+import { ActionBar } from "../../components/token/ActionBar";
 import { BarChart3, CandlestickChart, Radar, ShieldAlert, Users } from "lucide-react";
 
 export default function TokenPage() {
@@ -77,15 +78,22 @@ export default function TokenPage() {
         </section>
 
         <section className="xl:col-span-3 space-y-4">
-          <ExpandablePanel title="Live Transactions" icon={CandlestickChart} defaultOpen={true}>
+          <ExpandablePanel
+            title="Live Transactions"
+            icon={CandlestickChart}
+            defaultOpen={true}
+            badge={transactions.length ? `${transactions.length} new tx` : null}
+          >
             <LiveFlowPanel transactions={transactions} />
           </ExpandablePanel>
 
-          <ExpandablePanel title="Smart Money Activity" icon={Radar} defaultOpen={true}>
+          <ExpandablePanel title="Smart Money Activity" icon={Radar} defaultOpen={true} badge="intel">
             <SmartMoneyPanel tokenAddress={address} />
           </ExpandablePanel>
         </section>
       </div>
+
+      <ActionBar tokenAddress={address} symbol={market.symbol} />
 
       {hasToken && <NotesPanel tokenAddress={address} initialNote={note} />}
     </div>

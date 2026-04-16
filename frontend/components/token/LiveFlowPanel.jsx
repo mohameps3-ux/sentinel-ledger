@@ -1,4 +1,5 @@
-import { ExternalLink } from "lucide-react";
+import { ArrowDown, ArrowUp, ExternalLink, Bell } from "lucide-react";
+import toast from "react-hot-toast";
 
 function shortWallet(wallet = "") {
   if (!wallet) return "unknown";
@@ -6,8 +7,22 @@ function shortWallet(wallet = "") {
 }
 
 export function LiveFlowPanel({ transactions = [] }) {
+  const now = Date.now();
+  const txPerMinute = transactions.filter((tx) => now - new Date(tx.timestamp).getTime() <= 60000).length;
+
   return (
-    <div className="max-h-96 overflow-y-auto rounded-xl border soft-divider">
+    <div className="rounded-xl border soft-divider overflow-hidden">
+      <div className="px-3 py-2 bg-[#0E1318] border-b soft-divider flex items-center justify-between">
+        <span className="text-xs text-gray-400">Speed: {txPerMinute} tx/min</span>
+        <button
+          onClick={() => toast("Whale alert saved (coming soon).")}
+          className="text-xs text-purple-300 hover:text-purple-200 inline-flex items-center gap-1"
+        >
+          <Bell size={12} />
+          Alert on whale
+        </button>
+      </div>
+      <div className="max-h-96 overflow-y-auto">
       <div className="grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-gray-500 bg-[#0E1318]">
         <span>Type</span>
         <span>Wallet</span>
@@ -30,7 +45,10 @@ export function LiveFlowPanel({ transactions = [] }) {
               tx.type === "buy" ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"
             }`}
           >
-            {tx.type === "buy" ? "BUY" : "SELL"}
+            <span className="inline-flex items-center gap-1">
+              {tx.type === "buy" ? <ArrowUp size={11} /> : <ArrowDown size={11} />}
+              {tx.type === "buy" ? "BUY" : "SELL"}
+            </span>
           </span>
           <span className="mono text-gray-300">{shortWallet(tx.wallet || tx.trader || tx.from)}</span>
           <span className="text-right mono">{Number(tx.amount || 0).toFixed(2)}</span>
@@ -47,6 +65,7 @@ export function LiveFlowPanel({ transactions = [] }) {
           </a>
         </div>
       ))}
+      </div>
     </div>
   );
 }

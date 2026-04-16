@@ -1,4 +1,5 @@
 import { GradeBadge } from "./GradeBadge";
+import { useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 
 function CircularConfidence({ value }) {
@@ -23,53 +24,84 @@ function gradeBorderClass(grade) {
 }
 
 export function DecisionPanel({ analysis }) {
+  const [open, setOpen] = useState(false);
   if (!analysis) return <div className="glass-card p-6 skeleton-shimmer h-40" />;
   const { grade, confidence, pros, cons } = analysis;
 
   return (
-    <div className={`glass-card p-6 border-l-4 ${gradeBorderClass(grade)} bg-gradient-to-br from-white/[0.03] to-transparent`}>
-      <div className="flex flex-wrap justify-between items-center gap-4 mb-5">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          Sentinel Decision
-        </h2>
-        <div className="flex items-center gap-3">
-          <CircularConfidence value={confidence} />
-          <GradeBadge grade={grade} confidence={confidence} />
+    <>
+      <div className={`glass-card p-6 border-l-4 ${gradeBorderClass(grade)} bg-gradient-to-br from-white/[0.03] to-transparent`}>
+        <div className="flex flex-wrap justify-between items-center gap-4 mb-5">
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            Sentinel Decision
+          </h2>
+          <div className="flex items-center gap-3">
+            <CircularConfidence value={confidence} />
+            <GradeBadge grade={grade} confidence={confidence} />
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {pros?.length > 0 && (
+            <div>
+              <div className="text-green-400 font-semibold mb-2 flex items-center gap-2">
+                <CheckCircle2 size={16} />
+                Pros
+              </div>
+              <ul className="space-y-1">
+                {pros.map((pro, i) => (
+                  <li key={i} className="text-sm text-gray-300 flex gap-2">
+                    <span className="text-green-400">✓</span> {pro}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {cons?.length > 0 && (
+            <div>
+              <div className="text-red-400 font-semibold mb-2 flex items-center gap-2">
+                <XCircle size={16} />
+                Cons
+              </div>
+              <ul className="space-y-1">
+                {cons.map((con, i) => (
+                  <li key={i} className="text-sm text-gray-300 flex gap-2">
+                    <span className="text-red-400">✗</span> {con}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+        <div className="mt-5">
+          <button
+            onClick={() => setOpen(true)}
+            className="h-9 px-3 rounded-lg text-sm border soft-divider hover:bg-white/5 transition"
+          >
+            More details
+          </button>
         </div>
       </div>
-      <div className="grid md:grid-cols-2 gap-6">
-        {pros?.length > 0 && (
-          <div>
-            <div className="text-green-400 font-semibold mb-2 flex items-center gap-2">
-              <CheckCircle2 size={16} />
-              Pros
+      {open && (
+        <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-card w-full max-w-lg p-5">
+            <h3 className="text-lg font-semibold mb-3">Decision details</h3>
+            <div className="text-sm text-gray-300 space-y-1">
+              <div>Grade: {grade}</div>
+              <div>Confidence: {confidence}%</div>
+              <div>Pros count: {pros?.length || 0}</div>
+              <div>Cons count: {cons?.length || 0}</div>
             </div>
-            <ul className="space-y-1">
-              {pros.map((pro, i) => (
-                <li key={i} className="text-sm text-gray-300 flex gap-2">
-                  <span className="text-green-400">✓</span> {pro}
-                </li>
-              ))}
-            </ul>
+            <button
+              onClick={() => setOpen(false)}
+              className="mt-5 h-9 px-3 rounded-lg text-sm bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 transition"
+            >
+              Close
+            </button>
           </div>
-        )}
-        {cons?.length > 0 && (
-          <div>
-            <div className="text-red-400 font-semibold mb-2 flex items-center gap-2">
-              <XCircle size={16} />
-              Cons
-            </div>
-            <ul className="space-y-1">
-              {cons.map((con, i) => (
-                <li key={i} className="text-sm text-gray-300 flex gap-2">
-                  <span className="text-red-400">✗</span> {con}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }
 

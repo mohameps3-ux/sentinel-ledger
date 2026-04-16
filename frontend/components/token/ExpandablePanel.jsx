@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-export function ExpandablePanel({ title, icon, children, defaultOpen = false }) {
+export function ExpandablePanel({ title, icon, children, defaultOpen = false, badge = null }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const Icon = icon;
 
@@ -20,6 +20,11 @@ export function ExpandablePanel({ title, icon, children, defaultOpen = false }) 
           <span className="font-semibold text-gray-100">
             {title}
           </span>
+          {badge ? (
+            <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300">
+              {badge}
+            </span>
+          ) : null}
         </span>
         <span className={`transform transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}>
           <ChevronDown size={18} className="text-gray-400" />

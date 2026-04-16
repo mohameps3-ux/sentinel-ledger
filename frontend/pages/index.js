@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { ArrowUpRight, Flame } from "lucide-react";
 
@@ -18,7 +18,18 @@ function gradeClass(grade) {
 export default function Home() {
   const [address, setAddress] = useState("");
   const [error, setError] = useState("");
+  const [alerts, setAlerts] = useState([]);
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = JSON.parse(localStorage.getItem("sentinel-alerts") || "[]");
+      setAlerts(saved.slice(-5).reverse());
+    } catch (_) {
+      setAlerts([]);
+    }
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -84,6 +95,22 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="glass-card p-5 md:p-6">
+          <h2 className="text-lg font-semibold mb-3">Recent Alerts</h2>
+          {!alerts.length ? (
+            <div className="text-sm text-gray-500">No alerts configured yet.</div>
+          ) : (
+            <div className="space-y-2">
+              {alerts.map((item, idx) => (
+                <div key={`${item.tokenAddress}-${idx}`} className="bg-[#0E1318] border soft-divider rounded-xl px-3 py-2 text-sm">
+                  <span className="mono text-gray-200">{(item.symbol || item.tokenAddress || "").slice(0, 12)}</span>
+                  <span className="text-gray-500"> · {item.alertType}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </div>

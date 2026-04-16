@@ -1,5 +1,6 @@
 import { useSmartMoney } from "../../hooks/useSmartMoney";
-import { Trophy, Wallet } from "lucide-react";
+import { Copy, Trophy, Wallet } from "lucide-react";
+import toast from "react-hot-toast";
 
 function compactWallet(wallet) {
   if (!wallet) return "unknown";
@@ -42,7 +43,7 @@ export function SmartMoneyPanel({ tokenAddress }) {
               <Wallet size={18} />
             </div>
             <div>
-            <div className="font-mono text-sm text-gray-200">
+            <div className="font-mono text-sm text-gray-200" title={wallet.wallet}>
               {compactWallet(wallet.wallet)}
             </div>
             <div className="text-xs text-gray-500 mt-1">
@@ -72,6 +73,20 @@ export function SmartMoneyPanel({ tokenAddress }) {
             <div className="text-[11px] text-gray-500">
               Hits {Number(wallet.recentHits || 0)} · Avg ${Number(wallet.avgPositionSize || 0).toLocaleString()}
             </div>
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(wallet.wallet);
+                  toast.success("Wallet copied.");
+                } catch (_) {
+                  toast.error("Copy failed.");
+                }
+              }}
+              className="mt-1 text-[11px] text-blue-300 hover:text-blue-200 inline-flex items-center gap-1"
+            >
+              <Copy size={11} />
+              Copy
+            </button>
           </div>
         </div>
       ))}

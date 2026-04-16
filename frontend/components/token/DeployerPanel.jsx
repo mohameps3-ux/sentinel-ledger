@@ -13,9 +13,31 @@ export function DeployerPanel({ deployer }) {
       : deployer.riskScore > 40
         ? "text-yellow-400"
         : "text-green-400";
+  const risk = Math.min(Math.max(Number(deployer.riskScore || 0), 0), 100);
+  const circ = (risk / 100) * 360;
 
   return (
     <div className="space-y-3">
+      <div className="flex justify-between items-center">
+        <div
+          className="relative w-14 h-14 rounded-full"
+          style={{ background: `conic-gradient(#8b5cf6 ${circ}deg, #2a2f36 ${circ}deg)` }}
+        >
+          <div className="absolute inset-[4px] rounded-full bg-[#13171A] flex items-center justify-center text-[10px] font-bold">
+            {risk}
+          </div>
+        </div>
+        {deployer.address ? (
+          <a
+            href={`https://solscan.io/account/${deployer.address}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-blue-300 hover:text-blue-200"
+          >
+            View on Solscan
+          </a>
+        ) : null}
+      </div>
       <div className="flex justify-between">
         <span className="text-gray-400">Address</span>
         <span className="font-mono" title={deployer.address}>

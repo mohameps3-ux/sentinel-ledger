@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ExternalLink } from "lucide-react";
 
 export function ChartPanel({ address }) {
   const [timeframe, setTimeframe] = useState("1h");
@@ -13,7 +14,7 @@ export function ChartPanel({ address }) {
     <div className="glass-card glass-card-hover overflow-hidden p-0">
       <div className="px-4 py-3 border-b soft-divider flex items-center justify-between gap-3">
         <div className="text-xs mono text-gray-400">LIVE CHART · DEXSCREENER</div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {timeframes.map((tf) => (
             <button
               key={tf}
@@ -27,6 +28,14 @@ export function ChartPanel({ address }) {
               {tf}
             </button>
           ))}
+          <a
+            href={`https://dexscreener.com/solana/${address}`}
+            target="_blank"
+            rel="noreferrer"
+            className="h-7 px-2 rounded-lg text-xs inline-flex items-center gap-1 bg-[#0D1216] text-gray-300 hover:text-white transition"
+          >
+            Open <ExternalLink size={12} />
+          </a>
         </div>
       </div>
       <iframe
