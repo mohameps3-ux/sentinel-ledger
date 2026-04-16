@@ -28,24 +28,34 @@ async function getTokenSecurity(mintAddress) {
 
 async function getHolderConcentration(mintAddress) {
   try {
-    const { data } = await axios.post(HELIUS_URL, {
+    const { data: holdersResponse } = await axios.post(HELIUS_URL, {
       jsonrpc: "2.0",
       id: "holders-check",
       method: "getTokenLargestAccounts",
       params: [mintAddress]
     });
-    const topAccounts = data.result?.value || [];
-    const top10Total = topAccounts
+    const topAccounts = holdersResponse.result?.value || [];
+    const top10TotalUi = topAccounts
       .slice(0, 10)
-      .reduce((acc, curr) => acc + Number(curr.amount), 0);
+      .reduce((acc, curr) => acc + Number(curr.uiAmount || 0), 0);
 
-    // NOTE: For a real % you’d fetch supply. This is a placeholder to keep UI/engine stable.
-    const supply = 1_000_000_000;
-    const top10Percentage = (top10Total / supply) * 100;
-    return { top10Percentage: Math.min(top10Percentage, 100) };
+    const { data: supplyResponse } = await axios.post(HELIUS_URL, {
+      jsonrpc: "2.0",
+      id: "supply-check",
+      method: "getTokenSupply",
+      params: [mintAddress]
+    });
+
+    const supply = Number(supplyResponse.result?.value?.uiAmount || 0);
+    const top10Percentage = supply > 0 ? (top10TotalUi / supply) * 100 : 0;
+
+    // Approximate holder count from largest accounts returned by RPC call.
+    const totalHolders = topAccounts.length;
+
+    return { top10Percentage: Math.min(top10Percentage, 100), totalHolders };
   } catch (error) {
     console.error("Error fetching holder concentration:", error.message);
-    return { top10Percentage: 0 };
+    return { top10Percentage: 0, totalHolders: 0 };
   }
 }
 

@@ -2,6 +2,8 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const { getMarketData } = require("../services/marketData");
 const { getAnalysis } = require("../services/riskEngine");
+const { getHolderConcentration } = require("../services/onChainService");
+const { getDeployerInfo } = require("../services/deployerService");
 const { getSupabase } = require("../lib/supabase");
 
 const router = express.Router();
@@ -16,6 +18,27 @@ router.get("/:address", async (req, res) => {
       return res.status(404).json({ ok: false, error: "Token not found" });
 
     const analysis = await getAnalysis(address, marketData);
+    const holdersData = await getHolderConcentration(address);
+
+    let deployerAddress = marketData.deployerAddress || null;
+    if (!deployerAddress) {
+      try {
+        const supabase = getSupabase();
+        const { data: analyzedToken } = await supabase
+          .from("tokens_analyzed")
+          .select("deployer_wallet")
+          .eq("token_address", address)
+          .maybeSingle();
+        deployerAddress = analyzedToken?.deployer_wallet || null;
+      } catch (e) {
+        // ignore optional lookup failures
+      }
+    }
+
+    let deployerData = null;
+    if (deployerAddress) {
+      deployerData = await getDeployerInfo(deployerAddress);
+    }
 
     let privateData = { isWatchlist: false, notes: null };
     if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -50,6 +73,11 @@ router.get("/:address", async (req, res) => {
           lpLockDuration: marketData.lpLockDuration
         },
         analysis,
+        holders: {
+          top10Percentage: holdersData.top10Percentage || 0,
+          totalHolders: holdersData.totalHolders || 0
+        },
+        deployer: deployerData,
         private: privateData
       },
       meta: { cached: marketData._source === "cache", staleSeconds: 0 }

@@ -24,6 +24,11 @@ async function getMarketData(address) {
     const bestPair = pairs.sort(
       (a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0)
     )[0];
+    const deployerAddress =
+      bestPair.info?.deployerAddress ||
+      bestPair.info?.deployer ||
+      bestPair.baseToken?.deployerAddress ||
+      null;
 
     const marketData = {
       price: Number(bestPair.priceUsd) || 0,
@@ -33,7 +38,7 @@ async function getMarketData(address) {
       liquidity: Number(bestPair.liquidity?.usd) || 0,
       symbol: bestPair.baseToken?.symbol || "?",
       name: bestPair.baseToken?.name || "",
-      deployerAddress: null,
+      deployerAddress,
       lpLocked: false,
       lpLockDuration: 0
     };
