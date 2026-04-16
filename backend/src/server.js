@@ -11,6 +11,8 @@ const { authRouter } = require("./routes/auth");
 const tokenRouter = require("./routes/token");
 const heliusWebhookRouter = require("./routes/heliusWebhook");
 const watchlistRouter = require("./routes/watchlist");
+const smartWalletsRouter = require("./routes/smartWallets");
+const { startDeployerWorker } = require("./queues/deployerWorker");
 
 const app = express();
 const server = http.createServer(app);
@@ -36,6 +38,7 @@ app.get("/health", (_, res) =>
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/token", tokenRouter);
+app.use("/api/v1/smart-wallets", smartWalletsRouter);
 app.use("/api/v1/watchlist", watchlistRouter);
 app.use("/api/v1/webhooks", heliusWebhookRouter);
 
@@ -49,5 +52,8 @@ io.on("connection", (socket) => {
 });
 
 const port = process.env.PORT || 3000;
-server.listen(port, () => console.log(`Sentinel Ledger backend on :${port}`));
+server.listen(port, () => {
+  startDeployerWorker();
+  console.log(`Sentinel Ledger backend on :${port}`);
+});
 

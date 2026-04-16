@@ -14,5 +14,5 @@ const deployerQueue = connection
   ? new Queue("deployer-analysis", { connection })
   : null;
 
-module.exports = { deployerQueue };
+module.exports = { deployerQueue, makeConnection };
 

@@ -74,7 +74,7 @@ export default function TokenPage() {
       </ExpandablePanel>
 
       <ExpandablePanel title="🧠 Smart Money Activity" icon="🐋" defaultOpen={false}>
-        <SmartMoneyPanel />
+        <SmartMoneyPanel tokenAddress={address} />
       </ExpandablePanel>
 
       {hasToken && <NotesPanel tokenAddress={address} initialNote={note} />}

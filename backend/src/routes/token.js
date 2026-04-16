@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const { getMarketData } = require("../services/marketData");
 const { getAnalysis } = require("../services/riskEngine");
 const { getHolderConcentration } = require("../services/onChainService");
-const { getDeployerInfo } = require("../services/deployerService");
+const { getDeployerInfo, updateDeployerReputation } = require("../services/deployerService");
 const { getSupabase } = require("../lib/supabase");
 
 const router = express.Router();
@@ -37,6 +37,9 @@ router.get("/:address", async (req, res) => {
 
     let deployerData = null;
     if (deployerAddress) {
+      updateDeployerReputation(deployerAddress).catch((e) =>
+        console.error("Failed enqueue deployer reputation update:", e.message)
+      );
       deployerData = await getDeployerInfo(deployerAddress);
       if (!deployerData) {
         deployerData = {

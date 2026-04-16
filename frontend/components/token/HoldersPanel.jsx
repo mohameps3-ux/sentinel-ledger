@@ -1,5 +1,19 @@
 export function HoldersPanel({ holders }) {
-  const data = holders || { top10Percentage: 0, totalHolders: 0 };
+  const data = holders || null;
+  const hasData =
+    data &&
+    typeof data.top10Percentage === "number" &&
+    typeof data.totalHolders === "number" &&
+    (data.top10Percentage > 0 || data.totalHolders > 0);
+
+  if (!hasData) {
+    return (
+      <div className="text-gray-500 text-sm border border-dashed border-gray-700 rounded-xl p-4 text-center">
+        Data not available
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-center">

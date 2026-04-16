@@ -39,7 +39,8 @@ async function getMarketData(address) {
       symbol: bestPair.baseToken?.symbol || "?",
       name: bestPair.baseToken?.name || "",
       deployerAddress,
-      lpLocked: false,
+      // TODO: until LP ownership checks are implemented, keep unknown state.
+      lpLocked: null,
       lpLockDuration: 0
     };
 

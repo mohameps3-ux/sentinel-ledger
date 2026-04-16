@@ -5,9 +5,9 @@ const bs58 = require("bs58");
 const crypto = require("crypto");
 const { PublicKey } = require("@solana/web3.js");
 const { getSupabase } = require("../lib/supabase");
+const redis = require("../lib/cache");
 
 const authRouter = express.Router();
-const nonceStore = new Map();
 
 function makeNonce() {
   return crypto.randomBytes(16).toString("hex");
@@ -22,6 +22,25 @@ function buildLoginMessage(walletAddress, nonce) {
   ].join("\n");
 }
 
+function nonceKey(walletAddress) {
+  return `auth:nonce:${walletAddress}`;
+}
+
+async function saveNonce(walletAddress, entry) {
+  await redis.set(nonceKey(walletAddress), JSON.stringify(entry), { ex: 5 * 60 });
+}
+
+async function loadNonce(walletAddress) {
+  const raw = await redis.get(nonceKey(walletAddress));
+  if (!raw) return null;
+  if (typeof raw === "string") return JSON.parse(raw);
+  return raw;
+}
+
+async function deleteNonce(walletAddress) {
+  await redis.del(nonceKey(walletAddress));
+}
+
 authRouter.post("/nonce", async (req, res) => {
   try {
     const { walletAddress } = req.body;
@@ -30,7 +49,7 @@ authRouter.post("/nonce", async (req, res) => {
 
     const nonce = makeNonce();
     const message = buildLoginMessage(walletAddress, nonce);
-    nonceStore.set(walletAddress, {
+    await saveNonce(walletAddress, {
       nonce,
       message,
       expiresAt: Date.now() + 5 * 60 * 1000
@@ -49,10 +68,10 @@ authRouter.post("/login", async (req, res) => {
       return res.status(400).json({ error: "missing_fields" });
     }
 
-    const entry = nonceStore.get(walletAddress);
+    const entry = await loadNonce(walletAddress);
     if (!entry) return res.status(400).json({ error: "nonce_not_found_or_expired" });
     if (Date.now() > entry.expiresAt) {
-      nonceStore.delete(walletAddress);
+      await deleteNonce(walletAddress);
       return res.status(400).json({ error: "nonce_expired" });
     }
     if (message !== entry.message) return res.status(400).json({ error: "invalid_message" });
@@ -85,7 +104,7 @@ authRouter.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    nonceStore.delete(walletAddress);
+    await deleteNonce(walletAddress);
     return res.json({ token, user });
   } catch (error) {
     console.error(error);

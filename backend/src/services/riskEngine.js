@@ -31,11 +31,13 @@ async function getAnalysis(address, marketData) {
   }
 
   if (score > 0) {
-    if (marketData.lpLocked) {
+    if (marketData.lpLocked === true) {
       pros.push(`LP locked ${marketData.lpLockDuration || "?"} days`);
-    } else {
+    } else if (marketData.lpLocked === false) {
       cons.push("Liquidity not locked (dev can withdraw)");
       score -= 30;
+    } else {
+      cons.push("LP lock status unavailable");
     }
 
     if (holders.top10Percentage > 40) {

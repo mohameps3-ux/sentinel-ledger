@@ -3,12 +3,18 @@ import { useRouter } from "next/router";
 
 export default function Home() {
   const [address, setAddress] = useState("");
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (address.trim().length >= 32) router.push(`/token/${address.trim()}`);
-    else alert("Introduce una dirección de token válida");
+    const value = address.trim();
+    if (value.length >= 32) {
+      setError("");
+      router.push(`/token/${value}`);
+      return;
+    }
+    setError("Introduce una dirección de token válida");
   };
 
   return (
@@ -32,6 +38,7 @@ export default function Home() {
           SCOUT
         </button>
       </form>
+      {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
     </div>
   );
 }

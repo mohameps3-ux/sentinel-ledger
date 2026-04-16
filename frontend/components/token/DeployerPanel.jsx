@@ -1,5 +1,11 @@
 export function DeployerPanel({ deployer }) {
-  if (!deployer) return <div className="text-gray-500">Loading deployer data...</div>;
+  if (!deployer) {
+    return (
+      <div className="text-gray-500 text-sm border border-dashed border-gray-700 rounded-xl p-4 text-center">
+        Data not available
+      </div>
+    );
+  }
 
   const riskColor =
     deployer.riskScore > 70
