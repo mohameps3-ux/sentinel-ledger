@@ -42,6 +42,7 @@ export function SmartMoneyPanel({ tokenAddress }) {
             </div>
             <div className="text-xs text-gray-500 mt-1">
               Last action: {wallet.lastAction}
+              {wallet.lastSeen ? ` · Last seen: ${new Date(wallet.lastSeen).toLocaleString()}` : ""}
             </div>
           </div>
           <div className="text-right">
@@ -50,6 +51,9 @@ export function SmartMoneyPanel({ tokenAddress }) {
             </div>
             <div className="text-xs text-gray-400">
               PnL ${Number(wallet.realizedPnl || 0).toLocaleString()}
+            </div>
+            <div className="text-[11px] text-gray-500">
+              Hits {Number(wallet.recentHits || 0)} · Avg ${Number(wallet.avgPositionSize || 0).toLocaleString()}
             </div>
           </div>
         </div>

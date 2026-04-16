@@ -59,11 +59,12 @@ create table if not exists alerts (
 );
 
 create table if not exists smart_wallets (
-  wallet_address varchar(100) primary key,
+  wallet_address text primary key,
   win_rate numeric(5,2) not null default 0,
   pnl_30d numeric(18,2) not null default 0,
-  trades_30d int not null default 0,
-  confidence int not null default 0,
+  avg_position_size numeric(18,2) not null default 0,
+  recent_hits int not null default 0,
+  last_seen timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 

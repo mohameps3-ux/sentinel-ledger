@@ -1,13 +1,16 @@
 const { getSupabase } = require("../lib/supabase");
 
 const MIN_WIN_RATE = 70;
-const MAX_RESULTS = 12;
+const MAX_RESULTS = 20;
 
 function mapSmartWallet(wallet, signal) {
   return {
     wallet: wallet.wallet_address,
     winRate: Number(wallet.win_rate || 0),
     realizedPnl: Number(wallet.pnl_30d || 0),
+    avgPositionSize: Number(wallet.avg_position_size || 0),
+    recentHits: Number(wallet.recent_hits || 0),
+    lastSeen: wallet.last_seen || null,
     lastAction: signal?.last_action || "unknown",
     confidence: Number(signal?.confidence || wallet.confidence || 0)
   };
@@ -29,7 +32,7 @@ async function getSmartWalletsForToken(tokenAddress) {
       const wallets = signals.map((s) => s.wallet_address);
       const { data: smartWallets, error: walletsError } = await supabase
         .from("smart_wallets")
-        .select("wallet_address,win_rate,pnl_30d,confidence")
+        .select("wallet_address,win_rate,pnl_30d,avg_position_size,recent_hits,last_seen,confidence")
         .in("wallet_address", wallets)
         .gte("win_rate", MIN_WIN_RATE)
         .order("win_rate", { ascending: false })
@@ -51,7 +54,7 @@ async function getSmartWalletsForToken(tokenAddress) {
   try {
     const { data: smartWallets, error } = await supabase
       .from("smart_wallets")
-      .select("wallet_address,win_rate,pnl_30d,confidence")
+      .select("wallet_address,win_rate,pnl_30d,avg_position_size,recent_hits,last_seen,confidence")
       .gte("win_rate", MIN_WIN_RATE)
       .order("win_rate", { ascending: false })
       .limit(MAX_RESULTS);

@@ -1,5 +1,5 @@
 const express = require("express");
-const { getSmartWalletsForToken } = require("../services/smartMoneyService");
+const { getSmartWalletsForToken } = require("../services/smartWalletsService");
 
 const router = express.Router();
 
