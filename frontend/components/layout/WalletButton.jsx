@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import bs58 from "bs58";
 import { ChevronDown, LogOut, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
+import { getPublicApiUrl } from "../../lib/publicRuntime";
 
 export function WalletButton() {
   const { publicKey, signMessage, connected, disconnect } = useWallet();
@@ -19,7 +20,7 @@ export function WalletButton() {
     try {
       if (!publicKey || !signMessage) return;
       setLoading(true);
-      const API_URL = process.env.NEXT_PUBLIC_API_URL;
+      const API_URL = getPublicApiUrl();
       const wallet = publicKey.toBase58();
 
       const { message } = await fetch(`${API_URL}/api/v1/auth/nonce`, {

@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { getPublicApiUrl } from "../lib/publicRuntime";
 
 async function fetchSmartMoney(address) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/smart-wallets/${address}`);
+  const res = await fetch(`${getPublicApiUrl()}/api/v1/smart-wallets/${address}`);
   if (!res.ok) throw new Error("Failed to fetch smart money");
   return res.json();
 }

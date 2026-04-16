@@ -16,7 +16,9 @@ import { NotesPanel } from "../../components/token/NotesPanel";
 import { ExpandablePanel } from "../../components/token/ExpandablePanel";
 import { ActionBar } from "../../components/token/ActionBar";
 import { TradeReadinessPanel } from "../../components/token/TradeReadinessPanel";
+import { WalletThreatBanner } from "../../components/token/WalletThreatBanner";
 import { BarChart3, CandlestickChart, Radar, ShieldAlert, Users, Activity } from "lucide-react";
+import { formatUsdWhole } from "../../lib/formatStable";
 
 export default function TokenPage() {
   const router = useRouter();
@@ -30,6 +32,14 @@ export default function TokenPage() {
   }, []);
 
   const token = useMemo(() => data?.data, [data]);
+  const walletIntel = token?.walletIntel;
+  const flaggedWallets = useMemo(() => {
+    const set = new Set();
+    for (const s of walletIntel?.signals || []) {
+      if (s?.wallet) set.add(s.wallet);
+    }
+    return set;
+  }, [walletIntel]);
 
   if (isLoading) return <TokenSkeleton />;
   if (error)
@@ -57,6 +67,7 @@ export default function TokenPage() {
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-6">
+      <WalletThreatBanner walletIntel={token.walletIntel} />
       <div className="flex flex-wrap justify-between items-start gap-4">
         <HeroSection
           symbol={market.symbol}
@@ -72,15 +83,15 @@ export default function TokenPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="glass-card p-3">
           <div className="text-xs text-gray-500">Liquidity</div>
-          <div className="font-semibold">${Number(market.liquidity || 0).toLocaleString()}</div>
+          <div className="font-semibold">${formatUsdWhole(market.liquidity)}</div>
         </div>
         <div className="glass-card p-3">
           <div className="text-xs text-gray-500">24h Volume</div>
-          <div className="font-semibold">${Number(market.volume24h || 0).toLocaleString()}</div>
+          <div className="font-semibold">${formatUsdWhole(market.volume24h)}</div>
         </div>
         <div className="glass-card p-3">
           <div className="text-xs text-gray-500">FDV</div>
-          <div className="font-semibold">${Number(market.marketCap || 0).toLocaleString()}</div>
+          <div className="font-semibold">${formatUsdWhole(market.marketCap)}</div>
         </div>
         <div className="glass-card p-3">
           <div className="text-xs text-gray-500 inline-flex items-center gap-1"><Activity size={12} /> Live feed</div>
@@ -129,7 +140,7 @@ export default function TokenPage() {
           </ExpandablePanel>
 
           <ExpandablePanel title="Smart Money Activity" icon={Radar} defaultOpen={true} badge="intel">
-            <SmartMoneyPanel tokenAddress={address} />
+            <SmartMoneyPanel tokenAddress={address} flaggedWallets={flaggedWallets} />
           </ExpandablePanel>
         </section>
       </div>

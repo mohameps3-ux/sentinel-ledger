@@ -3,8 +3,18 @@ const redis = require("../lib/cache");
 const { getSupabase } = require("../lib/supabase");
 const { getMarketData } = require("../services/marketData");
 const { getAnalysis } = require("../services/riskEngine");
+const { tokenPageUrl } = require("../services/marketingLinks");
+const { postMarketingTweet } = require("../services/xMarketing");
 
 let bot = null;
+
+function fmtUsdPrice(n) {
+  const x = Number(n || 0);
+  if (!Number.isFinite(x)) return "0";
+  const abs = Math.abs(x);
+  const maxFrac = abs >= 1 ? 2 : abs >= 0.01 ? 6 : 8;
+  return x.toLocaleString("en-US", { maximumFractionDigits: maxFrac, minimumFractionDigits: 0 });
+}
 
 function buildScanMessage(address, marketData, analysis) {
   const grade = analysis?.grade || "?";
@@ -17,7 +27,7 @@ function buildScanMessage(address, marketData, analysis) {
     `🛰️ Sentinel Scan: ${symbol}`,
     `Mint: ${address}`,
     `Grade: ${grade} (${confidence}%)`,
-    `Price: $${Number(marketData?.price || 0).toLocaleString()}`,
+    `Price: $${fmtUsdPrice(marketData?.price)}`,
     "",
     pros ? `Pros:\n${pros}` : "",
     cons ? `Cons:\n${cons}` : ""
@@ -35,15 +45,25 @@ async function sendGradeAlert(tokenAddress, analysis, marketData) {
   const seen = await redis.get(cooldownKey);
   if (seen) return;
 
+  const url = tokenPageUrl(tokenAddress);
+  const sym = marketData?.symbol || "TOKEN";
   const msg = [
     "🚨 Sentinel Grade Alert",
-    `Token: ${marketData?.symbol || "TOKEN"} (${tokenAddress})`,
+    `Token: ${sym} (${tokenAddress})`,
     `Grade: ${analysis.grade} (${analysis.confidence}%)`,
-    `Price: $${Number(marketData?.price || 0).toLocaleString()}`
+    `Price: $${fmtUsdPrice(marketData?.price)}`,
+    "",
+    `Scout in app: ${url}`
   ].join("\n");
 
   await bot.telegram.sendMessage(chatId, msg);
   await redis.set(cooldownKey, "1", { ex: 60 * 30 });
+
+  const tweet = `🛰️ Sentinel · ${sym} graded ${analysis.grade} (${analysis.confidence}%) — scout on-chain intel\n${url}`;
+  const x = await postMarketingTweet(tweet);
+  if (!x.ok && x.reason !== "twitter_not_configured") {
+    console.warn("grade alert X post:", x.reason);
+  }
 }
 
 async function sendTelegramText(text) {
@@ -51,6 +71,44 @@ async function sendTelegramText(text) {
   if (!bot || !chatId || !text) return false;
   await bot.telegram.sendMessage(chatId, text);
   return true;
+}
+
+/** One alert per mint per hour when wallet heuristics are high (dedup Redis). */
+async function sendWalletThreatAlert(tokenAddress, walletIntel, marketData) {
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!bot || !chatId || !walletIntel || walletIntel.level !== "high") return;
+
+  const cooldownKey = `tg:wallet-threat:${tokenAddress}`;
+  try {
+    const seen = await redis.get(cooldownKey);
+    if (seen) return;
+  } catch (e) {
+    console.warn("wallet-threat redis read:", e.message);
+    return;
+  }
+
+  const sym = marketData?.symbol || "TOKEN";
+  const scoutUrl = tokenPageUrl(tokenAddress);
+  const lines = [
+    "⚠️ Sentinel: actividad de wallets sospechosa (heurística)",
+    `Token: ${sym}`,
+    `Mint: ${tokenAddress}`,
+    walletIntel.summary || "Patrones de fee / polvo / churn elevados en muestra reciente.",
+    "",
+    `Scout: ${scoutUrl}`
+  ];
+  const sigs = (walletIntel.signals || []).slice(0, 4);
+  for (const s of sigs) {
+    const w = s.wallet ? `${s.wallet.slice(0, 4)}…${s.wallet.slice(-4)}` : "?";
+    lines.push(`· [${s.type}] ${w}: ${s.detail}`);
+  }
+
+  try {
+    await bot.telegram.sendMessage(chatId, lines.join("\n"));
+    await redis.set(cooldownKey, "1", { ex: 60 * 60 });
+  } catch (e) {
+    console.warn("wallet-threat telegram:", e.message);
+  }
 }
 
 function startTelegramBot() {
@@ -150,5 +208,5 @@ function startTelegramBot() {
   return bot;
 }
 
-module.exports = { startTelegramBot, sendGradeAlert, sendTelegramText };
+module.exports = { startTelegramBot, sendGradeAlert, sendTelegramText, sendWalletThreatAlert };
 

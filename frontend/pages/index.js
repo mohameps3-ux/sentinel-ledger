@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { ArrowUpRight, Flame, Radar, ShieldCheck, Zap } from "lucide-react";
+import { formatTokenPrice } from "../lib/formatStable";
 
 const TRENDING_MOCK = [
   { symbol: "BONK", grade: "B", price: 0.000028, change: 12.1 },
@@ -109,7 +110,7 @@ export default function Home() {
               >
                 <div>
                   <div className="font-semibold">{token.symbol}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">${token.price.toLocaleString()}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">${formatTokenPrice(token.price)}</div>
                 </div>
                 <div className="text-right flex items-center gap-2">
                   <span className={`text-xs px-2 py-1 rounded-full font-semibold ${gradeClass(token.grade)}`}>

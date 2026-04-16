@@ -1,3 +1,5 @@
+import { formatInteger } from "../../lib/formatStable";
+
 export function HoldersPanel({ holders }) {
   const data = holders || null;
   const hasData =
@@ -28,7 +30,7 @@ export function HoldersPanel({ holders }) {
         <span className="text-gray-400" title="Approximate count from largest-account RPC snapshot.">
           Total holders (approx)
         </span>
-        <span className="font-mono">{data.totalHolders.toLocaleString()}</span>
+        <span className="font-mono">{formatInteger(data.totalHolders)}</span>
       </div>
       <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
         <div

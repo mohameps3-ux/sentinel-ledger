@@ -5,6 +5,7 @@ import { ArrowLeftRight, BellRing, CheckCircle2, MinusCircle, Star, TrendingUp }
 import { useTokenCompare } from "../hooks/useTokenCompare";
 import { useTokenData } from "../hooks/useTokenData";
 import { useWatchlist } from "../hooks/useWatchlist";
+import { formatDateTime, formatUsdWhole } from "../lib/formatStable";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -259,13 +260,13 @@ export default function ComparePage() {
               label="Liquidity"
               left={safeNum(leftToken.market?.liquidity)}
               right={safeNum(rightToken.market?.liquidity)}
-              formatter={(v) => `$${v.toLocaleString()}`}
+              formatter={(v) => `$${formatUsdWhole(v)}`}
             />
             <MetricRow
               label="24h volume"
               left={safeNum(leftToken.market?.volume24h)}
               right={safeNum(rightToken.market?.volume24h)}
-              formatter={(v) => `$${v.toLocaleString()}`}
+              formatter={(v) => `$${formatUsdWhole(v)}`}
             />
             <MetricRow
               label="Top10 concentration (lower better)"
@@ -348,7 +349,7 @@ export default function ComparePage() {
               <div key={alert.id} className="bg-[#0E1318] border soft-divider rounded-xl px-3 py-2 text-sm">
                 <span className="text-gray-300">Edge rotated to </span>
                 <span className="text-emerald-300 font-semibold">{alert.selected}</span>
-                <span className="text-gray-500"> · {new Date(alert.createdAt).toLocaleString()}</span>
+                <span className="text-gray-500"> · {formatDateTime(alert.createdAt)}</span>
               </div>
             ))}
           </div>

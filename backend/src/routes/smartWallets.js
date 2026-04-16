@@ -10,14 +10,14 @@ router.get("/:address", async (req, res) => {
       return res.status(400).json({ ok: false, error: "address_required" });
     }
 
-    const wallets = await getSmartWalletsForToken(address);
+    const result = await getSmartWalletsForToken(address);
     return res.json({
       ok: true,
-      data: wallets,
+      data: result.wallets,
       meta: {
         tokenAddress: address,
-        minWinRate: 70,
-        count: wallets.length
+        ...(result.meta || {}),
+        count: result.wallets?.length ?? 0
       }
     });
   } catch (error) {

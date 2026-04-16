@@ -4,8 +4,9 @@ const { getMarketData } = require("../services/marketData");
 const { getAnalysis } = require("../services/riskEngine");
 const { getHolderConcentration } = require("../services/onChainService");
 const { getDeployerInfo, updateDeployerReputation } = require("../services/deployerService");
-const { sendGradeAlert } = require("../bots/telegramBot");
+const { sendGradeAlert, sendWalletThreatAlert } = require("../bots/telegramBot");
 const { getSupabase } = require("../lib/supabase");
+const { getWalletSpamIntel } = require("../services/walletSpamSignals");
 
 const router = express.Router();
 
@@ -55,6 +56,15 @@ router.get("/:address", async (req, res) => {
       }
     }
 
+    const walletIntel = await getWalletSpamIntel(address, {
+      deployerAddress,
+      deployerHistory: deployerData
+    });
+
+    sendWalletThreatAlert(address, walletIntel, marketData).catch((e) =>
+      console.error("Telegram wallet-threat alert failed:", e.message)
+    );
+
     let privateData = { isWatchlist: false, notes: null };
     if (authHeader && authHeader.startsWith("Bearer ")) {
       try {
@@ -93,6 +103,7 @@ router.get("/:address", async (req, res) => {
           totalHolders: holdersData.totalHolders || 0
         },
         deployer: deployerData,
+        walletIntel,
         private: privateData
       },
       meta: { cached: marketData._source === "cache", staleSeconds: 0 }

@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import { getPublicApiUrl } from "../lib/publicRuntime";
 
 async function fetchWithAuth(url, options = {}) {
   const token = localStorage.getItem("token");
@@ -9,7 +8,7 @@ async function fetchWithAuth(url, options = {}) {
     ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers
   };
-  const res = await fetch(`${API_URL}${url}`, { ...options, headers });
+  const res = await fetch(`${getPublicApiUrl()}${url}`, { ...options, headers });
   if (!res.ok) throw new Error("Request failed");
   return res.json();
 }

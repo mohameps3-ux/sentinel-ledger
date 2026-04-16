@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, ExternalLink, Bell } from "lucide-react";
 import toast from "react-hot-toast";
+import { formatTime } from "../../lib/formatStable";
 
 function shortWallet(wallet = "") {
   if (!wallet) return "unknown";
@@ -34,24 +35,37 @@ export function LiveFlowPanel({ transactions = [] }) {
         <div className="text-gray-500 text-sm text-center py-6">Waiting for swaps...</div>
       )}
       {transactions.map((tx, idx) => (
-        <div key={idx} className={`${idx % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"}`}>
+        <div
+          key={tx.signature || `${tx.wallet}-${tx.timestamp}-${idx}`}
+          className={`${idx % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"}`}
+        >
           <div
             className="hidden md:grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-sm"
           >
             <span
               className={`w-fit text-xs font-bold px-2 py-0.5 rounded-full ${
-                tx.type === "buy" ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"
+                tx.type === "buy"
+                  ? "bg-emerald-500/15 text-emerald-300"
+                  : tx.type === "swap"
+                    ? "bg-amber-500/15 text-amber-200"
+                    : "bg-red-500/15 text-red-300"
               }`}
             >
               <span className="inline-flex items-center gap-1">
-                {tx.type === "buy" ? <ArrowUp size={11} /> : <ArrowDown size={11} />}
-                {tx.type === "buy" ? "BUY" : "SELL"}
+                {tx.type === "buy" ? (
+                  <ArrowUp size={11} />
+                ) : tx.type === "swap" ? (
+                  <ArrowUp size={11} className="rotate-45 text-amber-200" />
+                ) : (
+                  <ArrowDown size={11} />
+                )}
+                {tx.type === "buy" ? "BUY" : tx.type === "swap" ? "SWAP" : "SELL"}
               </span>
             </span>
             <span className="mono text-gray-300">{shortWallet(tx.wallet || tx.trader || tx.from)}</span>
             <span className="text-right mono">{Number(tx.amount || 0).toFixed(2)}</span>
             <span className="text-gray-500 text-xs text-right">
-              {new Date(tx.timestamp).toLocaleTimeString()}
+              {formatTime(tx.timestamp)}
             </span>
             <a
               href={tx.signature ? `https://solscan.io/tx/${tx.signature}` : "#"}
@@ -67,12 +81,16 @@ export function LiveFlowPanel({ transactions = [] }) {
             <div className="flex items-center justify-between">
               <span
                 className={`w-fit text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                  tx.type === "buy" ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"
+                  tx.type === "buy"
+                    ? "bg-emerald-500/15 text-emerald-300"
+                    : tx.type === "swap"
+                      ? "bg-amber-500/15 text-amber-200"
+                      : "bg-red-500/15 text-red-300"
                 }`}
               >
-                {tx.type === "buy" ? "BUY" : "SELL"}
+                {tx.type === "buy" ? "BUY" : tx.type === "swap" ? "SWAP" : "SELL"}
               </span>
-              <span className="text-[11px] text-gray-500">{new Date(tx.timestamp).toLocaleTimeString()}</span>
+              <span className="text-[11px] text-gray-500">{formatTime(tx.timestamp)}</span>
             </div>
             <div className="text-xs mono text-gray-300">{shortWallet(tx.wallet || tx.trader || tx.from)}</div>
             <div className="flex items-center justify-between">

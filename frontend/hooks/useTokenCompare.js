@@ -1,8 +1,9 @@
 import { useQueries } from "@tanstack/react-query";
+import { getPublicApiUrl } from "../lib/publicRuntime";
 
 async function fetchToken(address, token) {
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/token/${address}`, { headers });
+  const res = await fetch(`${getPublicApiUrl()}/api/v1/token/${address}`, { headers });
   if (!res.ok) throw new Error("Failed to fetch token");
   return res.json();
 }

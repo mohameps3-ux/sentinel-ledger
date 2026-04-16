@@ -122,3 +122,32 @@ a {
 .wallet-adapter-dropdown-list-item:hover {
   background: rgba(255, 255, 255, 0.05) !important;
 }
+
+.wallet-adapter-modal-wrapper {
+  background: rgba(5, 8, 12, 0.72) !important;
+  backdrop-filter: blur(10px);
+}
+
+.wallet-adapter-modal {
+  background: #13171a !important;
+  border: 1px solid #2a2f36 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55) !important;
+  max-width: 420px !important;
+}
+
+.wallet-adapter-modal-title {
+  color: #e5e7eb !important;
+  font-weight: 700 !important;
+}
+
+.wallet-adapter-modal-list .wallet-adapter-button {
+  background: #0e1318 !important;
+  border: 1px solid #2a2f36 !important;
+  justify-content: flex-start !important;
+}
+
+.wallet-adapter-modal-list .wallet-adapter-button:hover {
+  border-color: rgba(129, 140, 248, 0.45) !important;
+  background: rgba(129, 140, 248, 0.08) !important;
+}

@@ -1,7 +1,12 @@
+const redis = require("../lib/cache");
 const { getSupabase } = require("../lib/supabase");
+const { getMarketData } = require("./marketData");
+const { buildOnChainSmartMoney } = require("./smartMoneyOnChain");
 
 const MIN_WIN_RATE = 70;
 const MAX_RESULTS = 20;
+const CACHE_TTL_SECONDS = 600;
+const CACHE_PREFIX = "smartmoney:onchain:v2:";
 
 function mapSmartWallet(wallet, signal) {
   return {
@@ -16,10 +21,15 @@ function mapSmartWallet(wallet, signal) {
   };
 }
 
-async function getSmartWalletsForToken(tokenAddress) {
-  const supabase = getSupabase();
+async function getLegacySupabaseWallets(tokenAddress) {
+  let supabase;
+  try {
+    supabase = getSupabase();
+  } catch (e) {
+    console.warn("Supabase unavailable for legacy smart money:", e.message);
+    return [];
+  }
 
-  // 1) Prefer token-specific signals when table exists and has rows.
   try {
     const { data: signals, error: signalsError } = await supabase
       .from("smart_wallet_signals")
@@ -32,7 +42,9 @@ async function getSmartWalletsForToken(tokenAddress) {
       const wallets = signals.map((s) => s.wallet_address);
       const { data: smartWallets, error: walletsError } = await supabase
         .from("smart_wallets")
-        .select("wallet_address,win_rate,pnl_30d,avg_position_size,recent_hits,last_seen,confidence")
+        .select(
+          "wallet_address,win_rate,pnl_30d,avg_position_size,recent_hits,last_seen,confidence"
+        )
         .in("wallet_address", wallets)
         .gte("win_rate", MIN_WIN_RATE)
         .order("win_rate", { ascending: false })
@@ -46,15 +58,15 @@ async function getSmartWalletsForToken(tokenAddress) {
       }
     }
   } catch (error) {
-    // Table can be absent in early environments; fallback below.
     console.error("Smart wallet token-signal lookup error:", error.message);
   }
 
-  // 2) Fallback: global smart wallets list.
   try {
     const { data: smartWallets, error } = await supabase
       .from("smart_wallets")
-      .select("wallet_address,win_rate,pnl_30d,avg_position_size,recent_hits,last_seen,confidence")
+      .select(
+        "wallet_address,win_rate,pnl_30d,avg_position_size,recent_hits,last_seen,confidence"
+      )
       .gte("win_rate", MIN_WIN_RATE)
       .order("win_rate", { ascending: false })
       .limit(MAX_RESULTS);
@@ -67,5 +79,78 @@ async function getSmartWalletsForToken(tokenAddress) {
   }
 }
 
-module.exports = { getSmartWalletsForToken };
+/**
+ * Returns ranked wallets + meta. Primary source: on-chain (Helius + RPC).
+ * Optional DB fallback when SMART_MONEY_DB_FALLBACK=true (demo/curated rows).
+ */
+async function getSmartWalletsForToken(tokenAddress) {
+  const cacheKey = CACHE_PREFIX + tokenAddress;
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      const parsed = typeof cached === "string" ? JSON.parse(cached) : cached;
+      if (parsed?.wallets && Array.isArray(parsed.wallets)) {
+        return {
+          wallets: parsed.wallets,
+          meta: parsed.meta || { source: "cache" }
+        };
+      }
+    }
+  } catch (e) {
+    console.warn("smart money cache read:", e.message);
+  }
 
+  let deployerAddress = null;
+  try {
+    const md = await getMarketData(tokenAddress);
+    deployerAddress = md?.deployerAddress || null;
+  } catch (_) {
+    /* optional */
+  }
+
+  const onChain = await buildOnChainSmartMoney(tokenAddress, { deployerAddress });
+  if (onChain.wallets.length) {
+    const payload = {
+      wallets: onChain.wallets,
+      meta: {
+        ...onChain.meta,
+        source: "on_chain",
+        count: onChain.wallets.length
+      }
+    };
+    try {
+      await redis.set(cacheKey, JSON.stringify(payload), {
+        ex: CACHE_TTL_SECONDS
+      });
+    } catch (e) {
+      console.warn("smart money cache write:", e.message);
+    }
+    return payload;
+  }
+
+  if (process.env.SMART_MONEY_DB_FALLBACK === "true") {
+    const legacy = await getLegacySupabaseWallets(tokenAddress);
+    return {
+      wallets: legacy,
+      meta: {
+        source: "db_seed",
+        minWinRate: MIN_WIN_RATE,
+        count: legacy.length,
+        metricLabel: "Curated demo rows (set SMART_MONEY_DB_FALLBACK=false for on-chain only)"
+      }
+    };
+  }
+
+  return {
+    wallets: [],
+    meta: {
+      ...onChain.meta,
+      source: "on_chain_empty",
+      count: 0,
+      metricLabel:
+        "No on-chain activity snapshot yet (or Helius/RPC returned nothing)."
+    }
+  };
+}
+
+module.exports = { getSmartWalletsForToken };

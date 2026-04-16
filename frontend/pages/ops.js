@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import { getPublicApiUrl } from "../lib/publicRuntime";
+import { formatDateTime } from "../lib/formatStable";
 
 async function withOpsKey(path, opsKey, options = {}) {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${getPublicApiUrl()}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -141,7 +141,7 @@ export default function OpsPage() {
                 <div key={t.id} className="bg-[#0E1318] border soft-divider rounded-xl p-3">
                   <div className="flex justify-between gap-3 text-xs text-gray-500 mb-1">
                     <span>{t.channel}</span>
-                    <span>{new Date(t.created_at).toLocaleString()}</span>
+                    <span>{formatDateTime(t.created_at)}</span>
                   </div>
                   <div className="text-sm text-gray-200">{t.user_message}</div>
                   <div className="text-xs text-gray-400 mt-1">Intent: {t.intent}</div>
@@ -175,7 +175,7 @@ export default function OpsPage() {
                 <div key={ev.id} className="bg-[#0E1318] border soft-divider rounded-xl p-3">
                   <div className="flex justify-between gap-3 text-xs text-gray-500 mb-1">
                     <span>{ev.channel}</span>
-                    <span>{new Date(ev.created_at).toLocaleString()}</span>
+                    <span>{formatDateTime(ev.created_at)}</span>
                   </div>
                   <div className="text-sm text-gray-200">{ev.message}</div>
                   <div className="text-xs text-gray-400 mt-1">Intent: {ev.intent}</div>

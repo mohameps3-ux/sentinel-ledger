@@ -78,5 +78,69 @@ async function getHolderConcentration(mintAddress) {
   return { top10Percentage: 0, totalHolders: 0 };
 }
 
-module.exports = { getTokenSecurity, getHolderConcentration };
+/**
+ * Largest SPL token accounts for a mint, resolved to owner wallets with % of supply.
+ */
+async function getLargestTokenAccountOwners(mintAddress, limit = 18) {
+  for (const rpcUrl of getRpcUrls()) {
+    try {
+      const holdersResponse = await rpcPost(rpcUrl, {
+        jsonrpc: "2.0",
+        id: "largest-accounts",
+        method: "getTokenLargestAccounts",
+        params: [mintAddress]
+      });
+      const topAccounts = holdersResponse.result?.value || [];
+      const sliced = topAccounts.slice(0, limit);
+
+      const supplyResponse = await rpcPost(rpcUrl, {
+        jsonrpc: "2.0",
+        id: "supply",
+        method: "getTokenSupply",
+        params: [mintAddress]
+      });
+      const supply = Number(supplyResponse.result?.value?.uiAmount || 0);
+
+      const owners = [];
+      const chunkSize = 10;
+      for (let i = 0; i < sliced.length; i += chunkSize) {
+        const chunk = sliced.slice(i, i + chunkSize);
+        const keys = chunk.map((c) => c.address);
+        const multi = await rpcPost(rpcUrl, {
+          jsonrpc: "2.0",
+          id: "multi-parsed",
+          method: "getMultipleAccounts",
+          params: [keys, { encoding: "jsonParsed" }]
+        });
+        const arr = multi.result?.value || [];
+        for (let j = 0; j < chunk.length; j++) {
+          const row = chunk[j];
+          const acc = arr[j];
+          if (!acc) continue;
+          const uiAmount = Number(row.uiAmount || 0);
+          const parsed = acc?.data?.parsed?.info;
+          const owner = parsed?.owner;
+          if (!owner || typeof owner !== "string") continue;
+          const pctSupply = supply > 0 ? (uiAmount / supply) * 100 : 0;
+          owners.push({
+            owner,
+            tokenAccount: row.address,
+            uiAmount,
+            pctSupply
+          });
+        }
+      }
+      return { owners, supply };
+    } catch (error) {
+      console.error(`Largest token owners RPC error (${rpcUrl}):`, error.message);
+    }
+  }
+  return { owners: [], supply: 0 };
+}
+
+module.exports = {
+  getTokenSecurity,
+  getHolderConcentration,
+  getLargestTokenAccountOwners
+};
 

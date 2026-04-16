@@ -15,15 +15,16 @@ const smartWalletsRouter = require("./routes/smartWallets");
 const omniBotsRouter = require("./routes/omniBots");
 const { startDeployerWorker } = require("./queues/deployerWorker");
 const { startTelegramBot } = require("./bots/telegramBot");
+const { corsMiddlewareOptions, socketIoCors } = require("./lib/corsOptions");
 
 const app = express();
 app.set("trust proxy", 1);
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: true, credentials: true } });
+const io = new Server(server, { cors: socketIoCors });
 global.io = io;
 
 app.use(helmet());
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors(corsMiddlewareOptions));
 app.use(express.json({ limit: "1mb" }));
 
 app.use(

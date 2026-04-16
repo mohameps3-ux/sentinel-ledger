@@ -14,7 +14,11 @@ function assertOpsAuth(req, res, next) {
 }
 
 router.get("/health", async (_, res) => {
-  return res.json({ ok: true, service: "omni-bots", channels: ["telegram", "webhook", "future:discord/slack/x"] });
+  return res.json({
+    ok: true,
+    service: "omni-bots",
+    channels: ["telegram", "x", "webhook", "future:discord/slack"]
+  });
 });
 
 router.post("/inbound", async (req, res) => {

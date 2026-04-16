@@ -2,6 +2,7 @@ import { GradeBadge } from "./GradeBadge";
 import { ArrowUpRight, Bell, Copy } from "lucide-react";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { formatTokenPrice } from "../../lib/formatStable";
 
 export function HeroSection({ symbol, price, priceChange, grade, confidence, tokenAddress }) {
   const up = Number(priceChange || 0) >= 0;
@@ -75,7 +76,7 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
             {symbol}
           </h1>
           <div className="flex items-center gap-3 mt-3">
-            <span className="text-3xl md:text-4xl font-extrabold">${Number(price || 0).toLocaleString()}</span>
+            <span className="text-3xl md:text-4xl font-extrabold">${formatTokenPrice(price)}</span>
             <span
               className={`inline-flex items-center gap-1 text-sm font-semibold px-2.5 py-1 rounded-full ${
                 up ? "text-emerald-300 bg-emerald-500/10" : "text-red-300 bg-red-500/10"
