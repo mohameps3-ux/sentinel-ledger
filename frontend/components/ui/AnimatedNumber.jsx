@@ -6,7 +6,7 @@ export function AnimatedNumber({ value, prefix = "", suffix = "", decimalPlaces 
     const n = Number(value);
     return Number.isFinite(n) ? n : 0;
   }, [value]);
-  const spring = useSpring(0, { stiffness: 100, damping: 20 });
+  const spring = useSpring(numeric, { stiffness: 100, damping: 20 });
   const [isGlowing, setIsGlowing] = useState(false);
 
   useEffect(() => {

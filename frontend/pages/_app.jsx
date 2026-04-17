@@ -36,6 +36,9 @@ export default function App({ Component, pageProps }) {
       <Head>
         {/* viewport: see pages/_document.js (single tag, avoids duplicates) */}
         <meta name="theme-color" content="#0B0E11" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </Head>
     <ConnectionProvider endpoint={endpoint}>
@@ -48,12 +51,12 @@ export default function App({ Component, pageProps }) {
               translate="no"
             >
               <Navbar />
-              <main className="pt-[88px] md:pt-24 pb-24 md:pb-14 w-full max-w-[100vw] overflow-x-clip min-w-0">
+              <main className="pt-[88px] md:pt-24 pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0">
                 <AppErrorBoundary>
                   <Component {...pageProps} />
                 </AppErrorBoundary>
               </main>
-              <footer className="border-t border-[#2a2f36] mt-16">
+              <footer className="border-t border-[#2a2f36] mt-16 safe-bottom-pad">
                 <div className="sl-container sl-container-wide py-10 flex flex-wrap items-center justify-between gap-4 sl-body text-gray-500">
                   <span>Sentinel Ledger</span>
                   <div className="flex items-center gap-4">
@@ -68,6 +71,9 @@ export default function App({ Component, pageProps }) {
               </footer>
               <Toaster
                 position="bottom-center"
+                containerStyle={{
+                  bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))"
+                }}
                 toastOptions={{
                   duration: 3000,
                   style: {

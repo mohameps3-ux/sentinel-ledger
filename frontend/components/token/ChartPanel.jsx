@@ -12,9 +12,9 @@ export function ChartPanel({ address }) {
   if (!address) return <div className="glass-card h-96 skeleton-shimmer" />;
   return (
     <div className="glass-card glass-card-hover overflow-hidden p-0">
-      <div className="px-4 py-3 border-b soft-divider flex items-center justify-between gap-3">
+      <div className="px-4 py-3 border-b soft-divider flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="text-xs mono text-gray-400">LIVE CHART · DEXSCREENER</div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {timeframes.map((tf) => (
             <button
               key={tf}
@@ -40,7 +40,7 @@ export function ChartPanel({ address }) {
       </div>
       <iframe
         src={iframeUrl}
-        className="w-full h-[500px] border-0"
+        className="w-full h-[360px] md:h-[500px] border-0"
         title="Token Chart"
       />
     </div>
