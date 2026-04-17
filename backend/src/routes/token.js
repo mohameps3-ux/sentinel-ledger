@@ -1,5 +1,6 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
+const axios = require("axios");
 const { getMarketData } = require("../services/marketData");
 const { getAnalysis } = require("../services/riskEngine");
 const { getHolderConcentration } = require("../services/onChainService");
@@ -10,6 +11,62 @@ const { getWalletSpamIntel } = require("../services/walletSpamSignals");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 
 const router = express.Router();
+
+function deriveTrendingGrade(market) {
+  const liq = Number(market?.liquidity || 0);
+  const vol = Number(market?.volume24h || 0);
+  const chg = Number(market?.priceChange24h || 0);
+  if (liq >= 500000 && vol >= 1000000 && chg >= 5) return "A+";
+  if (liq >= 200000 && vol >= 500000 && chg >= 0) return "A";
+  if (liq >= 50000 && vol >= 100000) return "B";
+  if (liq >= 10000) return "C";
+  return "D";
+}
+
+function deriveFlowLabel(market) {
+  const chg = Number(market?.priceChange24h || 0);
+  const vol = Number(market?.volume24h || 0);
+  if (chg >= 8 && vol >= 500000) return "Smart inflow";
+  if (chg >= 0) return "Buy pressure";
+  if (chg <= -8) return "Heavy sell pressure";
+  return "Mixed flow";
+}
+
+router.get("/trending", async (_, res) => {
+  try {
+    const { data } = await axios.get("https://api.dexscreener.com/token-profiles/latest/v1", {
+      timeout: 5000
+    });
+    const candidates = Array.isArray(data) ? data.filter((x) => x?.chainId === "solana") : [];
+    const out = [];
+    for (const item of candidates.slice(0, 16)) {
+      const mint = item?.tokenAddress;
+      if (!mint || typeof mint !== "string") continue;
+      const market = await getMarketData(mint);
+      if (!market || !market.symbol) continue;
+      out.push({
+        mint,
+        symbol: market.symbol,
+        price: Number(market.price || 0),
+        change: Number(market.priceChange24h || 0),
+        volume24h: Number(market.volume24h || 0),
+        liquidity: Number(market.liquidity || 0),
+        grade: deriveTrendingGrade(market),
+        flowLabel: deriveFlowLabel(market)
+      });
+      if (out.length >= 6) break;
+    }
+
+    return res.json({
+      ok: true,
+      data: out,
+      meta: { source: "dexscreener", count: out.length }
+    });
+  } catch (error) {
+    console.error("Trending fetch failed:", error.message);
+    return res.status(500).json({ ok: false, error: "trending_fetch_failed" });
+  }
+});
 
 router.get("/:address", async (req, res) => {
   try {

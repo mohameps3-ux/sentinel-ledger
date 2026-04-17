@@ -12,18 +12,19 @@ import {
   Waves,
   Zap
 } from "lucide-react";
-import { formatTokenPrice } from "../lib/formatStable";
+import { formatTokenPrice, formatUsdWhole } from "../lib/formatStable";
 import { ProButton } from "../components/ui/ProButton";
+import { useTrendingTokens } from "../hooks/useTrendingTokens";
 
-const TRENDING_MOCK = [
+const FALLBACK_TRENDING = [
   {
     symbol: "BONK",
     mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
     grade: "B",
     price: 0.000028,
     change: 12.1,
-    volLabel: "$2.1M",
-    flowLabel: "Buy pressure ↑"
+    volume24h: 2100000,
+    flowLabel: "Buy pressure"
   },
   {
     symbol: "WIF",
@@ -31,8 +32,8 @@ const TRENDING_MOCK = [
     grade: "A",
     price: 2.13,
     change: 8.6,
-    volLabel: "$48M",
-    flowLabel: "Smart inflow $1.2M"
+    volume24h: 48000000,
+    flowLabel: "Smart inflow"
   },
   {
     symbol: "JUP",
@@ -40,7 +41,7 @@ const TRENDING_MOCK = [
     grade: "A+",
     price: 1.22,
     change: 5.3,
-    volLabel: "$31M",
+    volume24h: 31000000,
     flowLabel: "Liquidity deep"
   },
   {
@@ -49,7 +50,7 @@ const TRENDING_MOCK = [
     grade: "C",
     price: 0.65,
     change: -3.1,
-    volLabel: "$890K",
+    volume24h: 890000,
     flowLabel: "Mixed flow"
   }
 ];
@@ -66,6 +67,8 @@ export default function Home() {
   const [alerts, setAlerts] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
   const router = useRouter();
+  const trendingQuery = useTrendingTokens();
+  const trending = trendingQuery.data?.data || (trendingQuery.isError ? FALLBACK_TRENDING : []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -81,11 +84,12 @@ export default function Home() {
   }, []);
 
   const marketMood = useMemo(() => {
-    const avg = TRENDING_MOCK.reduce((acc, t) => acc + t.change, 0) / TRENDING_MOCK.length;
+    if (!trending.length) return { label: "Loading", className: "text-gray-300" };
+    const avg = trending.reduce((acc, t) => acc + Number(t.change || 0), 0) / trending.length;
     if (avg > 5) return { label: "Bullish", className: "text-emerald-300" };
     if (avg > 0) return { label: "Neutral+", className: "text-amber-300" };
     return { label: "Risk-off", className: "text-red-300" };
-  }, []);
+  }, [trending]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -173,26 +177,36 @@ export default function Home() {
               </div>
             </div>
 
+            {trendingQuery.isError ? (
+              <div className="sl-nested sl-inset text-center text-sm text-red-300">
+                Could not load trending tokens right now. Try again in a moment.
+              </div>
+            ) : null}
+
             <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
-              {TRENDING_MOCK.map((token) => (
+              {(trending.length ? trending : Array.from({ length: 4 })).map((token, idx) => (
                 <Link
-                  key={token.symbol}
-                  href={`/token/${token.mint}`}
+                  key={token?.mint || `skeleton-${idx}`}
+                  href={token?.mint ? `/token/${token.mint}` : "#"}
                   prefetch={false}
                   translate="no"
-                  className="sl-nested rounded-[14px] border border-[#2a2f36] bg-[#0e1318]/90 p-5 sm:p-6 flex flex-col gap-5 min-h-0 text-left no-underline text-inherit hover:border-purple-500/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500/40 transition"
+                  className={`sl-nested rounded-[14px] border border-[#2a2f36] bg-[#0e1318]/90 p-5 sm:p-6 flex flex-col gap-5 min-h-0 text-left no-underline text-inherit transition ${
+                    token?.mint
+                      ? "hover:border-purple-500/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500/40"
+                      : "pointer-events-none opacity-75 animate-pulse"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="sl-label">Symbol</p>
                       <p className="text-xl sm:text-2xl md:text-[28px] font-bold text-white mt-1 tracking-tight">
-                        {token.symbol}
+                        {token?.symbol || "Loading"}
                       </p>
                     </div>
                     <span
-                      className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border ${gradeClass(token.grade)}`}
+                      className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border ${gradeClass(token?.grade || "C")}`}
                     >
-                      {token.grade}
+                      {token?.grade || "…"}
                     </span>
                   </div>
 
@@ -202,22 +216,22 @@ export default function Home() {
                     <div>
                       <p className="sl-label mb-1">Price</p>
                       <p className="text-lg font-semibold text-white tracking-tight">
-                        ${formatTokenPrice(token.price)}
+                        ${formatTokenPrice(token?.price)}
                       </p>
                     </div>
                     <div>
                       <p className="sl-label mb-1">24h</p>
                       <p
                         className={`text-lg font-semibold inline-flex items-center gap-1 ${
-                          token.change >= 0 ? "text-emerald-300" : "text-red-300"
+                          Number(token?.change || 0) >= 0 ? "text-emerald-300" : "text-red-300"
                         }`}
                       >
                         <ArrowUpRight
                           size={18}
-                          className={token.change < 0 ? "rotate-90" : ""}
+                          className={Number(token?.change || 0) < 0 ? "rotate-90" : ""}
                         />
-                        {token.change >= 0 ? "+" : ""}
-                        {token.change}%
+                        {Number(token?.change || 0) >= 0 ? "+" : ""}
+                        {Number(token?.change || 0).toFixed(1)}%
                       </p>
                     </div>
                   </div>
@@ -227,14 +241,16 @@ export default function Home() {
                       <BarChart3 size={18} className="text-cyan-400 shrink-0" />
                       <div>
                         <p className="sl-label !text-[10px]">Volume</p>
-                        <p className="sl-body font-medium text-gray-100">{token.volLabel}</p>
+                        <p className="sl-body font-medium text-gray-100">
+                          ${formatUsdWhole(token?.volume24h || 0)}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 rounded-[10px] bg-white/[0.03] border border-white/[0.06] px-3 py-3">
                       <Waves size={18} className="text-purple-300 shrink-0" />
                       <div>
                         <p className="sl-label !text-[10px]">Flow</p>
-                        <p className="sl-body font-medium text-gray-200">{token.flowLabel}</p>
+                        <p className="sl-body font-medium text-gray-200">{token?.flowLabel || "Loading flow…"}</p>
                       </div>
                     </div>
                   </div>
