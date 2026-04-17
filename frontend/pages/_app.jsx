@@ -1,5 +1,6 @@
 /* Must stay in _app: global Tailwind + design tokens (Next.js only allows global CSS import from here). */
 import "../styles/globals.css";
+import { Inter } from "next/font/google";
 import { useEffect, useMemo } from "react";
 import Head from "next/head";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
@@ -13,6 +14,12 @@ import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
 import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
 import "@solana/wallet-adapter-react-ui/styles.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800", "900"]
+});
 
 const queryClient = new QueryClient();
 
@@ -36,7 +43,10 @@ export default function App({ Component, pageProps }) {
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
           <QueryClientProvider client={queryClient}>
-            <div className="min-h-screen bg-[#0B0E11] text-white" translate="no">
+            <div
+              className={`${inter.className} min-h-screen bg-[#0B0E11] text-white antialiased`}
+              translate="no"
+            >
               <Navbar />
               <main className="pt-[88px] md:pt-24 pb-24 md:pb-14 w-full max-w-[100vw] overflow-x-clip min-w-0">
                 <AppErrorBoundary>
@@ -57,14 +67,15 @@ export default function App({ Component, pageProps }) {
                 </div>
               </footer>
               <Toaster
-                position="top-right"
+                position="bottom-center"
                 toastOptions={{
                   duration: 3000,
                   style: {
                     background: "#13171A",
                     color: "#F3F4F6",
                     border: "1px solid #2A2F36",
-                    borderRadius: "14px"
+                    borderRadius: "14px",
+                    maxWidth: "min(100vw - 2rem, 24rem)"
                   }
                 }}
               />
