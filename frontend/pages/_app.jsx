@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import Head from "next/head";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import Link from "next/link";
+import { AppErrorBoundary } from "../components/layout/AppErrorBoundary";
 import { Navbar } from "../components/layout/Navbar";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
@@ -17,6 +18,11 @@ const queryClient = new QueryClient();
 export default function App({ Component, pageProps }) {
   const endpoint = useMemo(() => getPublicSolanaRpcUrl(), []);
   const wallets = useMemo(() => createSolanaWalletAdapters(), []);
+
+  useEffect(() => {
+    document.documentElement.dataset.sentinelClient = "1";
+  }, []);
+
   return (
     <>
       <Head>
@@ -30,7 +36,9 @@ export default function App({ Component, pageProps }) {
             <div className="min-h-screen bg-[#0B0E11] text-white" translate="no">
               <Navbar />
               <main className="pt-[88px] md:pt-24 pb-24 md:pb-14 w-full max-w-[100vw] overflow-x-clip min-w-0">
-                <Component {...pageProps} />
+                <AppErrorBoundary>
+                  <Component {...pageProps} />
+                </AppErrorBoundary>
               </main>
               <footer className="border-t border-[#2a2f36] mt-16">
                 <div className="sl-container sl-container-wide py-10 flex flex-wrap items-center justify-between gap-4 sl-body text-gray-500">

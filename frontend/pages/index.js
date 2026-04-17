@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import {
   ArrowUpRight,
@@ -174,10 +175,12 @@ export default function Home() {
 
             <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
               {TRENDING_MOCK.map((token) => (
-                <div
+                <Link
                   key={token.symbol}
+                  href={`/token/${token.mint}`}
+                  prefetch={false}
                   translate="no"
-                  className="sl-nested rounded-[14px] border border-[#2a2f36] bg-[#0e1318]/90 p-5 sm:p-6 flex flex-col gap-5 min-h-0"
+                  className="sl-nested rounded-[14px] border border-[#2a2f36] bg-[#0e1318]/90 p-5 sm:p-6 flex flex-col gap-5 min-h-0 text-left no-underline text-inherit hover:border-purple-500/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500/40 transition"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -237,16 +240,12 @@ export default function Home() {
                   </div>
 
                   <div className="mt-auto pt-1">
-                    <ProButton
-                      type="button"
-                      className="w-full sm:w-auto justify-center"
-                      onClick={() => router.push(`/token/${token.mint}`)}
-                    >
+                    <span className="btn-pro w-full sm:w-auto justify-center inline-flex items-center gap-2">
                       <TrendingUp size={16} />
                       Analyze
-                    </ProButton>
+                    </span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -295,9 +294,13 @@ export default function Home() {
                 Side-by-side grades, liquidity and deployer risk — before you size a position.
               </p>
             </div>
-            <ProButton type="button" onClick={() => router.push("/compare")} className="self-start lg:self-center">
+            <Link
+              href="/compare"
+              prefetch={false}
+              className="btn-pro self-start lg:self-center inline-flex items-center justify-center gap-2 no-underline"
+            >
               Open compare lab
-            </ProButton>
+            </Link>
           </div>
         </section>
 
