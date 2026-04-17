@@ -15,6 +15,7 @@ import {
 import { formatTokenPrice, formatUsdWhole } from "../lib/formatStable";
 import { ProButton } from "../components/ui/ProButton";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
+import { getPublicApiUrl } from "../lib/publicRuntime";
 
 const FALLBACK_TRENDING = [
   {
@@ -61,13 +62,24 @@ function gradeClass(grade) {
   return "bg-red-500/15 text-red-300 border-red-500/25";
 }
 
-export default function Home() {
+export async function getServerSideProps() {
+  try {
+    const res = await fetch(`${getPublicApiUrl()}/api/v1/token/trending`);
+    if (!res.ok) return { props: { initialTrending: [] } };
+    const json = await res.json();
+    return { props: { initialTrending: Array.isArray(json?.data) ? json.data : [] } };
+  } catch {
+    return { props: { initialTrending: [] } };
+  }
+}
+
+export default function Home({ initialTrending = [] }) {
   const [address, setAddress] = useState("");
   const [error, setError] = useState("");
   const [alerts, setAlerts] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
   const router = useRouter();
-  const trendingQuery = useTrendingTokens();
+  const trendingQuery = useTrendingTokens(initialTrending);
   const trending = trendingQuery.data?.data || (trendingQuery.isError ? FALLBACK_TRENDING : []);
 
   useEffect(() => {

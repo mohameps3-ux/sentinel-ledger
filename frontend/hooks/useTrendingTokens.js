@@ -7,10 +7,14 @@ async function fetchTrending() {
   return res.json();
 }
 
-export function useTrendingTokens() {
+export function useTrendingTokens(initialTrending = []) {
   return useQuery({
     queryKey: ["trending-tokens"],
     queryFn: fetchTrending,
+    initialData:
+      Array.isArray(initialTrending) && initialTrending.length
+        ? { ok: true, data: initialTrending, meta: { source: "ssr" } }
+        : undefined,
     staleTime: 30000,
     refetchInterval: 60000
   });
