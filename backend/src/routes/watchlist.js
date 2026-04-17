@@ -9,8 +9,11 @@ router.post("/", authMiddleware, async (req, res) => {
     const { tokenAddress, note = null, priority = 0 } = req.body || {};
     if (!tokenAddress)
       return res.status(400).json({ ok: false, error: "tokenAddress_required" });
-    if (Number(priority || 0) > 0 && req.user?.plan === "free") {
-      return res.status(402).json({ ok: false, error: "pro_required_for_priority_alerts" });
+    if (Number(priority || 0) > 0 && !req.user?.hasProAccess) {
+      return res.status(403).json({
+        ok: false,
+        error: "Upgrade to PRO to use priority alerts."
+      });
     }
 
     const supabase = getSupabase();
@@ -74,4 +77,3 @@ router.patch("/:tokenAddress/note", authMiddleware, async (req, res) => {
 });
 
 module.exports = router;
-

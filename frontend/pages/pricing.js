@@ -8,20 +8,20 @@ const PLANS = [
   {
     id: "pro",
     title: "PRO",
-    price: "$19 / month",
+    price: "$9.99 / month",
     points: ["Advanced alerts", "Priority flow intel", "Faster refresh windows"]
   },
   {
     id: "super_pro",
     title: "SUPER PRO",
-    price: "$49 / month",
+    price: "$19.99 / month",
     points: ["Everything in PRO", "Expanded signal depth", "Higher alert quotas"]
   },
   {
     id: "lifetime",
     title: "LIFETIME",
-    price: "$499 one-time",
-    points: ["Permanent unlock", "All future PRO features", "No monthly renewals"]
+    price: "$149.99 one-time",
+    points: ["Permanent unlock", "All future PRO-tier features", "No monthly renewals"]
   }
 ];
 
@@ -29,7 +29,8 @@ export default function PricingPage() {
   const token = useClientAuthToken();
   const router = useRouter();
   const [loadingPlan, setLoadingPlan] = useState("");
-  const checkoutResult = useMemo(() => String(router.query.checkout || ""), [router.query.checkout]);
+  const success = useMemo(() => router.query.success === "true", [router.query.success]);
+  const canceled = useMemo(() => router.query.canceled === "true", [router.query.canceled]);
 
   const startCheckout = async (plan) => {
     if (!token) {
@@ -39,7 +40,7 @@ export default function PricingPage() {
 
     try {
       setLoadingPlan(plan);
-      const res = await fetch(`${getPublicApiUrl()}/api/v1/billing/create-checkout-session`, {
+      const res = await fetch(`${getPublicApiUrl()}/api/v1/create-checkout-session`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -62,21 +63,21 @@ export default function PricingPage() {
   return (
     <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full">
       <section className="glass-card sl-inset">
-        <p className="sl-label mb-2">Monetization</p>
+        <p className="sl-label mb-2">Subscriptions</p>
         <h1 className="sl-display bg-gradient-to-r from-purple-400 via-violet-300 to-cyan-300 bg-clip-text text-transparent">
-          Pricing & Support
+          Pricing
         </h1>
         <p className="sl-body sl-muted mt-3 max-w-2xl">
-          Keep Sentinel Ledger sustainable: unlock PRO features with Stripe or support directly with Solana donations.
+          Monthly PRO access or a one-time Lifetime unlock. Powered by Stripe.
         </p>
-        {checkoutResult === "success" ? (
+        {success ? (
           <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-            Payment confirmed. Your plan updates after webhook processing.
+            Payment received. Your plan updates shortly after Stripe confirms the webhook.
           </div>
         ) : null}
-        {checkoutResult === "cancel" ? (
+        {canceled ? (
           <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            Checkout canceled. You can retry anytime.
+            Checkout canceled. You can try again anytime.
           </div>
         ) : null}
       </section>
@@ -104,17 +105,6 @@ export default function PricingPage() {
               </button>
             </div>
           ))}
-        </div>
-      </section>
-
-      <section className="glass-card sl-inset mt-6">
-        <p className="sl-label mb-2">Crypto Donations</p>
-        <h2 className="sl-h2 text-white">Support via Solana</h2>
-        <p className="text-sm text-gray-300 mt-2">
-          Send SOL to the donation wallet configured in backend (`DONATION_WALLET_SOLANA`). Rewards are auto-processed.
-        </p>
-        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 mono text-xs text-gray-300 break-all">
-          {process.env.NEXT_PUBLIC_DONATION_WALLET || "Set NEXT_PUBLIC_DONATION_WALLET in frontend env"}
         </div>
       </section>
     </div>

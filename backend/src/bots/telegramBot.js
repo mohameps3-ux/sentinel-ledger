@@ -73,12 +73,6 @@ async function sendTelegramText(text) {
   return true;
 }
 
-async function sendTelegramToChatId(chatId, text) {
-  if (!bot || !chatId || !text) return false;
-  await bot.telegram.sendMessage(String(chatId), text);
-  return true;
-}
-
 /** One alert per mint per hour when wallet heuristics are high (dedup Redis). */
 async function sendWalletThreatAlert(tokenAddress, walletIntel, marketData) {
   const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -214,11 +208,5 @@ function startTelegramBot() {
   return bot;
 }
 
-module.exports = {
-  startTelegramBot,
-  sendGradeAlert,
-  sendTelegramText,
-  sendTelegramToChatId,
-  sendWalletThreatAlert
-};
+module.exports = { startTelegramBot, sendGradeAlert, sendTelegramText, sendWalletThreatAlert };
 

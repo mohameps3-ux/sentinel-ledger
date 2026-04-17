@@ -6,8 +6,7 @@ const crypto = require("crypto");
 const { PublicKey } = require("@solana/web3.js");
 const { getSupabase } = require("../lib/supabase");
 const redis = require("../lib/cache");
-const { assignPendingDonationsForWallet } = require("../services/donationService");
-const { getUserPlanStatus } = require("../services/subscriptionService");
+const { getSubscriptionAuthContext } = require("../services/subscriptionService");
 
 const authRouter = express.Router();
 
@@ -100,16 +99,9 @@ authRouter.post("/login", async (req, res) => {
       .single();
     if (error) throw error;
 
-    const token = jwt.sign(
-      { userId: user.id, wallet: user.wallet_address, plan: user.plan },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    await assignPendingDonationsForWallet({
-      userId: user.id,
-      walletAddress: user.wallet_address
-    }).catch((e) => console.warn("assign pending donations:", e.message));
+    const token = jwt.sign({ userId: user.id, wallet: user.wallet_address }, process.env.JWT_SECRET, {
+      expiresIn: "7d"
+    });
 
     await deleteNonce(walletAddress);
     return res.json({ token, user });
@@ -126,14 +118,20 @@ async function authMiddleware(req, res, next) {
       return res.status(401).json({ error: "missing_token" });
     const token = header.slice("Bearer ".length);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const planStatus = await getUserPlanStatus(decoded.userId).catch(() => ({
-      plan: decoded.plan || "free",
-      expiresAt: null
+    const sub = await getSubscriptionAuthContext(decoded.userId).catch(() => ({
+      plan: "free",
+      subscriptionStatus: null,
+      planExpiresAt: null,
+      isLifetime: false,
+      hasProAccess: false
     }));
     req.user = {
       ...decoded,
-      plan: planStatus.plan || "free",
-      planExpiresAt: planStatus.expiresAt || null
+      plan: sub.plan,
+      planExpiresAt: sub.planExpiresAt,
+      subscriptionStatus: sub.subscriptionStatus,
+      isLifetime: sub.isLifetime,
+      hasProAccess: sub.hasProAccess
     };
     next();
   } catch (error) {
@@ -141,10 +139,18 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-function requireProPlan(req, res, next) {
-  if (req.user?.plan && req.user.plan !== "free") return next();
-  return res.status(402).json({ ok: false, error: "pro_required" });
+/** Paid PRO access (not free, not expired). */
+function requirePro(req, res, next) {
+  if (!req.user?.hasProAccess) {
+    if (req.user?.subscriptionStatus === "expired") {
+      return res.status(403).json({
+        ok: false,
+        error: "Your PRO subscription has expired. Renew to continue."
+      });
+    }
+    return res.status(403).json({ ok: false, error: "Upgrade to PRO to access this feature" });
+  }
+  return next();
 }
 
-module.exports = { authRouter, authMiddleware, requireProPlan };
-
+module.exports = { authRouter, authMiddleware, requirePro };

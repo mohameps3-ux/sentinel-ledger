@@ -7,8 +7,10 @@ export function useUserStatus() {
   const [status, setStatus] = useState({
     loading: true,
     plan: "free",
+    status: null,
     expiresAt: null,
-    isPro: false
+    isLifetime: false,
+    hasProAccess: false
   });
 
   useEffect(() => {
@@ -16,7 +18,14 @@ export function useUserStatus() {
     async function loadStatus() {
       if (!token) {
         if (!alive) return;
-        setStatus({ loading: false, plan: "free", expiresAt: null, isPro: false });
+        setStatus({
+          loading: false,
+          plan: "free",
+          status: null,
+          expiresAt: null,
+          isLifetime: false,
+          hasProAccess: false
+        });
         return;
       }
       try {
@@ -30,12 +39,21 @@ export function useUserStatus() {
         setStatus({
           loading: false,
           plan: data.plan || "free",
+          status: data.status || null,
           expiresAt: data.expiresAt || null,
-          isPro: !!data.isPro
+          isLifetime: !!data.isLifetime,
+          hasProAccess: !!data.hasProAccess
         });
       } catch {
         if (!alive) return;
-        setStatus({ loading: false, plan: "free", expiresAt: null, isPro: false });
+        setStatus({
+          loading: false,
+          plan: "free",
+          status: null,
+          expiresAt: null,
+          isLifetime: false,
+          hasProAccess: false
+        });
       }
     }
     loadStatus();

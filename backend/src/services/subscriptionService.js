@@ -2,18 +2,21 @@ const { getSupabase } = require("../lib/supabase");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function normalizePlanStatus(subscriptionRow) {
-  if (!subscriptionRow) {
-    return { plan: "free", isActive: false, expiresAt: null };
-  }
-  const expiresAt = subscriptionRow.expires_at ? new Date(subscriptionRow.expires_at) : null;
+function hasProAccess(row) {
+  if (!row || row.plan === "free") return false;
+  if (row.status === "expired") return false;
+  if (row.plan === "lifetime" && row.status === "active") return true;
+  const exp = row.expires_at ? new Date(row.expires_at).getTime() : null;
   const now = Date.now();
-  const isActive = !expiresAt || Number.isNaN(expiresAt.getTime()) ? true : expiresAt.getTime() > now;
-  return {
-    plan: isActive ? subscriptionRow.plan || "free" : "free",
-    isActive,
-    expiresAt: expiresAt && !Number.isNaN(expiresAt.getTime()) ? expiresAt.toISOString() : null
-  };
+  if (row.plan !== "lifetime") {
+    if (!exp || Number.isNaN(exp)) return false;
+    if (exp <= now) return false;
+  }
+  if (row.status === "active" && row.plan !== "lifetime") return true;
+  if (row.status === "cancelled" && row.plan !== "lifetime" && exp && !Number.isNaN(exp)) {
+    return exp > now;
+  }
+  return false;
 }
 
 async function getLatestSubscription(userId) {
@@ -28,40 +31,65 @@ async function getLatestSubscription(userId) {
   return Array.isArray(data) && data.length ? data[0] : null;
 }
 
-async function getUserPlanStatus(userId) {
+async function findSubscriptionByStripeSubscriptionId(stripeSubscriptionId) {
+  if (!stripeSubscriptionId) return null;
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .select("*")
+    .eq("stripe_subscription_id", stripeSubscriptionId)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+/** For JWT middleware + /user/status */
+async function getSubscriptionAuthContext(userId) {
   const row = await getLatestSubscription(userId);
-  const status = normalizePlanStatus(row);
+  if (!row) {
+    return {
+      plan: "free",
+      subscriptionStatus: null,
+      planExpiresAt: null,
+      isLifetime: false,
+      hasProAccess: false
+    };
+  }
   return {
-    ...status,
-    subscription: row
+    plan: row.plan || "free",
+    subscriptionStatus: row.status || null,
+    planExpiresAt: row.expires_at || null,
+    isLifetime: row.plan === "lifetime",
+    hasProAccess: hasProAccess(row)
   };
 }
 
-async function grantPlanDuration({
+async function upsertSubscriptionRow({
   userId,
-  plan = "pro",
-  durationMs,
-  stripeCustomerId = null,
-  stripeSubscriptionId = null
+  plan,
+  status = "active",
+  expiresAt,
+  stripeCustomerId,
+  stripeSubscriptionId
 }) {
   const supabase = getSupabase();
   const current = await getLatestSubscription(userId);
-  const now = Date.now();
-  const currentExpiryMs = current?.expires_at ? new Date(current.expires_at).getTime() : null;
-  const baseMs = currentExpiryMs && currentExpiryMs > now ? currentExpiryMs : now;
-  const nextExpiry = durationMs ? new Date(baseMs + durationMs).toISOString() : null;
+  const nowIso = new Date().toISOString();
+  const payload = {
+    plan,
+    status,
+    expires_at: expiresAt,
+    stripe_customer_id: stripeCustomerId || null,
+    stripe_subscription_id: stripeSubscriptionId || null,
+    updated_at: nowIso
+  };
 
   if (current) {
     const { data, error } = await supabase
       .from("subscriptions")
       .update({
-        plan,
-        status: "active",
-        starts_at: current.starts_at || new Date(now).toISOString(),
-        expires_at: nextExpiry,
-        stripe_customer_id: stripeCustomerId || current.stripe_customer_id || null,
-        stripe_subscription_id: stripeSubscriptionId || current.stripe_subscription_id || null,
-        updated_at: new Date().toISOString()
+        ...payload,
+        starts_at: current.starts_at || nowIso
       })
       .eq("id", current.id)
       .select("*")
@@ -75,9 +103,9 @@ async function grantPlanDuration({
     .insert({
       user_id: userId,
       plan,
-      status: "active",
-      starts_at: new Date(now).toISOString(),
-      expires_at: nextExpiry,
+      status,
+      starts_at: nowIso,
+      expires_at: expiresAt,
       stripe_customer_id: stripeCustomerId || null,
       stripe_subscription_id: stripeSubscriptionId || null
     })
@@ -87,16 +115,106 @@ async function grantPlanDuration({
   return data;
 }
 
-function durationForPlan(plan) {
-  if (plan === "pro" || plan === "super_pro") return 30 * DAY_MS;
-  if (plan === "lifetime") return 36500 * DAY_MS;
-  return 0;
+/** checkout.session.completed — initial entitlement */
+async function applyCheckoutSessionCompleted(session) {
+  const userId = session.metadata?.userId;
+  const plan = session.metadata?.plan;
+  if (!userId || !plan) return;
+
+  const customerId = session.customer ? String(session.customer) : null;
+
+  if (session.mode === "subscription") {
+    const subId = session.subscription ? String(session.subscription) : null;
+    const expiresAt = new Date(Date.now() + 30 * DAY_MS).toISOString();
+    await upsertSubscriptionRow({
+      userId,
+      plan,
+      status: "active",
+      expiresAt,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subId
+    });
+    return;
+  }
+
+  if (session.mode === "payment" && plan === "lifetime") {
+    await upsertSubscriptionRow({
+      userId,
+      plan: "lifetime",
+      status: "active",
+      expiresAt: null,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: null
+    });
+  }
+}
+
+/** invoice.paid — renew monthly (skip first invoice; checkout.session.completed already grants 30d) */
+async function applyInvoicePaid(invoice) {
+  if (invoice.billing_reason === "subscription_create") return;
+
+  const subscriptionId = invoice.subscription ? String(invoice.subscription) : null;
+  if (!subscriptionId) return;
+
+  const row = await findSubscriptionByStripeSubscriptionId(subscriptionId);
+  if (!row) return;
+
+  const now = Date.now();
+  const currentExp = row.expires_at ? new Date(row.expires_at).getTime() : now;
+  const base = currentExp > now ? currentExp : now;
+  const nextExpiry = new Date(base + 30 * DAY_MS).toISOString();
+
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({
+      expires_at: nextExpiry,
+      status: "active",
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", row.id);
+  if (error) throw error;
+}
+
+/** customer.subscription.deleted */
+async function applySubscriptionDeleted(stripeSubscription) {
+  const id = stripeSubscription?.id;
+  if (!id) return;
+
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({
+      status: "cancelled",
+      updated_at: new Date().toISOString()
+    })
+    .eq("stripe_subscription_id", id);
+  if (error) throw error;
+}
+
+/** Daily cron: mark non-lifetime active subs as expired when past expires_at */
+async function expireStaleSubscriptions() {
+  const supabase = getSupabase();
+  const nowIso = new Date().toISOString();
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({ status: "expired", updated_at: nowIso })
+    .neq("plan", "lifetime")
+    .eq("status", "active")
+    .not("expires_at", "is", null)
+    .lt("expires_at", nowIso);
+  if (error) throw error;
 }
 
 module.exports = {
   DAY_MS,
-  durationForPlan,
+  hasProAccess,
   getLatestSubscription,
-  getUserPlanStatus,
-  grantPlanDuration
+  findSubscriptionByStripeSubscriptionId,
+  getSubscriptionAuthContext,
+  upsertSubscriptionRow,
+  applyCheckoutSessionCompleted,
+  applyInvoicePaid,
+  applySubscriptionDeleted,
+  expireStaleSubscriptions
 };
