@@ -61,6 +61,8 @@ export default function TokenPage() {
       </div>
     );
 
+  if (!token.market || !token.analysis) return <TokenSkeleton />;
+
   const { market, analysis, private: privateData } = token;
   const isWatchlisted = privateData?.isWatchlist || false;
   const note = privateData?.notes || "";

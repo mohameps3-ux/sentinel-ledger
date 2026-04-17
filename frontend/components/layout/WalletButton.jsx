@@ -6,10 +6,19 @@ import { ChevronDown, LogOut, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 import { getPublicApiUrl } from "../../lib/publicRuntime";
 
+const walletMultiButtonClass =
+  "!bg-gradient-to-r !from-[#6c5ce7] !to-[#00cec9] hover:!opacity-95 !rounded-[10px] !h-10 !text-[11px] sm:!text-sm !min-w-0 !max-w-full !justify-center !truncate !px-2";
+
 export function WalletButton() {
   const { publicKey, signMessage, connected, disconnect } = useWallet();
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  /** WalletMultiButton SSR output ≠ client (wallets / extensions); render only after mount. */
+  const [walletUiReady, setWalletUiReady] = useState(false);
+
+  useEffect(() => {
+    setWalletUiReady(true);
+  }, []);
 
   useEffect(() => {
     if (connected && publicKey && !localStorage.getItem("token")) handleAuth();
@@ -71,8 +80,19 @@ export function WalletButton() {
   };
 
   return (
-    <div className="relative z-[110] flex items-center justify-end gap-1.5 sm:gap-2 min-w-0 w-auto max-w-[min(11rem,42vw)] sm:max-w-[14rem] md:max-w-none">
-      <WalletMultiButton className="!bg-gradient-to-r !from-[#6c5ce7] !to-[#00cec9] hover:!opacity-95 !rounded-[10px] !h-10 !text-[11px] sm:!text-sm !min-w-0 !max-w-full !justify-center" />
+    <div className="relative z-[110] flex items-center justify-end gap-1.5 sm:gap-2 min-w-0 w-auto max-w-[min(11rem,42vw)] sm:max-w-[14rem] md:max-w-[11.5rem] lg:max-w-[13rem] shrink">
+      {walletUiReady ? (
+        <WalletMultiButton className={walletMultiButtonClass} />
+      ) : (
+        <button
+          type="button"
+          disabled
+          aria-label="Wallet"
+          className={`wallet-adapter-button wallet-adapter-button-trigger ${walletMultiButtonClass}`}
+        >
+          Select Wallet
+        </button>
+      )}
       <button
         onClick={() => setOpen((v) => !v)}
         className={`hidden md:flex items-center gap-2 h-10 px-3 rounded-xl border text-xs transition ${

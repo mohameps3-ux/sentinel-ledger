@@ -2,8 +2,8 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 /**
- * Accordion content uses CSS grid rows (not max-height) so iOS/Android
- * reliably show expanded panels — max-h transitions often clip or stick closed.
+ * Accordion: toggle body with plain conditional render (no max-height / grid-rows
+ * tricks). Those patterns can fail across browsers, Tailwind JIT, or parent overflow.
  */
 export function ExpandablePanel({ title, icon, children, defaultOpen = false, badge = null }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -14,8 +14,8 @@ export function ExpandablePanel({ title, icon, children, defaultOpen = false, ba
       <button
         type="button"
         aria-expanded={isOpen}
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center gap-3 sm:gap-4 px-4 py-4 sm:px-6 sm:py-5 text-left hover:bg-white/[0.025] transition active:bg-white/[0.04]"
+        onClick={() => setIsOpen((v) => !v)}
+        className="w-full flex justify-between items-center gap-3 sm:gap-4 px-4 py-4 sm:px-6 sm:py-5 min-h-[52px] sm:min-h-[56px] text-left cursor-pointer touch-manipulation hover:bg-white/[0.025] transition active:bg-white/[0.04]"
       >
         <span className="flex flex-wrap items-center gap-2 sm:gap-4 min-w-0 flex-1">
           {Icon ? (
@@ -33,20 +33,14 @@ export function ExpandablePanel({ title, icon, children, defaultOpen = false, ba
           ) : null}
         </span>
         <span className={`shrink-0 transform transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}>
-          <ChevronDown size={20} className="text-gray-400" />
+          <ChevronDown size={20} className="text-gray-400" aria-hidden />
         </span>
       </button>
-      <div
-        className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
-          isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-        }`}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <div className="border-t border-[#2a2f36] px-4 py-5 sm:px-6 sm:py-6 bg-[#0e1318]/40">
-            {children}
-          </div>
+      {isOpen ? (
+        <div className="border-t border-[#2a2f36] px-4 py-5 sm:px-6 sm:py-6 bg-[#0e1318]/50 rounded-b-xl">
+          {children}
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

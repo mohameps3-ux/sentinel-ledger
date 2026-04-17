@@ -34,45 +34,57 @@ export function Navbar() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  const isHome = router.pathname === "/";
+
   return (
     <nav
       translate="no"
       className="fixed top-0 left-0 right-0 z-[100] w-full max-w-[100vw] bg-[#0B0E11]/95 backdrop-blur-xl border-b border-[#2a2f36]"
     >
       <div className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 min-w-0">
-        {/* One horizontal band: logo flex-shrinks, actions never wrap away from the edge */}
-        <div className="flex flex-nowrap items-center gap-2 sm:gap-3 md:gap-4 w-full min-w-0 min-h-[56px] md:min-h-[72px] py-2 md:py-2.5">
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-[999] basis-0 grow md:grow-0 md:shrink-0 md:basis-auto md:max-w-[min(280px,36vw)] text-sm sm:text-base md:text-xl font-black bg-gradient-to-r from-purple-500 to-blue-400 bg-clip-text text-transparent"
-          >
-            <Sparkles size={17} className="text-purple-400 shrink-0 sm:w-[18px] sm:h-[18px]" />
-            <span className="truncate min-w-0 text-left leading-tight">
-              <span className="md:hidden">Sentinel</span>
-              <span className="hidden md:inline">SENTINEL LEDGER</span>
-            </span>
-          </Link>
+        {/* Three columns: brand | search (grows) | actions — avoids wallet overlapping the input */}
+        <div className="flex flex-nowrap items-center w-full min-w-0 min-h-[56px] md:min-h-[72px] py-2 md:py-2.5 gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 sm:gap-2 min-w-0 max-w-[min(200px,46vw)] md:max-w-[min(280px,36vw)] text-sm sm:text-base md:text-xl font-black bg-gradient-to-r from-purple-500 to-blue-400 bg-clip-text text-transparent"
+            >
+              <Sparkles size={17} className="text-purple-400 shrink-0 sm:w-[18px] sm:h-[18px]" />
+              <span className="truncate min-w-0 text-left leading-tight">
+                <span className="md:hidden">Sentinel</span>
+                <span className="hidden md:inline">SENTINEL LEDGER</span>
+              </span>
+            </Link>
+            {!isHome ? (
+              <button
+                type="button"
+                onClick={() => router.push("/")}
+                className="hidden sm:inline-flex text-xs md:text-sm text-gray-400 hover:text-white transition shrink-0 touch-manipulation"
+              >
+                New search
+              </button>
+            ) : null}
+          </div>
 
-          <form
-            onSubmit={onSearch}
-            className="hidden md:flex flex-1 min-w-0 max-w-xl relative items-center mx-2"
-          >
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10" />
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Solana mint address…"
-              autoComplete="off"
-              spellCheck={false}
-              className="sl-input w-full h-11 pl-11 pr-[7.5rem] text-sm placeholder:text-gray-500 min-w-0"
-            />
-            <button type="submit" className="btn-pro btn-pro-sm absolute right-1.5 top-1/2 -translate-y-1/2 shrink-0">
-              Analyze
-            </button>
-          </form>
+          <div className="hidden md:flex flex-1 min-w-0 justify-center px-2">
+            <form onSubmit={onSearch} className="w-full max-w-xl relative flex items-center min-w-0">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10" />
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Solana mint address…"
+                autoComplete="off"
+                spellCheck={false}
+                className="sl-input w-full h-11 pl-11 pr-[7.5rem] text-sm placeholder:text-gray-500 min-w-0"
+              />
+              <button type="submit" className="btn-pro btn-pro-sm absolute right-1.5 top-1/2 -translate-y-1/2 shrink-0">
+                Analyze
+              </button>
+            </form>
+          </div>
 
-          <div className="flex flex-none items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink min-w-0 justify-end">
             <button
               type="button"
               onClick={() => setMobileSearchOpen((v) => !v)}
