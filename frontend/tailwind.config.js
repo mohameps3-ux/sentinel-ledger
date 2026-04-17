@@ -1,4 +1,5 @@
 /** @type {import('tailwindcss').Config} */
+/* Content globs: include every tree that contains className="" usage (Vercel/CI must resolve paths from this file). */
 module.exports = {
   content: [
     "./app/**/*.{js,jsx,ts,tsx,mjs,mdx}",

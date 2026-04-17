@@ -1,3 +1,5 @@
+/* Must stay in _app: global Tailwind + design tokens (Next.js only allows global CSS import from here). */
+import "../styles/globals.css";
 import { useEffect, useMemo } from "react";
 import Head from "next/head";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
@@ -10,8 +12,6 @@ import { Navbar } from "../components/layout/Navbar";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
 import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
-/* Global CSS (Tailwind + design system). Path must stay relative to this file. */
-import "../styles/globals.css";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 const queryClient = new QueryClient();
@@ -27,7 +27,7 @@ export default function App({ Component, pageProps }) {
   return (
     <>
       <Head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        {/* viewport: see pages/_document.js (single tag, avoids duplicates) */}
         <meta name="theme-color" content="#0B0E11" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </Head>
