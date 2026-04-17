@@ -1,18 +1,16 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./pages/**/*.{js,jsx,ts,tsx,mjs}",
-    "./app/**/*.{js,jsx,ts,tsx,mjs}",
-    "./components/**/*.{js,jsx,ts,tsx,mjs}",
-    "./components/layout/**/*.{js,jsx,ts,tsx,mjs}",
-    "./components/token/**/*.{js,jsx,ts,tsx,mjs}",
-    "./components/ui/**/*.{js,jsx,ts,tsx,mjs}",
-    "./components/wallet/**/*.{js,jsx,ts,tsx,mjs}",
-    "./hooks/**/*.{js,jsx,ts,tsx,mjs}",
-    "./lib/**/*.{js,jsx,ts,tsx,mjs}"
+    "./app/**/*.{js,jsx,ts,tsx,mjs,mdx}",
+    "./pages/**/*.{js,jsx,ts,tsx,mjs,mdx}",
+    "./components/**/*.{js,jsx,ts,tsx,mjs,mdx}",
+    "./hooks/**/*.{js,jsx,ts,tsx,mjs,mdx}",
+    "./lib/**/*.{js,jsx,ts,tsx,mjs,mdx}",
+    "./src/**/*.{js,jsx,ts,tsx,mjs,mdx}",
+    "./styles/**/*.css"
   ],
   theme: {
     extend: {}
-  }
+  },
+  plugins: []
 };
-

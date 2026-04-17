@@ -80,7 +80,7 @@ export function WalletButton() {
   };
 
   return (
-    <div className="relative z-[110] flex items-center justify-end gap-1.5 sm:gap-2 min-w-0 w-auto max-w-[min(11rem,42vw)] sm:max-w-[14rem] md:max-w-[11.5rem] lg:max-w-[13rem] shrink">
+    <div className="relative z-[110] flex items-center justify-end gap-1.5 sm:gap-2 min-w-0 w-auto max-w-[min(10rem,38vw)] sm:max-w-[12rem] md:max-w-[11.5rem] lg:max-w-[13rem] shrink-0 md:shrink">
       {walletUiReady ? (
         <WalletMultiButton className={walletMultiButtonClass} />
       ) : (
@@ -107,7 +107,7 @@ export function WalletButton() {
       </button>
 
       {open && connected && (
-        <div className="absolute right-0 top-12 w-48 rounded-xl border soft-divider bg-[#13171A] p-2 shadow-xl">
+        <div className="absolute right-0 top-12 z-[200] w-48 rounded-xl border soft-divider bg-[#13171A] p-2 shadow-xl">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-200 hover:bg-white/5 transition"

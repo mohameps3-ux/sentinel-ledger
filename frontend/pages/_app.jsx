@@ -10,6 +10,7 @@ import { Navbar } from "../components/layout/Navbar";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
 import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
+/* Global CSS (Tailwind + design system). Path must stay relative to this file. */
 import "../styles/globals.css";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -26,6 +27,8 @@ export default function App({ Component, pageProps }) {
   return (
     <>
       <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#0B0E11" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </Head>
     <ConnectionProvider endpoint={endpoint}>

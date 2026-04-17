@@ -4,7 +4,7 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        {/* viewport lives in pages/_app.jsx <Head> so it ships with the app shell and avoids duplicate tags */}
         {/* Reduces Chrome auto-translate mangling tickers (JUP → “jump”) and mint hints */}
         <meta name="google" content="notranslate" />
       </Head>

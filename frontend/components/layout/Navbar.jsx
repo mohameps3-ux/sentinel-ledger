@@ -43,7 +43,7 @@ export function Navbar() {
     >
       <div className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 min-w-0">
         {/* Three columns: brand | search (grows) | actions — avoids wallet overlapping the input */}
-        <div className="flex flex-nowrap items-center w-full min-w-0 min-h-[56px] md:min-h-[72px] py-2 md:py-2.5 gap-2 sm:gap-3">
+        <div className="flex flex-nowrap items-center justify-between md:justify-start w-full min-w-0 min-h-[56px] md:min-h-[72px] py-2 md:py-2.5 gap-2 sm:gap-3">
           <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
             <Link
               href="/"
@@ -84,11 +84,11 @@ export function Navbar() {
             </form>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink min-w-0 justify-end">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 md:shrink min-w-0 justify-end md:ml-auto">
             <button
               type="button"
               onClick={() => setMobileSearchOpen((v) => !v)}
-              className="md:hidden h-10 w-10 shrink-0 rounded-xl border border-[#2a2f36] text-gray-300 inline-flex items-center justify-center touch-manipulation"
+              className="md:hidden h-10 w-10 shrink-0 rounded-xl border border-[#2a2f36] text-gray-300 inline-flex items-center justify-center touch-manipulation z-[1]"
               aria-label="Open search"
             >
               {mobileSearchOpen ? <X size={18} /> : <Search size={18} />}
