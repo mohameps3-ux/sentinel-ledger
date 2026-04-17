@@ -24,7 +24,13 @@
   }
 }
 
+html {
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
+  overflow-x: clip;
   background: #0b0e11;
   background-image: radial-gradient(circle at 20% -10%, rgba(124, 58, 237, 0.2) 0, transparent 45%),
     radial-gradient(circle at 80% 0%, rgba(37, 99, 235, 0.16) 0, transparent 42%);
@@ -39,11 +45,12 @@ body {
 
 .sl-container {
   width: 100%;
-  max-width: 1280px;
+  max-width: min(1280px, 100%);
   margin-left: auto;
   margin-right: auto;
   padding-left: var(--sl-page-x);
   padding-right: var(--sl-page-x);
+  box-sizing: border-box;
 }
 
 .sl-container-wide {
@@ -310,6 +317,28 @@ a {
 
 .wallet-adapter-button:hover {
   opacity: 0.92;
+}
+
+@media (max-width: 640px) {
+  .wallet-adapter-button {
+    max-width: min(11.5rem, 42vw) !important;
+    padding-left: 0.65rem !important;
+    padding-right: 0.65rem !important;
+    font-size: 11px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .wallet-adapter-modal-wrapper {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .wallet-adapter-modal {
+    max-width: min(420px, calc(100vw - 1.5rem)) !important;
+    width: 100% !important;
+  }
 }
 
 .wallet-adapter-dropdown-list {

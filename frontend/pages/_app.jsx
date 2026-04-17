@@ -29,7 +29,7 @@ export default function App({ Component, pageProps }) {
           <QueryClientProvider client={queryClient}>
             <div className="min-h-screen bg-[#0B0E11] text-white">
               <Navbar />
-              <main className="pt-[88px] md:pt-24 pb-10">
+              <main className="pt-[88px] md:pt-24 pb-24 md:pb-14 w-full max-w-[100vw] overflow-x-clip">
                 <Component {...pageProps} />
               </main>
               <footer className="border-t border-[#2a2f36] mt-16">

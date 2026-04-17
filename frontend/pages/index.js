@@ -103,8 +103,8 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen">
-      <div className="sl-container py-10 md:py-14">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-clip">
+      <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full">
         {/* Hero */}
         <section className="sl-section glass-card glass-card-hover sl-inset">
           <div className="text-center max-w-2xl mx-auto mb-10">
@@ -181,7 +181,9 @@ export default function Home() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="sl-label">Symbol</p>
-                      <p className="sl-h1 text-white mt-1">{token.symbol}</p>
+                      <p className="text-xl sm:text-2xl md:text-[28px] font-bold text-white mt-1 tracking-tight">
+                        {token.symbol}
+                      </p>
                     </div>
                     <span
                       className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border ${gradeClass(token.grade)}`}
@@ -251,33 +253,33 @@ export default function Home() {
 
         {/* KPI strip */}
         <section className="sl-section">
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="glass-card sl-inset flex flex-col gap-3">
               <div className="flex items-center gap-3 text-gray-400">
-                <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0">
                   <Radar size={18} className="text-sky-400" />
                 </div>
-                <span className="sl-label !normal-case !tracking-normal text-gray-500">Market mood</span>
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Market pulse</span>
               </div>
-              <p className={`sl-h2 ${marketMood.className}`}>{marketMood.label}</p>
+              <p className={`sl-h2 ${marketMood.className}`}>🧠 {marketMood.label}</p>
             </div>
             <div className="glass-card sl-inset flex flex-col gap-3">
               <div className="flex items-center gap-3 text-gray-400">
-                <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0">
                   <ShieldCheck size={18} className="text-emerald-400" />
                 </div>
-                <span className="sl-label !normal-case !tracking-normal text-gray-500">Engine</span>
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">System</span>
               </div>
-              <p className="sl-h2 text-emerald-300">Operational</p>
+              <p className="sl-h2 text-emerald-300">🛡️ Operational</p>
             </div>
             <div className="glass-card sl-inset flex flex-col gap-3">
               <div className="flex items-center gap-3 text-gray-400">
-                <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0">
                   <Zap size={18} className="text-violet-400" />
                 </div>
-                <span className="sl-label !normal-case !tracking-normal text-gray-500">Scan speed</span>
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Scan speed</span>
               </div>
-              <p className="sl-h2 text-cyan-300">~1.2s avg</p>
+              <p className="sl-h2 text-cyan-300">⚡ ~1.2s avg</p>
             </div>
           </div>
         </section>

@@ -66,7 +66,7 @@ export default function TokenPage() {
   const note = privateData?.notes || "";
 
   return (
-    <div className="sl-container sl-container-wide py-8 md:py-10 space-y-8">
+    <div className="sl-container sl-container-wide py-8 md:py-10 space-y-8 w-full max-w-[100vw] overflow-x-clip pb-28 xl:pb-10">
       <WalletThreatBanner walletIntel={token.walletIntel} />
       <div className="flex flex-wrap justify-between items-start gap-6">
         <HeroSection
