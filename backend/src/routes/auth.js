@@ -6,6 +6,8 @@ const crypto = require("crypto");
 const { PublicKey } = require("@solana/web3.js");
 const { getSupabase } = require("../lib/supabase");
 const redis = require("../lib/cache");
+const { assignPendingDonationsForWallet } = require("../services/donationService");
+const { getUserPlanStatus } = require("../services/subscriptionService");
 
 const authRouter = express.Router();
 
@@ -104,6 +106,11 @@ authRouter.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    await assignPendingDonationsForWallet({
+      userId: user.id,
+      walletAddress: user.wallet_address
+    }).catch((e) => console.warn("assign pending donations:", e.message));
+
     await deleteNonce(walletAddress);
     return res.json({ token, user });
   } catch (error) {
@@ -112,19 +119,32 @@ authRouter.post("/login", async (req, res) => {
   }
 });
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   try {
     const header = req.headers.authorization;
     if (!header?.startsWith("Bearer "))
       return res.status(401).json({ error: "missing_token" });
     const token = header.slice("Bearer ".length);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    const planStatus = await getUserPlanStatus(decoded.userId).catch(() => ({
+      plan: decoded.plan || "free",
+      expiresAt: null
+    }));
+    req.user = {
+      ...decoded,
+      plan: planStatus.plan || "free",
+      planExpiresAt: planStatus.expiresAt || null
+    };
     next();
   } catch (error) {
     return res.status(401).json({ error: "invalid_token" });
   }
 }
 
-module.exports = { authRouter, authMiddleware };
+function requireProPlan(req, res, next) {
+  if (req.user?.plan && req.user.plan !== "free") return next();
+  return res.status(402).json({ ok: false, error: "pro_required" });
+}
+
+module.exports = { authRouter, authMiddleware, requireProPlan };
 

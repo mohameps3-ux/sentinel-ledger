@@ -2,6 +2,7 @@ import Link from "next/link";
 import { WalletButton } from "./WalletButton";
 import { useRouter } from "next/router";
 import { SearchBar } from "./SearchBar";
+import { HealthBar } from "./HealthBar";
 
 export function Navbar() {
   const router = useRouter();
@@ -33,6 +34,10 @@ export function Navbar() {
           </div>
         </div>
         <div className="hidden sm:flex items-center gap-4">
+          <HealthBar />
+          <Link href="/pricing" className="text-sm text-purple-300 hover:text-purple-200">
+            Pricing
+          </Link>
           {!isHome && (
             <button
               type="button"
