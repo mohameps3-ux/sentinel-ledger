@@ -20,18 +20,34 @@ import { WalletThreatBanner } from "../../components/token/WalletThreatBanner";
 import { BarChart3, CandlestickChart, Radar, ShieldAlert, Users, Activity } from "lucide-react";
 import { formatUsdWhole } from "../../lib/formatStable";
 
+/** SSR this route so `router.query` matches the URL (avoids static shell + wrong “no data” / hydration issues). */
+export async function getServerSideProps() {
+  return { props: {} };
+}
+
+function normalizeAddress(query) {
+  const raw = query?.address;
+  if (typeof raw === "string") return raw;
+  if (Array.isArray(raw) && raw[0]) return raw[0];
+  return "";
+}
+
 export default function TokenPage() {
   const router = useRouter();
-  const { address } = router.query;
-  const { data, isLoading, error } = useTokenData(address);
-  const { transactions, isConnected } = useWebSocket(address);
+  const address = normalizeAddress(router.query);
+  const query = useTokenData(address);
+  const { transactions, isConnected } = useWebSocket(address || undefined);
   const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
-    setHasToken(typeof window !== "undefined" && !!localStorage.getItem("token"));
+    try {
+      setHasToken(!!localStorage.getItem("token"));
+    } catch {
+      setHasToken(false);
+    }
   }, []);
 
-  const token = useMemo(() => data?.data, [data]);
+  const token = useMemo(() => query.data?.data, [query.data]);
   const walletIntel = token?.walletIntel;
   const flaggedWallets = useMemo(() => {
     const set = new Set();
@@ -41,8 +57,24 @@ export default function TokenPage() {
     return set;
   }, [walletIntel]);
 
-  if (isLoading) return <TokenSkeleton />;
-  if (error)
+  if (!router.isReady) return <TokenSkeleton />;
+
+  if (!address || address.length < 32) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-20">
+        <div className="glass-card p-8 text-center">
+          <h2 className="text-xl font-semibold mb-2">Invalid token URL</h2>
+          <p className="text-gray-400 text-sm">
+            Use a full Solana mint in the path (for example <span className="mono text-gray-300">/token/&lt;mint&gt;</span>).
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (query.isPending) return <TokenSkeleton />;
+
+  if (query.isError) {
     return (
       <div className="max-w-xl mx-auto px-4 py-20">
         <div className="glass-card p-8 text-center">
@@ -51,7 +83,9 @@ export default function TokenPage() {
         </div>
       </div>
     );
-  if (!token)
+  }
+
+  if (!token) {
     return (
       <div className="max-w-xl mx-auto px-4 py-20">
         <div className="glass-card p-8 text-center">
@@ -60,6 +94,7 @@ export default function TokenPage() {
         </div>
       </div>
     );
+  }
 
   if (!token.market || !token.analysis) return <TokenSkeleton />;
 
@@ -156,12 +191,17 @@ export default function TokenPage() {
 
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 xl:hidden">
         <div className="glass-card px-2 py-1 flex items-center gap-1">
-          <a href="#chart" className="px-3 h-8 rounded-lg text-xs inline-flex items-center bg-white/5 hover:bg-white/10">Chart</a>
-          <a href="#intel" className="px-3 h-8 rounded-lg text-xs inline-flex items-center bg-white/5 hover:bg-white/10">Intel</a>
-          <a href="#flow" className="px-3 h-8 rounded-lg text-xs inline-flex items-center bg-white/5 hover:bg-white/10">Flow</a>
+          <a href="#chart" className="px-3 h-8 rounded-lg text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
+            Chart
+          </a>
+          <a href="#intel" className="px-3 h-8 rounded-lg text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
+            Intel
+          </a>
+          <a href="#flow" className="px-3 h-8 rounded-lg text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
+            Flow
+          </a>
         </div>
       </div>
     </div>
   );
 }
-

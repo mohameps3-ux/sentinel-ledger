@@ -68,6 +68,14 @@ export default function ComparePage() {
   const winner = leftScore === rightScore ? "tie" : leftScore > rightScore ? "left" : "right";
 
   useEffect(() => {
+    if (!router.isReady) return;
+    const l = typeof router.query.left === "string" ? router.query.left : "";
+    const r = typeof router.query.right === "string" ? router.query.right : "";
+    if (l) setLeftAddress(l);
+    if (r) setRightAddress(r);
+  }, [router.isReady, router.query.left, router.query.right]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const saved = JSON.parse(localStorage.getItem("sentinel-watchlist-cache") || "[]");
