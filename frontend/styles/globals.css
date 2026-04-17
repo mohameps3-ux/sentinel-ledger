@@ -1,8 +1,8 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4: use CSS entry (PostCSS). Legacy @tailwind directives can fail to emit utilities in some production builds. */
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
 /* —— Design system (spacing + type + actions) —— */
 :root {
@@ -304,6 +304,14 @@ a {
   color: #86efac;
   border-color: rgb(34 197 94 / 0.35);
   background: rgb(34 197 94 / 0.12);
+}
+
+/* Navbar: adapter uses absolute/fixed for dropdowns — keep the trigger in normal flow so it never covers the search bar */
+nav .wallet-adapter-dropdown {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  vertical-align: middle;
 }
 
 .wallet-adapter-button {
