@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
-  ArrowUpRight,
   BarChart3,
   Flame,
+  Loader2,
   Radar,
   ShieldCheck,
   Sparkles,
@@ -12,10 +12,12 @@ import {
   Waves,
   Zap
 } from "lucide-react";
-import { formatTokenPrice, formatUsdWhole } from "../lib/formatStable";
+import { formatUsdWhole } from "../lib/formatStable";
 import { ProButton } from "../components/ui/ProButton";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
 import { getPublicApiUrl } from "../lib/publicRuntime";
+import { Ticker } from "../components/layout/Ticker";
+import { AnimatedNumber } from "../components/ui/AnimatedNumber";
 
 const FALLBACK_TRENDING = [
   {
@@ -26,7 +28,13 @@ const FALLBACK_TRENDING = [
     change: 12.1,
     volume24h: 2100000,
     flowLabel: "Buy pressure",
-    liquidity: 240000
+    liquidity: 240000,
+    alphaSpeedMins: 8,
+    whyTrade: [
+      "Early whale accumulation in first liquidity window.",
+      "Healthy depth for entries without extreme slippage.",
+      "Volume expansion confirms participation."
+    ]
   },
   {
     symbol: "WIF",
@@ -36,7 +44,13 @@ const FALLBACK_TRENDING = [
     change: 8.6,
     volume24h: 48000000,
     flowLabel: "Smart inflow",
-    liquidity: 820000
+    liquidity: 820000,
+    alphaSpeedMins: 5,
+    whyTrade: [
+      "Smart wallets continue to add on momentum.",
+      "Deep liquidity supports larger position sizing.",
+      "Sustained turnover keeps execution clean."
+    ]
   },
   {
     symbol: "JUP",
@@ -46,7 +60,13 @@ const FALLBACK_TRENDING = [
     change: 5.3,
     volume24h: 31000000,
     flowLabel: "Liquidity deep",
-    liquidity: 560000
+    liquidity: 560000,
+    alphaSpeedMins: 6,
+    whyTrade: [
+      "Balanced trend with strong market structure.",
+      "Volume confirms persistent demand.",
+      "Quality liquidity reduces trap risk."
+    ]
   },
   {
     symbol: "POPCAT",
@@ -56,7 +76,13 @@ const FALLBACK_TRENDING = [
     change: -3.1,
     volume24h: 890000,
     flowLabel: "Mixed flow",
-    liquidity: 110000
+    liquidity: 110000,
+    alphaSpeedMins: 14,
+    whyTrade: [
+      "Potential mean-reversion setup after pullback.",
+      "Still inside tradable liquidity band.",
+      "Flow remains mixed, favor tighter risk management."
+    ]
   }
 ];
 
@@ -85,20 +111,29 @@ export async function getServerSideProps() {
 export default function Home({ initialTrending = [], initialTrendingMeta = {} }) {
   const [address, setAddress] = useState("");
   const [error, setError] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
+  const [visibleTrending, setVisibleTrending] = useState([]);
+  const debounceTimerRef = useRef(null);
   const router = useRouter();
   const trendingQuery = useTrendingTokens(initialTrending, initialTrendingMeta);
   const trending = trendingQuery.data?.data || (trendingQuery.isError ? FALLBACK_TRENDING : []);
   const trendingMeta = trendingQuery.data?.meta || {};
+  const updateVisibleTrending = useCallback((nextTrending) => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      setVisibleTrending(nextTrending);
+    }, 180);
+  }, []);
   const feedAgeSec = trendingQuery.dataUpdatedAt
     ? Math.max(0, Math.floor((Date.now() - trendingQuery.dataUpdatedAt) / 1000))
     : null;
   const feedIsLive = !trendingQuery.isError && !!trending.length && (feedAgeSec === null || feedAgeSec <= 90);
   const feedLabel = feedIsLive ? "Live" : "Delayed";
   const smartMoneyCandidates = useMemo(
-    () => trending.filter((t) => Number(t?.liquidity || 0) >= 50000 && Number(t?.change || 0) > 0),
-    [trending]
+    () => visibleTrending.filter((t) => Number(t?.liquidity || 0) >= 50000 && Number(t?.change || 0) > 0),
+    [visibleTrending]
   );
   const smartMoneyLead = smartMoneyCandidates
     .slice()
@@ -116,34 +151,46 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       setRecentSearches([]);
     }
   }, []);
+  useEffect(() => {
+    updateVisibleTrending(trending);
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [trending, updateVisibleTrending]);
 
   const marketMood = useMemo(() => {
-    if (!trending.length) return { label: "Loading", className: "text-gray-300" };
-    const avg = trending.reduce((acc, t) => acc + Number(t.change || 0), 0) / trending.length;
+    if (!visibleTrending.length) return { label: "Loading", className: "text-gray-300" };
+    const avg =
+      visibleTrending.reduce((acc, t) => acc + Number(t.change || 0), 0) / visibleTrending.length;
     if (avg > 5) return { label: "Bullish", className: "text-emerald-300" };
     if (avg > 0) return { label: "Neutral+", className: "text-amber-300" };
     return { label: "Risk-off", className: "text-red-300" };
-  }, [trending]);
+  }, [visibleTrending]);
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
+    if (isScanning) return;
     const value = address.trim();
     if (value.length >= 32) {
       setError("");
+      setIsScanning(true);
       try {
         const recents = JSON.parse(localStorage.getItem("sentinel-recents") || "[]");
         const next = [value, ...recents.filter((item) => item !== value)].slice(0, 5);
         localStorage.setItem("sentinel-recents", JSON.stringify(next));
       } catch (_) {}
+      await new Promise((resolve) => setTimeout(resolve, 450));
       router.push(`/token/${value}`);
       return;
     }
+    setIsScanning(false);
     setError("Paste a valid Solana mint (32–44 characters).");
   };
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-clip">
-      <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full">
+      <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full mx-4 sm:mx-auto">
+        <Ticker />
         {/* Hero */}
         <section translate="no" className="sl-section glass-card glass-card-hover sl-inset">
           <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
@@ -168,11 +215,24 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                 placeholder="Solana mint address (32–44 chars)…"
                 className="sl-input h-14 sm:flex-1 sm:min-w-0 pr-4"
               />
-              <ProButton type="submit" className="h-14 sm:h-auto sm:px-8 shrink-0 justify-center">
-                Scout token
+              <ProButton type="submit" className="h-14 sm:h-auto sm:px-8 shrink-0 justify-center" disabled={isScanning}>
+                {isScanning ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 size={16} className="animate-spin" />
+                    Scanning…
+                  </span>
+                ) : (
+                  "Scan for New Gems"
+                )}
               </ProButton>
             </div>
             {error ? <p className="text-red-400 sl-body mt-3 text-center">{error}</p> : null}
+            {isScanning ? (
+              <div className="mt-4 rounded-xl border border-purple-500/25 bg-purple-500/10 px-4 py-3">
+                <p className="text-xs text-purple-200 font-semibold uppercase tracking-wide">Sentinel scan in progress</p>
+                <p className="text-sm text-gray-300 mt-1">Validating market, flow, and risk signals…</p>
+              </div>
+            ) : null}
             {!!recentSearches.length && (
               <div className="mt-6">
                 <p className="sl-label mb-3 text-left">Recent</p>
@@ -202,10 +262,10 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                   <Flame className="text-orange-300" size={22} />
                 </div>
                 <div>
-                  <p className="sl-label">Pulse</p>
-                  <h2 className="sl-h2 text-white mt-0.5">Trending tokens</h2>
+                  <p className="sl-label">Sentinel Trading · Alpha Feed</p>
+                  <h2 className="sl-h2 text-white mt-0.5">Curated opportunities</h2>
                   <p className="sl-body sl-muted mt-2 max-w-xl">
-                    Snapshot rows — tap analyze to open the full desk for that mint.
+                    Not a random list — each setup includes clear reasons, speed, and risk context.
                   </p>
                 </div>
               </div>
@@ -232,24 +292,22 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               </div>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
-              {(trending.length ? trending : Array.from({ length: 4 })).map((token, idx) => (
-                <Link
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(visibleTrending.length ? visibleTrending : Array.from({ length: 6 })).map((token, idx) => (
+                <div
                   key={token?.mint || `skeleton-${idx}`}
-                  href={token?.mint ? `/token/${token.mint}` : "#"}
-                  prefetch={false}
                   translate="no"
-                  className={`sl-nested rounded-[14px] border border-[#2a2f36] bg-[#0e1318]/90 p-5 sm:p-6 flex flex-col gap-5 min-h-0 text-left no-underline text-inherit transition ${
-                    token?.mint
-                      ? "hover:border-purple-500/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500/40"
-                      : "pointer-events-none opacity-75 animate-pulse"
+                  className={`glass-card p-4 rounded-2xl flex flex-col gap-4 transition-transform duration-200 ${
+                    token?.mint ? "hover:scale-[1.02]" : "opacity-75 animate-pulse"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="sl-label">Symbol</p>
-                      <p className="text-xl sm:text-2xl md:text-[28px] font-bold text-white mt-1 tracking-tight">
+                      <p className="text-xl font-bold text-white mt-1 tracking-tight">
                         {token?.symbol || "Loading"}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {token?.mint ? `${token.mint.slice(0, 6)}...${token.mint.slice(-4)}` : "Loading setup"}
                       </p>
                     </div>
                     <span
@@ -259,33 +317,23 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                     </span>
                   </div>
 
-                  <div className="sl-divider" />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="sl-label mb-1">Price</p>
-                      <p className="text-lg font-semibold text-white tracking-tight">
-                        ${formatTokenPrice(token?.price)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="sl-label mb-1">24h</p>
-                      <p
-                        className={`text-lg font-semibold inline-flex items-center gap-1 ${
-                          Number(token?.change || 0) >= 0 ? "text-emerald-300" : "text-red-300"
-                        }`}
-                      >
-                        <ArrowUpRight
-                          size={18}
-                          className={Number(token?.change || 0) < 0 ? "rotate-90" : ""}
-                        />
-                        {Number(token?.change || 0) >= 0 ? "+" : ""}
-                        {Number(token?.change || 0).toFixed(1)}%
-                      </p>
-                    </div>
+                  <div className="text-xl font-mono text-white">
+                    <AnimatedNumber value={Number(token?.price || 0)} prefix="$" decimalPlaces={6} />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex justify-between text-xs">
+                    <span>Vol: $<AnimatedNumber value={Number(token?.volume24h || 0)} decimalPlaces={0} /></span>
+                    <span className={Number(token?.change || 0) >= 0 ? "text-green-500" : "text-red-500"}>
+                      <AnimatedNumber
+                        value={Number(token?.change || 0)}
+                        decimalPlaces={2}
+                        prefix={Number(token?.change || 0) >= 0 ? "+" : ""}
+                        suffix="%"
+                      />
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
                     <div className="flex items-center gap-3 rounded-[10px] bg-white/[0.03] border border-white/[0.06] px-3 py-3">
                       <BarChart3 size={18} className="text-cyan-400 shrink-0" />
                       <div>
@@ -304,13 +352,34 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                     </div>
                   </div>
 
-                  <div className="mt-auto pt-1">
-                    <span className="btn-pro w-full sm:w-auto justify-center inline-flex items-center gap-2">
-                      <TrendingUp size={16} />
-                      Analyze
-                    </span>
+                  <div className="rounded-[10px] bg-white/[0.02] border border-white/[0.07] px-3 py-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="sl-label !text-[10px]">Why this trade</p>
+                      <span className="text-[11px] text-cyan-200 font-semibold">
+                        Alpha speed: {token?.alphaSpeedMins ?? "—"}m
+                      </span>
+                    </div>
+                    <ul className="text-[12px] text-gray-300 space-y-1">
+                      {(token?.whyTrade?.length ? token.whyTrade : ["Signal model still collecting context."]).map(
+                        (reason, i) => (
+                          <li key={i}>• {reason}</li>
+                        )
+                      )}
+                    </ul>
                   </div>
-                </Link>
+
+                  <div className="mt-auto pt-1">
+                    <button
+                      type="button"
+                      onClick={() => token?.mint && router.push(`/token/${token.mint}`)}
+                      className="mt-3 w-full py-2 text-center bg-purple-600/20 rounded-lg text-sm hover:bg-purple-600/40 transition-transform hover:scale-105 inline-flex items-center justify-center gap-2"
+                      disabled={!token?.mint}
+                    >
+                      <TrendingUp size={15} />
+                      Analyze →
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           </div>

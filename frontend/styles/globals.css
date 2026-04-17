@@ -141,7 +141,7 @@ body {
 
 .btn-pro:hover {
   opacity: 0.96;
-  transform: translateY(-1px);
+  transform: scale(1.05);
   box-shadow: 0 8px 24px rgba(0, 206, 201, 0.22);
 }
 
@@ -178,6 +178,7 @@ body {
 }
 
 .btn-ghost:hover {
+  transform: scale(1.05);
   background: rgba(255, 255, 255, 0.06);
   border-color: #3d4654;
 }
@@ -199,8 +200,17 @@ body {
 }
 
 .btn-pro-outline:hover {
+  transform: scale(1.05);
   background: rgba(108, 92, 231, 0.08);
   border-color: rgba(0, 206, 201, 0.5);
+}
+
+button {
+  transition: transform 0.2s ease;
+}
+
+button:not(:disabled):hover {
+  transform: scale(1.05);
 }
 
 .sl-input {
@@ -277,6 +287,19 @@ a {
   100% {
     background-position: -200% 0;
   }
+}
+
+@keyframes glow {
+  0% {
+    text-shadow: 0 0 0 currentColor;
+  }
+  100% {
+    text-shadow: 0 0 8px currentColor;
+  }
+}
+
+.glow-animation {
+  animation: glow 0.3s ease-out;
 }
 
 .soft-divider {

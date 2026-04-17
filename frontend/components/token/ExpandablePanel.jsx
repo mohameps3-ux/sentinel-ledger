@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 /**
  * Accordion: toggle body with plain conditional render (no max-height / grid-rows
@@ -36,11 +37,22 @@ export function ExpandablePanel({ title, icon, children, defaultOpen = false, ba
           <ChevronDown size={20} className="text-gray-400" aria-hidden />
         </span>
       </button>
-      {isOpen ? (
-        <div className="border-t border-[#2a2f36] px-4 py-5 sm:px-6 sm:py-6 bg-[#0e1318]/50 rounded-b-xl">
-          {children}
-        </div>
-      ) : null}
+      <AnimatePresence initial={false}>
+        {isOpen ? (
+          <motion.div
+            key="panel-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-[#2a2f36] px-4 py-5 sm:px-6 sm:py-6 bg-[#0e1318]/50 rounded-b-xl">
+              {children}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

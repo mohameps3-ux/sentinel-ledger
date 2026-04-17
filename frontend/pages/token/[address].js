@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useTokenData } from "../../hooks/useTokenData";
 import { useWebSocket } from "../../hooks/useWebSocket";
@@ -19,6 +19,7 @@ import { TradeReadinessPanel } from "../../components/token/TradeReadinessPanel"
 import { WalletThreatBanner } from "../../components/token/WalletThreatBanner";
 import { BarChart3, CandlestickChart, Radar, ShieldAlert, Users, Activity } from "lucide-react";
 import { formatUsdWhole } from "../../lib/formatStable";
+import { Ticker } from "../../components/layout/Ticker";
 
 /** SSR this route so `router.query` matches the URL (avoids static shell + wrong “no data” / hydration issues). */
 export async function getServerSideProps() {
@@ -36,16 +37,26 @@ export default function TokenPage() {
   const router = useRouter();
   const address = normalizeAddress(router.query);
   const query = useTokenData(address);
-  const { transactions, isConnected } = useWebSocket(address || undefined);
+  const { transactions, isConnected, connectionState } = useWebSocket(address || undefined);
   const [hasToken, setHasToken] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const prevTopTxRef = useRef(null);
 
   useEffect(() => {
     try {
       setHasToken(!!localStorage.getItem("token"));
+      setSoundEnabled(localStorage.getItem("sentinel-sound-enabled") === "1");
     } catch {
       setHasToken(false);
+      setSoundEnabled(false);
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("sentinel-sound-enabled", soundEnabled ? "1" : "0");
+    } catch {}
+  }, [soundEnabled]);
 
   const token = useMemo(() => query.data?.data, [query.data]);
   const walletIntel = token?.walletIntel;
@@ -56,6 +67,34 @@ export default function TokenPage() {
     }
     return set;
   }, [walletIntel]);
+  const recentTransactions = useMemo(() => transactions.slice(0, 30), [transactions]);
+
+  useEffect(() => {
+    if (!soundEnabled) return;
+    const topTx = recentTransactions[0];
+    if (!topTx || !topTx.shouldNotify) return;
+    const signature = topTx.signature || `${topTx.wallet}-${topTx.timestamp}`;
+    if (prevTopTxRef.current === signature) return;
+    prevTopTxRef.current = signature;
+    if (typeof window === "undefined") return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.value = 0.0001;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.exponentialRampToValueAtTime(0.045, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+    osc.start(now);
+    osc.stop(now + 0.1);
+    const t = setTimeout(() => ctx.close(), 140);
+    return () => clearTimeout(t);
+  }, [recentTransactions, soundEnabled]);
 
   if (!router.isReady) return <TokenSkeleton />;
 
@@ -101,11 +140,24 @@ export default function TokenPage() {
   const { market, analysis, private: privateData } = token;
   const isWatchlisted = privateData?.isWatchlist || false;
   const note = privateData?.notes || "";
+  const statusTone =
+    connectionState === "connected"
+      ? "bg-emerald-400"
+      : connectionState === "reconnecting"
+        ? "bg-amber-300"
+        : "bg-red-400";
+  const statusLabel =
+    connectionState === "connected"
+      ? "Connected"
+      : connectionState === "reconnecting"
+        ? "Reconnecting"
+        : "Disconnected";
 
   return (
-    <div className="sl-container sl-container-wide py-8 md:py-10 space-y-8 w-full max-w-[100vw] overflow-x-clip pb-28 xl:pb-10">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 pb-28 lg:pb-10">
+      <Ticker />
       <WalletThreatBanner walletIntel={token.walletIntel} />
-      <div className="flex flex-wrap justify-between items-start gap-6">
+      <div className="flex flex-wrap justify-between items-start gap-3">
         <HeroSection
           symbol={market.symbol}
           price={market.price}
@@ -113,8 +165,22 @@ export default function TokenPage() {
           grade={analysis.grade}
           confidence={analysis.confidence}
           tokenAddress={address}
+          market={market}
         />
-        <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs">
+            <span className={`h-2.5 w-2.5 rounded-full ${statusTone}`} />
+            {statusLabel}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSoundEnabled((v) => !v)}
+            className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs hover:bg-white/10 transition-transform hover:scale-105"
+          >
+            {soundEnabled ? "🔊 Sound On" : "🔈 Sound Off"}
+          </button>
+          <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -148,38 +214,34 @@ export default function TokenPage() {
         deployer={token?.deployer}
       />
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        <section id="chart" className="xl:col-span-5 space-y-6 xl:sticky xl:top-28 h-fit">
+      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">
+        <section id="chart" className="lg:col-span-2 space-y-6">
           <ChartPanel address={address} />
-        </section>
-
-        <section id="intel" className="xl:col-span-4 space-y-4">
           <DecisionPanel analysis={analysis} />
-
-          <ExpandablePanel title="Momentum Indicators" icon={BarChart3} defaultOpen={false}>
+          <ExpandablePanel title="⚡ Momentum" icon={BarChart3} defaultOpen={false}>
             <MomentumPanel market={market} />
           </ExpandablePanel>
 
-          <ExpandablePanel title="Holders Distribution" icon={Users} defaultOpen={false}>
+          <ExpandablePanel title="👥 Holders Distribution" icon={Users} defaultOpen={false}>
             <HoldersPanel holders={token?.holders} />
           </ExpandablePanel>
 
-          <ExpandablePanel title="Deployer Intelligence" icon={ShieldAlert} defaultOpen={false}>
+          <ExpandablePanel title="🔍 Deployer Intelligence" icon={ShieldAlert} defaultOpen={false}>
             <DeployerPanel deployer={token?.deployer} />
           </ExpandablePanel>
         </section>
 
-        <section id="flow" className="xl:col-span-3 space-y-4 xl:sticky xl:top-28 h-fit">
+        <section id="flow" className="space-y-4">
           <ExpandablePanel
-            title="Live Transactions"
+            title="📡 Live Transactions"
             icon={CandlestickChart}
             defaultOpen={true}
-            badge={transactions.length ? `${transactions.length} new tx` : null}
+            badge={recentTransactions.length ? `${recentTransactions.length} tx` : null}
           >
-            <LiveFlowPanel transactions={transactions} tokenPriceUsd={market.price} />
+            <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={market.price} />
           </ExpandablePanel>
 
-          <ExpandablePanel title="Smart Money Activity" icon={Radar} defaultOpen={true} badge="intel">
+          <ExpandablePanel title="🧠 Smart Money Activity" icon={Radar} defaultOpen={true} badge="intel">
             <SmartMoneyPanel tokenAddress={address} flaggedWallets={flaggedWallets} />
           </ExpandablePanel>
         </section>

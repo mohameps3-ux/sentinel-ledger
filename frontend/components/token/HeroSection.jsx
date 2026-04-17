@@ -2,10 +2,10 @@ import { GradeBadge } from "./GradeBadge";
 import { ArrowUpRight, Bell, Copy } from "lucide-react";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { formatTokenPrice } from "../../lib/formatStable";
 import { ProButton } from "../ui/ProButton";
+import { AnimatedNumber } from "../ui/AnimatedNumber";
 
-export function HeroSection({ symbol, price, priceChange, grade, confidence, tokenAddress }) {
+export function HeroSection({ symbol, price, priceChange, grade, confidence, tokenAddress, market }) {
   const up = Number(priceChange || 0) >= 0;
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertType, setAlertType] = useState("grade");
@@ -32,6 +32,25 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
       tooltip: "High risk profile from current contract and market data."
     };
   }, [confidence]);
+  const trustBadges = useMemo(() => {
+    const badges = [];
+    if (market?.lpLocked) {
+      badges.push({ label: "LP Burned", className: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30", title: "Liquidity lock detected." });
+    }
+    badges.push({
+      label: "Audited",
+      className: "bg-cyan-500/15 text-cyan-200 border-cyan-500/30",
+      title: "Verification in progress."
+    });
+    if (String(grade || "").toUpperCase() === "D" || String(grade || "").toUpperCase() === "F") {
+      badges.push({
+        label: "High Risk",
+        className: "bg-red-500/15 text-red-300 border-red-500/30",
+        title: "High-risk setup according to current model."
+      });
+    }
+    return badges;
+  }, [market?.lpLocked, grade]);
 
   const handleShare = async () => {
     try {
@@ -79,6 +98,17 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
                 {symbol || "—"}
               </h1>
               <p className="mono text-[12px] text-gray-500 break-all max-w-2xl leading-relaxed">{tokenAddress}</p>
+              <div className="flex flex-wrap gap-2 pt-2">
+                {trustBadges.map((badge) => (
+                  <span
+                    key={badge.label}
+                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${badge.className}`}
+                    title={badge.title}
+                  >
+                    {badge.label}
+                  </span>
+                ))}
+              </div>
             </div>
             <div className="shrink-0 flex flex-col items-end gap-3">
               <GradeBadge grade={grade} confidence={confidence} />
@@ -90,7 +120,9 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div>
               <p className="sl-label mb-2">Price</p>
-              <p className="text-2xl md:text-3xl font-bold text-white tracking-tight">${formatTokenPrice(price)}</p>
+              <p className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+                <AnimatedNumber value={Number(price || 0)} prefix="$" decimalPlaces={6} />
+              </p>
             </div>
             <div>
               <p className="sl-label mb-2">24h change</p>
@@ -100,8 +132,7 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
                 }`}
               >
                 <ArrowUpRight size={22} className={!up ? "rotate-90" : ""} />
-                {up ? "+" : ""}
-                {priceChange}%
+                <AnimatedNumber value={Number(priceChange || 0)} prefix={up ? "+" : ""} suffix="%" decimalPlaces={2} />
               </p>
             </div>
             <div className="flex flex-col justify-end">

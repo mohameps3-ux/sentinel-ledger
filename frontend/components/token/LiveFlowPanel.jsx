@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, ExternalLink, Bell, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatTime, formatUsdWhole } from "../../lib/formatStable";
+import { useMemo } from "react";
 
 const WHALE_USD_MIN = 5000;
 
@@ -18,9 +19,13 @@ function isWhaleTx(tx, tokenPriceUsd) {
 }
 
 export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
-  const now = Date.now();
-  const txPerMinute = transactions.filter((tx) => now - new Date(tx.timestamp).getTime() <= 60000).length;
-  const whaleCount = transactions.filter((tx) => isWhaleTx(tx, tokenPriceUsd)).length;
+  const { txPerMinute, whaleCount } = useMemo(() => {
+    const now = Date.now();
+    return {
+      txPerMinute: transactions.filter((tx) => now - new Date(tx.timestamp).getTime() <= 60000).length,
+      whaleCount: transactions.filter((tx) => isWhaleTx(tx, tokenPriceUsd)).length
+    };
+  }, [transactions, tokenPriceUsd]);
 
   return (
     <div className="rounded-xl border border-[#2a2f36] overflow-hidden">
@@ -66,7 +71,7 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
           return (
             <div
               key={tx.signature || `${tx.wallet}-${tx.timestamp}-${idx}`}
-              className={`${idx % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"} ${whale ? "ring-1 ring-inset ring-amber-500/20 bg-amber-500/[0.04]" : ""}`}
+              className={`${idx % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"} ${whale ? "ring-1 ring-inset ring-amber-500/20 bg-amber-500/[0.04]" : ""} ${tx.shouldNotify ? "glow-animation" : ""}`}
             >
               <div className="hidden md:grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-sm">
                 <div className="flex flex-col gap-1">
@@ -95,6 +100,9 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
                       <Sparkles size={10} />
                       Whale
                     </span>
+                  ) : null}
+                  {tx.isMock ? (
+                    <span className="text-[9px] font-bold uppercase tracking-wide text-cyan-200/90">🔬 Simulated</span>
                   ) : null}
                 </div>
                 <span className="mono text-gray-300 self-center">{shortWallet(tx.wallet || tx.trader || tx.from)}</span>
@@ -130,6 +138,7 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
                         Whale
                       </span>
                     ) : null}
+                    {tx.isMock ? <span className="text-[9px] font-bold uppercase text-cyan-200/90">🔬 Simulated</span> : null}
                   </div>
                   <span className="text-[11px] text-gray-500">{formatTime(tx.timestamp)}</span>
                 </div>
