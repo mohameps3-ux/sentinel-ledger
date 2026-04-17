@@ -69,21 +69,26 @@ function gradeClass(grade) {
 export async function getServerSideProps() {
   try {
     const res = await fetch(`${getPublicApiUrl()}/api/v1/token/trending`);
-    if (!res.ok) return { props: { initialTrending: [] } };
+    if (!res.ok) return { props: { initialTrending: [], initialTrendingMeta: {} } };
     const json = await res.json();
-    return { props: { initialTrending: Array.isArray(json?.data) ? json.data : [] } };
+    return {
+      props: {
+        initialTrending: Array.isArray(json?.data) ? json.data : [],
+        initialTrendingMeta: json?.meta || {}
+      }
+    };
   } catch {
-    return { props: { initialTrending: [] } };
+    return { props: { initialTrending: [], initialTrendingMeta: {} } };
   }
 }
 
-export default function Home({ initialTrending = [] }) {
+export default function Home({ initialTrending = [], initialTrendingMeta = {} }) {
   const [address, setAddress] = useState("");
   const [error, setError] = useState("");
   const [alerts, setAlerts] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
   const router = useRouter();
-  const trendingQuery = useTrendingTokens(initialTrending);
+  const trendingQuery = useTrendingTokens(initialTrending, initialTrendingMeta);
   const trending = trendingQuery.data?.data || (trendingQuery.isError ? FALLBACK_TRENDING : []);
   const trendingMeta = trendingQuery.data?.meta || {};
   const feedAgeSec = trendingQuery.dataUpdatedAt
@@ -216,7 +221,7 @@ export default function Home({ initialTrending = [] }) {
                 </span>
                 <span className="text-[11px] text-gray-500">
                   {feedAgeSec === null ? "fresh" : `${feedAgeSec}s ago`} · min liq $
-                  {formatUsdWhole(trendingMeta.minLiquidityUsd || 0)}
+                  {formatUsdWhole(trendingMeta.minLiquidityUsd || 15000)}
                 </span>
               </div>
             </div>
