@@ -70,12 +70,14 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
 
   return (
     <>
-      <div className="glass-card glass-card-hover sl-inset w-full">
+      <div className="glass-card glass-card-hover sl-inset w-full" translate="no">
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2 min-w-0 flex-1">
               <p className="sl-label">Token</p>
-              <h1 className="sl-h1 text-white tracking-tight">{symbol || "—"}</h1>
+              <h1 className="sl-h1 text-white tracking-tight" translate="no">
+                {symbol || "—"}
+              </h1>
               <p className="mono text-[12px] text-gray-500 break-all max-w-2xl leading-relaxed">{tokenAddress}</p>
             </div>
             <div className="shrink-0 flex flex-col items-end gap-3">
@@ -128,7 +130,9 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
           <div className="glass-card sl-inset w-full max-w-md space-y-5">
             <div>
               <h3 className="sl-h2 text-white mb-1">Configure alert</h3>
-              <p className="sl-body sl-muted">Token: {symbol || tokenAddress}</p>
+              <p className="sl-body sl-muted" translate="no">
+                Token: {symbol || tokenAddress}
+              </p>
             </div>
             <div>
               <label className="sl-label mb-2 block">Alert type</label>

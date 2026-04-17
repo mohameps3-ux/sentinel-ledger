@@ -35,7 +35,7 @@ function scoreToken(token) {
 function MetricRow({ label, left, right, higherIsBetter = true, formatter = (v) => v }) {
   const better = pickBetter(left, right, higherIsBetter);
   return (
-    <div className="grid grid-cols-[1fr_auto_auto] gap-3 items-center py-2 border-b soft-divider last:border-b-0">
+    <div className="grid grid-cols-[minmax(140px,1fr)_auto_auto] gap-3 items-center py-2 border-b soft-divider last:border-b-0">
       <div className="text-sm text-gray-400">{label}</div>
       <div className={`text-sm mono ${better === "left" ? "text-emerald-300" : "text-gray-200"}`}>{formatter(left)}</div>
       <div className={`text-sm mono ${better === "right" ? "text-emerald-300" : "text-gray-200"}`}>{formatter(right)}</div>
@@ -222,7 +222,7 @@ export default function ComparePage() {
 
       <section className="grid md:grid-cols-2 gap-4">
         {[leftToken, rightToken].map((token, idx) => (
-          <div key={idx} className="glass-card sl-inset flex flex-col gap-5">
+          <div key={idx} className="glass-card sl-inset flex flex-col gap-5" translate="no">
             {!token ? (
               <div className="sl-body sl-muted py-6 text-center">No data available yet.</div>
             ) : (
@@ -230,7 +230,9 @@ export default function ComparePage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="sl-label">Symbol</p>
-                    <div className="sl-h2 text-white mt-1">{token.market?.symbol || "TOKEN"}</div>
+                    <div className="sl-h2 text-white mt-1" translate="no">
+                      {token.market?.symbol || "TOKEN"}
+                    </div>
                     <div className="text-[12px] text-gray-500 mono mt-2">
                       {(idx === 0 ? leftAddress : rightAddress).slice(0, 6)}…
                       {(idx === 0 ? leftAddress : rightAddress).slice(-4)}
@@ -268,13 +270,13 @@ export default function ComparePage() {
         ))}
       </section>
 
-      <section className="glass-card sl-inset">
+      <section className="glass-card sl-inset overflow-x-auto">
         <h2 className="sl-h2 text-white mb-6">Differential metrics</h2>
         {!leftToken || !rightToken ? (
           <div className="text-sm text-gray-500">Load both tokens to see side-by-side metrics.</div>
         ) : (
-          <div>
-            <div className="grid grid-cols-[1fr_auto_auto] gap-3 pb-2 mb-1 border-b soft-divider text-xs uppercase tracking-wide text-gray-500">
+          <div className="min-w-[360px]">
+            <div className="grid grid-cols-[minmax(140px,1fr)_auto_auto] gap-3 pb-2 mb-1 border-b soft-divider text-xs uppercase tracking-wide text-gray-500">
               <span>Metric</span>
               <span>A</span>
               <span>B</span>
@@ -321,13 +323,13 @@ export default function ComparePage() {
         )}
       </section>
 
-      <section className="glass-card p-5">
+      <section className="glass-card p-5 overflow-x-auto">
         <h2 className="text-lg font-semibold mb-3">Benchmark vs SOL / USDC</h2>
         {!leftToken || !rightToken ? (
           <div className="text-sm text-gray-500">Load both tokens to benchmark against majors.</div>
         ) : (
-          <div className="space-y-2 text-sm">
-            <div className="grid grid-cols-[1fr_auto_auto] gap-3 pb-2 mb-1 border-b soft-divider text-xs uppercase tracking-wide text-gray-500">
+          <div className="space-y-2 text-sm min-w-[360px]">
+            <div className="grid grid-cols-[minmax(140px,1fr)_auto_auto] gap-3 pb-2 mb-1 border-b soft-divider text-xs uppercase tracking-wide text-gray-500">
               <span>Relative edge</span>
               <span>A</span>
               <span>B</span>
@@ -361,7 +363,9 @@ export default function ComparePage() {
           <div className="space-y-2">
             <div className="text-sm text-emerald-300 inline-flex items-center gap-2">
               <CheckCircle2 size={14} />
-              Prefer <strong>{winner === "left" ? leftToken.market?.symbol : rightToken.market?.symbol}</strong> for entry setup.
+              Prefer{" "}
+              <strong translate="no">{winner === "left" ? leftToken.market?.symbol : rightToken.market?.symbol}</strong>{" "}
+              for entry setup.
             </div>
             <div className="text-sm text-gray-300 inline-flex items-center gap-2">
               <TrendingUp size={14} />
@@ -371,7 +375,7 @@ export default function ComparePage() {
         )}
       </section>
 
-      <section className="glass-card p-5">
+      <section className="glass-card p-5" translate="no">
         <div className="flex items-center gap-2 mb-3">
           <BellRing size={16} className="text-purple-300" />
           <h2 className="text-lg font-semibold">Rotation Alerts</h2>
