@@ -25,12 +25,11 @@
 }
 
 html {
-  overflow-x: clip;
   -webkit-text-size-adjust: 100%;
 }
 
 body {
-  overflow-x: clip;
+  /* Do not set overflow-x on body — it clips fixed wallet modals/dropdowns on mobile. */
   background: #0b0e11;
   background-image: radial-gradient(circle at 20% -10%, rgba(124, 58, 237, 0.2) 0, transparent 45%),
     radial-gradient(circle at 80% 0%, rgba(37, 99, 235, 0.16) 0, transparent 42%);
@@ -354,6 +353,7 @@ a {
 .wallet-adapter-modal-wrapper {
   background: rgba(5, 8, 12, 0.72) !important;
   backdrop-filter: blur(10px);
+  z-index: 200 !important;
 }
 
 .wallet-adapter-modal {

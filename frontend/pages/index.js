@@ -99,15 +99,15 @@ export default function Home() {
       router.push(`/token/${value}`);
       return;
     }
-    setError("Introduce una dirección de token válida");
+    setError("Paste a valid Solana mint (32–44 characters).");
   };
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-clip">
       <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full">
         {/* Hero */}
-        <section className="sl-section glass-card glass-card-hover sl-inset">
-          <div className="text-center max-w-2xl mx-auto mb-10">
+        <section translate="no" className="sl-section glass-card glass-card-hover sl-inset">
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
             <p className="sl-label mb-3 inline-flex items-center gap-2 justify-center">
               <Sparkles size={14} className="text-purple-400" />
               Solana intelligence
@@ -126,7 +126,7 @@ export default function Home() {
               <input
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Paste Solana token mint (32–44 chars)…"
+                placeholder="Solana mint address (32–44 chars)…"
                 className="sl-input h-14 sm:flex-1 sm:min-w-0 pr-4"
               />
               <ProButton type="submit" className="h-14 sm:h-auto sm:px-8 shrink-0 justify-center">
@@ -172,11 +172,12 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2">
               {TRENDING_MOCK.map((token) => (
                 <div
                   key={token.symbol}
-                  className="sl-nested sl-inset flex flex-col gap-5 min-h-[200px]"
+                  translate="no"
+                  className="sl-nested rounded-[14px] border border-[#2a2f36] bg-[#0e1318]/90 p-5 sm:p-6 flex flex-col gap-5 min-h-0"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
