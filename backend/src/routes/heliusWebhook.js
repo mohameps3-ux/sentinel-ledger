@@ -1,6 +1,18 @@
 const express = require("express");
+const redis = require("../lib/cache");
 
 const router = express.Router();
+
+const DEDUPE_TTL_SEC = 120;
+
+async function markFirstEmit(dedupeKey) {
+  try {
+    const r = await redis.set(dedupeKey, "1", { nx: true, ex: DEDUPE_TTL_SEC });
+    return r != null;
+  } catch (_) {
+    return true;
+  }
+}
 
 /**
  * Map one Helius enhanced payload to zero or more normalized tx events (per mint leg).
@@ -59,10 +71,13 @@ router.post("/helius", heliusWebhookAuth, async (req, res) => {
     for (const raw of events) {
       const txs = expandHeliusPayload(raw);
       for (const tx of txs) {
-        if (tx.tokenAddress && global.io) {
-          global.io.to(tx.tokenAddress).emit("transaction", tx);
-          emitted += 1;
-        }
+        if (!tx.tokenAddress || !global.io) continue;
+        const sig = tx.signature || "nosig";
+        const dedupeKey = `helius:tx:${sig}:${tx.tokenAddress}:${tx.wallet}:${tx.type}:${String(tx.amount)}`;
+        const first = await markFirstEmit(dedupeKey);
+        if (!first) continue;
+        global.io.to(tx.tokenAddress).emit("transaction", tx);
+        emitted += 1;
       }
     }
 

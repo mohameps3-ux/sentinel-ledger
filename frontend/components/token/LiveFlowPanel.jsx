@@ -1,114 +1,155 @@
-import { ArrowDown, ArrowUp, ExternalLink, Bell } from "lucide-react";
+import { ArrowDown, ArrowUp, ExternalLink, Bell, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
-import { formatTime } from "../../lib/formatStable";
+import { formatTime, formatUsdWhole } from "../../lib/formatStable";
+
+const WHALE_USD_MIN = 5000;
 
 function shortWallet(wallet = "") {
   if (!wallet) return "unknown";
   return `${wallet.slice(0, 5)}...${wallet.slice(-4)}`;
 }
 
-export function LiveFlowPanel({ transactions = [] }) {
+function isWhaleTx(tx, tokenPriceUsd) {
+  const price = Number(tokenPriceUsd);
+  const amt = Number(tx.amount);
+  if (!Number.isFinite(price) || price <= 0) return false;
+  if (!Number.isFinite(amt) || amt <= 0) return false;
+  return amt * price >= WHALE_USD_MIN;
+}
+
+export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
   const now = Date.now();
   const txPerMinute = transactions.filter((tx) => now - new Date(tx.timestamp).getTime() <= 60000).length;
+  const whaleCount = transactions.filter((tx) => isWhaleTx(tx, tokenPriceUsd)).length;
 
   return (
-    <div className="rounded-xl border soft-divider overflow-hidden">
-      <div className="px-3 py-2 bg-[#0E1318] border-b soft-divider flex items-center justify-between">
-        <span className="text-xs text-gray-400">Speed: {txPerMinute} tx/min</span>
+    <div className="rounded-xl border border-[#2a2f36] overflow-hidden">
+      <div className="px-3 py-2.5 bg-[#0E1318] border-b border-[#2a2f36] flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
+          <span>
+            Speed: <span className="text-gray-200 font-semibold">{txPerMinute}</span> tx/min
+          </span>
+          {Number(tokenPriceUsd) > 0 ? (
+            <span className="text-[10px] text-gray-600">
+              Whale ≥ ${formatUsdWhole(WHALE_USD_MIN)} notional
+            </span>
+          ) : null}
+          {whaleCount > 0 ? (
+            <span className="inline-flex items-center gap-1 text-amber-200/90 text-[11px] font-semibold">
+              <Sparkles size={12} />
+              {whaleCount} whale{whaleCount === 1 ? "" : "s"} in view
+            </span>
+          ) : null}
+        </div>
         <button
-          onClick={() => toast("Whale alert saved (coming soon).")}
-          className="text-xs text-purple-300 hover:text-purple-200 inline-flex items-center gap-1"
+          type="button"
+          onClick={() => toast("Whale alerts — coming soon.")}
+          className="text-xs text-purple-300 hover:text-purple-200 inline-flex items-center gap-1 shrink-0"
         >
           <Bell size={12} />
           Alert on whale
         </button>
       </div>
       <div className="max-h-96 overflow-y-auto">
-      <div className="hidden md:grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-gray-500 bg-[#0E1318]">
-        <span>Type</span>
-        <span>Wallet</span>
-        <span className="text-right">Amount</span>
-        <span className="text-right">Time</span>
-        <span className="text-right">View</span>
-      </div>
-      {transactions.length === 0 && (
-        <div className="text-gray-500 text-sm text-center py-6">Waiting for swaps...</div>
-      )}
-      {transactions.map((tx, idx) => (
-        <div
-          key={tx.signature || `${tx.wallet}-${tx.timestamp}-${idx}`}
-          className={`${idx % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"}`}
-        >
-          <div
-            className="hidden md:grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-sm"
-          >
-            <span
-              className={`w-fit text-xs font-bold px-2 py-0.5 rounded-full ${
-                tx.type === "buy"
-                  ? "bg-emerald-500/15 text-emerald-300"
-                  : tx.type === "swap"
-                    ? "bg-amber-500/15 text-amber-200"
-                    : "bg-red-500/15 text-red-300"
-              }`}
-            >
-              <span className="inline-flex items-center gap-1">
-                {tx.type === "buy" ? (
-                  <ArrowUp size={11} />
-                ) : tx.type === "swap" ? (
-                  <ArrowUp size={11} className="rotate-45 text-amber-200" />
-                ) : (
-                  <ArrowDown size={11} />
-                )}
-                {tx.type === "buy" ? "BUY" : tx.type === "swap" ? "SWAP" : "SELL"}
-              </span>
-            </span>
-            <span className="mono text-gray-300">{shortWallet(tx.wallet || tx.trader || tx.from)}</span>
-            <span className="text-right mono">{Number(tx.amount || 0).toFixed(2)}</span>
-            <span className="text-gray-500 text-xs text-right">
-              {formatTime(tx.timestamp)}
-            </span>
-            <a
-              href={tx.signature ? `https://solscan.io/tx/${tx.signature}` : "#"}
-              target="_blank"
-              rel="noreferrer"
-              className={`text-right inline-flex justify-end items-center ${tx.signature ? "text-blue-300 hover:text-blue-200" : "text-gray-600 pointer-events-none"}`}
-            >
-              <ExternalLink size={14} />
-            </a>
-          </div>
-
-          <div className="md:hidden px-3 py-2 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span
-                className={`w-fit text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                  tx.type === "buy"
-                    ? "bg-emerald-500/15 text-emerald-300"
-                    : tx.type === "swap"
-                      ? "bg-amber-500/15 text-amber-200"
-                      : "bg-red-500/15 text-red-300"
-                }`}
-              >
-                {tx.type === "buy" ? "BUY" : tx.type === "swap" ? "SWAP" : "SELL"}
-              </span>
-              <span className="text-[11px] text-gray-500">{formatTime(tx.timestamp)}</span>
-            </div>
-            <div className="text-xs mono text-gray-300">{shortWallet(tx.wallet || tx.trader || tx.from)}</div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm mono">{Number(tx.amount || 0).toFixed(2)} tokens</span>
-              <a
-                href={tx.signature ? `https://solscan.io/tx/${tx.signature}` : "#"}
-                target="_blank"
-                rel="noreferrer"
-                className={`text-blue-300 text-xs ${tx.signature ? "" : "pointer-events-none text-gray-600"}`}
-              >
-                Solscan
-              </a>
-            </div>
-          </div>
+        <div className="hidden md:grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-gray-500 bg-[#0E1318]">
+          <span>Type</span>
+          <span>Wallet</span>
+          <span className="text-right">Amount</span>
+          <span className="text-right">Time</span>
+          <span className="text-right">View</span>
         </div>
-      ))}
+        {transactions.length === 0 && (
+          <div className="text-gray-500 text-sm text-center py-8">Waiting for swaps…</div>
+        )}
+        {transactions.map((tx, idx) => {
+          const whale = isWhaleTx(tx, tokenPriceUsd);
+          return (
+            <div
+              key={tx.signature || `${tx.wallet}-${tx.timestamp}-${idx}`}
+              className={`${idx % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"} ${whale ? "ring-1 ring-inset ring-amber-500/20 bg-amber-500/[0.04]" : ""}`}
+            >
+              <div className="hidden md:grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-sm">
+                <div className="flex flex-col gap-1">
+                  <span
+                    className={`w-fit text-xs font-bold px-2 py-0.5 rounded-full ${
+                      tx.type === "buy"
+                        ? "bg-emerald-500/15 text-emerald-300"
+                        : tx.type === "swap"
+                          ? "bg-amber-500/15 text-amber-200"
+                          : "bg-red-500/15 text-red-300"
+                    }`}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      {tx.type === "buy" ? (
+                        <ArrowUp size={11} />
+                      ) : tx.type === "swap" ? (
+                        <ArrowUp size={11} className="rotate-45 text-amber-200" />
+                      ) : (
+                        <ArrowDown size={11} />
+                      )}
+                      {tx.type === "buy" ? "BUY" : tx.type === "swap" ? "SWAP" : "SELL"}
+                    </span>
+                  </span>
+                  {whale ? (
+                    <span className="text-[9px] font-bold uppercase tracking-wide text-amber-200/90 inline-flex items-center gap-0.5">
+                      <Sparkles size={10} />
+                      Whale
+                    </span>
+                  ) : null}
+                </div>
+                <span className="mono text-gray-300 self-center">{shortWallet(tx.wallet || tx.trader || tx.from)}</span>
+                <span className="text-right mono self-center">{Number(tx.amount || 0).toFixed(2)}</span>
+                <span className="text-gray-500 text-xs text-right self-center">{formatTime(tx.timestamp)}</span>
+                <a
+                  href={tx.signature ? `https://solscan.io/tx/${tx.signature}` : "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`text-right inline-flex justify-end items-center self-center ${tx.signature ? "text-blue-300 hover:text-blue-200" : "text-gray-600 pointer-events-none"}`}
+                >
+                  <ExternalLink size={14} />
+                </a>
+              </div>
+
+              <div className="md:hidden px-3 py-2 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`w-fit text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                        tx.type === "buy"
+                          ? "bg-emerald-500/15 text-emerald-300"
+                          : tx.type === "swap"
+                            ? "bg-amber-500/15 text-amber-200"
+                            : "bg-red-500/15 text-red-300"
+                      }`}
+                    >
+                      {tx.type === "buy" ? "BUY" : tx.type === "swap" ? "SWAP" : "SELL"}
+                    </span>
+                    {whale ? (
+                      <span className="text-[9px] font-bold uppercase text-amber-200/90 inline-flex items-center gap-0.5">
+                        <Sparkles size={10} />
+                        Whale
+                      </span>
+                    ) : null}
+                  </div>
+                  <span className="text-[11px] text-gray-500">{formatTime(tx.timestamp)}</span>
+                </div>
+                <div className="text-xs mono text-gray-300">{shortWallet(tx.wallet || tx.trader || tx.from)}</div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm mono">{Number(tx.amount || 0).toFixed(2)} tokens</span>
+                  <a
+                    href={tx.signature ? `https://solscan.io/tx/${tx.signature}` : "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`text-blue-300 text-xs ${tx.signature ? "" : "pointer-events-none text-gray-600"}`}
+                  >
+                    Solscan
+                  </a>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
-

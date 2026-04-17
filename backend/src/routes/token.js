@@ -7,6 +7,7 @@ const { getDeployerInfo, updateDeployerReputation } = require("../services/deplo
 const { sendGradeAlert, sendWalletThreatAlert } = require("../bots/telegramBot");
 const { getSupabase } = require("../lib/supabase");
 const { getWalletSpamIntel } = require("../services/walletSpamSignals");
+const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 
 const router = express.Router();
 
@@ -14,6 +15,10 @@ router.get("/:address", async (req, res) => {
   try {
     const { address } = req.params;
     const authHeader = req.headers.authorization;
+
+    if (!address || !isProbableSolanaPubkey(address)) {
+      return res.status(400).json({ ok: false, error: "invalid_address" });
+    }
 
     const marketData = await getMarketData(address);
     if (!marketData)

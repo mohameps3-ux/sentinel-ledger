@@ -1,13 +1,14 @@
 const express = require("express");
 const { getSmartWalletsForToken } = require("../services/smartWalletsService");
+const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 
 const router = express.Router();
 
 router.get("/:address", async (req, res) => {
   try {
     const { address } = req.params;
-    if (!address) {
-      return res.status(400).json({ ok: false, error: "address_required" });
+    if (!address || !isProbableSolanaPubkey(address)) {
+      return res.status(400).json({ ok: false, error: "invalid_address" });
     }
 
     const result = await getSmartWalletsForToken(address);

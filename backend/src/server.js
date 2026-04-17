@@ -16,6 +16,7 @@ const omniBotsRouter = require("./routes/omniBots");
 const { startDeployerWorker } = require("./queues/deployerWorker");
 const { startTelegramBot } = require("./bots/telegramBot");
 const { corsMiddlewareOptions, socketIoCors } = require("./lib/corsOptions");
+const { isProbableSolanaPubkey } = require("./lib/solanaAddress");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -37,7 +38,15 @@ app.use(
 );
 
 app.get("/health", (_, res) =>
-  res.json({ ok: true, service: "sentinel-ledger-backend" })
+  res.json({
+    ok: true,
+    service: "sentinel-ledger-backend",
+    commit:
+      process.env.RAILWAY_GIT_COMMIT_SHA ||
+      process.env.VERCEL_GIT_COMMIT_SHA ||
+      process.env.COMMIT_SHA ||
+      null
+  })
 );
 
 app.use("/api/v1/auth", authRouter);
@@ -49,10 +58,12 @@ app.use("/api/v1/bots/omni", omniBotsRouter);
 
 io.on("connection", (socket) => {
   socket.on("join-token", (address) => {
-    if (address) socket.join(address);
+    if (typeof address !== "string" || !isProbableSolanaPubkey(address)) return;
+    socket.join(address);
   });
   socket.on("leave-token", (address) => {
-    if (address) socket.leave(address);
+    if (typeof address !== "string" || !isProbableSolanaPubkey(address)) return;
+    socket.leave(address);
   });
 });
 

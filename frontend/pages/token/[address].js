@@ -139,7 +139,7 @@ export default function TokenPage() {
             defaultOpen={true}
             badge={transactions.length ? `${transactions.length} new tx` : null}
           >
-            <LiveFlowPanel transactions={transactions} />
+            <LiveFlowPanel transactions={transactions} tokenPriceUsd={market.price} />
           </ExpandablePanel>
 
           <ExpandablePanel title="Smart Money Activity" icon={Radar} defaultOpen={true} badge="intel">
