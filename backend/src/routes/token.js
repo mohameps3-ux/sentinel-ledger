@@ -37,7 +37,43 @@ function deriveFlowLabel(market) {
   return "Mixed flow";
 }
 
+function deriveAlphaSpeedMinutes(market) {
+  const liq = Number(market?.liquidity || 0);
+  const vol = Number(market?.volume24h || 0);
+  if (liq <= 0 || vol <= 0) return null;
+  const turnover = vol / Math.max(liq, 1);
+  if (turnover >= 8) return 4;
+  if (turnover >= 4) return 7;
+  if (turnover >= 2) return 12;
+  if (turnover >= 1) return 18;
+  return 25;
+}
+
+function deriveWhyTrade(market) {
+  const reasons = [];
+  const liq = Number(market?.liquidity || 0);
+  const vol = Number(market?.volume24h || 0);
+  const chg = Number(market?.priceChange24h || 0);
+  const speed = deriveAlphaSpeedMinutes(market);
+
+  if (chg >= 12) reasons.push("Breakout momentum: strong upside in last 24h.");
+  else if (chg >= 5) reasons.push("Positive trend: consistent buy-side pressure.");
+  else if (chg <= -20) reasons.push("Capitulation bounce setup: deep pullback with active tape.");
+
+  if (liq >= 150000) reasons.push("Liquidity depth supports entries with lower slippage.");
+  else if (liq >= 50000) reasons.push("Tradable liquidity with manageable execution risk.");
+  else if (liq >= 15000) reasons.push("Early liquidity band: higher upside with tighter risk control.");
+
+  if (vol >= 1000000) reasons.push("High participation: volume confirms market attention.");
+  else if (vol >= 250000) reasons.push("Volume expansion signals accelerating interest.");
+
+  if (speed !== null) reasons.push(`Alpha speed: detected in ~${speed}m from flow/liquidity profile.`);
+
+  return reasons.slice(0, 3);
+}
+
 function normalizeTrendingEntry(mint, market) {
+  const alphaSpeedMins = deriveAlphaSpeedMinutes(market);
   return {
     mint,
     symbol: market.symbol,
@@ -46,7 +82,9 @@ function normalizeTrendingEntry(mint, market) {
     volume24h: Number(market.volume24h || 0),
     liquidity: Number(market.liquidity || 0),
     grade: deriveTrendingGrade(market),
-    flowLabel: deriveFlowLabel(market)
+    flowLabel: deriveFlowLabel(market),
+    alphaSpeedMins,
+    whyTrade: deriveWhyTrade(market)
   };
 }
 
