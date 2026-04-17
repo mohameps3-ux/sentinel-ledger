@@ -114,7 +114,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const [isScanning, setIsScanning] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
-  const [visibleTrending, setVisibleTrending] = useState([]);
+  const [visibleTrending, setVisibleTrending] = useState(
+    Array.isArray(initialTrending) && initialTrending.length ? initialTrending : []
+  );
   const debounceTimerRef = useRef(null);
   const router = useRouter();
   const trendingQuery = useTrendingTokens(initialTrending, initialTrendingMeta);
