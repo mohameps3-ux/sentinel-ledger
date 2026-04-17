@@ -25,7 +25,8 @@ const FALLBACK_TRENDING = [
     price: 0.000028,
     change: 12.1,
     volume24h: 2100000,
-    flowLabel: "Buy pressure"
+    flowLabel: "Buy pressure",
+    liquidity: 240000
   },
   {
     symbol: "WIF",
@@ -34,7 +35,8 @@ const FALLBACK_TRENDING = [
     price: 2.13,
     change: 8.6,
     volume24h: 48000000,
-    flowLabel: "Smart inflow"
+    flowLabel: "Smart inflow",
+    liquidity: 820000
   },
   {
     symbol: "JUP",
@@ -43,7 +45,8 @@ const FALLBACK_TRENDING = [
     price: 1.22,
     change: 5.3,
     volume24h: 31000000,
-    flowLabel: "Liquidity deep"
+    flowLabel: "Liquidity deep",
+    liquidity: 560000
   },
   {
     symbol: "POPCAT",
@@ -52,7 +55,8 @@ const FALLBACK_TRENDING = [
     price: 0.65,
     change: -3.1,
     volume24h: 890000,
-    flowLabel: "Mixed flow"
+    flowLabel: "Mixed flow",
+    liquidity: 110000
   }
 ];
 
@@ -81,6 +85,19 @@ export default function Home({ initialTrending = [] }) {
   const router = useRouter();
   const trendingQuery = useTrendingTokens(initialTrending);
   const trending = trendingQuery.data?.data || (trendingQuery.isError ? FALLBACK_TRENDING : []);
+  const trendingMeta = trendingQuery.data?.meta || {};
+  const feedAgeSec = trendingQuery.dataUpdatedAt
+    ? Math.max(0, Math.floor((Date.now() - trendingQuery.dataUpdatedAt) / 1000))
+    : null;
+  const feedIsLive = !trendingQuery.isError && !!trending.length && (feedAgeSec === null || feedAgeSec <= 90);
+  const feedLabel = feedIsLive ? "Live" : "Delayed";
+  const smartMoneyCandidates = useMemo(
+    () => trending.filter((t) => Number(t?.liquidity || 0) >= 50000 && Number(t?.change || 0) > 0),
+    [trending]
+  );
+  const smartMoneyLead = smartMoneyCandidates
+    .slice()
+    .sort((a, b) => Number(b?.change || 0) - Number(a?.change || 0))[0];
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -187,6 +204,21 @@ export default function Home({ initialTrending = [] }) {
                   </p>
                 </div>
               </div>
+              <div className="flex flex-col items-start md:items-end gap-1.5">
+                <span
+                  className={`text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border ${
+                    feedIsLive
+                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                      : "bg-amber-500/15 text-amber-200 border-amber-500/30"
+                  }`}
+                >
+                  {feedLabel}
+                </span>
+                <span className="text-[11px] text-gray-500">
+                  {feedAgeSec === null ? "fresh" : `${feedAgeSec}s ago`} · min liq $
+                  {formatUsdWhole(trendingMeta.minLiquidityUsd || 0)}
+                </span>
+              </div>
             </div>
 
             {trendingQuery.isError ? (
@@ -275,6 +307,31 @@ export default function Home({ initialTrending = [] }) {
                   </div>
                 </Link>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Smart Money CTA */}
+        <section className="sl-section">
+          <div className="glass-card sl-inset flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="space-y-2 max-w-2xl">
+              <p className="sl-label">Smart Money</p>
+              <h2 className="sl-h2 text-white">Follow flow before everyone else</h2>
+              <p className="sl-body sl-muted">
+                {smartMoneyCandidates.length} setups now show positive momentum with at least $50k liquidity.
+              </p>
+            </div>
+            <div className="flex flex-col items-start lg:items-end gap-3">
+              <span className="text-[12px] font-semibold text-cyan-200 bg-cyan-500/10 border border-cyan-500/25 rounded-full px-3 py-1">
+                Top setup: {smartMoneyLead?.symbol || "loading"}
+              </span>
+              <Link
+                href={smartMoneyLead?.mint ? `/token/${smartMoneyLead.mint}#flow` : "/compare"}
+                prefetch={false}
+                className="btn-pro inline-flex items-center justify-center gap-2 no-underline"
+              >
+                View Smart Money Flow
+              </Link>
             </div>
           </div>
         </section>

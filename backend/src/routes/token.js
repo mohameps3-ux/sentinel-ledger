@@ -11,6 +11,11 @@ const { getWalletSpamIntel } = require("../services/walletSpamSignals");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 
 const router = express.Router();
+const TRENDING_LIMIT = 6;
+const STRICT_MIN_LIQUIDITY = 15000;
+const STRICT_MIN_VOLUME_24H = 25000;
+const RELAXED_MIN_LIQUIDITY = 2000;
+const RELAXED_MIN_VOLUME_24H = 5000;
 
 function deriveTrendingGrade(market) {
   const liq = Number(market?.liquidity || 0);
@@ -32,35 +37,67 @@ function deriveFlowLabel(market) {
   return "Mixed flow";
 }
 
+function normalizeTrendingEntry(mint, market) {
+  return {
+    mint,
+    symbol: market.symbol,
+    price: Number(market.price || 0),
+    change: Number(market.priceChange24h || 0),
+    volume24h: Number(market.volume24h || 0),
+    liquidity: Number(market.liquidity || 0),
+    grade: deriveTrendingGrade(market),
+    flowLabel: deriveFlowLabel(market)
+  };
+}
+
 router.get("/trending", async (_, res) => {
   try {
     const { data } = await axios.get("https://api.dexscreener.com/token-profiles/latest/v1", {
       timeout: 5000
     });
     const candidates = Array.isArray(data) ? data.filter((x) => x?.chainId === "solana") : [];
-    const out = [];
-    for (const item of candidates.slice(0, 16)) {
+    const strict = [];
+    const relaxed = [];
+    const seenMints = new Set();
+
+    for (const item of candidates.slice(0, 36)) {
       const mint = item?.tokenAddress;
-      if (!mint || typeof mint !== "string") continue;
+      if (!mint || typeof mint !== "string" || seenMints.has(mint)) continue;
       const market = await getMarketData(mint);
       if (!market || !market.symbol) continue;
-      out.push({
-        mint,
-        symbol: market.symbol,
-        price: Number(market.price || 0),
-        change: Number(market.priceChange24h || 0),
-        volume24h: Number(market.volume24h || 0),
-        liquidity: Number(market.liquidity || 0),
-        grade: deriveTrendingGrade(market),
-        flowLabel: deriveFlowLabel(market)
-      });
-      if (out.length >= 6) break;
+      seenMints.add(mint);
+
+      const liq = Number(market?.liquidity || 0);
+      const vol = Number(market?.volume24h || 0);
+      const normalized = normalizeTrendingEntry(mint, market);
+
+      if (liq >= STRICT_MIN_LIQUIDITY && vol >= STRICT_MIN_VOLUME_24H) {
+        strict.push(normalized);
+      } else if (liq >= RELAXED_MIN_LIQUIDITY && vol >= RELAXED_MIN_VOLUME_24H) {
+        relaxed.push(normalized);
+      }
+
+      if (strict.length >= TRENDING_LIMIT) break;
+    }
+
+    const out = [...strict];
+    if (out.length < TRENDING_LIMIT) {
+      for (const token of relaxed) {
+        out.push(token);
+        if (out.length >= TRENDING_LIMIT) break;
+      }
     }
 
     return res.json({
       ok: true,
       data: out,
-      meta: { source: "dexscreener", count: out.length }
+      meta: {
+        source: "dexscreener",
+        count: out.length,
+        strictCount: strict.length,
+        generatedAt: Date.now(),
+        minLiquidityUsd: STRICT_MIN_LIQUIDITY
+      }
     });
   } catch (error) {
     console.error("Trending fetch failed:", error.message);
