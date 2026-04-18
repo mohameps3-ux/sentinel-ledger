@@ -71,7 +71,7 @@ export default function ResultsPage() {
         title="Verified Results — Sentinel Ledger"
         description="Real win rate of Sentinel Ledger signals. On-chain data, not promises."
       />
-      <div className="sl-container py-8 sm:py-10 space-y-6">
+      <div className="sl-container py-8 sm:py-10 pb-28 space-y-6">
         <header className="space-y-2">
           <p className="sl-label">Transparency</p>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
