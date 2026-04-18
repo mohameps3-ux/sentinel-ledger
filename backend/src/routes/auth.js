@@ -1,7 +1,8 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const nacl = require("tweetnacl");
-const bs58 = require("bs58");
+/** bs58@6 re-exports the codec as default only (CommonJS). */
+const bs58 = require("bs58").default || require("bs58");
 const crypto = require("crypto");
 const { PublicKey } = require("@solana/web3.js");
 const { getSupabase } = require("../lib/supabase");
@@ -64,6 +65,15 @@ authRouter.post("/nonce", async (req, res) => {
 
 authRouter.post("/login", async (req, res) => {
   try {
+    if (!process.env.JWT_SECRET) {
+      console.error("[auth/login] JWT_SECRET is not set");
+      return res.status(503).json({ error: "server_misconfigured" });
+    }
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("[auth/login] SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing");
+      return res.status(503).json({ error: "server_misconfigured" });
+    }
+
     const { walletAddress, publicKey, signature, message } = req.body;
     if (!walletAddress || !publicKey || !signature || !message) {
       return res.status(400).json({ error: "missing_fields" });
@@ -86,18 +96,37 @@ authRouter.post("/login", async (req, res) => {
     if (!verified) return res.status(401).json({ error: "invalid_signature" });
 
     const wallet = pubKey.toBase58();
-    const referralCode = crypto.randomBytes(3).toString("hex").toUpperCase();
 
     const supabase = getSupabase();
-    const { data: user, error } = await supabase
+    const { data: existing, error: findErr } = await supabase
       .from("users")
-      .upsert(
-        { wallet_address: wallet, referral_code: referralCode },
-        { onConflict: "wallet_address" }
-      )
       .select("*")
-      .single();
-    if (error) throw error;
+      .eq("wallet_address", wallet)
+      .maybeSingle();
+    if (findErr) throw findErr;
+
+    let user = existing;
+    if (!user) {
+      const referralCode = crypto.randomBytes(3).toString("hex").toUpperCase();
+      const { data: created, error: insErr } = await supabase
+        .from("users")
+        .insert({ wallet_address: wallet, referral_code: referralCode })
+        .select("*")
+        .single();
+      if (insErr?.code === "23505") {
+        const { data: again, error: retryErr } = await supabase
+          .from("users")
+          .select("*")
+          .eq("wallet_address", wallet)
+          .single();
+        if (retryErr) throw retryErr;
+        user = again;
+      } else if (insErr) {
+        throw insErr;
+      } else {
+        user = created;
+      }
+    }
 
     const token = jwt.sign({ userId: user.id, wallet: user.wallet_address }, process.env.JWT_SECRET, {
       expiresIn: "7d"
@@ -106,7 +135,7 @@ authRouter.post("/login", async (req, res) => {
     await deleteNonce(walletAddress);
     return res.json({ token, user });
   } catch (error) {
-    console.error(error);
+    console.error("[auth/login]", error?.message || error, error?.code || "");
     return res.status(500).json({ error: "login_failed" });
   }
 });
