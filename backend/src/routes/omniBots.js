@@ -1,7 +1,9 @@
 const express = require("express");
+const redis = require("../lib/cache");
 const { getSupabase } = require("../lib/supabase");
 const { handleSupportInbound } = require("../services/supportService");
 const { sendOmniAlert } = require("../services/omniAlertsService");
+const { getProAlertCronStatus, runProAlertTick } = require("../jobs/proAlertCron");
 
 const router = express.Router();
 
@@ -103,6 +105,39 @@ router.get("/events", assertOpsAuth, async (req, res) => {
   } catch (error) {
     console.error("Omni events fetch failed:", error.message);
     return res.status(500).json({ ok: false, error: "omni_events_failed" });
+  }
+});
+
+/** Cron + cache probe for on-call (header x-ops-key). */
+router.get("/diagnostics", assertOpsAuth, async (_req, res) => {
+  const proAlertCron = getProAlertCronStatus();
+  let redisCache = "skipped";
+  try {
+    const pingKey = "omni:diag:ping";
+    await redis.set(pingKey, "1", { ex: 15 });
+    const v = await redis.get(pingKey);
+    redisCache = v === "1" || v === 1 ? "ok" : "unexpected";
+  } catch (e) {
+    redisCache = { error: e.message || String(e) };
+  }
+  return res.json({
+    ok: true,
+    data: {
+      proAlertCron,
+      redisCache,
+      smartWorkersEnabled: String(process.env.SMART_WORKERS_ENABLED || "true").toLowerCase() !== "false"
+    }
+  });
+});
+
+/** Run one PRO watchlist alert pass immediately (same logic as interval). */
+router.post("/pro-alerts/run-tick", assertOpsAuth, async (_req, res) => {
+  try {
+    await runProAlertTick();
+    return res.json({ ok: true, data: getProAlertCronStatus() });
+  } catch (error) {
+    console.error("Omni pro-alerts tick failed:", error.message);
+    return res.status(500).json({ ok: false, error: "pro_alerts_tick_failed" });
   }
 });
 

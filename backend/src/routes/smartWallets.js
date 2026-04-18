@@ -1,10 +1,20 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const { getSmartWalletsForToken } = require("../services/smartWalletsService");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
+const { authMiddleware, requirePro } = require("./auth");
 
 const router = express.Router();
+const smartWalletsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.userId || req.ip,
+  message: { ok: false, error: "rate_limit_exceeded" }
+});
 
-router.get("/:address", async (req, res) => {
+router.get("/:address", authMiddleware, requirePro, smartWalletsLimiter, async (req, res) => {
   try {
     const { address } = req.params;
     if (!address || !isProbableSolanaPubkey(address)) {
@@ -15,6 +25,7 @@ router.get("/:address", async (req, res) => {
     return res.json({
       ok: true,
       data: result.wallets,
+      smartWallets: result.wallets,
       meta: {
         tokenAddress: address,
         ...(result.meta || {}),

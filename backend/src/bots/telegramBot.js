@@ -8,6 +8,10 @@ const { postMarketingTweet } = require("../services/xMarketing");
 
 let bot = null;
 
+function isTruthy(value) {
+  return String(value || "").trim().toLowerCase() === "true";
+}
+
 function fmtUsdPrice(n) {
   const x = Number(n || 0);
   if (!Number.isFinite(x)) return "0";
@@ -121,6 +125,10 @@ function startTelegramBot() {
   }
 
   bot = new Telegraf(token);
+  // Middleware/runtime errors should never crash the API process.
+  bot.catch((err) => {
+    console.warn("Telegram bot runtime error:", err?.message || err);
+  });
 
   bot.start(async (ctx) => {
     const supabase = getSupabase();
@@ -198,9 +206,30 @@ function startTelegramBot() {
     return ctx.reply("Describe your issue in one message and we will escalate it to Sentinel support.");
   });
 
-  bot.launch().then(() => {
-    console.log("Telegram bot started.");
-  });
+  // Commands via getUpdates polling are optional in production.
+  // Outbound alerts (sendMessage) work without polling.
+  const pollingEnabled =
+    process.env.NODE_ENV !== "production" || isTruthy(process.env.TELEGRAM_POLLING_ENABLED);
+  if (!pollingEnabled) {
+    console.log("Telegram polling disabled (set TELEGRAM_POLLING_ENABLED=true to enable commands).");
+    return bot;
+  }
+
+  bot
+    .launch({ dropPendingUpdates: true })
+    .then(() => {
+      console.log("Telegram bot started.");
+    })
+    .catch((err) => {
+      const message = String(err?.message || "");
+      if (err?.response?.error_code === 409 || message.includes("terminated by other getUpdates")) {
+        console.warn(
+          "Telegram polling conflict (409). Polling disabled for this instance; outbound alerts remain available."
+        );
+        return;
+      }
+      console.warn("Telegram launch failed:", message || err);
+    });
 
   process.once("SIGINT", () => bot.stop("SIGINT"));
   process.once("SIGTERM", () => bot.stop("SIGTERM"));
@@ -208,5 +237,23 @@ function startTelegramBot() {
   return bot;
 }
 
-module.exports = { startTelegramBot, sendGradeAlert, sendTelegramText, sendWalletThreatAlert };
+/** Outbound PRO alert to a linked user (private chat id == Telegram user id). */
+async function sendProUserAlert(telegramChatId, text) {
+  if (!bot || telegramChatId == null || !text) return false;
+  try {
+    await bot.telegram.sendMessage(String(telegramChatId), String(text).slice(0, 4000));
+    return true;
+  } catch (e) {
+    console.warn("sendProUserAlert:", e.message);
+    return false;
+  }
+}
+
+module.exports = {
+  startTelegramBot,
+  sendGradeAlert,
+  sendTelegramText,
+  sendWalletThreatAlert,
+  sendProUserAlert
+};
 

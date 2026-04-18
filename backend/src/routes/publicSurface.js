@@ -255,4 +255,31 @@ router.get("/wallet-labels", async (req, res) => {
   }
 });
 
+/** GET /api/v1/public/smart-wallets-leaderboard — global ranked wallets (Supabase) */
+router.get("/smart-wallets-leaderboard", async (_req, res) => {
+  const supabase = safeSupabase();
+  if (!supabase) {
+    return res.json({ ok: true, rows: [], meta: { source: "unconfigured" } });
+  }
+  try {
+    const { data, error } = await supabase
+      .from("smart_wallets")
+      .select("wallet_address, win_rate, pnl_30d, avg_position_size, recent_hits, last_seen")
+      .order("win_rate", { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    const rows = (data || []).map((w) => ({
+      wallet: w.wallet_address,
+      winRate: Number(w.win_rate || 0),
+      pnl30d: Number(w.pnl_30d || 0),
+      avgPositionSize: Number(w.avg_position_size || 0),
+      recentHits: Number(w.recent_hits || 0),
+      lastSeen: w.last_seen
+    }));
+    return res.json({ ok: true, rows, meta: { source: "supabase", count: rows.length } });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message, rows: [] });
+  }
+});
+
 module.exports = router;

@@ -1,6 +1,11 @@
 const { getSupabase } = require("../lib/supabase");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+
+function looksLikeUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
 
 function hasProAccess(row) {
   if (!row || row.plan === "free") return false;
@@ -41,6 +46,14 @@ async function findSubscriptionByStripeSubscriptionId(stripeSubscriptionId) {
     .maybeSingle();
   if (error) throw error;
   return data || null;
+}
+
+async function doesUserExist(userId) {
+  if (!looksLikeUuid(userId) || String(userId) === ZERO_UUID) return false;
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("users").select("id").eq("id", userId).maybeSingle();
+  if (error) throw error;
+  return Boolean(data?.id);
 }
 
 /** For JWT middleware + /user/status */
@@ -120,6 +133,13 @@ async function applyCheckoutSessionCompleted(session) {
   const userId = session.metadata?.userId;
   const plan = session.metadata?.plan;
   if (!userId || !plan) return;
+  if (!(await doesUserExist(userId))) {
+    console.warn("checkout.session.completed skipped: user not found", {
+      userId,
+      sessionId: session?.id || null
+    });
+    return;
+  }
 
   const customerId = session.customer ? String(session.customer) : null;
 

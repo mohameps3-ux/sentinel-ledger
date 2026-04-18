@@ -1,20 +1,35 @@
 const express = require("express");
 const { getSupabase } = require("../lib/supabase");
-const { authMiddleware } = require("./auth");
+const { authMiddleware, requirePro } = require("./auth");
 
 const router = express.Router();
 
-router.post("/", authMiddleware, async (req, res) => {
+router.get("/", authMiddleware, async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("watchlists")
+      .select("token_address, note, priority, added_at")
+      .eq("user_id", req.user.userId)
+      .order("added_at", { ascending: false });
+    if (error) throw error;
+    return res.json({ ok: true, data: data || [] });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ ok: false, error: "watchlist_list_failed" });
+  }
+});
+
+function requireProForPriority(req, res, next) {
+  if (Number(req.body?.priority || 0) > 0) return requirePro(req, res, next);
+  return next();
+}
+
+router.post("/", authMiddleware, requireProForPriority, async (req, res) => {
   try {
     const { tokenAddress, note = null, priority = 0 } = req.body || {};
     if (!tokenAddress)
       return res.status(400).json({ ok: false, error: "tokenAddress_required" });
-    if (Number(priority || 0) > 0 && !req.user?.hasProAccess) {
-      return res.status(403).json({
-        ok: false,
-        error: "Upgrade to PRO to use priority alerts."
-      });
-    }
 
     const supabase = getSupabase();
     const { data, error } = await supabase
