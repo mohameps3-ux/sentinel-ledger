@@ -12,7 +12,7 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-[#0B0B0E]/90 backdrop-blur-md border-b border-white/[0.06]">
+    <nav className="fixed top-0 w-full z-50 bg-[#070709]/88 backdrop-blur-xl border-b border-white/[0.07] shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
         <Link href="/" className="flex items-center gap-2 shrink-0 group">
           <span className="h-9 w-9 rounded-lg bg-emerald-500/15 border border-emerald-500/35 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.25)] group-hover:shadow-[0_0_28px_rgba(16,185,129,0.45)] transition-shadow">
@@ -55,6 +55,15 @@ export function Navbar() {
           <Link href="/pricing" className="text-sm text-purple-300 hover:text-purple-200">
             Pricing
           </Link>
+          <Link href="/compare" className="text-sm text-gray-300 hover:text-white">
+            Compare
+          </Link>
+          <Link href="/watchlist" className="text-sm text-gray-300 hover:text-white">
+            Watchlist
+          </Link>
+          <Link href="/portfolio" className="text-sm text-gray-300 hover:text-white">
+            Portfolio
+          </Link>
           {!isHome && (
             <button
               type="button"
@@ -68,24 +77,33 @@ export function Navbar() {
         </div>
       </div>
       {menuOpen ? (
-        <div className="sm:hidden border-t border-white/[0.06] bg-[#0B0B0E]/98 backdrop-blur-md">
-          <div className="px-4 py-3 flex flex-col gap-3">
-            <Link href="/" onClick={() => setMenuOpen(false)} className="text-sm text-gray-200">
+        <div className="sm:hidden border-t border-white/[0.06] bg-[#070709]/95 backdrop-blur-xl rounded-b-2xl mx-1 shadow-lg">
+          <div className="px-4 py-4 flex flex-col gap-1">
+            <Link href="/" onClick={() => setMenuOpen(false)} className="text-sm text-gray-200 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
               Dashboard
             </Link>
-            <Link href="/results" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300">
+            <Link href="/results" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
               Results
             </Link>
-            <Link href="/scanner" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300">
+            <Link href="/scanner" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
               Scanner
             </Link>
-            <Link href="/smart-money" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300">
+            <Link href="/smart-money" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
               Smart Money
             </Link>
-            <Link href="/alerts" onClick={() => setMenuOpen(false)} className="text-sm text-cyan-300">
+            <Link href="/compare" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
+              Compare
+            </Link>
+            <Link href="/watchlist" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
+              Watchlist
+            </Link>
+            <Link href="/portfolio" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
+              Portfolio
+            </Link>
+            <Link href="/alerts" onClick={() => setMenuOpen(false)} className="text-sm text-cyan-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
               Alerts
             </Link>
-            <Link href="/pricing" onClick={() => setMenuOpen(false)} className="text-sm text-purple-300">
+            <Link href="/pricing" onClick={() => setMenuOpen(false)} className="text-sm text-purple-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
               Pricing
             </Link>
             {!isHome ? (

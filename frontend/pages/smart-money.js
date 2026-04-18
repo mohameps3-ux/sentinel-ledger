@@ -37,9 +37,9 @@ export default function SmartMoneyPage() {
         description="The most profitable Solana wallets ranked by win rate, 30d PnL, and entry speed."
       />
       <div className="sl-container py-10 space-y-6 pb-24">
-        <section className="glass-card sl-inset">
-          <p className="sl-label">Smart Money</p>
-          <h1 className="sl-h2 text-white mt-1">Top smart wallets</h1>
+        <section className="sl-home-hero sl-inset sm:p-7 ring-1 ring-white/[0.06]">
+          <p className="sl-label text-emerald-400/90">Smart Money</p>
+          <h1 className="sl-h1 text-white mt-2 tracking-tight">Top smart wallets</h1>
           <p className="sl-body sl-muted mt-2">
             Live leaderboard from Supabase (<span className="font-mono text-gray-400">{meta.source || "—"}</span>
             {meta.count != null ? ` · ${meta.count} wallets` : ""}). Labels use your{" "}

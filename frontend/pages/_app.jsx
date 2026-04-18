@@ -36,7 +36,7 @@ export default function App({ Component, pageProps }) {
     <>
       <Head>
         {/* viewport: see pages/_document.js (single tag, avoids duplicates) */}
-        <meta name="theme-color" content="#0B0B0E" />
+        <meta name="theme-color" content="#070709" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="manifest" href="/manifest.json" />
@@ -48,7 +48,7 @@ export default function App({ Component, pageProps }) {
         <WalletModalProvider>
           <QueryClientProvider client={queryClient}>
             <div
-              className={`${inter.className} min-h-screen bg-[#0B0B0E] text-white antialiased`}
+              className={`${inter.className} min-h-screen bg-[#070709] text-white antialiased selection:bg-emerald-500/25 selection:text-emerald-100`}
               translate="no"
             >
               <Navbar />
@@ -57,24 +57,70 @@ export default function App({ Component, pageProps }) {
                   <Component {...pageProps} />
                 </AppErrorBoundary>
               </main>
-              <footer className="border-t border-[#2a2f36] mt-16 safe-bottom-pad">
-                <div className="sl-container sl-container-wide py-10 flex flex-wrap items-center justify-between gap-4 sl-body text-gray-500">
-                  <span>Sentinel Ledger</span>
-                  <div className="flex items-center gap-4">
-                    <Link href="/results" className="hover:text-gray-300 transition">Results</Link>
-                    <Link href="/terms" className="hover:text-gray-300 transition">Terms</Link>
-                    <Link href="/privacy" className="hover:text-gray-300 transition">Privacy</Link>
-                    <Link href="/legal" className="hover:text-gray-300 transition">Legal Notice</Link>
-                    <Link href="/contact" className="hover:text-gray-300 transition">Contact</Link>
-                    <Link href="/compare" className="hover:text-gray-300 transition">Compare</Link>
-                    <Link href="/smart-money" className="hover:text-gray-300 transition">Smart Money</Link>
-                    <Link href="/watchlist" className="hover:text-gray-300 transition">Watchlist</Link>
-                    <Link href="/portfolio" className="hover:text-gray-300 transition">Portfolio</Link>
-                    <Link href="/alerts" className="hover:text-gray-300 transition">Alerts</Link>
-                    <Link href="/pricing" className="hover:text-gray-300 transition">Pricing</Link>
-                    <Link href="/ops" className="hover:text-gray-300 transition">Ops</Link>
-                    <a href="https://x.com" target="_blank" rel="noreferrer" className="hover:text-gray-300 transition">Twitter</a>
-                    <a href="https://github.com/mohameps3-ux/sentinel-ledger" target="_blank" rel="noreferrer" className="hover:text-gray-300 transition">GitHub</a>
+              <footer className="border-t border-white/[0.06] bg-[#050508]/80 backdrop-blur-sm mt-16 safe-bottom-pad">
+                <div className="sl-container sl-container-wide py-10 sl-body text-gray-500">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 mb-6">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-300 tracking-tight">Sentinel Ledger</p>
+                      <p className="text-xs text-gray-600 mt-1 max-w-xs">Solana intel · Not financial advice.</p>
+                    </div>
+                    <div className="sl-footer-grid text-sm">
+                      <Link href="/results" className="hover:text-gray-300 transition py-1">
+                        Results
+                      </Link>
+                      <Link href="/scanner" className="hover:text-gray-300 transition py-1">
+                        Scanner
+                      </Link>
+                      <Link href="/smart-money" className="hover:text-gray-300 transition py-1">
+                        Smart Money
+                      </Link>
+                      <Link href="/compare" className="hover:text-gray-300 transition py-1">
+                        Compare
+                      </Link>
+                      <Link href="/watchlist" className="hover:text-gray-300 transition py-1">
+                        Watchlist
+                      </Link>
+                      <Link href="/portfolio" className="hover:text-gray-300 transition py-1">
+                        Portfolio
+                      </Link>
+                      <Link href="/alerts" className="hover:text-gray-300 transition py-1">
+                        Alerts
+                      </Link>
+                      <Link href="/pricing" className="hover:text-gray-300 transition py-1">
+                        Pricing
+                      </Link>
+                      <Link href="/ops" className="hover:text-gray-300 transition py-1">
+                        Ops
+                      </Link>
+                      <Link href="/terms" className="hover:text-gray-300 transition py-1">
+                        Terms
+                      </Link>
+                      <Link href="/privacy" className="hover:text-gray-300 transition py-1">
+                        Privacy
+                      </Link>
+                      <Link href="/legal" className="hover:text-gray-300 transition py-1">
+                        Legal
+                      </Link>
+                      <Link href="/contact" className="hover:text-gray-300 transition py-1">
+                        Contact
+                      </Link>
+                      <a
+                        href="https://x.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:text-gray-300 transition py-1"
+                      >
+                        Twitter
+                      </a>
+                      <a
+                        href="https://github.com/mohameps3-ux/sentinel-ledger"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:text-gray-300 transition py-1"
+                      >
+                        GitHub
+                      </a>
+                    </div>
                   </div>
                 </div>
                 <div className="border-t border-gray-800/80 py-6">

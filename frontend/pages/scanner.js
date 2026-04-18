@@ -26,8 +26,8 @@ export default function ScannerPage() {
         description="Analyze any Solana token: cluster heat, smart money flow, and entry signal."
       />
     <div className="sl-container py-10">
-      <section className="glass-card sl-inset max-w-3xl mx-auto">
-        <p className="sl-label">Scanner</p>
+      <section className="sl-scan-hero sl-inset max-w-3xl mx-auto sm:p-8">
+        <p className="sl-label text-violet-300/90">Scanner</p>
         <h1 className="sl-h2 text-white mt-1">One-click token scan</h1>
         <p className="sl-body sl-muted mt-2">
           Paste any Solana mint. Sentinel opens a full Decision Engine breakdown with score, red flags, and live flow.

@@ -521,78 +521,97 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       <div className="min-h-screen w-full max-w-[100vw] overflow-x-clip">
       <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full mx-4 sm:mx-auto">
         <section className="sl-section">
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-[0_0_24px_rgba(16,185,129,0.12)] hover:shadow-[0_0_32px_rgba(16,185,129,0.18)] transition-shadow">
-            <div className="inline-flex items-center gap-3">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400" />
-              </span>
-              <span className="text-xs sm:text-sm uppercase tracking-wide text-emerald-200 font-semibold">
-                🟢 LIVE SIGNALS DETECTED (24H): {liveSignalsDetected}
-              </span>
-            </div>
-            <div className="inline-flex flex-wrap items-center gap-2 text-[11px] text-gray-200">
-              <span>+3 signals in last 2 min</span>
-              <span className="text-gray-500">|</span>
-              <span>
-                ⏱ Next signal expected in ~{Math.max(5, Math.round(nextSignalEtaSec / 5) * 5)}s
-              </span>
-              <Link
-                href="/pricing"
-                className="ml-1 px-2 py-1 rounded-md border border-purple-500/40 bg-purple-500/15 text-purple-200 hover:bg-purple-500/25 hover:shadow-[0_0_12px_rgba(168,85,247,0.35)]"
-              >
-                🔒 Unlock PRO →
-              </Link>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] text-gray-300">Strategy Mode:</span>
-              {[
-                { id: "conservative", label: "Conservative" },
-                { id: "balanced", label: "Balanced" },
-                { id: "aggressive", label: "Aggressive" }
-              ].map((mode) => (
-                <button
-                  key={mode.id}
-                  type="button"
-                  onClick={() => setStrategyMode(mode.id)}
-                  className={`text-xs px-2.5 py-1.5 rounded-md border ${
-                    strategyMode === mode.id
-                      ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-100"
-                      : "border-white/15 bg-white/5 text-gray-300 hover:text-white"
-                  }`}
-                >
-                  {mode.label}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setSoundEnabled((v) => !v)}
-                className="text-xs px-3 py-1.5 rounded-lg border border-white/15 bg-white/5 text-gray-300 hover:text-white"
-              >
-                {soundEnabled ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Volume2 size={14} /> Sound on
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1">
-                    <VolumeX size={14} /> Sound off
-                  </span>
-                )}
-              </button>
+          <div className="sl-home-hero sl-inset sm:p-8 md:p-10">
+            <div className="sl-home-hero-inner">
+              <p className="sl-label text-emerald-400/90">Solana intelligence terminal</p>
+              <h1 className="sl-display mt-3 bg-gradient-to-br from-white via-gray-100 to-cyan-200/85 bg-clip-text text-transparent max-w-4xl">
+                Trade with the stack, not the noise
+              </h1>
+              <p className="sl-body text-gray-400 mt-5 max-w-2xl text-[15px] leading-relaxed">
+                Live smart-money feed, verified 24h outcomes, and deep token intel — one flow from scan to size.
+                Always your decision; we surface structure and risk.
+              </p>
             </div>
           </div>
         </section>
 
         <section className="sl-section">
-          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-sm">
-            <p className="text-cyan-200">
-              ⏳ Next signal expected in: ~{Math.max(1, Math.ceil(nextSignalEtaSec / 60))} min
-            </p>
-            <p className="text-gray-300 mt-1">🟢 Monitoring {monitoringWallets} wallets...</p>
-            <p className="text-gray-400 mt-1">📡 Scanning {clusterScanCount} clusters in real-time...</p>
-            {wsBump > 0 ? (
-              <p className="text-[11px] text-emerald-300/90 mt-2 font-mono">Live WS events: {wsBump}</p>
-            ) : null}
+          <div className="glass-card sl-inset border border-white/[0.08]">
+            <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6">
+              <div className="space-y-4 min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="relative flex h-3 w-3 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400" />
+                  </span>
+                  <span className="text-xs sm:text-sm uppercase tracking-wide text-emerald-200 font-semibold">
+                    Live signals (24h): {liveSignalsDetected}
+                  </span>
+                  <span className="text-[11px] text-gray-500 hidden sm:inline">·</span>
+                  <span className="text-[11px] text-gray-400">+3 in last 2 min</span>
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-2 text-[11px] text-gray-300">
+                  <span>
+                    Next pulse ~{Math.max(5, Math.round(nextSignalEtaSec / 5) * 5)}s / ~
+                    {Math.max(1, Math.ceil(nextSignalEtaSec / 60))} min
+                  </span>
+                  <span className="text-gray-600">|</span>
+                  <span>Monitoring {monitoringWallets} wallets</span>
+                  <span className="text-gray-600">|</span>
+                  <span>Clusters {clusterScanCount}</span>
+                  {wsBump > 0 ? (
+                    <>
+                      <span className="text-gray-600">|</span>
+                      <span className="text-emerald-300/90 font-mono">WS +{wsBump}</span>
+                    </>
+                  ) : null}
+                </div>
+                <Link
+                  href="/pricing"
+                  className="inline-flex w-fit text-[11px] px-3 py-1.5 rounded-lg border border-purple-500/40 bg-purple-500/10 text-purple-200 hover:bg-purple-500/20 transition"
+                >
+                  Unlock PRO →
+                </Link>
+              </div>
+              <div className="flex flex-col gap-3 shrink-0 xl:min-w-[280px]">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wide">Strategy mode</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: "conservative", label: "Conservative" },
+                    { id: "balanced", label: "Balanced" },
+                    { id: "aggressive", label: "Aggressive" }
+                  ].map((mode) => (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => setStrategyMode(mode.id)}
+                      className={`text-xs px-3 py-2 rounded-lg border ${
+                        strategyMode === mode.id
+                          ? "border-cyan-400/45 bg-cyan-500/15 text-cyan-100 shadow-[0_0_16px_rgba(6,182,212,0.15)]"
+                          : "border-white/12 bg-white/[0.04] text-gray-300 hover:text-white hover:border-white/20"
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSoundEnabled((v) => !v)}
+                  className="text-xs px-3 py-2 rounded-lg border border-white/12 bg-white/[0.04] text-gray-300 hover:text-white w-fit"
+                >
+                  {soundEnabled ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Volume2 size={14} /> Sound on
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-2">
+                      <VolumeX size={14} /> Sound off
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -802,9 +821,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         </section>
         )}
 
-        <section className="sl-section glass-card sl-inset">
+        <section className="sl-section sl-scan-hero sl-inset sm:p-6 md:p-8">
           <form onSubmit={handleSearch} className="space-y-4">
-            <p className="sl-label">Quick scan · token mint</p>
+            <p className="sl-label text-violet-300/90">Quick scan · token mint</p>
             <div className="relative flex flex-col sm:flex-row gap-3">
               <input
                 value={address}
