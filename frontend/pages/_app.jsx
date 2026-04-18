@@ -61,6 +61,7 @@ export default function App({ Component, pageProps }) {
                 <div className="sl-container sl-container-wide py-10 flex flex-wrap items-center justify-between gap-4 sl-body text-gray-500">
                   <span>Sentinel Ledger</span>
                   <div className="flex items-center gap-4">
+                    <Link href="/results" className="hover:text-gray-300 transition">Results</Link>
                     <Link href="/terms" className="hover:text-gray-300 transition">Terms</Link>
                     <Link href="/privacy" className="hover:text-gray-300 transition">Privacy</Link>
                     <Link href="/legal" className="hover:text-gray-300 transition">Legal Notice</Link>

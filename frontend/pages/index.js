@@ -22,6 +22,8 @@ import { getPublicApiUrl } from "../lib/publicRuntime";
 import { Ticker } from "../components/layout/Ticker";
 import { AnimatedNumber } from "../components/ui/AnimatedNumber";
 import { useLiveFeedSocket } from "../hooks/useLiveFeedSocket";
+import { PageHead } from "../components/seo/PageHead";
+import { WelcomeBanner } from "../components/public/WelcomeBanner";
 
 const FALLBACK_TRENDING = [
   {
@@ -225,6 +227,14 @@ function formatCountdown(sec) {
   return `${mm}:${String(ss).padStart(2, "0")}`;
 }
 
+function hoursAgoLabel(iso) {
+  if (!iso) return "";
+  const ms = Date.now() - new Date(iso).getTime();
+  const h = ms / 3600000;
+  if (h < 1) return `${Math.max(1, Math.round(ms / 60000))} min ago`;
+  return `${h.toFixed(1)} hours ago`;
+}
+
 function entryWindowFromCountdown(sec) {
   if (sec > 180) return { label: "OPEN", detail: `${formatCountdown(sec)} left`, tone: "text-emerald-300" };
   if (sec > 0) return { label: "CLOSING", detail: `${formatCountdown(sec)} left`, tone: "text-amber-300" };
@@ -303,7 +313,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const [visibleTrending, setVisibleTrending] = useState(
     Array.isArray(initialTrending) && initialTrending.length ? initialTrending : []
   );
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [feedMode, setFeedMode] = useState("live");
+  const [historyRows, setHistoryRows] = useState([]);
   const [nextSignalEtaSec, setNextSignalEtaSec] = useState(30);
   const [monitoringWallets, setMonitoringWallets] = useState(27);
   const [clusterScanCount, setClusterScanCount] = useState(11);
@@ -367,12 +378,10 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       const recents = JSON.parse(localStorage.getItem("sentinel-recents") || "[]");
       setRecentSearches(recents.slice(0, 5));
       setIsLoggedIn(Boolean(localStorage.getItem("token")));
-      setShowOnboarding(localStorage.getItem("sentinel-onboarding-seen-v1") !== "1");
     } catch (_) {
       setAlerts([]);
       setRecentSearches([]);
       setIsLoggedIn(false);
-      setShowOnboarding(false);
     }
   }, []);
   useEffect(() => {
@@ -450,6 +459,22 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     return () => clearTimeout(t);
   }, [signalCursor, soundEnabled]);
 
+  useEffect(() => {
+    if (feedMode !== "history") return;
+    let cancelled = false;
+    fetch(`${getPublicApiUrl()}/api/v1/public/signals-24h`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!cancelled) setHistoryRows(Array.isArray(j?.rows) ? j.rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setHistoryRows([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [feedMode]);
+
   const marketMood = useMemo(() => {
     if (!visibleTrending.length) return { label: "Loading", className: "text-gray-300" };
     const avg =
@@ -479,35 +504,14 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     setError("Paste a valid Solana mint (32–44 characters).");
   };
 
-  const dismissOnboarding = () => {
-    setShowOnboarding(false);
-    try {
-      localStorage.setItem("sentinel-onboarding-seen-v1", "1");
-    } catch (_) {}
-  };
-
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-clip">
-      {showOnboarding ? (
-        <div className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-xl rounded-2xl border border-white/15 bg-[#111317] p-6 sm:p-8 shadow-[0_0_35px_rgba(0,0,0,0.5)]">
-            <p className="sl-label mb-2">5-second onboarding</p>
-            <h2 className="text-2xl font-bold text-white">What to do in one glance</h2>
-            <ol className="mt-4 space-y-2 text-sm text-gray-300">
-              <li>1. <span className="text-white font-semibold">Live tension</span> — see activity before price runs.</li>
-              <li>2. <span className="text-white font-semibold">Sentinel Score</span> — one number, one decision.</li>
-              <li>3. <span className="text-white font-semibold">One-click</span> — Jupiter pre-filled when you move.</li>
-            </ol>
-            <button
-              type="button"
-              onClick={dismissOnboarding}
-              className="mt-6 btn-pro w-full inline-flex items-center justify-center"
-            >
-              Start Scanning
-            </button>
-          </div>
-        </div>
-      ) : null}
+    <>
+      <PageHead
+        title="Sentinel Ledger — Smart Money Tracker for Solana in Real Time"
+        description="Track the highest win-rate wallets on Solana. Interpreted signals, not raw noise. Free to start."
+      />
+      <WelcomeBanner />
+      <div className="min-h-screen w-full max-w-[100vw] overflow-x-clip">
       <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full mx-4 sm:mx-auto">
         <section className="sl-section">
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-[0_0_24px_rgba(16,185,129,0.12)] hover:shadow-[0_0_32px_rgba(16,185,129,0.18)] transition-shadow">
@@ -587,21 +591,100 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
 
         <Ticker />
 
-        <section translate="no" className="sl-section">
-          <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
-            <div>
-              <p className="sl-label inline-flex items-center gap-2">
-                <Sparkles size={14} className="text-emerald-400" />
-                Decision Feed
-              </p>
-              <h1 className="sl-h2 text-white mt-1">Live Smart Money Feed</h1>
-            </div>
-            <span className="text-[11px] text-gray-500 inline-flex items-center gap-1">
-              <Info size={12} />
-              Sentinel Score · mock + WS-ready
-            </span>
+        <section className="sl-section">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Feed mode">
+            <span className="text-[11px] text-gray-500 uppercase tracking-wide">Feed</span>
+            <button
+              type="button"
+              onClick={() => setFeedMode("live")}
+              className={`text-xs px-3 py-1.5 rounded-lg border font-semibold ${
+                feedMode === "live"
+                  ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
+                  : "border-white/10 bg-white/[0.03] text-gray-400"
+              }`}
+              aria-pressed={feedMode === "live"}
+            >
+              LIVE
+            </button>
+            <button
+              type="button"
+              onClick={() => setFeedMode("history")}
+              className={`text-xs px-3 py-1.5 rounded-lg border font-semibold ${
+                feedMode === "history"
+                  ? "border-cyan-500/50 bg-cyan-500/15 text-cyan-200"
+                  : "border-white/10 bg-white/[0.03] text-gray-400"
+              }`}
+              aria-pressed={feedMode === "history"}
+            >
+              24H HISTORY
+            </button>
           </div>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        </section>
+
+        {feedMode === "history" ? (
+          <section translate="no" className="sl-section">
+            <h2 className="sl-h2 text-white mb-2">24h verified outcomes</h2>
+            <p className="text-xs text-gray-500 mb-4">On-chain linked signals from the last 24 hours.</p>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {historyRows.length === 0 ? (
+                <p className="text-sm text-gray-500 col-span-full">
+                  No rows in the last 24h. Add signals and prices in Supabase, or switch to LIVE.
+                </p>
+              ) : (
+                historyRows.map((r) => (
+                  <div
+                    key={r.id}
+                    className={`rounded-xl border p-4 space-y-2 font-mono text-sm ${
+                      r.status === "WIN"
+                        ? "bg-emerald-500/[0.06] border-emerald-500/25"
+                        : r.status === "LOSS"
+                          ? "bg-red-500/[0.06] border-red-500/25"
+                          : "bg-white/[0.02] border-white/10"
+                    }`}
+                  >
+                    <div className="flex justify-between gap-2">
+                      <span className="text-gray-200">{r.token?.slice(0, 8)}…</span>
+                      <span
+                        className={
+                          r.status === "WIN"
+                            ? "text-emerald-300"
+                            : r.status === "LOSS"
+                              ? "text-red-300"
+                              : "text-gray-400"
+                        }
+                      >
+                        {r.status}
+                      </span>
+                    </div>
+                    <p className="text-emerald-200">
+                      {r.resultPct != null && !Number.isNaN(Number(r.resultPct))
+                        ? `${Number(r.resultPct) >= 0 ? "+" : ""}${Number(r.resultPct).toFixed(1)}% (1h est.)`
+                        : "PENDING"}
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      Signal {hoursAgoLabel(r.signalAt)} — result verified on-chain
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        ) : (
+          <section translate="no" className="sl-section">
+            <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+              <div>
+                <p className="sl-label inline-flex items-center gap-2">
+                  <Sparkles size={14} className="text-emerald-400" />
+                  Decision Feed
+                </p>
+                <h1 className="sl-h2 text-white mt-1">Live Smart Money Feed</h1>
+              </div>
+              <span className="text-[11px] text-gray-500 inline-flex items-center gap-1">
+                <Info size={12} />
+                Sentinel Score · mock + WS-ready
+              </span>
+            </div>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {interpretedSignals.map((sig, idx) => {
               const sec = entryCountdownByMint[sig.mint] || 0;
               const win = entryWindowFromCountdown(sec);
@@ -710,6 +793,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             })}
           </div>
         </section>
+        )}
 
         <section className="sl-section glass-card sl-inset">
           <form onSubmit={handleSearch} className="space-y-4">
@@ -1197,6 +1281,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           )}
         </section>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { ProButton } from "../components/ui/ProButton";
+import { PageHead } from "../components/seo/PageHead";
 
 export default function ScannerPage() {
   const [address, setAddress] = useState("");
@@ -19,6 +20,11 @@ export default function ScannerPage() {
   };
 
   return (
+    <>
+      <PageHead
+        title="Solana Token Scanner — Sentinel Ledger"
+        description="Analyze any Solana token: cluster heat, smart money flow, and entry signal."
+      />
     <div className="sl-container py-10">
       <section className="glass-card sl-inset max-w-3xl mx-auto">
         <p className="sl-label">Scanner</p>
@@ -48,5 +54,6 @@ export default function ScannerPage() {
         </form>
       </section>
     </div>
+    </>
   );
 }

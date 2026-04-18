@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useClientAuthToken } from "../hooks/useClientAuthToken";
 import { FinancialDisclaimer } from "../components/layout/FinancialDisclaimer";
+import { PageHead } from "../components/seo/PageHead";
 
 const PLANS = [
   {
@@ -121,6 +122,11 @@ export default function PricingPage() {
   };
 
   return (
+    <>
+      <PageHead
+        title="PRO from $9.99 — Sentinel Ledger"
+        description="Signals before the crowd, Telegram alerts, deeper signal context. Cancel anytime."
+      />
     <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full">
       <section className="glass-card sl-inset">
         <p className="sl-label mb-2">Subscriptions</p>
@@ -198,5 +204,6 @@ export default function PricingPage() {
         <FinancialDisclaimer />
       </section>
     </div>
+    </>
   );
 }

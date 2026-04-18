@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
 import { formatUsdWhole } from "../lib/formatStable";
+import { PageHead } from "../components/seo/PageHead";
 
 function walletDecision(score) {
   if (score >= 88) return { label: "FOLLOW", tone: "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" };
@@ -26,6 +27,11 @@ export default function SmartMoneyPage() {
   }, []);
 
   return (
+    <>
+      <PageHead
+        title="Smart Money Wallets — Sentinel Ledger"
+        description="The most profitable Solana wallets ranked by win rate, 30d PnL, and entry speed."
+      />
     <div className="sl-container py-10 space-y-6">
       <section className="glass-card sl-inset">
         <p className="sl-label">Smart Money</p>
@@ -74,5 +80,6 @@ export default function SmartMoneyPage() {
         </table>
       </section>
     </div>
+    </>
   );
 }

@@ -40,6 +40,9 @@ export function Navbar() {
           <Link href="/" className="text-sm text-gray-200 hover:text-white">
             Dashboard
           </Link>
+          <Link href="/results" className="text-sm text-gray-300 hover:text-white">
+            Results
+          </Link>
           <Link href="/scanner" className="text-sm text-gray-300 hover:text-white">
             Scanner
           </Link>
@@ -69,6 +72,9 @@ export function Navbar() {
           <div className="px-4 py-3 flex flex-col gap-3">
             <Link href="/" onClick={() => setMenuOpen(false)} className="text-sm text-gray-200">
               Dashboard
+            </Link>
+            <Link href="/results" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300">
+              Results
             </Link>
             <Link href="/scanner" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300">
               Scanner
