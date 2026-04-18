@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, ExternalLink, Bell, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatTime, formatUsdWhole } from "../../lib/formatStable";
 import { useMemo } from "react";
+import { useWalletLabels } from "../../hooks/useWalletLabels";
 
 const WHALE_USD_MIN = 5000;
 
@@ -19,6 +20,16 @@ function isWhaleTx(tx, tokenPriceUsd) {
 }
 
 export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
+  const flowWalletAddrs = useMemo(() => {
+    const s = new Set();
+    transactions.forEach((tx) => {
+      const w = tx.wallet || tx.trader || tx.from;
+      if (w && typeof w === "string" && w.length >= 32 && w.length <= 44) s.add(w);
+    });
+    return Array.from(s);
+  }, [transactions]);
+  const { labelFor, titleFor } = useWalletLabels(flowWalletAddrs);
+
   const { txPerMinute, whaleCount } = useMemo(() => {
     const now = Date.now();
     return {
@@ -68,6 +79,11 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
         )}
         {transactions.map((tx, idx) => {
           const whale = isWhaleTx(tx, tokenPriceUsd);
+          const wAddr = tx.wallet || tx.trader || tx.from;
+          const walletLine =
+            wAddr && wAddr.length >= 32 && wAddr.length <= 44 ? labelFor(wAddr) : shortWallet(wAddr);
+          const walletTitle =
+            wAddr && wAddr.length >= 32 && wAddr.length <= 44 ? titleFor(wAddr) : wAddr || "";
           return (
             <div
               key={tx.signature || `${tx.wallet}-${tx.timestamp}-${idx}`}
@@ -105,7 +121,9 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
                     <span className="text-[9px] font-bold uppercase tracking-wide text-cyan-200/90">🔬 Simulated</span>
                   ) : null}
                 </div>
-                <span className="mono text-gray-300 self-center">{shortWallet(tx.wallet || tx.trader || tx.from)}</span>
+                <span className="mono text-gray-300 self-center truncate min-w-0" title={walletTitle}>
+                  {walletLine}
+                </span>
                 <span className="text-right mono self-center">{Number(tx.amount || 0).toFixed(2)}</span>
                 <span className="text-gray-500 text-xs text-right self-center">{formatTime(tx.timestamp)}</span>
                 <a
@@ -142,7 +160,9 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
                   </div>
                   <span className="text-[11px] text-gray-500">{formatTime(tx.timestamp)}</span>
                 </div>
-                <div className="text-xs mono text-gray-300">{shortWallet(tx.wallet || tx.trader || tx.from)}</div>
+                <div className="text-xs mono text-gray-300 truncate" title={walletTitle}>
+                  {walletLine}
+                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm mono">{Number(tx.amount || 0).toFixed(2)} tokens</span>
                   <a

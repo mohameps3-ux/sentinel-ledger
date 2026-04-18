@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { useSmartMoney } from "../../hooks/useSmartMoney";
 import { useClientAuthToken } from "../../hooks/useClientAuthToken";
+import { useWalletLabels } from "../../hooks/useWalletLabels";
 import { Activity, Copy, Radio, Shield, Trophy, Wallet, Zap } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatDateTime, formatUsdAmount } from "../../lib/formatStable";
@@ -19,6 +21,8 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
   const token = useClientAuthToken();
   const { data: payload, isLoading, error } = useSmartMoney(tokenAddress, token);
   const wallets = payload?.data || [];
+  const walletAddresses = useMemo(() => wallets.map((w) => w.wallet).filter(Boolean), [wallets]);
+  const { labelFor, titleFor } = useWalletLabels(walletAddresses);
   const meta = payload?.meta || {};
   const isOnChain = meta.source === "on_chain";
   const hasBirdeye = meta.pnlProvider === "birdeye";
@@ -122,9 +126,10 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <div className="font-mono text-sm text-gray-100 font-medium" title={wallet.wallet}>
-                    {compactWallet(wallet.wallet)}
+                  <div className="text-sm text-gray-100 font-medium truncate" title={titleFor(wallet.wallet)}>
+                    {labelFor(wallet.wallet)}
                   </div>
+                  <div className="font-mono text-[11px] text-gray-500 mt-0.5">{compactWallet(wallet.wallet)}</div>
                   <div className="text-[12px] text-gray-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="inline-flex items-center gap-1">
                       <Activity size={12} />

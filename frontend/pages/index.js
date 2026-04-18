@@ -24,6 +24,7 @@ import { AnimatedNumber } from "../components/ui/AnimatedNumber";
 import { useLiveFeedSocket } from "../hooks/useLiveFeedSocket";
 import { PageHead } from "../components/seo/PageHead";
 import { WelcomeBanner } from "../components/public/WelcomeBanner";
+import { useWalletLabels } from "../hooks/useWalletLabels";
 
 const FALLBACK_TRENDING = [
   {
@@ -95,6 +96,7 @@ const FALLBACK_TRENDING = [
 const TOP_SMART_WALLETS = [
   {
     wallet: "9xAb...L3kP",
+    address: "7YqvBxbp5XJvYzX1Q2f7pN8mQ3uQmY9mQb8Qxqj2mT8x",
     winRate: 91.4,
     earlyEntry: 88,
     cluster: 84,
@@ -105,6 +107,7 @@ const TOP_SMART_WALLETS = [
   },
   {
     wallet: "5KmQ...T8uD",
+    address: "4g3b6PqvT2n8mM9mQx2sJ1pK8pQ9xY7uV2cR5bN1mX3q",
     winRate: 87.2,
     earlyEntry: 81,
     cluster: 79,
@@ -115,6 +118,7 @@ const TOP_SMART_WALLETS = [
   },
   {
     wallet: "Dx2n...Qz7M",
+    address: "9mQx2sJ1pK8pQ9xY7uV2cR5bN1mX3q4g3b6PqvT2n8m",
     winRate: 85.8,
     earlyEntry: 78,
     cluster: 82,
@@ -125,6 +129,7 @@ const TOP_SMART_WALLETS = [
   },
   {
     wallet: "A7rP...mV4x",
+    address: "5tK9pQxY7uV2cR5bN1mX3q4g3b6PqvT2n8mM9mQx2sJ",
     winRate: 83.6,
     earlyEntry: 76,
     cluster: 73,
@@ -348,6 +353,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       }))
       .sort((a, b) => b.smartScore - a.smartScore);
   }, []);
+  const topWalletLabelAddrs = useMemo(() => rankedWallets.map((w) => w.address).filter(Boolean), [rankedWallets]);
+  const { labelFor: topWalletLabel, titleFor: topWalletTitle } = useWalletLabels(topWalletLabelAddrs);
   const interpretedSignals = useMemo(() => {
     return (visibleTrending.length ? visibleTrending : FALLBACK_TRENDING).slice(0, 6).map((token, idx) => {
       const signalStrength = computeSignalStrength(token);
@@ -896,13 +903,15 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                 </thead>
                 <tbody>
                   {rankedWallets.map((wallet, wIdx) => (
-                    <tr key={wallet.wallet} className="border-b border-white/5 group">
+                    <tr key={wallet.address || wallet.wallet} className="border-b border-white/5 group">
                       <td className="py-3 pr-3">
                         <div className="relative inline-flex items-center gap-2">
                           <span className="text-lg" title="Wallet tier">
                             {wIdx % 2 === 0 ? "🐳" : "🧠"}
                           </span>
-                          <span className="mono text-gray-100">{wallet.wallet}</span>
+                          <span className="text-gray-100 font-medium" title={wallet.address ? topWalletTitle(wallet.address) : wallet.tooltip}>
+                            {wallet.address ? topWalletLabel(wallet.address) : wallet.wallet}
+                          </span>
                           <span className="hidden group-hover:block absolute top-full left-0 mt-1 z-20 text-xs bg-[#0f1318] border border-purple-500/30 rounded px-2 py-1 text-gray-200 whitespace-nowrap">
                             {wallet.tooltip}
                           </span>
@@ -934,11 +943,13 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:hidden">
               {rankedWallets.map((wallet, wIdx) => (
-                <div key={wallet.wallet} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-2">
+                <div key={wallet.address || wallet.wallet} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="mono text-gray-100 inline-flex items-center gap-2">
+                    <p className="text-gray-100 inline-flex items-center gap-2 flex-wrap">
                       <span>{wIdx % 2 === 0 ? "🐳" : "🧠"}</span>
-                      {wallet.wallet}
+                      <span title={wallet.address ? topWalletTitle(wallet.address) : wallet.tooltip}>
+                        {wallet.address ? topWalletLabel(wallet.address) : wallet.wallet}
+                      </span>
                     </p>
                     <span className="text-emerald-300 text-xs">+${formatUsdWhole(wallet.pnl30d)}</span>
                   </div>

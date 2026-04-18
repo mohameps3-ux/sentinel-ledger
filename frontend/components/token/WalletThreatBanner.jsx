@@ -1,4 +1,6 @@
+import { useMemo } from "react";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
+import { useWalletLabels } from "../../hooks/useWalletLabels";
 
 function shortAddr(a) {
   if (!a || a.length < 12) return a || "";
@@ -6,6 +8,15 @@ function shortAddr(a) {
 }
 
 export function WalletThreatBanner({ walletIntel }) {
+  const threatAddrs = useMemo(
+    () =>
+      (walletIntel?.signals || [])
+        .map((s) => s.wallet)
+        .filter((w) => w && typeof w === "string" && w.length >= 32 && w.length <= 44),
+    [walletIntel]
+  );
+  const { labelFor, titleFor } = useWalletLabels(threatAddrs);
+
   if (!walletIntel || walletIntel.level === "none") return null;
 
   const border =
@@ -36,7 +47,12 @@ export function WalletThreatBanner({ walletIntel }) {
             <ul className="text-xs text-gray-500 space-y-1.5 list-none">
               {walletIntel.signals.slice(0, 6).map((s, i) => (
                 <li key={`${s.type}-${s.wallet}-${i}`} className="flex flex-wrap gap-x-2 gap-y-0.5">
-                  <span className="font-mono text-gray-300">{shortAddr(s.wallet)}</span>
+                  <span
+                    className="font-mono text-gray-300"
+                    title={s.wallet && s.wallet.length >= 32 ? titleFor(s.wallet) : s.wallet}
+                  >
+                    {s.wallet && s.wallet.length >= 32 ? labelFor(s.wallet) : shortAddr(s.wallet)}
+                  </span>
                   <span className="text-gray-600">·</span>
                   <span>{s.detail}</span>
                 </li>
