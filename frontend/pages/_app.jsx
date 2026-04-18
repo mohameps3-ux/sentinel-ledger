@@ -36,7 +36,7 @@ export default function App({ Component, pageProps }) {
     <>
       <Head>
         {/* viewport: see pages/_document.js (single tag, avoids duplicates) */}
-        <meta name="theme-color" content="#0B0E11" />
+        <meta name="theme-color" content="#0B0B0E" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="manifest" href="/manifest.json" />
@@ -48,7 +48,7 @@ export default function App({ Component, pageProps }) {
         <WalletModalProvider>
           <QueryClientProvider client={queryClient}>
             <div
-              className={`${inter.className} min-h-screen bg-[#0B0E11] text-white antialiased`}
+              className={`${inter.className} min-h-screen bg-[#0B0B0E] text-white antialiased`}
               translate="no"
             >
               <Navbar />

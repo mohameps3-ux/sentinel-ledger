@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { SearchBar } from "./SearchBar";
 import { HealthBar } from "./HealthBar";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Shield } from "lucide-react";
 
 export function Navbar() {
   const router = useRouter();
@@ -12,13 +12,15 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-[#0B0E11]/80 backdrop-blur-md border-b border-gray-800">
+    <nav className="fixed top-0 w-full z-50 bg-[#0B0B0E]/90 backdrop-blur-md border-b border-white/[0.06]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
-        <Link
-          href="/"
-          className="text-xl font-black gradient-text whitespace-nowrap bg-gradient-to-r from-purple-500 to-blue-400 bg-clip-text text-transparent"
-        >
-          SENTINEL LEDGER
+        <Link href="/" className="flex items-center gap-2 shrink-0 group">
+          <span className="h-9 w-9 rounded-lg bg-emerald-500/15 border border-emerald-500/35 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.25)] group-hover:shadow-[0_0_28px_rgba(16,185,129,0.45)] transition-shadow">
+            <Shield className="text-emerald-400" size={20} aria-hidden />
+          </span>
+          <span className="text-lg sm:text-xl font-black tracking-tight bg-gradient-to-r from-emerald-300 via-white to-cyan-300 bg-clip-text text-transparent">
+            SENTINEL LEDGER
+          </span>
         </Link>
 
         <div className="sm:hidden ml-auto flex items-center gap-2">
@@ -63,7 +65,7 @@ export function Navbar() {
         </div>
       </div>
       {menuOpen ? (
-        <div className="sm:hidden border-t border-gray-800/80 bg-[#0B0E11]/95 backdrop-blur-md">
+        <div className="sm:hidden border-t border-white/[0.06] bg-[#0B0B0E]/98 backdrop-blur-md">
           <div className="px-4 py-3 flex flex-col gap-3">
             <Link href="/" onClick={() => setMenuOpen(false)} className="text-sm text-gray-200">
               Dashboard
