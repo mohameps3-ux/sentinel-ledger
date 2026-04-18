@@ -1,4 +1,5 @@
 import { useSmartMoney } from "../../hooks/useSmartMoney";
+import { useClientAuthToken } from "../../hooks/useClientAuthToken";
 import { Activity, Copy, Radio, Shield, Trophy, Wallet, Zap } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatDateTime, formatUsdAmount } from "../../lib/formatStable";
@@ -15,7 +16,8 @@ function tierBadgeClass(tier) {
 }
 
 export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
-  const { data: payload, isLoading, error } = useSmartMoney(tokenAddress);
+  const token = useClientAuthToken();
+  const { data: payload, isLoading, error } = useSmartMoney(tokenAddress, token);
   const wallets = payload?.data || [];
   const meta = payload?.meta || {};
   const isOnChain = meta.source === "on_chain";
@@ -24,6 +26,13 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
 
   if (!tokenAddress) {
     return <div className="text-gray-500 text-sm text-center py-6">Token address missing</div>;
+  }
+  if (!token) {
+    return (
+      <div className="text-gray-400 text-sm text-center py-6 border border-dashed border-gray-700 rounded-xl">
+        Connect wallet and sign in to view PRO smart wallets.
+      </div>
+    );
   }
 
   if (isLoading) {
@@ -36,7 +45,7 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
   }
 
   if (error) {
-    return <div className="text-red-400 text-sm text-center py-6">Failed to load smart money data</div>;
+    return <div className="text-red-400 text-sm text-center py-6">{error.message || "Failed to load smart money data"}</div>;
   }
 
   if (!wallets.length) {

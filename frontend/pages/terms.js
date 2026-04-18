@@ -48,6 +48,15 @@ export default function TermsPage() {
           acceptance of updated terms.
         </p>
       </section>
+
+      <section className="space-y-2">
+        <h2 className="text-xl font-semibold">Refunds</h2>
+        <p className="text-gray-300">
+          For subscription or one-time purchases processed through Stripe, you may request a full refund within 24
+          hours of purchase. After 24 hours, refunds are not guaranteed. Contact support for exceptional cases. Nothing
+          in this section limits your statutory consumer rights where applicable.
+        </p>
+      </section>
     </div>
   );
 }

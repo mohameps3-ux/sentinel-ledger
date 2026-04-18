@@ -25,7 +25,7 @@ export function SearchBar() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search mint..."
+          placeholder="Paste Solana token address..."
           autoComplete="off"
           spellCheck={false}
           className="bg-transparent border-none outline-none w-full text-sm text-gray-100 placeholder:text-gray-500"

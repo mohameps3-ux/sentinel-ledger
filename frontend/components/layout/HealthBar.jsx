@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useUserStatus } from "../../hooks/useUserStatus";
 import { getPublicApiUrl } from "../../lib/publicRuntime";
@@ -16,6 +16,16 @@ export function HealthBar() {
   const { loading, plan, status, expiresAt, isLifetime, hasProAccess } = useUserStatus();
   const token = useClientAuthToken();
   const [portalLoading, setPortalLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const effectiveToken = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    return token || localStorage.getItem("token");
+  }, [token]);
 
   const label = useMemo(() => {
     if (loading) return null;
@@ -27,8 +37,8 @@ export function HealthBar() {
   }, [loading, hasProAccess, plan, status, isLifetime]);
 
   const openPortal = async () => {
-    if (!token) {
-      toast.error("Connect wallet first.");
+    if (!mounted || !effectiveToken) {
+      toast.error("Connect wallet and sign in first.");
       return;
     }
     try {
@@ -37,7 +47,7 @@ export function HealthBar() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${effectiveToken}`
         }
       });
       const json = await res.json();

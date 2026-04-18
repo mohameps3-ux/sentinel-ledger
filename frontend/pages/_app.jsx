@@ -10,6 +10,7 @@ import { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import { AppErrorBoundary } from "../components/layout/AppErrorBoundary";
 import { Navbar } from "../components/layout/Navbar";
+import { FinancialDisclaimer } from "../components/layout/FinancialDisclaimer";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
 import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
@@ -62,12 +63,21 @@ export default function App({ Component, pageProps }) {
                   <div className="flex items-center gap-4">
                     <Link href="/terms" className="hover:text-gray-300 transition">Terms</Link>
                     <Link href="/privacy" className="hover:text-gray-300 transition">Privacy</Link>
+                    <Link href="/legal" className="hover:text-gray-300 transition">Legal Notice</Link>
+                    <Link href="/contact" className="hover:text-gray-300 transition">Contact</Link>
                     <Link href="/compare" className="hover:text-gray-300 transition">Compare</Link>
+                    <Link href="/smart-money" className="hover:text-gray-300 transition">Smart Money</Link>
+                    <Link href="/watchlist" className="hover:text-gray-300 transition">Watchlist</Link>
+                    <Link href="/portfolio" className="hover:text-gray-300 transition">Portfolio</Link>
+                    <Link href="/alerts" className="hover:text-gray-300 transition">Alerts</Link>
                     <Link href="/pricing" className="hover:text-gray-300 transition">Pricing</Link>
                     <Link href="/ops" className="hover:text-gray-300 transition">Ops</Link>
                     <a href="https://x.com" target="_blank" rel="noreferrer" className="hover:text-gray-300 transition">Twitter</a>
                     <a href="https://github.com/mohameps3-ux/sentinel-ledger" target="_blank" rel="noreferrer" className="hover:text-gray-300 transition">GitHub</a>
                   </div>
+                </div>
+                <div className="border-t border-gray-800/80 py-6">
+                  <FinancialDisclaimer />
                 </div>
               </footer>
               <Toaster

@@ -11,8 +11,18 @@ export default function PrivacyPage() {
         <ul className="list-disc pl-5 text-gray-300 space-y-1">
           <li>Public wallet address for authentication and account linking.</li>
           <li>Optional Telegram identifiers (ID and username) if provided.</li>
+          <li>Email address if you provide it during checkout or account flows (processed by our payment provider).</li>
           <li>App usage data required for watchlists, notes, and alerts.</li>
         </ul>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-xl font-semibold">Payments (Stripe)</h2>
+        <p className="text-gray-300">
+          Payments are processed by Stripe. We do not store full card numbers on our servers. Stripe may process billing
+          details, tax location, and transaction records according to its own privacy policy. Enabling Stripe Tax is
+          configured in the Stripe Dashboard.
+        </p>
       </section>
 
       <section className="space-y-2">

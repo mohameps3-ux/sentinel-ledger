@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useTokenData } from "../../hooks/useTokenData";
+import { useProStatus } from "../../hooks/useProStatus";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { HeroSection } from "../../components/token/HeroSection";
 import { DecisionPanel } from "../../components/token/DecisionPanel";
@@ -20,6 +22,7 @@ import { WalletThreatBanner } from "../../components/token/WalletThreatBanner";
 import { BarChart3, CandlestickChart, Radar, ShieldAlert, Users, Activity } from "lucide-react";
 import { formatUsdWhole } from "../../lib/formatStable";
 import { Ticker } from "../../components/layout/Ticker";
+import { FinancialDisclaimer } from "../../components/layout/FinancialDisclaimer";
 
 /** SSR this route so `router.query` matches the URL (avoids static shell + wrong “no data” / hydration issues). */
 export async function getServerSideProps() {
@@ -37,6 +40,7 @@ export default function TokenPage() {
   const router = useRouter();
   const address = normalizeAddress(router.query);
   const query = useTokenData(address);
+  const proStatus = useProStatus();
   const { transactions, isConnected, connectionState } = useWebSocket(address || undefined);
   const [hasToken, setHasToken] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -140,6 +144,8 @@ export default function TokenPage() {
   const { market, analysis, private: privateData } = token;
   const isWatchlisted = privateData?.isWatchlist || false;
   const note = privateData?.notes || "";
+  const hasProAccess = proStatus.data?.data?.hasProAccess === true;
+  const proStatusReady = !hasToken || proStatus.isSuccess || proStatus.isError;
   const statusTone =
     connectionState === "connected"
       ? "bg-emerald-400"
@@ -180,6 +186,34 @@ export default function TokenPage() {
             {soundEnabled ? "🔊 Sound On" : "🔈 Sound Off"}
           </button>
           <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
+          {proStatusReady && (
+            <>
+              {hasToken && hasProAccess ? (
+                <Link
+                  href="/alerts"
+                  className="px-2.5 py-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-xs text-cyan-200 hover:bg-cyan-500/20 transition"
+                >
+                  Telegram alerts
+                </Link>
+              ) : null}
+              {hasToken && !hasProAccess ? (
+                <Link
+                  href="/pricing"
+                  className="px-2.5 py-1.5 rounded-lg border border-white/15 bg-white/5 text-xs text-gray-200 hover:bg-white/10 transition"
+                >
+                  PRO · alerts
+                </Link>
+              ) : null}
+              {!hasToken ? (
+                <Link
+                  href="/pricing"
+                  className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs text-gray-400 hover:text-gray-200 hover:bg-white/10 transition"
+                >
+                  PRO alerts
+                </Link>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
 
@@ -250,6 +284,10 @@ export default function TokenPage() {
       <ActionBar tokenAddress={address} symbol={market.symbol} />
 
       {hasToken && <NotesPanel tokenAddress={address} initialNote={note} />}
+
+      <div className="pt-4 pb-8 border-t border-gray-800/60 mt-8">
+        <FinancialDisclaimer />
+      </div>
 
       <div className="fixed safe-bottom-offset left-1/2 -translate-x-1/2 z-40 xl:hidden">
         <div className="glass-card px-2 py-1 flex items-center gap-1">
