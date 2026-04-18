@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useClientAuthToken } from "../hooks/useClientAuthToken";
 import { formatUsdWhole } from "../lib/formatStable";
+import { PageHead } from "../components/seo/PageHead";
 
 const MOCK_POSITIONS = [
   { symbol: "WIF", sizeUsd: 1320, pnl: 11.2, score: 90 },
@@ -13,6 +14,11 @@ export default function PortfolioPage() {
 
   if (!token) {
     return (
+      <>
+        <PageHead
+          title="Portfolio — Sentinel Ledger"
+          description="Track your Solana positions and edge once you connect a wallet session."
+        />
       <div className="sl-container py-10">
         <section className="glass-card sl-inset max-w-2xl mx-auto text-center">
           <p className="sl-label">Portfolio</p>
@@ -23,10 +29,16 @@ export default function PortfolioPage() {
           <Link href="/" className="btn-pro inline-flex mt-5 no-underline">Go to dashboard</Link>
         </section>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+      <PageHead
+        title="Portfolio — Sentinel Ledger"
+        description="Personal edge tracker for your Solana positions. Connect wallet to sync."
+      />
     <div className="sl-container py-10 space-y-6">
       <section className="glass-card sl-inset">
         <p className="sl-label">Portfolio</p>
@@ -49,5 +61,6 @@ export default function PortfolioPage() {
         ))}
       </section>
     </div>
+    </>
   );
 }

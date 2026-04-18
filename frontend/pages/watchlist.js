@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useClientAuthToken } from "../hooks/useClientAuthToken";
+import { PageHead } from "../components/seo/PageHead";
 
 function readLocalWatchlist() {
   try {
@@ -52,6 +53,11 @@ export default function WatchlistPage() {
   const list = useMemo(() => rows.slice(0, 80), [rows]);
 
   return (
+    <>
+      <PageHead
+        title="Watchlist — Sentinel Ledger"
+        description="Tracked Solana tokens with notes. Syncs to your account when signed in."
+      />
     <div className="sl-container py-10 space-y-6">
       <section className="glass-card sl-inset">
         <p className="sl-label">Watchlist</p>
@@ -82,5 +88,6 @@ export default function WatchlistPage() {
         ) : null}
       </section>
     </div>
+    </>
   );
 }

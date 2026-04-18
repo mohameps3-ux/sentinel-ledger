@@ -23,6 +23,12 @@ import { BarChart3, CandlestickChart, Radar, ShieldAlert, Users, Activity } from
 import { formatUsdWhole } from "../../lib/formatStable";
 import { Ticker } from "../../components/layout/Ticker";
 import { FinancialDisclaimer } from "../../components/layout/FinancialDisclaimer";
+import { PageHead } from "../../components/seo/PageHead";
+
+function shortMint(addr) {
+  if (!addr || typeof addr !== "string" || addr.length < 12) return addr || "";
+  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
+}
 
 /** SSR this route so `router.query` matches the URL (avoids static shell + wrong “no data” / hydration issues). */
 export async function getServerSideProps() {
@@ -104,6 +110,11 @@ export default function TokenPage() {
 
   if (!address || address.length < 32) {
     return (
+      <>
+        <PageHead
+          title="Token — Sentinel Ledger"
+          description="Open a Solana mint to see grades, liquidity, smart money flow, and deployer intel."
+        />
       <div className="max-w-xl mx-auto px-4 py-20">
         <div className="glass-card p-8 text-center">
           <h2 className="text-xl font-semibold mb-2">Invalid token URL</h2>
@@ -112,6 +123,7 @@ export default function TokenPage() {
           </p>
         </div>
       </div>
+      </>
     );
   }
 
@@ -119,23 +131,35 @@ export default function TokenPage() {
 
   if (query.isError) {
     return (
+      <>
+        <PageHead
+          title={`${shortMint(address)} — Sentinel Ledger`}
+          description="Token intelligence for this Solana mint. Retry if data is temporarily unavailable."
+        />
       <div className="max-w-xl mx-auto px-4 py-20">
         <div className="glass-card p-8 text-center">
           <h2 className="text-xl font-semibold text-red-300 mb-2">Data unavailable</h2>
           <p className="text-gray-400 text-sm">We could not fetch token data right now. Please retry in a moment.</p>
         </div>
       </div>
+      </>
     );
   }
 
   if (!token) {
     return (
+      <>
+        <PageHead
+          title={`${shortMint(address)} — Sentinel Ledger`}
+          description="Token intelligence for this Solana mint on Sentinel Ledger."
+        />
       <div className="max-w-xl mx-auto px-4 py-20">
         <div className="glass-card p-8 text-center">
           <h2 className="text-xl font-semibold mb-2">No data available</h2>
           <p className="text-gray-400 text-sm">This token could not be resolved or has no market data yet.</p>
         </div>
       </div>
+      </>
     );
   }
 
@@ -160,6 +184,11 @@ export default function TokenPage() {
         : "Disconnected";
 
   return (
+    <>
+      <PageHead
+        title={`${market.symbol} (${shortMint(address)}) — Sentinel Ledger`}
+        description={`Live grade, liquidity, smart money flow, and deployer intel for ${market.symbol} on Solana. Not financial advice.`}
+      />
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 pb-28 lg:pb-10">
       <Ticker />
       <WalletThreatBanner walletIntel={token.walletIntel} />
@@ -303,5 +332,6 @@ export default function TokenPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

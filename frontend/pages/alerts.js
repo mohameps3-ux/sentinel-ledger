@@ -5,6 +5,7 @@ import { ShieldCheck, Bell, Loader2 } from "lucide-react";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useClientAuthToken } from "../hooks/useClientAuthToken";
 import { FinancialDisclaimer } from "../components/layout/FinancialDisclaimer";
+import { PageHead } from "../components/seo/PageHead";
 
 const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "";
 
@@ -176,6 +177,11 @@ export default function ProAlertsPage() {
   const p = settings.prefs ?? defaultPrefs;
 
   return (
+    <>
+      <PageHead
+        title="PRO alerts — Sentinel Ledger"
+        description="Telegram alerts when watchlist tokens move beyond your thresholds. PRO feature."
+      />
     <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full">
       <section className="glass-card sl-inset">
         <div className="flex items-start gap-3 mb-4">
@@ -326,5 +332,6 @@ export default function ProAlertsPage() {
         <FinancialDisclaimer />
       </section>
     </div>
+    </>
   );
 }

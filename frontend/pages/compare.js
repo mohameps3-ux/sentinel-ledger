@@ -7,6 +7,7 @@ import { useTokenData } from "../hooks/useTokenData";
 import { useWatchlist } from "../hooks/useWatchlist";
 import { formatDateTime, formatUsdWhole } from "../lib/formatStable";
 import { ProButton } from "../components/ui/ProButton";
+import { PageHead } from "../components/seo/PageHead";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -158,6 +159,11 @@ export default function ComparePage() {
   };
 
   return (
+    <>
+      <PageHead
+        title="Token compare — Sentinel Ledger"
+        description="Side-by-side Solana token analysis: grades, liquidity, holders, deployer risk, and momentum."
+      />
     <div className="sl-container sl-container-wide py-8 md:py-10 space-y-8">
       <section className="glass-card sl-inset">
         <div className="flex items-start gap-4 mb-8">
@@ -395,6 +401,7 @@ export default function ComparePage() {
         )}
       </section>
     </div>
+    </>
   );
 }
 
