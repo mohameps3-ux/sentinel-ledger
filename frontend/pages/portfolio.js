@@ -1,16 +1,39 @@
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useClientAuthToken } from "../hooks/useClientAuthToken";
-import { formatUsdWhole } from "../lib/formatStable";
+import { formatUsdWhole, formatTokenPrice } from "../lib/formatStable";
+import { getPublicApiUrl } from "../lib/publicRuntime";
 import { PageHead } from "../components/seo/PageHead";
-
-const MOCK_POSITIONS = [
-  { symbol: "WIF", sizeUsd: 1320, pnl: 11.2, score: 90 },
-  { symbol: "BONK", sizeUsd: 740, pnl: -3.6, score: 72 },
-  { symbol: "JUP", sizeUsd: 980, pnl: 6.4, score: 84 }
-];
+import { Loader2 } from "lucide-react";
 
 export default function PortfolioPage() {
   const token = useClientAuthToken();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [positions, setPositions] = useState([]);
+
+  const load = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${getPublicApiUrl()}/api/v1/portfolio/watchlist-markets?limit=24`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "portfolio_failed");
+      setPositions(Array.isArray(json.positions) ? json.positions : []);
+    } catch (e) {
+      setError(e.message || "portfolio_failed");
+      setPositions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (!token) {
     return (
@@ -19,16 +42,18 @@ export default function PortfolioPage() {
           title="Portfolio — Sentinel Ledger"
           description="Track your Solana positions and edge once you connect a wallet session."
         />
-      <div className="sl-container py-10">
-        <section className="glass-card sl-inset max-w-2xl mx-auto text-center">
-          <p className="sl-label">Portfolio</p>
-          <h1 className="sl-h2 text-white mt-1">Connect wallet to unlock portfolio</h1>
-          <p className="text-sm text-gray-400 mt-3">
-            Your portfolio view requires a signed wallet session.
-          </p>
-          <Link href="/" className="btn-pro inline-flex mt-5 no-underline">Go to dashboard</Link>
-        </section>
-      </div>
+        <div className="sl-container py-10">
+          <section className="glass-card sl-inset max-w-2xl mx-auto text-center">
+            <p className="sl-label">Portfolio</p>
+            <h1 className="sl-h2 text-white mt-1">Connect wallet to unlock portfolio</h1>
+            <p className="text-sm text-gray-400 mt-3">
+              Your portfolio view requires a signed wallet session.
+            </p>
+            <Link href="/" className="btn-pro inline-flex mt-5 no-underline">
+              Go to dashboard
+            </Link>
+          </section>
+        </div>
       </>
     );
   }
@@ -37,30 +62,96 @@ export default function PortfolioPage() {
     <>
       <PageHead
         title="Portfolio — Sentinel Ledger"
-        description="Personal edge tracker for your Solana positions. Connect wallet to sync."
+        description="Watchlist tokens with live Dex liquidity, price, and 24h move."
       />
-    <div className="sl-container py-10 space-y-6">
-      <section className="glass-card sl-inset">
-        <p className="sl-label">Portfolio</p>
-        <h1 className="sl-h2 text-white mt-1">Personal edge tracker</h1>
-        <p className="text-sm text-gray-400 mt-2">Mock positions (replace with on-chain positions in next iteration).</p>
-      </section>
+      <div className="sl-container py-10 space-y-6">
+        <section className="glass-card sl-inset flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <p className="sl-label">Portfolio</p>
+            <h1 className="sl-h2 text-white mt-1">Watchlist pulse</h1>
+            <p className="text-sm text-gray-400 mt-2 max-w-2xl">
+              Live DexScreener snapshot per mint in your watchlist (not wallet balances). Add tokens from any token
+              page.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => load()}
+            disabled={loading}
+            className="btn-ghost inline-flex items-center gap-2 shrink-0 self-start sm:self-auto"
+          >
+            {loading ? <Loader2 className="animate-spin" size={16} /> : null}
+            Refresh
+          </button>
+        </section>
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {MOCK_POSITIONS.map((p) => (
-          <article key={p.symbol} className="glass-card p-4 rounded-2xl border border-white/10 hover:border-purple-500/40 transition">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">${p.symbol}</h2>
-              <span className={`text-xs px-2 py-1 rounded border ${p.score >= 85 ? "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" : p.score >= 70 ? "text-amber-300 border-amber-500/30 bg-amber-500/10" : "text-red-300 border-red-500/30 bg-red-500/10"}`}>
-                Score {p.score}
-              </span>
-            </div>
-            <p className="text-sm text-gray-400 mt-3">Size: ${formatUsdWhole(p.sizeUsd)}</p>
-            <p className={`text-sm mt-1 ${p.pnl >= 0 ? "text-emerald-300" : "text-red-300"}`}>PnL: {p.pnl >= 0 ? "+" : ""}{p.pnl}%</p>
-          </article>
-        ))}
-      </section>
-    </div>
+        {loading && !positions.length ? (
+          <p className="text-sm text-gray-400 flex items-center gap-2">
+            <Loader2 className="animate-spin" size={16} />
+            Loading watchlist markets…
+          </p>
+        ) : null}
+        {error ? <p className="text-sm text-red-300">Could not load portfolio: {error}</p> : null}
+        {!loading && !error && !positions.length ? (
+          <section className="glass-card sl-inset text-center py-10">
+            <p className="text-gray-300">No watchlist tokens yet.</p>
+            <Link href="/watchlist" className="btn-pro inline-flex mt-4 no-underline">
+              Open watchlist
+            </Link>
+          </section>
+        ) : null}
+
+        {positions.length ? (
+          <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {positions.map((p) => (
+              <article
+                key={p.tokenAddress}
+                className="glass-card p-4 rounded-2xl border border-white/10 hover:border-purple-500/40 transition"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">${p.symbol}</h2>
+                    <p className="mono text-xs text-gray-500 mt-1 break-all">{p.tokenAddress}</p>
+                  </div>
+                  <span
+                    className={`text-xs px-2 py-1 rounded border shrink-0 ${
+                      p.score >= 85
+                        ? "text-emerald-300 border-emerald-500/30 bg-emerald-500/10"
+                        : p.score >= 70
+                          ? "text-amber-300 border-amber-500/30 bg-amber-500/10"
+                          : "text-red-300 border-red-500/30 bg-red-500/10"
+                    }`}
+                  >
+                    Score {p.score ?? "—"}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-400 mt-3">
+                  Price ${p.priceUsd != null ? formatTokenPrice(p.priceUsd) : "—"}
+                </p>
+                <p className="text-sm text-gray-400 mt-1">Liq ${formatUsdWhole(p.liquidityUsd || 0)}</p>
+                <p
+                  className={`text-sm mt-1 ${
+                    p.change24hPct == null
+                      ? "text-gray-500"
+                      : p.change24hPct >= 0
+                        ? "text-emerald-300"
+                        : "text-red-300"
+                  }`}
+                >
+                  24h:{" "}
+                  {p.change24hPct == null
+                    ? "—"
+                    : `${p.change24hPct >= 0 ? "+" : ""}${Number(p.change24hPct).toFixed(2)}%`}
+                </p>
+                {p.note ? <p className="text-xs text-gray-500 mt-2 border-t border-white/10 pt-2">{p.note}</p> : null}
+                <Link href={`/token/${p.tokenAddress}`} className="btn-ghost inline-flex mt-3 text-xs no-underline">
+                  Open token
+                </Link>
+              </article>
+            ))}
+          </section>
+        ) : null}
+      </div>
     </>
   );
 }

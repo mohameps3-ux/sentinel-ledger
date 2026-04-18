@@ -1,24 +1,12 @@
-const axios = require("axios");
-const { clusterApiUrl } = require("@solana/web3.js");
 const { getSupabase } = require("../lib/supabase");
 const { deployerQueue } = require("../lib/queue");
-
-function getRpcUrls() {
-  const urls = [];
-  if (process.env.HELIUS_KEY) {
-    urls.push(`https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_KEY}`);
-  }
-  urls.push(clusterApiUrl("mainnet-beta"));
-  return [...new Set(urls)];
-}
+const { getSolanaJsonRpcUrlList, jsonRpcPost } = require("../lib/solanaJsonRpc");
 
 async function rpcPost(payload) {
   let lastError = null;
-  for (const url of getRpcUrls()) {
+  for (const url of getSolanaJsonRpcUrlList()) {
     try {
-      const { data } = await axios.post(url, payload, { timeout: 8000 });
-      if (data?.error) throw new Error(data.error.message || "rpc_error");
-      return data;
+      return await jsonRpcPost(url, payload, { timeout: 8000 });
     } catch (error) {
       lastError = error;
     }

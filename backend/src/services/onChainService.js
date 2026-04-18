@@ -1,25 +1,10 @@
 const axios = require("axios");
-const { clusterApiUrl } = require("@solana/web3.js");
-
-function getRpcUrls() {
-  const urls = [];
-  if (process.env.HELIUS_KEY) {
-    urls.push(`https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_KEY}`);
-  }
-  urls.push(clusterApiUrl("mainnet-beta"));
-  return [...new Set(urls)];
-}
-
-async function rpcPost(url, payload) {
-  const { data } = await axios.post(url, payload, { timeout: 8000 });
-  if (data?.error) throw new Error(data.error.message || "rpc_error");
-  return data;
-}
+const { getSolanaJsonRpcUrlList, jsonRpcPost } = require("../lib/solanaJsonRpc");
 
 async function getTokenSecurity(mintAddress) {
-  for (const rpcUrl of getRpcUrls()) {
+  for (const rpcUrl of getSolanaJsonRpcUrlList()) {
     try {
-      const data = await rpcPost(rpcUrl, {
+      const data = await jsonRpcPost(rpcUrl, {
         jsonrpc: "2.0",
         id: "security-check",
         method: "getAccountInfo",
@@ -67,9 +52,9 @@ async function fetchBirdeyeHolderCount(mintAddress) {
 async function getHolderConcentration(mintAddress) {
   const birdeyeHolders = await fetchBirdeyeHolderCount(mintAddress);
 
-  for (const rpcUrl of getRpcUrls()) {
+  for (const rpcUrl of getSolanaJsonRpcUrlList()) {
     try {
-      const holdersResponse = await rpcPost(rpcUrl, {
+      const holdersResponse = await jsonRpcPost(rpcUrl, {
         jsonrpc: "2.0",
         id: "holders-check",
         method: "getTokenLargestAccounts",
@@ -80,7 +65,7 @@ async function getHolderConcentration(mintAddress) {
         .slice(0, 10)
         .reduce((acc, curr) => acc + Number(curr.uiAmount || 0), 0);
 
-      const supplyResponse = await rpcPost(rpcUrl, {
+      const supplyResponse = await jsonRpcPost(rpcUrl, {
         jsonrpc: "2.0",
         id: "supply-check",
         method: "getTokenSupply",
@@ -117,9 +102,9 @@ async function getHolderConcentration(mintAddress) {
  * Largest SPL token accounts for a mint, resolved to owner wallets with % of supply.
  */
 async function getLargestTokenAccountOwners(mintAddress, limit = 18) {
-  for (const rpcUrl of getRpcUrls()) {
+  for (const rpcUrl of getSolanaJsonRpcUrlList()) {
     try {
-      const holdersResponse = await rpcPost(rpcUrl, {
+      const holdersResponse = await jsonRpcPost(rpcUrl, {
         jsonrpc: "2.0",
         id: "largest-accounts",
         method: "getTokenLargestAccounts",
@@ -128,7 +113,7 @@ async function getLargestTokenAccountOwners(mintAddress, limit = 18) {
       const topAccounts = holdersResponse.result?.value || [];
       const sliced = topAccounts.slice(0, limit);
 
-      const supplyResponse = await rpcPost(rpcUrl, {
+      const supplyResponse = await jsonRpcPost(rpcUrl, {
         jsonrpc: "2.0",
         id: "supply",
         method: "getTokenSupply",
@@ -141,7 +126,7 @@ async function getLargestTokenAccountOwners(mintAddress, limit = 18) {
       for (let i = 0; i < sliced.length; i += chunkSize) {
         const chunk = sliced.slice(i, i + chunkSize);
         const keys = chunk.map((c) => c.address);
-        const multi = await rpcPost(rpcUrl, {
+        const multi = await jsonRpcPost(rpcUrl, {
           jsonrpc: "2.0",
           id: "multi-parsed",
           method: "getMultipleAccounts",

@@ -23,7 +23,7 @@ Frontend:
 
 ## Supabase
 
-Ejecuta `supabase/schema.sql` en tu proyecto Supabase (SQL editor).
+Ejecuta `supabase/schema.sql` en el SQL editor del proyecto (incluye tablas base, Stripe `subscriptions` / `stripe_events`, logs, columnas PRO en `users`, y tablas del worker smart-wallet). Si la base ya existía sin esa parte, puedes ejecutar solo el parche idempotente `supabase/payments_and_pro.sql`. **Para un bot o un solo pegado en PRODUCTION:** usa `supabase/apply_production_bundle.sql` (parche + RLS + queries de verificación al final). Con `DATABASE_URL` en `backend/.env`: `cd backend && npm run db:ensure-subscriptions` aplica `payments_and_pro.sql`; `npm run db:verify-schema` comprueba tablas/columnas clave. Opcional por separado: `supabase/rls_service_tables.sql` (también va incluido en el bundle).
 
 ## Recovery express (produccion)
 
@@ -38,4 +38,12 @@ Notas:
 - Requiere `vercel` CLI instalada y sesion iniciada para `-Redeploy`.
 - El script limpia DNS local por defecto (`ipconfig /flushdns`).
 - URL canónica frontend: `https://sentinel-ledger-ochre.vercel.app`.
+
+## Deploy (resumen)
+
+- **Vercel (frontend):** en el proyecto, **Root Directory** = `frontend`. Build por defecto usa `npm run vercel-build` (equivale a `npm run build`). Si hace falta override explícito: `next build --webpack`.
+- **Railway (backend):** conectar repo `mohameps3-ux/sentinel-ledger`, **Root Directory** = `backend`, rama `main`. Variables mínimas según `backend/.env.example`.
+- **RPC / Helius 429:** define `SOLANA_RPC_URL` o `SOLANA_RPC_URLS` (coma) con un RPC dedicado; el backend prueba esas URLs antes que Helius y el cluster público, con reintentos en rate limit.
+- **Señales / precios:** cron `SIGNAL_PRICE_*` en el backend enriquece `smart_wallet_signals` desde DexScreener. Estado en `GET /health` → `signalPrices`.
+- **Portfolio:** `GET /api/v1/portfolio/watchlist-markets` (auth) + página `/portfolio` — datos reales desde watchlist + Dex (no balances on-chain).
 

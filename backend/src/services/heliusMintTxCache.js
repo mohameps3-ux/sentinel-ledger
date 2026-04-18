@@ -4,23 +4,36 @@ const redis = require("../lib/cache");
 const DEFAULT_LIMIT = 100;
 const CACHE_TTL_SECONDS = 480;
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 async function fetchHeliusMintTransactionsRaw(mint, apiKey, limit) {
   const url = `https://api-mainnet.helius-rpc.com/v0/addresses/${encodeURIComponent(
     mint
   )}/transactions?api-key=${encodeURIComponent(apiKey)}&limit=${limit}`;
-  const { data, status } = await axios.get(url, {
-    timeout: 22000,
-    validateStatus: () => true
-  });
-  if (status !== 200) {
-    console.warn(
-      "Helius mint transactions:",
-      status,
-      typeof data === "string" ? data.slice(0, 120) : ""
-    );
-    return [];
+  const maxAttempts = 4;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const { data, status } = await axios.get(url, {
+      timeout: 22000,
+      validateStatus: () => true
+    });
+    if (status === 429) {
+      await sleep(Math.min(12_000, 600 * 2 ** attempt));
+      continue;
+    }
+    if (status !== 200) {
+      console.warn(
+        "Helius mint transactions:",
+        status,
+        typeof data === "string" ? data.slice(0, 120) : ""
+      );
+      return [];
+    }
+    return Array.isArray(data) ? data : [];
   }
-  return Array.isArray(data) ? data : [];
+  console.warn("Helius mint transactions: exhausted retries (429)");
+  return [];
 }
 
 /**

@@ -25,6 +25,7 @@ const {
   getSignalPriceCronStatus
 } = require("./jobs/smartWalletSignalPriceCron");
 const publicSurfaceRouter = require("./routes/publicSurface");
+const portfolioRouter = require("./routes/portfolio");
 const { startTelegramBot } = require("./bots/telegramBot");
 const { startSubscriptionExpiryCron } = require("./services/subscriptionCron");
 const { corsMiddlewareOptions, socketIoCors } = require("./lib/corsOptions");
@@ -110,6 +111,7 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/token", tokenRouter);
 app.use("/api/v1/smart-wallets", smartWalletsRouter);
 app.use("/api/v1/watchlist", watchlistRouter);
+app.use("/api/v1/portfolio", portfolioRouter);
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/alerts", alertsRouter);
 app.use("/api/v1", billingRouter);
