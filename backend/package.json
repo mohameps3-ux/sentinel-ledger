@@ -10,6 +10,7 @@
     "db:verify-schema": "node scripts/verifySupabaseSchema.js",
     "queue:clean": "node scripts/cleanBullQueues.js",
     "seed:smart-wallets": "node scripts/seedSmartWallets.js",
+    "seed:terminal-home": "node scripts/seedTerminalHome.js",
     "signal-prices-once": "node scripts/runSignalPricesOnce.js"
   },
   "dependencies": {
