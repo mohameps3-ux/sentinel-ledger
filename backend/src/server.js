@@ -20,6 +20,10 @@ const { startDeployerWorker } = require("./queues/deployerWorker");
 const { startSmartWalletWorker } = require("./workers/smartWallet.worker");
 const { startSmartWalletCron } = require("./jobs/smartWalletCron");
 const { startProAlertCron, getProAlertCronStatus } = require("./jobs/proAlertCron");
+const {
+  startSmartWalletSignalPriceCron,
+  getSignalPriceCronStatus
+} = require("./jobs/smartWalletSignalPriceCron");
 const publicSurfaceRouter = require("./routes/publicSurface");
 const { startTelegramBot } = require("./bots/telegramBot");
 const { startSubscriptionExpiryCron } = require("./services/subscriptionCron");
@@ -97,7 +101,8 @@ app.get("/health", async (_, res) => {
     redisRestConfigured: Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
     bullMqTcpConfigured: Boolean(process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL),
     smartWorkersEnabled: isWorkersEnabled(),
-    proAlerts: getProAlertCronStatus()
+    proAlerts: getProAlertCronStatus(),
+    signalPrices: getSignalPriceCronStatus()
   });
 });
 
@@ -133,6 +138,7 @@ server.listen(port, () => {
   }
   startTelegramBot();
   startProAlertCron();
+  startSmartWalletSignalPriceCron();
   startSubscriptionExpiryCron();
   console.log(`Sentinel Ledger backend on :${port}`);
 });

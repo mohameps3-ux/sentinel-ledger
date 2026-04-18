@@ -9,7 +9,8 @@
     "db:ensure-subscriptions": "node scripts/ensureSubscriptionsTable.js",
     "db:verify-schema": "node scripts/verifySupabaseSchema.js",
     "queue:clean": "node scripts/cleanBullQueues.js",
-    "seed:smart-wallets": "node scripts/seedSmartWallets.js"
+    "seed:smart-wallets": "node scripts/seedSmartWallets.js",
+    "signal-prices-once": "node scripts/runSignalPricesOnce.js"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.4",
