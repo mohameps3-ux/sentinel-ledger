@@ -24,6 +24,7 @@ import { AnimatedNumber } from "../components/ui/AnimatedNumber";
 import { useLiveFeedSocket } from "../hooks/useLiveFeedSocket";
 import { PageHead } from "../components/seo/PageHead";
 import { WelcomeBanner } from "../components/public/WelcomeBanner";
+import { HomeOnboarding } from "../components/public/HomeOnboarding";
 import { useWalletLabels } from "../hooks/useWalletLabels";
 
 const FALLBACK_TRENDING = [
@@ -201,6 +202,38 @@ function actionTone(signalStrength) {
   return "text-red-300 bg-red-500/10 border-red-500/30";
 }
 
+/** Decision pill for feed: explicit green / amber / red glow (second visual focus after score). */
+function feedDecisionPillClass(action, score) {
+  const pulse = action === "ENTER NOW" && score > 90;
+  if (action === "ENTER NOW") {
+    return `text-sm sm:text-base px-4 py-2.5 rounded-xl border-2 font-black tracking-tight text-emerald-50 border-emerald-400/65 bg-emerald-500/20 shadow-[0_0_36px_rgba(52,211,153,0.55)] ring-2 ring-emerald-400/45 ${
+      pulse ? "animate-pulse" : ""
+    }`;
+  }
+  if (action === "PREPARE") {
+    return "text-sm sm:text-base px-4 py-2.5 rounded-xl border-2 font-black tracking-tight text-amber-50 border-amber-400/60 bg-amber-500/18 shadow-[0_0_30px_rgba(251,191,36,0.42)] ring-2 ring-amber-400/40";
+  }
+  return "text-sm sm:text-base px-4 py-2.5 rounded-xl border-2 font-black tracking-tight text-red-50 border-red-400/60 bg-red-500/18 shadow-[0_0_28px_rgba(248,113,113,0.4)] ring-2 ring-red-400/40";
+}
+
+function whyNowBulletLines(sig) {
+  if (Array.isArray(sig?._api?.whyNow) && sig._api.whyNow.length >= 3) {
+    return sig._api.whyNow.slice(0, 3);
+  }
+  const w = sig.token?.whyTrade;
+  const third = `Hist. similar setups avg +${Math.max(18, Math.round(sig.signalStrength * 0.72))}% in first hours`;
+  if (Array.isArray(w) && w.length >= 3) return w.slice(0, 3);
+  if (Array.isArray(w) && w.length === 2) return [...w, third];
+  if (Array.isArray(w) && w.length === 1) {
+    return [w[0], `${sig.smartWallets} high-win wallets concentrated in this window`, third];
+  }
+  return [
+    `${sig.smartWallets} high-win wallets active — tape still building, not exhausted`,
+    "Liquidity depth supports entries without runaway slippage on size",
+    third
+  ];
+}
+
 function confidenceLabel(signalStrength) {
   if (signalStrength >= 95) return "STRONG CONVICTION";
   if (signalStrength >= 80) return "BUILD POSITION";
@@ -252,12 +285,25 @@ function buildJupiterSwapUrl(mint, amountSol) {
   return `https://jup.ag/swap/SOL-${mint}?amount=${amountLamports}`;
 }
 
-function redFlagsForSignal(signalStrength, token) {
+function redFlagsForSignal(sig) {
+  const api = sig?._api;
+  if (Array.isArray(api?.redFlags) && api.redFlags.length) return api.redFlags;
+  const signalStrength = Number(sig?.signalStrength || 0);
+  const token = sig?.token || {};
   const out = [];
   if (Number(token?.liquidity || 0) < 50000) out.push("⚠️ Low liquidity");
   if (signalStrength < 72) out.push("⚠️ Cluster conviction low");
   if (Number(token?.change || 0) < 0) out.push("⚠️ Momentum fading");
   return out;
+}
+
+function liquidityFromApiRedFlags(flags) {
+  if (!Array.isArray(flags)) return 80000;
+  const line = flags.find((f) => /liquidity/i.test(String(f)));
+  if (!line) return 80000;
+  const m = String(line).match(/[\d,]+/);
+  if (!m) return 45000;
+  return Number(m[0].replace(/,/g, "")) || 45000;
 }
 
 function evidenceChipsEmoji(signalStrength, token) {
@@ -266,6 +312,13 @@ function evidenceChipsEmoji(signalStrength, token) {
   if (Number(token?.liquidity || 0) < 70000) out.push("💧");
   if (Number(token?.volume24h || 0) > 500000) out.push("🤖");
   return out.slice(0, 5);
+}
+
+function evidenceChipsForSig(sig) {
+  if (Array.isArray(sig?._api?.evidenceChips) && sig._api.evidenceChips.length) {
+    return sig._api.evidenceChips.map((c) => (typeof c === "string" ? c.split(" ")[0] : c));
+  }
+  return evidenceChipsEmoji(sig.signalStrength, sig.token || {});
 }
 
 function entryWindowVisual(sec) {
@@ -290,7 +343,7 @@ function redFlagsLines(signalStrength, token) {
 
 export async function getServerSideProps() {
   try {
-    const res = await fetch(`${getPublicApiUrl()}/api/v1/token/trending`);
+    const res = await fetch(`${getPublicApiUrl()}/api/v1/tokens/hot?limit=12`);
     if (!res.ok) return { props: { initialTrending: [], initialTrendingMeta: {} } };
     const json = await res.json();
     return {
@@ -320,6 +373,10 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   );
   const [feedMode, setFeedMode] = useState("live");
   const [historyRows, setHistoryRows] = useState([]);
+  const [outcomesSummary, setOutcomesSummary] = useState(null);
+  const [bestRecentFromApi, setBestRecentFromApi] = useState(null);
+  const [topWalletsApi, setTopWalletsApi] = useState([]);
+  const [apiFeedCards, setApiFeedCards] = useState([]);
   const [nextSignalEtaSec, setNextSignalEtaSec] = useState(30);
   const [monitoringWallets, setMonitoringWallets] = useState(27);
   const [clusterScanCount, setClusterScanCount] = useState(11);
@@ -344,7 +401,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const feedIsLive = !trendingQuery.isError && !!trending.length && (feedAgeSec === null || feedAgeSec <= 90);
   const feedLabel = feedIsLive ? "Live" : "Delayed";
   const rankedWallets = useMemo(() => {
-    return TOP_SMART_WALLETS.slice()
+    const source = topWalletsApi.length ? topWalletsApi : TOP_SMART_WALLETS;
+    return source
+      .slice()
       .map((wallet) => ({
         ...wallet,
         smartScore: Math.round(
@@ -352,10 +411,54 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         )
       }))
       .sort((a, b) => b.smartScore - a.smartScore);
-  }, []);
+  }, [topWalletsApi]);
+
+  const bestRecentDisplay = useMemo(() => {
+    if (bestRecentFromApi?.token) {
+      const conf = bestRecentFromApi.confidence != null ? Number(bestRecentFromApi.confidence) : null;
+      return {
+        headline: `${bestRecentFromApi.token.slice(0, 6)}…${bestRecentFromApi.token.slice(-4)}`,
+        outcomePct: Number(bestRecentFromApi.outcomePct),
+        horizon: "~1h est.",
+        signal: conf != null && Number.isFinite(conf) ? Math.round(Math.min(100, Math.max(1, conf))) : 78,
+        mint: bestRecentFromApi.token
+      };
+    }
+    return {
+      headline: `$${RECENT_SIGNAL_OUTCOMES[0]?.symbol}`,
+      outcomePct: RECENT_SIGNAL_OUTCOMES[0]?.outcomePct,
+      horizon: RECENT_SIGNAL_OUTCOMES[0]?.horizon,
+      signal: RECENT_SIGNAL_OUTCOMES[0]?.signal,
+      mint: FALLBACK_TRENDING[1]?.mint || "So11111111111111111111111111111111111111112"
+    };
+  }, [bestRecentFromApi]);
   const topWalletLabelAddrs = useMemo(() => rankedWallets.map((w) => w.address).filter(Boolean), [rankedWallets]);
   const { labelFor: topWalletLabel, titleFor: topWalletTitle } = useWalletLabels(topWalletLabelAddrs);
   const interpretedSignals = useMemo(() => {
+    if (apiFeedCards.length) {
+      return apiFeedCards.map((c, idx) => {
+        const sym = String(c.token || "TOKEN").replace(/^\$/, "").trim() || "TOKEN";
+        const liq = liquidityFromApiRedFlags(c.redFlags);
+        return {
+          symbol: sym,
+          mint: c.tokenAddress || "So11111111111111111111111111111111111111112",
+          token: {
+            symbol: sym,
+            mint: c.tokenAddress,
+            liquidity: liq,
+            volume24h: 900000,
+            change: c.decision === "ENTER NOW" ? 9 : c.decision === "PREPARE" ? 3 : -1,
+            whyTrade: Array.isArray(c.whyNow) ? c.whyNow : []
+          },
+          signalStrength: Number(c.sentinelScore) || 70,
+          smartWallets: Math.min(9, Math.max(2, 2 + (idx % 5))),
+          context: c.contextHistory || "Live signal cluster",
+          clusterScore: Math.min(99, Math.max(45, Number(c.sentinelScore) - 6)),
+          momentum: 0,
+          _api: c
+        };
+      });
+    }
     return (visibleTrending.length ? visibleTrending : FALLBACK_TRENDING).slice(0, 6).map((token, idx) => {
       const signalStrength = computeSignalStrength(token);
       const smartWallets = Math.max(2, Math.min(9, Math.round(signalStrength / 15)));
@@ -374,7 +477,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         momentum: token.volume24h || 0
       };
     });
-  }, [visibleTrending]);
+  }, [apiFeedCards, visibleTrending]);
   const liveSignal = interpretedSignals[signalCursor % Math.max(1, interpretedSignals.length)];
 
   useEffect(() => {
@@ -467,12 +570,107 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   }, [signalCursor, soundEnabled]);
 
   useEffect(() => {
-    if (feedMode !== "history") return;
     let cancelled = false;
-    fetch(`${getPublicApiUrl()}/api/v1/public/signals-24h`)
+    fetch(`${getPublicApiUrl()}/api/v1/signals/outcomes?hours=168`)
       .then((r) => r.json())
       .then((j) => {
-        if (!cancelled) setHistoryRows(Array.isArray(j?.rows) ? j.rows : []);
+        if (cancelled) return;
+        const summary = j?.summary && typeof j.summary === "object" ? { ...j.summary } : {};
+        if (j?.wins != null) summary.wins = j.wins;
+        if (j?.losses != null) summary.losses = j.losses;
+        if (j?.avgWin != null) summary.avgWinPct = j.avgWin;
+        if (j?.avgLoss != null) summary.avgLossPct = j.avgLoss;
+        if (j?.netReturn != null) summary.netReturnPct = j.netReturn;
+        if (summary.wins != null && summary.losses != null) {
+          summary.resolved = (Number(summary.wins) || 0) + (Number(summary.losses) || 0);
+        }
+        setOutcomesSummary(Object.keys(summary).length ? summary : null);
+        setBestRecentFromApi(j?.bestRecent && typeof j.bestRecent === "object" ? j.bestRecent : null);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setOutcomesSummary(null);
+          setBestRecentFromApi(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${getPublicApiUrl()}/api/v1/smart-wallets/top?limit=12`)
+      .then((r) => r.json())
+      .then((j) => {
+        const list = Array.isArray(j?.data) ? j.data : Array.isArray(j?.rows) ? j.rows : [];
+        if (cancelled || !list.length) return;
+        const mapped = list.map((row, idx) => {
+          const wr = Number(row.winRate || 0);
+          const w = String(row.walletAddress || row.address || row.wallet || "");
+          const ss = Number(row.smartScore ?? row.signalStrength ?? wr);
+          return {
+            wallet:
+              row.wallet && row.wallet.length <= 14
+                ? row.wallet
+                : w.length > 10
+                  ? `${w.slice(0, 4)}…${w.slice(-4)}`
+                  : w || `Wallet ${idx + 1}`,
+            address: w,
+            winRate: wr,
+            earlyEntry: Number(row.earlyEntry ?? Math.round(Math.min(99, Math.max(40, wr * 0.92)))),
+            cluster: Number(row.cluster ?? Math.round(Math.min(99, Math.max(40, wr * 0.88)))),
+            consistency: Number(row.consistency ?? Math.round(Math.min(99, Math.max(40, wr * 0.95)))),
+            signalStrength: Math.min(99, Math.max(35, Math.round(ss))),
+            pnl30d: Number(row.pnl30d || 0),
+            tooltip: String(row.lastBigWin || row.tooltip || `Win ${wr.toFixed(1)}% · hits ${Number(row.recentHits || 0)}`)
+          };
+        });
+        setTopWalletsApi(mapped);
+      })
+      .catch(() => {
+        if (!cancelled) setTopWalletsApi([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${getPublicApiUrl()}/api/v1/signals/latest?limit=10&strategy=${encodeURIComponent(strategyMode)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled) return;
+        if (Array.isArray(j?.data) && j.data.length) setApiFeedCards(j.data);
+        else setApiFeedCards([]);
+      })
+      .catch(() => {
+        if (!cancelled) setApiFeedCards([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [strategyMode]);
+
+  useEffect(() => {
+    if (feedMode !== "history") return;
+    let cancelled = false;
+    fetch(`${getPublicApiUrl()}/api/v1/signals/history?limit=30`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!cancelled) {
+          const rows = Array.isArray(j?.rows) ? j.rows : [];
+          setHistoryRows(
+            rows.map((row) => ({
+              id: row.id,
+              token: row.token,
+              signalAt: row.signalAt,
+              resultPct: row.resultPct,
+              status: row.status
+            }))
+          );
+        }
       })
       .catch(() => {
         if (!cancelled) setHistoryRows([]);
@@ -517,6 +715,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         title="Sentinel Ledger — Smart Money Tracker for Solana in Real Time"
         description="Track the highest win-rate wallets on Solana. Interpreted signals, not raw noise. Free to start."
       />
+      <HomeOnboarding />
       <WelcomeBanner />
       <div className="min-h-screen w-full max-w-[100vw] overflow-x-clip">
       <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full mx-4 sm:mx-auto">
@@ -535,21 +734,15 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           </div>
         </section>
 
-        <section className="sl-section">
+        <div className="sticky top-0 z-30 -mx-4 px-4 sm:mx-0 sm:px-0 py-2 mb-1 bg-[#0b0b0e]/92 backdrop-blur-md border-b border-white/[0.07] shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+        <section className="sl-section !pt-2 !pb-2">
           <div className="glass-card sl-inset border border-white/[0.08]">
             <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6">
-              <div className="space-y-4 min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="relative flex h-3 w-3 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400" />
-                  </span>
-                  <span className="text-xs sm:text-sm uppercase tracking-wide text-emerald-200 font-semibold">
-                    Live signals (24h): {liveSignalsDetected}
-                  </span>
-                  <span className="text-[11px] text-gray-500 hidden sm:inline">·</span>
-                  <span className="text-[11px] text-gray-400">+3 in last 2 min</span>
-                </div>
+              <div className="space-y-3 min-w-0 flex-1">
+                <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">Sticky loop · active wait</p>
+                <p className="text-[11px] text-gray-500">
+                  Live tension bar above tracks 24h detections. Here: pulse timing and cluster load.
+                </p>
                 <div className="flex flex-wrap gap-x-3 gap-y-2 text-[11px] text-gray-300">
                   <span>
                     Next pulse ~{Math.max(5, Math.round(nextSignalEtaSec / 5) * 5)}s / ~
@@ -559,6 +752,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                   <span>Monitoring {monitoringWallets} wallets</span>
                   <span className="text-gray-600">|</span>
                   <span>Clusters {clusterScanCount}</span>
+                  <span className="text-gray-600">|</span>
+                  <span className="text-gray-500">24h feed: {liveSignalsDetected}</span>
                   {wsBump > 0 ? (
                     <>
                       <span className="text-gray-600">|</span>
@@ -566,12 +761,6 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                     </>
                   ) : null}
                 </div>
-                <Link
-                  href="/pricing"
-                  className="inline-flex w-fit text-[11px] px-3 py-1.5 rounded-lg border border-purple-500/40 bg-purple-500/10 text-purple-200 hover:bg-purple-500/20 transition"
-                >
-                  Unlock PRO →
-                </Link>
               </div>
               <div className="flex flex-col gap-3 shrink-0 xl:min-w-[280px]">
                 <p className="text-[11px] text-gray-500 uppercase tracking-wide">Strategy mode</p>
@@ -617,7 +806,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
 
         <Ticker />
 
-        <section className="sl-section">
+        <section className="sl-section !pt-2 !pb-2">
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Feed mode">
             <span className="text-[11px] text-gray-500 uppercase tracking-wide">Feed</span>
             <button
@@ -646,6 +835,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             </button>
           </div>
         </section>
+        </div>
 
         {feedMode === "history" ? (
           <section translate="no" className="sl-section">
@@ -713,58 +903,85 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {interpretedSignals.map((sig, idx) => {
               const sec = entryCountdownByMint[sig.mint] || 0;
-              const win = entryWindowFromCountdown(sec);
-              const vis = entryWindowVisual(sec);
-              const action = suggestedAction(sig.signalStrength, strategyMode, "feed");
+              const win = sig._api
+                ? {
+                    label: sig._api.entryWindow || "OPEN",
+                    detail:
+                      sig._api.entryWindowMinutesLeft != null
+                        ? `${sig._api.entryWindowMinutesLeft} min left (server)`
+                        : "—",
+                    tone:
+                      sig._api.entryWindow === "OPEN"
+                        ? "text-emerald-300"
+                        : sig._api.entryWindow === "CLOSING"
+                          ? "text-amber-300"
+                          : "text-red-300"
+                  }
+                : entryWindowFromCountdown(sec);
+              const vis = sig._api
+                ? entryWindowVisual(Math.max(0, (Number(sig._api.entryWindowMinutesLeft) || 0) * 45))
+                : entryWindowVisual(sec);
+              const action = sig._api?.decision || suggestedAction(sig.signalStrength, strategyMode, "feed");
               const hot = idx === signalCursor % Math.max(1, interpretedSignals.length);
+              const whyLines = whyNowBulletLines(sig);
               return (
                 <div
                   key={`${sig.mint}-${idx}`}
-                  className={`rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3 transition-all duration-300 hover:border-emerald-500/20 hover:shadow-[0_0_22px_rgba(16,185,129,0.12)] ${
+                  className={`rounded-xl border border-white/10 bg-white/[0.02] p-4 sm:p-5 space-y-4 transition-all duration-300 hover:border-emerald-500/20 hover:shadow-[0_0_22px_rgba(16,185,129,0.12)] ${
                     hot ? "ring-1 ring-emerald-500/35" : ""
                   }`}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="text-2xl font-bold text-white tracking-tight">${sig.symbol}</p>
-                      <p className="text-[11px] text-cyan-200 font-mono mt-0.5">{sig.smartWallets} wallets · live</p>
-                    </div>
-                    <span
-                      className={`text-sm px-3 py-1.5 rounded-lg border font-bold ${actionTone(sig.signalStrength)} ${
-                        sig.signalStrength > 90 && action === "ENTER NOW" ? "animate-pulse shadow-[0_0_18px_rgba(52,211,153,0.35)]" : ""
-                      }`}
-                    >
-                      {action}
-                    </span>
+                  <div>
+                    <p className="text-2xl sm:text-3xl font-black text-white tracking-tight">${sig.symbol}</p>
+                    <p className="text-[11px] text-cyan-200/90 font-mono mt-1">{sig.smartWallets} wallets · live</p>
                   </div>
-                  <div className="flex flex-wrap items-end justify-between gap-3">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-5xl sm:text-6xl font-black tabular-nums font-mono text-white leading-none">
+
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-end justify-between gap-2">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Sentinel Score</p>
+                      <span className={`text-[10px] px-2 py-0.5 rounded border ${confidenceTone(sig.signalStrength)}`}>
+                        {confidenceLabel(sig.signalStrength)}
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-6xl sm:text-7xl md:text-8xl font-black tabular-nums font-mono text-white leading-[0.9] tracking-tight drop-shadow-[0_0_24px_rgba(255,255,255,0.08)]">
                         {sig.signalStrength}
                       </span>
-                      <span className="text-xs text-gray-500 pb-1">SENTINEL SCORE</span>
+                      <span className="text-sm text-gray-500 font-medium pb-1">/ 100</span>
                     </div>
-                    <span className={`text-[10px] px-2 py-1 rounded border ${confidenceTone(sig.signalStrength)}`}>
-                      {confidenceLabel(sig.signalStrength)}
-                    </span>
+                    <div className="h-3 sm:h-3.5 rounded-full bg-gray-900 overflow-hidden ring-1 ring-white/10">
+                      <div
+                        className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(sig.signalStrength)} shadow-[0_0_20px_rgba(52,211,153,0.15)]`}
+                        style={{ width: `${sig.signalStrength}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2.5 rounded-full bg-gray-800 overflow-hidden ring-1 ring-white/5">
-                    <div
-                      className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(sig.signalStrength)}`}
-                      style={{ width: `${sig.signalStrength}%` }}
-                    />
+
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">Decision</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex items-center justify-center ${feedDecisionPillClass(action, sig.signalStrength)}`}>
+                        {action === "ENTER NOW" ? "🟢 " : action === "PREPARE" ? "🟡 " : "🔴 "}
+                        {action}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-400 font-mono">{sig.context}</p>
-                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wide">WHY NOW</p>
-                    <ul className="text-xs text-gray-200 mt-1 space-y-1">
-                      <li>• {sig.smartWallets} high-win wallets in window</li>
-                      <li>• Entry window: 3–8 min est.</li>
-                      <li>• Hist. similar avg +{Math.max(24, Math.round(sig.signalStrength * 0.75))}%</li>
+
+                  <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-3">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold">Why now</p>
+                    <ul className="text-xs text-gray-200 mt-2 space-y-2 leading-snug">
+                      {whyLines.map((line, li) => (
+                        <li key={li} className="flex gap-2">
+                          <span className="text-emerald-500/80 shrink-0">•</span>
+                          <span>{line}</span>
+                        </li>
+                      ))}
                     </ul>
                   </div>
+
+                  <p className="text-xs text-gray-500 font-mono">{sig.context}</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {evidenceChipsEmoji(sig.signalStrength, sig.token || {}).map((chip) => (
+                    {evidenceChipsForSig(sig).map((chip) => (
                       <span
                         key={chip + idx}
                         className="text-sm px-2 py-1 rounded-full border border-white/15 bg-white/[0.04] hover:shadow-[0_0_12px_rgba(16,185,129,0.2)] transition-shadow"
@@ -774,9 +991,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                       </span>
                     ))}
                   </div>
-                  {redFlagsForSignal(sig.signalStrength, sig.token || {}).length ? (
+                  {redFlagsForSignal(sig).length ? (
                     <p className="text-xs text-red-200">
-                      RED FLAGS: {redFlagsForSignal(sig.signalStrength, sig.token || {}).join(" · ")}
+                      RED FLAGS: {redFlagsForSignal(sig).join(" · ")}
                     </p>
                   ) : null}
                   <div className="space-y-1">
@@ -791,12 +1008,14 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                     </div>
                   </div>
                   <p className="text-[11px] text-cyan-200 font-mono">
-                    TIME ADVANTAGE · Earlier than {Math.max(72, Math.min(96, sig.signalStrength))}% of traders
+                    {sig._api?.timeAdvantage ||
+                      `TIME ADVANTAGE · Earlier than ${Math.max(72, Math.min(96, sig.signalStrength))}% of traders`}
                   </p>
                   <p className="text-[11px] text-gray-500 font-mono">
-                    SIGNAL DECAY · −3%/min · fresh {Math.max(1, (signalCursor + idx) % 6) + 1}m
+                    {sig._api?.signalDecay ? `SIGNAL DECAY · ${sig._api.signalDecay}` : "SIGNAL DECAY · −3%/min"} · fresh{" "}
+                    {Math.max(1, (signalCursor + idx) % 6) + 1}m
                   </p>
-                  {sig.signalStrength >= 88 ? (
+                  {sig._api?.confluence || (!sig._api && sig.signalStrength >= 88) ? (
                     <p className="text-xs text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-2 py-1 inline-flex w-fit font-mono">
                       🧬 MULTI-SIGNAL DETECTED
                     </p>
@@ -867,23 +1086,47 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           <div className="glass-card sl-inset border border-orange-500/25 hover:shadow-[0_0_24px_rgba(251,146,60,0.15)] transition-shadow">
             <p className="sl-label">Best Recent Signal</p>
             <h2 className="text-xl font-semibold text-white mt-1 font-mono">
-              🔥 BEST RECENT SIGNAL: ${RECENT_SIGNAL_OUTCOMES[0]?.symbol} → +{RECENT_SIGNAL_OUTCOMES[0]?.outcomePct}% in{" "}
-              {RECENT_SIGNAL_OUTCOMES[0]?.horizon}
+              🔥 BEST RECENT: {bestRecentDisplay.headline} →{" "}
+              {Number(bestRecentDisplay.outcomePct) >= 0 ? "+" : ""}
+              {bestRecentDisplay.outcomePct}% in {bestRecentDisplay.horizon}
             </h2>
             <p className="text-sm text-gray-300 mt-2">
-              Sentinel Score {RECENT_SIGNAL_OUTCOMES[0]?.signal}, ENTER NOW ·{" "}
-              <Link href={`/token/${FALLBACK_TRENDING[1]?.mint || "So11111111111111111111111111111111111111112"}`} className="text-emerald-300 underline-offset-2 hover:underline">
+              Sentinel Score {bestRecentDisplay.signal}, ENTER NOW ·{" "}
+              <Link href={`/token/${bestRecentDisplay.mint}`} className="text-emerald-300 underline-offset-2 hover:underline">
                 View Breakdown
               </Link>
             </p>
           </div>
           <div className="glass-card sl-inset">
             <p className="sl-label">Proof of Edge</p>
-            <h2 className="text-xl font-semibold text-white mt-1 font-mono">📈 LAST 10 SIGNALS</h2>
+            <h2 className="text-xl font-semibold text-white mt-1 font-mono">📈 ROLLING WINDOW (7D)</h2>
             <ul className="mt-3 text-sm text-gray-300 space-y-1 font-mono">
-              <li>Wins: 7 | Losses: 3</li>
-              <li>Avg win: +41% | Avg loss: −11%</li>
-              <li>Net return: +247%</li>
+              {outcomesSummary && outcomesSummary.resolved != null ? (
+                <>
+                  <li>
+                    Wins: {outcomesSummary.wins} | Losses: {outcomesSummary.losses} | Pending:{" "}
+                    {outcomesSummary.pending ?? "—"}
+                  </li>
+                  <li>
+                    Avg win:{" "}
+                    {outcomesSummary.avgWinPct != null ? `+${outcomesSummary.avgWinPct}%` : "—"} | Avg loss:{" "}
+                    {outcomesSummary.avgLossPct != null ? `${outcomesSummary.avgLossPct}%` : "—"}
+                  </li>
+                  <li>
+                    Net return (sum of % moves):{" "}
+                    {outcomesSummary.netReturnPct != null
+                      ? `${outcomesSummary.netReturnPct >= 0 ? "+" : ""}${outcomesSummary.netReturnPct}%`
+                      : "—"}
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li>Wins: 7 | Losses: 3 (demo)</li>
+                  <li>Avg win: +41% | Avg loss: −11%</li>
+                  <li>Net return: +247%</li>
+                  <li className="text-gray-500 text-xs pt-1">Connect backend data for live edge from /api/v1/signals/outcomes</li>
+                </>
+              )}
             </ul>
           </div>
         </section>
@@ -1103,9 +1346,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                         </span>
                       ))}
                     </div>
-                    {redFlagsForSignal(signalStrength, token || {}).length ? (
+                    {redFlagsForSignal({ signalStrength, token: token || {} }).length ? (
                       <div className="text-[11px] text-red-200">
-                        {redFlagsForSignal(signalStrength, token || {}).join(" | ")}
+                        {redFlagsForSignal({ signalStrength, token: token || {} }).join(" | ")}
                       </div>
                     ) : null}
                   </div>

@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 
 async function fetchTrending() {
-  const res = await fetch(`${getPublicApiUrl()}/api/v1/token/trending`);
-  if (!res.ok) throw new Error("Failed to fetch trending tokens");
+  const res = await fetch(`${getPublicApiUrl()}/api/v1/tokens/hot?limit=12`);
+  if (!res.ok) throw new Error("Failed to fetch hot tokens");
   return res.json();
 }
 

@@ -3,6 +3,7 @@ import "../styles/globals.css";
 import { Inter } from "next/font/google";
 import { useEffect, useMemo } from "react";
 import Head from "next/head";
+import { useRouter } from "next/router";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -10,6 +11,7 @@ import { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import { AppErrorBoundary } from "../components/layout/AppErrorBoundary";
 import { Navbar } from "../components/layout/Navbar";
+import { LiveTensionBar } from "../components/layout/LiveTensionBar";
 import { FinancialDisclaimer } from "../components/layout/FinancialDisclaimer";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
@@ -25,6 +27,8 @@ const inter = Inter({
 const queryClient = new QueryClient();
 
 export default function App({ Component, pageProps }) {
+  const router = useRouter();
+  const isHome = router.pathname === "/";
   const endpoint = useMemo(() => getPublicSolanaRpcUrl(), []);
   const wallets = useMemo(() => createSolanaWalletAdapters(), []);
 
@@ -52,7 +56,12 @@ export default function App({ Component, pageProps }) {
               translate="no"
             >
               <Navbar />
-              <main className="pt-[88px] md:pt-24 pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0">
+              {isHome ? <LiveTensionBar /> : null}
+              <main
+                className={`${
+                  isHome ? "pt-[124px] sm:pt-[120px] md:pt-[132px]" : "pt-[88px] md:pt-24"
+                } pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0`}
+              >
                 <AppErrorBoundary>
                   <Component {...pageProps} />
                 </AppErrorBoundary>
