@@ -1300,6 +1300,16 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                       <p className="text-xs text-gray-400 mt-1">
                         {token?.mint ? `${token.mint.slice(0, 6)}...${token.mint.slice(-4)}` : "Loading setup"}
                       </p>
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {(token?.narrativeTags || []).slice(0, 3).map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-[10px] px-1.5 py-0.5 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     <span
                       className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border ${gradeClass(token?.grade || "C")}`}

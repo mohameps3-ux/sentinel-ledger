@@ -1,6 +1,8 @@
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const redis = require("../lib/cache");
+const { getSupabase } = require("../lib/supabase");
+const { trackSmartBuyAndDetect } = require("../services/convergenceService");
 
 const router = express.Router();
 
@@ -108,6 +110,39 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
         const first = await markFirstEmit(dedupeKey);
         if (!first) continue;
         global.io.to(tx.tokenAddress).emit("transaction", tx);
+        if (tx.type === "buy" || tx.type === "swap") {
+          const conv = await trackSmartBuyAndDetect(tx.tokenAddress, tx.wallet, tx.timestamp);
+          if (conv?.detected) {
+            global.io.to(tx.tokenAddress).emit("convergence", {
+              tokenAddress: tx.tokenAddress,
+              wallets: conv.wallets,
+              detectedAt: new Date().toISOString(),
+              windowMinutes: conv.windowMinutes
+            });
+          }
+        }
+
+        try {
+          const supabase = getSupabase();
+          const { data: watchers, error } = await supabase
+            .from("wallet_stalks")
+            .select("user_id, stalked_wallet")
+            .eq("stalked_wallet", tx.wallet)
+            .eq("is_active", true)
+            .limit(100);
+          if (!error && Array.isArray(watchers) && watchers.length) {
+            for (const w of watchers) {
+              global.io.to(`user:${w.user_id}`).emit("wallet-stalk", {
+                wallet: tx.wallet,
+                tokenAddress: tx.tokenAddress,
+                amount: tx.amount,
+                type: tx.type,
+                signature: tx.signature,
+                timestamp: tx.timestamp
+              });
+            }
+          }
+        } catch (_) {}
         emitted += 1;
       }
     }

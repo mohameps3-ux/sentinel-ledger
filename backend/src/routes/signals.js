@@ -26,6 +26,13 @@ function statusFromPct(pct) {
   return "PENDING";
 }
 
+function actionFromConfidence(confidence) {
+  const c = Number(confidence || 0);
+  if (c >= 80) return "ACCUMULATE";
+  if (c >= 60) return "WATCH";
+  return "TOO_LATE";
+}
+
 /**
  * GET /api/v1/signals/outcomes
  * Proof of Edge — rows with result_pct set (price worker). Redis TTL ~3m.
@@ -125,6 +132,58 @@ router.get("/history", async (req, res) => {
     return res.json({ ok: true, rows, meta: { source: "supabase", count: rows.length } });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message, rows: [] });
+  }
+});
+
+router.get("/graveyard", async (req, res) => {
+  const supabase = safeSupabase();
+  if (!supabase) return res.json({ ok: true, rows: [], meta: { source: "unconfigured" } });
+  try {
+    const from = req.query.from ? new Date(String(req.query.from)).toISOString() : null;
+    const to = req.query.to ? new Date(String(req.query.to)).toISOString() : null;
+    const outcome = String(req.query.outcome || "all").toUpperCase();
+    const lim = Math.min(300, Math.max(10, Number(req.query.limit) || 120));
+
+    let q = supabase
+      .from("smart_wallet_signals")
+      .select(
+        "id, token_address, confidence, created_at, entry_price_usd, price_4h_usd, result_pct, wallet_address"
+      )
+      .order("created_at", { ascending: false })
+      .limit(lim);
+    if (from) q = q.gte("created_at", from);
+    if (to) q = q.lte("created_at", to);
+    const { data, error } = await q;
+    if (error) throw error;
+
+    let rows = (data || []).map((row) => {
+      const result4h = pctFromPrices(row.entry_price_usd, row.price_4h_usd);
+      const result24h = row.result_pct != null ? Number(row.result_pct) : null;
+      const finalPct = result24h != null ? result24h : result4h;
+      return {
+        id: row.id,
+        token: row.token_address,
+        signalStrength: Number(row.confidence || 0),
+        suggestedAction: actionFromConfidence(row.confidence),
+        actualResult4h: result4h,
+        actualResult24h: result24h,
+        outcome: statusFromPct(finalPct),
+        createdAt: row.created_at,
+        wallet: row.wallet_address
+      };
+    });
+    if (outcome !== "ALL") rows = rows.filter((r) => r.outcome === outcome);
+    const wins = rows.filter((r) => r.outcome === "WIN").length;
+    const losses = rows.filter((r) => r.outcome === "LOSS").length;
+    const resolved = wins + losses;
+    const winRate = resolved ? Number(((wins / resolved) * 100).toFixed(2)) : 0;
+    return res.json({
+      ok: true,
+      rows,
+      meta: { count: rows.length, wins, losses, winRate, resolved, from, to, outcome }
+    });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message, rows: [] });
   }
 });
 

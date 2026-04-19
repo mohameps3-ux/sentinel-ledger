@@ -54,7 +54,9 @@ export default function TokenPage() {
   const address = normalizeAddress(router.query);
   const query = useTokenData(address);
   const proStatus = useProStatus();
-  const { transactions, isConnected, connectionState } = useWebSocket(address || undefined);
+  const { transactions, isConnected, connectionState, convergence: liveConvergence } = useWebSocket(
+    address || undefined
+  );
   const [hasToken, setHasToken] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const prevTopTxRef = useRef(null);
@@ -173,6 +175,7 @@ export default function TokenPage() {
   if (!token.market || !token.analysis) return <TokenSkeleton />;
 
   const { market, analysis, private: privateData } = token;
+  const convergence = liveConvergence?.detected ? liveConvergence : token?.convergence;
   const isWatchlisted = privateData?.isWatchlist || false;
   const note = privateData?.notes || "";
   const hasProAccess = proStatus.data?.data?.hasProAccess === true;
@@ -199,6 +202,27 @@ export default function TokenPage() {
     <div className="sl-container py-6 space-y-6 pb-28 lg:pb-10">
       <Ticker />
       <WalletThreatBanner walletIntel={token.walletIntel} />
+      {convergence?.detected ? (
+        <div className="glass-card border border-emerald-500/35 bg-emerald-500/10 px-4 py-3">
+          <p className="text-xs uppercase tracking-wider text-emerald-200 font-semibold">
+            Convergence detected
+          </p>
+          <p className="text-sm text-gray-200 mt-1">
+            {Math.max(3, Number(convergence?.wallets?.length || 0))} smart wallets bought in ~
+            {Number(convergence?.windowMinutes || 10)}m:
+          </p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {(convergence?.wallets || []).slice(0, 8).map((w) => (
+              <span
+                key={w}
+                className="mono text-[11px] px-2 py-1 rounded border border-white/15 bg-white/5 text-emerald-200"
+              >
+                {w.slice(0, 4)}...{w.slice(-4)}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className="flex flex-wrap justify-between items-start gap-3">
         <HeroSection
           symbol={market.symbol}
@@ -290,6 +314,7 @@ export default function TokenPage() {
         security={token?.security}
         terminal={token?.terminal}
         smartMoneyForToken={token?.smartMoneyForToken}
+        deployer={token?.deployer}
       />
 
       <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">

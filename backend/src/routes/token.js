@@ -10,6 +10,7 @@ const { getWalletSpamIntel } = require("../services/walletSpamSignals");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 const { getSmartWalletsForToken } = require("../services/smartMoneyService");
 const { computeTerminalSignal } = require("../lib/tokenTerminalSignal");
+const { getConvergenceState } = require("../services/convergenceService");
 
 const router = express.Router();
 const { fetchTrendingList } = require("../services/trendingList");
@@ -73,17 +74,22 @@ router.get("/:address", async (req, res) => {
           address: deployerAddress,
           totalLaunches: 0,
           rugCount: 0,
-          riskScore: 0
+          riskScore: 0,
+          successRate: 0,
+          averageHoursToRug: null,
+          deployerLabel: "First Launch",
+          launchSampleSize: 0
         };
       }
     }
 
-    const [walletIntel, smartTok] = await Promise.all([
+    const [walletIntel, smartTok, convergence] = await Promise.all([
       getWalletSpamIntel(address, {
         deployerAddress,
         deployerHistory: deployerData
       }),
-      getSmartWalletsForToken(address)
+      getSmartWalletsForToken(address),
+      getConvergenceState(address)
     ]);
 
     sendWalletThreatAlert(address, walletIntel, marketData).catch((e) =>
@@ -145,7 +151,8 @@ router.get("/:address", async (req, res) => {
           contractAddress: address,
           dexPairs: marketData.dexPairs || [],
           socials: marketData.socials || { websites: [], twitter: null, telegram: null, discord: null },
-          pairUrl: marketData.pairUrl || null
+          pairUrl: marketData.pairUrl || null,
+          narrativeTags: marketData.narrativeTags || []
         },
         analysis,
         holders: {
@@ -159,6 +166,7 @@ router.get("/:address", async (req, res) => {
         terminal,
         smartMoneyForToken: (smartTok?.wallets || []).slice(0, 20),
         smartMoneyMeta: smartTok?.meta || {},
+        convergence: convergence || { detected: false, wallets: [], threshold: 3, windowMinutes: 10 },
         deployer: deployerData,
         walletIntel,
         private: privateData

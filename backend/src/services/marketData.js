@@ -1,5 +1,6 @@
 const axios = require("axios");
 const redis = require("../lib/cache");
+const { detectNarrativeTags } = require("./narrativeTags");
 
 const CACHE_TTL_SECONDS = 20;
 const COINGECKO_SIMPLE_PRICE = "https://api.coingecko.com/api/v3/simple/price";
@@ -166,7 +167,13 @@ async function getMarketData(address) {
       dexLabels: labs,
       honeypotHint,
       verifiedListingHint: Boolean(verifiedHint),
-      pairUrl: bestPair.url || null
+      pairUrl: bestPair.url || null,
+      narrativeTags: detectNarrativeTags({
+        name: bestPair.baseToken?.name,
+        symbol: bestPair.baseToken?.symbol,
+        websites: socials.websites || [],
+        socials: [socials.twitter, socials.telegram, socials.discord].filter(Boolean)
+      })
     };
 
     await cacheSetJson(cacheKey, CACHE_TTL_SECONDS, marketData);

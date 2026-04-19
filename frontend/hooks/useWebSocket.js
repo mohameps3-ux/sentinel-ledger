@@ -30,6 +30,12 @@ export function useWebSocket(tokenAddress) {
   const mockIntervalRef = useRef(null);
   const lastNotifiedRef = useRef(0);
   const txCountRef = useRef(0);
+  const [convergence, setConvergence] = useState({
+    detected: false,
+    wallets: [],
+    detectedAt: null,
+    windowMinutes: 10
+  });
 
   const clearMockTimers = useCallback(() => {
     if (mockStartRef.current) {
@@ -76,6 +82,7 @@ export function useWebSocket(tokenAddress) {
     setConnectionState("reconnecting");
     setIsConnected(false);
     setTransactions([]);
+    setConvergence({ detected: false, wallets: [], detectedAt: null, windowMinutes: 10 });
     dedupeRef.current = new Set();
     txCountRef.current = 0;
     clearMockTimers();
@@ -103,11 +110,21 @@ export function useWebSocket(tokenAddress) {
       setConnectionState("reconnecting");
     };
     const handleTx = (tx) => pushTransaction(tx, false);
+    const handleConvergence = (evt) => {
+      if (!evt) return;
+      setConvergence({
+        detected: true,
+        wallets: Array.isArray(evt.wallets) ? evt.wallets : [],
+        detectedAt: evt.detectedAt || new Date().toISOString(),
+        windowMinutes: Number(evt.windowMinutes || 10)
+      });
+    };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("reconnect_attempt", onReconnectAttempt);
     socket.on("transaction", handleTx);
+    socket.on("convergence", handleConvergence);
 
     socket.emit("join-token", tokenAddress);
     mockStartRef.current = setTimeout(() => {
@@ -123,10 +140,11 @@ export function useWebSocket(tokenAddress) {
       socket.off("disconnect", onDisconnect);
       socket.off("reconnect_attempt", onReconnectAttempt);
       socket.off("transaction", handleTx);
+      socket.off("convergence", handleConvergence);
       clearMockTimers();
     };
   }, [tokenAddress, pushTransaction, clearMockTimers]);
 
-  return { transactions, isConnected, connectionState };
+  return { transactions, isConnected, connectionState, convergence };
 }
 

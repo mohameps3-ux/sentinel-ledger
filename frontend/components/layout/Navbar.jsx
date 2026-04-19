@@ -3,13 +3,22 @@ import { WalletButton } from "./WalletButton";
 import { useRouter } from "next/router";
 import { SearchBar } from "./SearchBar";
 import { HealthBar } from "./HealthBar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X, Shield } from "lucide-react";
 
 export function Navbar() {
   const router = useRouter();
   const isHome = router.pathname === "/";
   const [menuOpen, setMenuOpen] = useState(false);
+  const [stalkerUnread, setStalkerUnread] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const refresh = () => setStalkerUnread(Number(localStorage.getItem("walletStalkerUnread") || 0));
+    refresh();
+    window.addEventListener("wallet-stalker-update", refresh);
+    return () => window.removeEventListener("wallet-stalker-update", refresh);
+  }, []);
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-[#070709]/88 backdrop-blur-xl border-b border-white/[0.07] shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
@@ -54,6 +63,26 @@ export function Navbar() {
           </Link>
           <Link href="/pricing" className="text-sm text-purple-300 hover:text-purple-200">
             Pricing
+          </Link>
+          <Link href="/graveyard" className="text-sm text-gray-300 hover:text-white">
+            Graveyard
+          </Link>
+          <Link
+            href="/wallet-stalker"
+            className="text-sm text-gray-300 hover:text-white inline-flex items-center gap-1.5"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                localStorage.setItem("walletStalkerUnread", "0");
+                setStalkerUnread(0);
+              }
+            }}
+          >
+            Wallet Stalker
+            {stalkerUnread > 0 ? (
+              <span className="inline-flex min-w-[18px] h-[18px] rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[10px] items-center justify-center px-1">
+                {Math.min(stalkerUnread, 99)}
+              </span>
+            ) : null}
           </Link>
           <Link href="/compare" className="text-sm text-gray-300 hover:text-white">
             Compare
@@ -105,6 +134,12 @@ export function Navbar() {
             </Link>
             <Link href="/pricing" onClick={() => setMenuOpen(false)} className="text-sm text-purple-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
               Pricing
+            </Link>
+            <Link href="/graveyard" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
+              Graveyard
+            </Link>
+            <Link href="/wallet-stalker" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
+              Wallet Stalker
             </Link>
             {!isHome ? (
               <button

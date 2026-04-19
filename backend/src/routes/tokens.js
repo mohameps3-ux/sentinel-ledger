@@ -22,10 +22,17 @@ router.get("/hot", publicTerminalLimiter, async (req, res) => {
   try {
     const lim = Math.min(24, Math.max(1, Number(req.query.limit) || 12));
     const body = await getHotTokensCached(lim, safeSupabase());
+    const narrative = String(req.query.narrative || "").trim().toUpperCase();
+    const filteredData =
+      narrative.length > 0
+        ? (body.data || []).filter((t) =>
+            Array.isArray(t.narrativeTags) && t.narrativeTags.map((x) => String(x).toUpperCase()).includes(narrative)
+          )
+        : body.data;
     return res.json({
       ok: body.ok,
-      data: body.data,
-      meta: body.meta || {}
+      data: filteredData,
+      meta: { ...(body.meta || {}), narrative: narrative || null, count: filteredData?.length || 0 }
     });
   } catch (e) {
     console.error("tokens/hot:", e.message);

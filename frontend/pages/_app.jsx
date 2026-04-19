@@ -16,6 +16,8 @@ import { FinancialDisclaimer } from "../components/layout/FinancialDisclaimer";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
 import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
+import { getPublicWsUrl } from "../lib/publicRuntime";
+import io from "socket.io-client";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 const inter = Inter({
@@ -34,6 +36,32 @@ export default function App({ Component, pageProps }) {
 
   useEffect(() => {
     document.documentElement.dataset.sentinelClient = "1";
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const sock = io(getPublicWsUrl(), {
+      transports: ["websocket", "polling"],
+      reconnection: true
+    });
+    sock.on("connect", () => {
+      sock.emit("join-user", { token });
+    });
+    sock.on("wallet-stalk", (event) => {
+      try {
+        const prev = Number(localStorage.getItem("walletStalkerUnread") || 0);
+        localStorage.setItem("walletStalkerUnread", String(prev + 1));
+        const existing = JSON.parse(localStorage.getItem("walletStalkerEvents") || "[]");
+        const next = [event, ...existing].slice(0, 40);
+        localStorage.setItem("walletStalkerEvents", JSON.stringify(next));
+        window.dispatchEvent(new Event("wallet-stalker-update"));
+      } catch (_) {}
+    });
+    return () => {
+      sock.close();
+    };
   }, []);
 
   return (

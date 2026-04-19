@@ -6,6 +6,7 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const jwt = require("jsonwebtoken");
 
 const { authRouter } = require("./routes/auth");
 const tokenRouter = require("./routes/token");
@@ -29,6 +30,7 @@ const portfolioRouter = require("./routes/portfolio");
 const signalsRouter = require("./routes/signals");
 const tokensRouter = require("./routes/tokens");
 const nluRouter = require("./routes/nlu");
+const walletStalkerRouter = require("./routes/walletStalker");
 const { startTelegramBot } = require("./bots/telegramBot");
 const { startSubscriptionExpiryCron } = require("./services/subscriptionCron");
 const { corsMiddlewareOptions, socketIoCors } = require("./lib/corsOptions");
@@ -137,6 +139,7 @@ app.use("/api/v1/watchlist", watchlistRouter);
 app.use("/api/v1/portfolio", portfolioRouter);
 app.use("/api/v1/signals", signalsRouter);
 app.use("/api/v1/tokens", tokensRouter);
+app.use("/api/v1/wallet-stalker", walletStalkerRouter);
 app.use("/api/v1/nlu", nluRouter);
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/alerts", alertsRouter);
@@ -152,6 +155,15 @@ io.on("connection", (socket) => {
   socket.on("leave-token", (address) => {
     if (typeof address !== "string" || !isProbableSolanaPubkey(address)) return;
     socket.leave(address);
+  });
+  socket.on("join-user", (payload) => {
+    const token = typeof payload?.token === "string" ? payload.token : "";
+    if (!token || !process.env.JWT_SECRET) return;
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (!decoded?.userId) return;
+      socket.join(`user:${decoded.userId}`);
+    } catch (_) {}
   });
 });
 

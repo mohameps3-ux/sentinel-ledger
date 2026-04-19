@@ -17,7 +17,7 @@ function pctBar(pct) {
   );
 }
 
-export function TokenIntelDeck({ address, market, security, terminal, smartMoneyForToken }) {
+export function TokenIntelDeck({ address, market, security, terminal, smartMoneyForToken, deployer }) {
   const soc = market?.socials || {};
   const dexPairs = Array.isArray(market?.dexPairs) ? market.dexPairs : [];
   const hp =
@@ -62,6 +62,20 @@ export function TokenIntelDeck({ address, market, security, terminal, smartMoney
             <Copy size={14} />
             Copy
           </button>
+        </div>
+        <div className="sl-divider" />
+        <div>
+          <p className="sl-label mb-2">Narratives</p>
+          <div className="flex flex-wrap gap-2">
+            {(market?.narrativeTags || []).slice(0, 6).map((tag) => (
+              <span
+                key={tag}
+                className="px-2 py-1 rounded-md border border-violet-500/30 bg-violet-500/10 text-[11px] text-violet-200"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
         <div className="sl-divider" />
         <div>
@@ -212,6 +226,21 @@ export function TokenIntelDeck({ address, market, security, terminal, smartMoney
       </section>
 
       <section className="glass-card sl-inset xl:col-span-5 space-y-3">
+        {deployer ? (
+          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+            <p className="text-[11px] text-gray-400 uppercase tracking-wide">Deployer DNA</p>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-xs text-gray-300">{deployer.deployerLabel || "First Launch"}</span>
+              <span className="text-xs text-emerald-300">
+                {Number(deployer.successRate || 0).toFixed(1)}% success
+              </span>
+            </div>
+            <div className="mt-1 text-[11px] text-gray-500">
+              Launches: {deployer.totalLaunches || 0} · Avg time to rug:{" "}
+              {deployer.averageHoursToRug != null ? `${Number(deployer.averageHoursToRug).toFixed(1)}h` : "N/A"}
+            </div>
+          </div>
+        ) : null}
         <p className="sl-label">Smart wallets on this mint</p>
         {!smartMoneyForToken?.length ? (
           <p className="text-xs text-gray-500">No ranked wallets linked to this mint in the database snapshot.</p>

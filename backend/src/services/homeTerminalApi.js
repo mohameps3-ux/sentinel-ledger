@@ -2,6 +2,7 @@ const redis = require("../lib/cache");
 const { getMarketData } = require("./marketData");
 const { pctFromPrices } = require("./smartWalletSignalPrices");
 const { fetchTrendingList } = require("./trendingList");
+const { detectNarrativeTags } = require("./narrativeTags");
 
 const CACHE_TTL_SEC = Number(process.env.HOME_TERMINAL_CACHE_TTL_SEC || 180);
 
@@ -410,7 +411,8 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
         "1Sol": jupiterSwapUrl(mint, 1),
         "5Sol": jupiterSwapUrl(mint, 5)
       },
-      iaScore: ia != null ? Math.round(ia) : null
+      iaScore: ia != null ? Math.round(ia) : null,
+      narrativeTags: detectNarrativeTags({ name: t.name, symbol: t.symbol })
     };
   });
   data.sort((a, b) => (b.sentinelScore || 0) - (a.sentinelScore || 0));

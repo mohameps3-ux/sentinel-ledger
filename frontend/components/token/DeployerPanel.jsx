@@ -57,6 +57,18 @@ export function DeployerPanel({ deployer }) {
         <span className="text-red-400">{deployer.rugCount}</span>
       </div>
       <div className="flex justify-between">
+        <span className="text-gray-400">Label</span>
+        <span className="text-violet-300">{deployer.deployerLabel || "First Launch"}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-gray-400">Success rate</span>
+        <span className="text-emerald-300">{Number(deployer.successRate || 0).toFixed(1)}%</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-gray-400">Avg time to rug</span>
+        <span>{deployer.averageHoursToRug != null ? `${Number(deployer.averageHoursToRug).toFixed(1)}h` : "N/A"}</span>
+      </div>
+      <div className="flex justify-between">
         <span className="text-gray-400" title="Composite deployer risk score from Sentinel.">
           Risk score
         </span>
