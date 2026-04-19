@@ -78,6 +78,22 @@ app.use("/api/v1/bots/omni", express.json({ limit: "32kb" }));
 app.use("/api/v1/public", express.json({ limit: "32kb" }));
 app.use(express.json({ limit: "1mb" }));
 
+/**
+ * Liveness: process is accepting HTTP. Does not validate Stripe/Helius secrets
+ * (those are reflected in GET /health, which may return 503 until configured).
+ */
+app.get("/health/live", (_req, res) => {
+  res.json({
+    ok: true,
+    service: "sentinel-ledger-backend",
+    commit:
+      process.env.RAILWAY_GIT_COMMIT_SHA ||
+      process.env.VERCEL_GIT_COMMIT_SHA ||
+      process.env.COMMIT_SHA ||
+      null
+  });
+});
+
 app.use("/api/v1/public", publicSurfaceRouter);
 
 app.use(

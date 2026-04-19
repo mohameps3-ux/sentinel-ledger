@@ -8,6 +8,7 @@ $ErrorActionPreference = "Stop"
 
 $frontendUrl = "https://sentinel-ledger-ochre.vercel.app"
 $tokenTestUrl = "https://sentinel-ledger-ochre.vercel.app/token/So11111111111111111111111111111111111111112"
+$backendLiveUrl = "https://sentinel-ledger-backend-production.up.railway.app/health/live"
 $backendHealthUrl = "https://sentinel-ledger-backend-production.up.railway.app/health"
 
 function Test-Http200 {
@@ -50,7 +51,7 @@ Write-Host "Checking current production health..." -ForegroundColor Yellow
 $checks = @(
   Test-Http200 -Url $frontendUrl
   Test-Http200 -Url $tokenTestUrl
-  Test-Http200 -Url $backendHealthUrl
+  Test-Http200 -Url $backendLiveUrl
 )
 
 foreach ($check in $checks) {
@@ -90,7 +91,7 @@ if ($Redeploy) {
   $postChecks = @(
     Test-Http200 -Url $frontendUrl
     Test-Http200 -Url $tokenTestUrl
-    Test-Http200 -Url $backendHealthUrl
+    Test-Http200 -Url $backendLiveUrl
   )
 
   foreach ($check in $postChecks) {
