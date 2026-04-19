@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
+import { getNextSuggestedStep } from "../../lib/nextSuggestedStep";
 
 const PRIMARY = [
   { href: "/", label: "Home", desc: "Feed + scan" },
@@ -43,6 +44,7 @@ export function GlobalWayfinding() {
   const router = useRouter();
   const pathname = router.pathname || "/";
   const place = useMemo(() => placeForPath(pathname), [pathname]);
+  const nextStep = useMemo(() => getNextSuggestedStep(pathname), [pathname]);
   const [fomoIdx, setFomoIdx] = useState(0);
 
   useEffect(() => {
@@ -77,6 +79,15 @@ export function GlobalWayfinding() {
             {FOMO_LINES[fomoIdx]}
           </p>
         </div>
+        {nextStep ? (
+          <p
+            className="mt-2 text-[11px] sm:text-xs text-gray-300 border-l-2 border-white/20 pl-2.5 leading-relaxed max-w-3xl"
+            role="note"
+          >
+            <span className="font-semibold text-gray-100">Next suggested step: </span>
+            {nextStep}
+          </p>
+        ) : null}
         <nav className="mt-1.5 flex flex-wrap gap-y-1 gap-x-0.5 text-[10px] sm:text-[11px]" aria-label="Jump to any tool">
           <span className="text-gray-500 font-medium uppercase tracking-wide w-full sm:w-auto sm:mr-1 sm:pr-2 shrink-0">
             Go to
