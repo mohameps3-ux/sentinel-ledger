@@ -740,53 +740,53 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           </div>
         </section>
 
-        <section className="sl-section !mt-2" aria-labelledby="home-destinations-heading">
-          <h2 id="home-destinations-heading" className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 mb-3">
+        <section className="sl-section !mt-1" aria-labelledby="home-destinations-heading">
+          <h2 id="home-destinations-heading" className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 mb-2">
             Pick a screen (same links as the strip under the header)
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
             {[
               {
                 href: "/scanner",
                 title: "Scanner",
-                body: "Paste a mint. Opens the full token terminal with risk, flow, and smart money."
+                body: "Mint → full token terminal."
               },
               {
                 href: "/smart-money",
                 title: "Smart money",
-                body: "Ranked wallets, win rate, and links to each wallet profile (ES/EN narrative)."
+                body: "Wallets, edge, ES/EN profiles."
               },
               {
                 href: "/watchlist",
                 title: "Watchlist",
-                body: "Track mints you care about; combine with alerts and portfolio markets."
+                body: "Track mints + alerts."
               },
               {
                 href: "/compare",
                 title: "Compare",
-                body: "Two tokens side by side — grades and liquidity before you size."
+                body: "Two tokens side by side."
               },
               {
                 href: "/alerts",
                 title: "Alerts",
-                body: "Wire Telegram and PRO nudges so you do not miss the next pulse."
+                body: "Telegram + PRO nudges."
               },
               {
                 href: "/wallet-stalker",
-                title: "Wallet stalker",
-                body: "Follow specific wallets; unread badge in the top bar when something moves."
+                title: "Stalker",
+                body: "Follow wallets; badge on news."
               }
             ].map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="group rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 transition-colors duration-150 hover:border-white/20 hover:bg-white/[0.05] active:scale-[0.99]"
+                className="group rounded-lg border border-white/[0.07] bg-white/[0.02] p-2.5 sm:p-3 transition-colors duration-150 hover:border-white/18 hover:bg-white/[0.05] active:scale-[0.99]"
               >
-                <p className="text-sm font-semibold text-white group-hover:underline decoration-white/30 underline-offset-2">
+                <p className="text-[12px] sm:text-[13px] font-semibold text-white leading-tight group-hover:underline decoration-white/25 underline-offset-2">
                   {item.title}
-                  <span className="text-gray-500 font-normal ml-1">→</span>
+                  <span className="text-gray-500 font-normal ml-0.5">→</span>
                 </p>
-                <p className="text-xs text-gray-500 mt-2 leading-relaxed">{item.body}</p>
+                <p className="text-[10px] sm:text-[11px] text-gray-500 mt-1 leading-snug line-clamp-2">{item.body}</p>
               </Link>
             ))}
           </div>

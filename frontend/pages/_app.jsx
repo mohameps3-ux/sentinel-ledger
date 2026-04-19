@@ -88,7 +88,9 @@ export default function App({ Component, pageProps }) {
               {isHome ? <LiveTensionBar /> : null}
               <main
                 className={`${
-                  isHome ? "pt-[124px] sm:pt-[120px] md:pt-[132px]" : "pt-[88px] md:pt-24"
+                  isHome
+                    ? "pt-[124px] sm:pt-[120px] md:pt-[132px]"
+                    : "pt-[108px] sm:pt-[118px] md:pt-[122px]"
                 } pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0`}
               >
                 <GlobalWayfinding />

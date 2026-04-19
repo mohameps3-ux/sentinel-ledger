@@ -57,7 +57,7 @@ export function GlobalWayfinding() {
       className="border-b border-white/[0.08] bg-[#0c0c10]/95 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
       data-sentinel-wayfinding="1"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3">
+      <div className="max-w-7xl mx-auto px-3 sm:px-5 py-2 sm:py-2.5">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
           <div className="min-w-0 flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500 shrink-0">
@@ -77,7 +77,7 @@ export function GlobalWayfinding() {
             {FOMO_LINES[fomoIdx]}
           </p>
         </div>
-        <nav className="mt-2.5 flex flex-wrap gap-y-1.5 gap-x-1 text-[11px] sm:text-xs" aria-label="Jump to any tool">
+        <nav className="mt-1.5 flex flex-wrap gap-y-1 gap-x-0.5 text-[10px] sm:text-[11px]" aria-label="Jump to any tool">
           <span className="text-gray-500 font-medium uppercase tracking-wide w-full sm:w-auto sm:mr-1 sm:pr-2 shrink-0">
             Go to
           </span>

@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import { getPublicApiUrl } from "../../lib/publicRuntime";
 
 const walletMultiButtonClass =
-  "!bg-gradient-to-r !from-[#6c5ce7] !to-[#00cec9] hover:!opacity-95 !rounded-[10px] !h-10 !text-[11px] sm:!text-sm !min-w-0 !max-w-full !justify-center !truncate !px-2";
+  "!bg-gradient-to-r !from-[#6c5ce7] !to-[#00cec9] hover:!opacity-95 !rounded-lg !h-8 !text-[10px] sm:!text-[11px] !min-w-0 !max-w-full !justify-center !truncate !px-2 !leading-tight !font-semibold";
 
 export function WalletButton() {
   const { publicKey, signMessage, connected, disconnect } = useWallet();
@@ -123,7 +123,7 @@ export function WalletButton() {
   };
 
   return (
-    <div className="relative z-[110] flex items-center justify-end gap-1.5 sm:gap-2 min-w-0 w-auto max-w-[min(10rem,38vw)] sm:max-w-[12rem] md:max-w-[11.5rem] lg:max-w-[13rem] shrink-0 md:shrink">
+    <div className="relative z-[70] flex items-center justify-end gap-1 min-w-0 w-auto max-w-[min(8.25rem,36vw)] sm:max-w-[9.25rem] md:max-w-[10rem] shrink-0">
       {walletUiReady ? (
         <WalletMultiButton className={walletMultiButtonClass} />
       ) : (
@@ -138,19 +138,19 @@ export function WalletButton() {
       )}
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`hidden md:flex items-center gap-2 h-10 px-3 rounded-xl border text-xs transition ${
+        className={`hidden lg:flex items-center gap-1.5 h-8 px-2 rounded-lg border text-[10px] transition max-w-[7.5rem] truncate ${
           connected
             ? "bg-[#13171A] border-emerald-600/30 text-emerald-300"
             : "bg-[#13171A] soft-divider text-gray-400"
         }`}
       >
-        <ShieldCheck size={14} />
-        {shortWallet}
-        <ChevronDown size={14} className={`transition ${open ? "rotate-180" : ""}`} />
+        <ShieldCheck size={12} className="shrink-0" />
+        <span className="truncate">{shortWallet}</span>
+        <ChevronDown size={12} className={`shrink-0 transition ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && connected && (
-        <div className="absolute right-0 top-12 z-[200] w-48 rounded-xl border soft-divider bg-[#13171A] p-2 shadow-xl">
+        <div className="absolute right-0 top-10 z-[200] w-44 rounded-lg border soft-divider bg-[#13171A] p-1.5 shadow-xl">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-200 hover:bg-white/5 transition"

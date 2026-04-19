@@ -451,8 +451,9 @@ nav .wallet-adapter-dropdown {
 .wallet-adapter-button {
   background: linear-gradient(90deg, #6c5ce7, #00cec9) !important;
   border-radius: var(--sl-radius-btn) !important;
-  height: 40px !important;
-  font-size: 13px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
 }
 
@@ -462,10 +463,10 @@ nav .wallet-adapter-dropdown {
 
 @media (max-width: 640px) {
   .wallet-adapter-button {
-    max-width: min(11.5rem, 42vw) !important;
-    padding-left: 0.65rem !important;
-    padding-right: 0.65rem !important;
-    font-size: 11px !important;
+    max-width: min(9.5rem, 40vw) !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    font-size: 10px !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
