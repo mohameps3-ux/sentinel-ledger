@@ -52,6 +52,7 @@ function buildWalletRows() {
       pnl_30d: 5000 + idx * 2100,
       avg_position_size: 900 + idx * 120,
       recent_hits: 2 + (idx % 6),
+      total_trades: 12 + idx * 3,
       early_entry_score: early,
       cluster_score: cluster,
       consistency_score: consistency,
@@ -133,12 +134,22 @@ async function main() {
   if (wErr) {
     console.warn("smart_wallets full upsert failed, retrying base columns:", wErr.message);
     const minimal = fullWallets.map(
-      ({ wallet_address, win_rate, pnl_30d, avg_position_size, recent_hits, last_seen, updated_at }) => ({
+      ({
         wallet_address,
         win_rate,
         pnl_30d,
         avg_position_size,
         recent_hits,
+        total_trades,
+        last_seen,
+        updated_at
+      }) => ({
+        wallet_address,
+        win_rate,
+        pnl_30d,
+        avg_position_size,
+        recent_hits,
+        total_trades,
         last_seen,
         updated_at
       })

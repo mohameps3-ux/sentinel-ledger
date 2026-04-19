@@ -256,25 +256,123 @@ router.get("/wallet-labels", async (req, res) => {
 });
 
 /** GET /api/v1/public/smart-wallets-leaderboard — global ranked wallets (Supabase) */
-router.get("/smart-wallets-leaderboard", async (_req, res) => {
+router.get("/smart-wallets-leaderboard", async (req, res) => {
   const supabase = safeSupabase();
   if (!supabase) {
     return res.json({ ok: true, rows: [], meta: { source: "unconfigured" } });
   }
   try {
-    const { data, error } = await supabase
-      .from("smart_wallets")
-      .select("wallet_address, win_rate, pnl_30d, avg_position_size, recent_hits, last_seen")
-      .order("win_rate", { ascending: false })
-      .limit(50);
+    const minWr = Math.min(100, Math.max(0, Number(req.query.minWinRate || 0)));
+    const minTrades = Math.min(100000, Math.max(0, Number(req.query.minTrades || 0)));
+    const chain = String(req.query.chain || "solana").toLowerCase();
+
+    let q = supabase.from("smart_wallets").select("*").order("win_rate", { ascending: false }).limit(120);
+    if (minWr > 0) q = q.gte("win_rate", minWr);
+    const { data, error } = await q;
     if (error) throw error;
-    const rows = (data || []).map((w) => ({
+
+    let rows = (data || []).map((w) => ({
       wallet: w.wallet_address,
       winRate: Number(w.win_rate || 0),
       pnl30d: Number(w.pnl_30d || 0),
       avgPositionSize: Number(w.avg_position_size || 0),
       recentHits: Number(w.recent_hits || 0),
-      lastSeen: w.last_seen
+      totalTrades: Number(w.total_trades || 0),
+      lastSeen: w.last_seen,
+      smartScore: w.smart_score != null ? Number(w.smart_score) : null
+    }));
+
+    if (minTrades > 0) {
+      rows = rows.filter((r) => r.totalTrades >= minTrades);
+    }
+
+    if (chain !== "all" && chain !== "solana") {
+      rows = [];
+    }
+
+    rows = rows.slice(0, 20);
+
+    const wallets = rows.map((r) => r.wallet).filter(Boolean);
+    const bestByWallet = new Map();
+    if (wallets.length) {
+      const { data: sigs, error: sErr } = await supabase
+        .from("smart_wallet_signals")
+        .select("wallet_address, result_pct, token_address, created_at")
+        .in("wallet_address", wallets)
+        .not("result_pct", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1500);
+      if (!sErr && sigs?.length) {
+        for (const s of sigs) {
+          const w = s.wallet_address;
+          const pct = Number(s.result_pct);
+          if (!w || !Number.isFinite(pct)) continue;
+          const prev = bestByWallet.get(w);
+          if (!prev || pct > prev.pct) {
+            bestByWallet.set(w, { pct, token: s.token_address, at: s.created_at });
+          }
+        }
+      }
+    }
+
+    const enriched = rows.map((r) => {
+      const bt = bestByWallet.get(r.wallet);
+      const avg = Math.max(1, r.avgPositionSize);
+      const roiMult = r.pnl30d / avg;
+      return {
+        ...r,
+        roi30dVsAvgSize: Number(roiMult.toFixed(2)),
+        bestTradePct: bt ? Number(Number(bt.pct).toFixed(2)) : null,
+        bestTradeMint: bt?.token || null,
+        bestTradeAt: bt?.at || null
+      };
+    });
+
+    return res.json({
+      ok: true,
+      rows: enriched,
+      meta: {
+        source: "supabase",
+        count: enriched.length,
+        chain: chain === "all" ? "all" : "solana",
+        filters: { minWinRate: minWr, minTrades }
+      }
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message, rows: [] });
+  }
+});
+
+/** GET /api/v1/public/smart-money-activity — latest smart-wallet touches */
+router.get("/smart-money-activity", async (req, res) => {
+  const supabase = safeSupabase();
+  if (!supabase) {
+    return res.json({ ok: true, rows: [], meta: { source: "unconfigured" } });
+  }
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit || 48)));
+  try {
+    let sel = "wallet_address, token_address, last_action, confidence, created_at, result_pct";
+    let { data, error } = await supabase
+      .from("smart_wallet_signals")
+      .select(sel)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error && /result_pct|column|schema/i.test(error.message)) {
+      sel = "wallet_address, token_address, last_action, confidence, created_at";
+      ({ data, error } = await supabase
+        .from("smart_wallet_signals")
+        .select(sel)
+        .order("created_at", { ascending: false })
+        .limit(limit));
+    }
+    if (error) throw error;
+    const rows = (data || []).map((r) => ({
+      wallet: r.wallet_address,
+      token: r.token_address,
+      side: r.last_action,
+      confidence: Number(r.confidence || 0),
+      createdAt: r.created_at,
+      resultPct: r.result_pct != null ? Number(r.result_pct) : null
     }));
     return res.json({ ok: true, rows, meta: { source: "supabase", count: rows.length } });
   } catch (e) {

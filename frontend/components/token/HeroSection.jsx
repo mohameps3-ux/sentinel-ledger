@@ -34,14 +34,19 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
   }, [confidence]);
   const trustBadges = useMemo(() => {
     const badges = [];
-    if (market?.lpLocked) {
-      badges.push({ label: "LP Burned", className: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30", title: "Liquidity lock detected." });
+    if (market?.lpLocked === true) {
+      badges.push({
+        label: "LP lock signal",
+        className: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+        title: market?.lpLockDetail || "DEX / metadata suggests locked or burned LP."
+      });
+    } else if (market?.lpLocked === false) {
+      badges.push({
+        label: "LP not locked",
+        className: "bg-amber-500/15 text-amber-200 border-amber-500/30",
+        title: "Liquidity can still be withdrawn by deployers."
+      });
     }
-    badges.push({
-      label: "Audited",
-      className: "bg-cyan-500/15 text-cyan-200 border-cyan-500/30",
-      title: "Verification in progress."
-    });
     if (String(grade || "").toUpperCase() === "D" || String(grade || "").toUpperCase() === "F") {
       badges.push({
         label: "High Risk",
@@ -50,7 +55,7 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
       });
     }
     return badges;
-  }, [market?.lpLocked, grade]);
+  }, [market?.lpLocked, market?.lpLockDetail, grade]);
 
   const handleShare = async () => {
     try {
@@ -97,7 +102,24 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
               <h1 className="sl-h1 text-white tracking-tight" translate="no">
                 {symbol || "—"}
               </h1>
-              <p className="mono text-[12px] text-gray-500 break-all max-w-2xl leading-relaxed">{tokenAddress}</p>
+              <div className="flex flex-wrap items-center gap-2 max-w-2xl">
+                <p className="mono text-[12px] text-gray-500 break-all leading-relaxed flex-1 min-w-0">{tokenAddress}</p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(tokenAddress);
+                      toast.success("Mint copied.");
+                    } catch {
+                      toast.error("Copy failed.");
+                    }
+                  }}
+                  className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-white/10 bg-white/[0.04] text-[11px] text-gray-200 hover:bg-white/[0.08]"
+                >
+                  <Copy size={12} />
+                  Copy mint
+                </button>
+              </div>
               <div className="flex flex-wrap gap-2 pt-2">
                 {trustBadges.map((badge) => (
                   <span

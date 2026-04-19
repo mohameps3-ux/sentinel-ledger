@@ -1,12 +1,14 @@
+import { ExternalLink } from "lucide-react";
 import { formatInteger } from "../../lib/formatStable";
 
 export function HoldersPanel({ holders }) {
   const data = holders || null;
+  const topAccounts = Array.isArray(data?.topAccounts) ? data.topAccounts : [];
   const hasData =
     data &&
     typeof data.top10Percentage === "number" &&
     typeof data.totalHolders === "number" &&
-    (data.top10Percentage > 0 || data.totalHolders > 0);
+    (data.top10Percentage > 0 || data.totalHolders > 0 || topAccounts.length > 0);
 
   if (!hasData) {
     return (
@@ -71,6 +73,45 @@ export function HoldersPanel({ holders }) {
           />
         </div>
       </div>
+
+      {topAccounts.length ? (
+        <div className="pt-4 border-t border-white/[0.06] space-y-2">
+          <div className="text-xs text-gray-400 font-medium">Top 10 holders (% supply)</div>
+          <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="text-left text-gray-500 border-b border-white/[0.06] bg-white/[0.02]">
+                  <th className="py-2 px-2 w-8">#</th>
+                  <th className="py-2 px-2">Owner</th>
+                  <th className="py-2 px-2 text-right">%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topAccounts.map((row) => (
+                  <tr key={row.owner} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                    <td className="py-1.5 px-2 text-gray-500 tabular-nums">{row.rank}</td>
+                    <td className="py-1.5 px-2 mono text-gray-300">
+                      <a
+                        href={`https://solscan.io/account/${row.owner}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 hover:text-cyan-200"
+                      >
+                        {row.owner?.slice(0, 4)}…{row.owner?.slice(-4)}
+                        <ExternalLink size={10} className="opacity-50" />
+                      </a>
+                    </td>
+                    <td className="py-1.5 px-2 text-right tabular-nums text-emerald-200/90">
+                      {Number(row.pctSupply || 0).toFixed(2)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[10px] text-gray-600">Largest SPL accounts via RPC — not necessarily all EOAs.</p>
+        </div>
+      ) : null}
     </div>
   );
 }

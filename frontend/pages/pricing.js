@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import toast from "react-hot-toast";
+import { Check, X } from "lucide-react";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useClientAuthToken } from "../hooks/useClientAuthToken";
 import { FinancialDisclaimer } from "../components/layout/FinancialDisclaimer";
@@ -10,22 +11,41 @@ const PLANS = [
   {
     id: "pro",
     title: "PRO",
-    price: "$9.99 / month",
-    points: ["Advanced alerts", "Priority flow intel", "Faster refresh windows"]
+    priceLine: "$19 / mo",
+    blurb: "Live alerts, faster refresh cadence, and deeper flow cards for active wallets.",
+    points: ["Telegram PRO alerts", "Smart money highlights", "Standard API cadence"]
   },
   {
     id: "super_pro",
     title: "SUPER PRO",
-    price: "$19.99 / month",
-    points: ["Everything in PRO", "Expanded signal depth", "Higher alert quotas"]
+    priceLine: "$49 / mo",
+    blurb: "Desk-grade context: wider signal history, richer wallet graphs, and priority compute.",
+    points: ["Everything in PRO", "Expanded signal depth", "Higher alert quotas", "Priority refresh lanes"],
+    highlight: true
   },
   {
     id: "lifetime",
     title: "LIFETIME",
-    price: "$149.99 one-time",
-    points: ["Permanent unlock", "All future PRO-tier features", "No monthly renewals"]
+    priceLine: "$199 one-time",
+    blurb: "Lock in PRO-tier access without renewals. Stripe one-shot checkout.",
+    points: ["Permanent unlock (PRO tier)", "All future PRO-tier features", "No monthly renewals"]
   }
 ];
+
+const FEATURE_ROWS = [
+  { feature: "Telegram PRO alerts", pro: true, superPro: true, lifetime: true },
+  { feature: "Smart money + deployer intel", pro: true, superPro: true, lifetime: true },
+  { feature: "Signal history depth", pro: "24h focus", superPro: "Extended", lifetime: "Extended" },
+  { feature: "API / refresh priority", pro: "Standard", superPro: "Priority", lifetime: "Priority" },
+  { feature: "Alert quotas", pro: "Standard", superPro: "Higher", lifetime: "Higher" },
+  { feature: "Billing", pro: "Monthly", superPro: "Monthly", lifetime: "One-time" }
+];
+
+function Cell({ v }) {
+  if (v === true) return <Check className="text-emerald-400 mx-auto" size={18} aria-label="Included" />;
+  if (v === false) return <X className="text-red-400/80 mx-auto" size={18} aria-label="Not included" />;
+  return <span className="text-xs text-gray-300 font-mono">{v}</span>;
+}
 
 export default function PricingPage() {
   const token = useClientAuthToken();
@@ -124,41 +144,51 @@ export default function PricingPage() {
   return (
     <>
       <PageHead
-        title="PRO from $9.99 — Sentinel Ledger"
-        description="Signals before the crowd, Telegram alerts, deeper signal context. Cancel anytime."
+        title="Pricing — Sentinel Ledger"
+        description="PRO $19/mo, Super Pro $49/mo, or Lifetime unlock. Stripe Checkout + customer portal."
       />
-    <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full">
-      <section className="glass-card sl-inset">
-        <p className="sl-label mb-2">Subscriptions</p>
-        <h1 className="sl-display bg-gradient-to-r from-purple-400 via-violet-300 to-cyan-300 bg-clip-text text-transparent">
-          Pricing
-        </h1>
-        <p className="sl-body sl-muted mt-3 max-w-2xl">
-          Monthly PRO access or a one-time Lifetime unlock. Powered by Stripe.
-        </p>
-      </section>
+      <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full space-y-8">
+        <section className="sl-home-hero sl-inset sm:p-7 ring-1 ring-white/[0.06]">
+          <p className="sl-label text-emerald-400/90">Billing</p>
+          <h1 className="sl-h1 text-white mt-2 tracking-tight">Terminal pricing</h1>
+          <p className="sl-body sl-muted mt-2 max-w-2xl">
+            Three lanes: lean PRO, heavy Super Pro, or a one-time Lifetime key. Payments route through Stripe Checkout
+            — configure live <span className="mono text-gray-500">STRIPE_*_PRICE_ID</span> in production.
+          </p>
+        </section>
 
-      <section className="sl-section mt-6">
         {mounted && !canCheckout ? (
           <div
-            className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+            className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
             role="status"
           >
-            <strong className="text-amber-50">Wallet required.</strong> Use{" "}
-            <span className="text-white/90">Connect wallet</span> in the header, approve the Solana
-            signature, then return here — Stripe checkout uses your signed-in account.
+            <strong className="text-amber-50">Wallet required.</strong> Use Connect wallet in the header, approve the
+            Solana signature, then return here — checkout binds to your signed-in Sentinel account.
           </div>
         ) : null}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {PLANS.map((plan) => (
-            <div key={plan.id} className="glass-card p-5 rounded-2xl flex flex-col gap-4">
+            <div
+              key={plan.id}
+              className={`glass-card sl-inset flex flex-col gap-4 relative overflow-hidden ${
+                plan.highlight ? "ring-1 ring-cyan-500/30" : ""
+              }`}
+            >
+              {plan.highlight ? (
+                <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400" />
+              ) : null}
               <div>
-                <h2 className="text-xl font-bold text-white">{plan.title}</h2>
-                <p className="text-sm text-cyan-200 mt-1">{plan.price}</p>
+                <h2 className="text-lg font-semibold text-white tracking-tight">{plan.title}</h2>
+                <p className="text-2xl font-bold text-white mt-2 mono">{plan.priceLine}</p>
+                <p className="text-sm text-gray-400 mt-2 leading-relaxed">{plan.blurb}</p>
               </div>
-              <ul className="text-sm text-gray-300 space-y-1">
+              <ul className="text-sm text-gray-300 space-y-1.5 flex-1">
                 {plan.points.map((point) => (
-                  <li key={point}>• {point}</li>
+                  <li key={point} className="flex gap-2">
+                    <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                    <span>{point}</span>
+                  </li>
                 ))}
               </ul>
               <button
@@ -172,38 +202,68 @@ export default function PricingPage() {
                 }
                 className="btn-pro mt-auto justify-center disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {loadingPlan === plan.id ? "Redirecting to Stripe..." : "Go to Stripe Checkout"}
+                {loadingPlan === plan.id ? "Redirecting to Stripe…" : "Stripe checkout"}
               </button>
             </div>
           ))}
-        </div>
-        <p className="text-xs text-gray-400 mt-4">
-          Payments are processed by Stripe Checkout (card/billing flow), not by wallet transfer.
+        </section>
+
+        <section className="glass-card sl-inset overflow-x-auto">
+          <p className="sl-label mb-4">Feature matrix</p>
+          <table className="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b border-white/10">
+                <th className="py-2 pr-3">Capability</th>
+                <th className="py-2 pr-3 text-center">PRO</th>
+                <th className="py-2 pr-3 text-center">SUPER PRO</th>
+                <th className="py-2 text-center">LIFETIME</th>
+              </tr>
+            </thead>
+            <tbody>
+              {FEATURE_ROWS.map((row) => (
+                <tr key={row.feature} className="border-b border-white/5 hover:bg-white/[0.02]">
+                  <td className="py-3 pr-3 text-gray-200">{row.feature}</td>
+                  <td className="py-3 pr-3 text-center">
+                    <Cell v={row.pro} />
+                  </td>
+                  <td className="py-3 pr-3 text-center">
+                    <Cell v={row.superPro} />
+                  </td>
+                  <td className="py-3 text-center">
+                    <Cell v={row.lifetime} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        <p className="text-xs text-gray-500">
+          Stripe processes cards; Sentinel never asks you to “send SOL” for these SKUs. Lifetime maps to the same
+          PRO entitlements unless your deployment configures otherwise in webhooks.
         </p>
+
         {mounted && canCheckout ? (
-          <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-white">Already paying?</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Open the Stripe customer portal to update card, cancel, or see invoices.
-              </p>
+              <p className="text-xs text-gray-400 mt-1">Open the Stripe customer portal for invoices, cancellation, or card updates.</p>
             </div>
             <button
               type="button"
               onClick={openBillingPortal}
               disabled={portalLoading}
-              className="shrink-0 px-4 py-2 rounded-lg border border-purple-500/40 bg-purple-500/15 text-sm text-purple-200 hover:bg-purple-500/25 disabled:opacity-50"
+              className="shrink-0 px-4 py-2 rounded-lg border border-white/15 bg-white/[0.05] text-sm text-gray-100 hover:bg-white/[0.09] disabled:opacity-50"
             >
-              {portalLoading ? "Opening…" : "Stripe billing portal"}
+              {portalLoading ? "Opening…" : "Billing portal"}
             </button>
           </div>
         ) : null}
-      </section>
 
-      <section className="mt-10 pb-4 border-t border-gray-800/80 pt-8">
-        <FinancialDisclaimer />
-      </section>
-    </div>
+        <section className="pb-4 border-t border-gray-800/80 pt-8">
+          <FinancialDisclaimer />
+        </section>
+      </div>
     </>
   );
 }

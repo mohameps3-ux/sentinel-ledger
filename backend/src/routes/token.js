@@ -2,12 +2,14 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const { getMarketData } = require("../services/marketData");
 const { getAnalysis } = require("../services/riskEngine");
-const { getHolderConcentration } = require("../services/onChainService");
+const { getHolderConcentration, getLargestTokenAccountOwners, getTokenSecurity } = require("../services/onChainService");
 const { getDeployerInfo, updateDeployerReputation } = require("../services/deployerService");
 const { sendGradeAlert, sendWalletThreatAlert } = require("../bots/telegramBot");
 const { getSupabase } = require("../lib/supabase");
 const { getWalletSpamIntel } = require("../services/walletSpamSignals");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
+const { getSmartWalletsForToken } = require("../services/smartMoneyService");
+const { computeTerminalSignal } = require("../lib/tokenTerminalSignal");
 
 const router = express.Router();
 const { fetchTrendingList } = require("../services/trendingList");
@@ -35,11 +37,15 @@ router.get("/:address", async (req, res) => {
     if (!marketData)
       return res.status(404).json({ ok: false, error: "Token not found" });
 
-    const analysis = await getAnalysis(address, marketData);
+    const [analysis, holdersData, largestData, tokenOnChainSec] = await Promise.all([
+      getAnalysis(address, marketData),
+      getHolderConcentration(address),
+      getLargestTokenAccountOwners(address, 10),
+      getTokenSecurity(address)
+    ]);
     sendGradeAlert(address, analysis, marketData).catch((e) =>
       console.error("Telegram alert send failed:", e.message)
     );
-    const holdersData = await getHolderConcentration(address);
 
     let deployerAddress = marketData.deployerAddress || null;
     if (!deployerAddress) {
@@ -72,10 +78,13 @@ router.get("/:address", async (req, res) => {
       }
     }
 
-    const walletIntel = await getWalletSpamIntel(address, {
-      deployerAddress,
-      deployerHistory: deployerData
-    });
+    const [walletIntel, smartTok] = await Promise.all([
+      getWalletSpamIntel(address, {
+        deployerAddress,
+        deployerHistory: deployerData
+      }),
+      getSmartWalletsForToken(address)
+    ]);
 
     sendWalletThreatAlert(address, walletIntel, marketData).catch((e) =>
       console.error("Telegram wallet-threat alert failed:", e.message)
@@ -99,6 +108,26 @@ router.get("/:address", async (req, res) => {
       }
     }
 
+    const topAccounts = (largestData?.owners || []).slice(0, 10).map((o, i) => ({
+      rank: i + 1,
+      owner: o.owner,
+      pctSupply: Number(Number(o.pctSupply || 0).toFixed(4)),
+      uiAmount: Number(o.uiAmount || 0)
+    }));
+
+    const security = {
+      honeypot: marketData.honeypotHint === "flagged" ? "flagged" : "unknown",
+      verifiedListingTag: Boolean(marketData.verifiedListingHint),
+      mintRenounced: !tokenOnChainSec.mintEnabled,
+      freezeAuthorityInactive: !tokenOnChainSec.freezeEnabled,
+      liquidityLocked: marketData.lpLocked,
+      lpLockDetail: marketData.lpLockDetail || null,
+      mintAuthorityActive: tokenOnChainSec.mintEnabled,
+      freezeAuthorityActive: tokenOnChainSec.freezeEnabled
+    };
+
+    const terminal = computeTerminalSignal(analysis, marketData);
+
     res.json({
       ok: true,
       data: {
@@ -111,15 +140,25 @@ router.get("/:address", async (req, res) => {
           symbol: marketData.symbol,
           name: marketData.name,
           lpLocked: marketData.lpLocked,
-          lpLockDuration: marketData.lpLockDuration
+          lpLockDuration: marketData.lpLockDuration,
+          lpLockDetail: marketData.lpLockDetail || null,
+          contractAddress: address,
+          dexPairs: marketData.dexPairs || [],
+          socials: marketData.socials || { websites: [], twitter: null, telegram: null, discord: null },
+          pairUrl: marketData.pairUrl || null
         },
         analysis,
         holders: {
           top10Percentage: holdersData.top10Percentage || 0,
           totalHolders: holdersData.totalHolders || 0,
           holderCountSource: holdersData.holderCountSource || null,
-          largestAccountsSampled: holdersData.largestAccountsSampled ?? 0
+          largestAccountsSampled: holdersData.largestAccountsSampled ?? 0,
+          topAccounts
         },
+        security,
+        terminal,
+        smartMoneyForToken: (smartTok?.wallets || []).slice(0, 20),
+        smartMoneyMeta: smartTok?.meta || {},
         deployer: deployerData,
         walletIntel,
         private: privateData

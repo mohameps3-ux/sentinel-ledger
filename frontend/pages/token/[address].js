@@ -19,6 +19,7 @@ import { ExpandablePanel } from "../../components/token/ExpandablePanel";
 import { ActionBar } from "../../components/token/ActionBar";
 import { TradeReadinessPanel } from "../../components/token/TradeReadinessPanel";
 import { WalletThreatBanner } from "../../components/token/WalletThreatBanner";
+import { TokenIntelDeck } from "../../components/token/TokenIntelDeck";
 import { BarChart3, CandlestickChart, Radar, ShieldAlert, Users, Activity } from "lucide-react";
 import { formatUsdWhole } from "../../lib/formatStable";
 import { Ticker } from "../../components/layout/Ticker";
@@ -189,7 +190,7 @@ export default function TokenPage() {
         title={`${market.symbol} (${shortMint(address)}) — Sentinel Ledger`}
         description={`Live grade, liquidity, smart money flow, and deployer intel for ${market.symbol} on Solana. Not financial advice.`}
       />
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 pb-28 lg:pb-10">
+    <div className="sl-container py-6 space-y-6 pb-28 lg:pb-10">
       <Ticker />
       <WalletThreatBanner walletIntel={token.walletIntel} />
       <div className="flex flex-wrap justify-between items-start gap-3">
@@ -275,6 +276,14 @@ export default function TokenPage() {
         market={market}
         holders={token?.holders}
         deployer={token?.deployer}
+      />
+
+      <TokenIntelDeck
+        address={address}
+        market={market}
+        security={token?.security}
+        terminal={token?.terminal}
+        smartMoneyForToken={token?.smartMoneyForToken}
       />
 
       <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">

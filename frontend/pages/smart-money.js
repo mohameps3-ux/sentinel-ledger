@@ -1,11 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
 import { useSmartWalletsLeaderboard } from "../hooks/useSmartWalletsLeaderboard";
+import { useSmartMoneyActivity } from "../hooks/useSmartMoneyActivity";
 import { useWalletLabels } from "../hooks/useWalletLabels";
 import { formatUsdWhole, formatDateTime } from "../lib/formatStable";
 import { PageHead } from "../components/seo/PageHead";
-import { Loader2 } from "lucide-react";
+import { Loader2, Radio, SlidersHorizontal } from "lucide-react";
 
 function walletDecision(winRate) {
   const wr = Number(winRate || 0);
@@ -16,16 +17,28 @@ function walletDecision(winRate) {
 
 export default function SmartMoneyPage() {
   const trending = useTrendingTokens();
-  const { data, isLoading, isError, error, refetch } = useSmartWalletsLeaderboard();
+  const [chain, setChain] = useState("solana");
+  const [minWinRate, setMinWinRate] = useState(0);
+  const [minTrades, setMinTrades] = useState(0);
+
+  const { data, isLoading, isError, error, refetch } = useSmartWalletsLeaderboard({
+    chain,
+    minWinRate,
+    minTrades
+  });
+  const activity = useSmartMoneyActivity(48);
+
   const rows = Array.isArray(data?.rows) ? data.rows : [];
   const meta = data?.meta || {};
+  const actRows = Array.isArray(activity.data?.rows) ? activity.data.rows : [];
 
   const addresses = useMemo(() => rows.map((r) => r.wallet).filter(Boolean), [rows]);
   const { labelFor, titleFor } = useWalletLabels(addresses);
 
   const ranked = useMemo(() => {
-    return rows.map((w) => ({
+    return rows.map((w, i) => ({
       ...w,
+      rank: i + 1,
       decision: walletDecision(w.winRate)
     }));
   }, [rows]);
@@ -34,25 +47,70 @@ export default function SmartMoneyPage() {
     <>
       <PageHead
         title="Smart Money Wallets — Sentinel Ledger"
-        description="The most profitable Solana wallets ranked by win rate, 30d PnL, and entry speed."
+        description="Top Solana smart wallets by win rate, 30d PnL, ROI vs average ticket size, and recent signal flow."
       />
       <div className="sl-container py-10 space-y-6 pb-24">
         <section className="sl-home-hero sl-inset sm:p-7 ring-1 ring-white/[0.06]">
           <p className="sl-label text-emerald-400/90">Smart Money</p>
-          <h1 className="sl-h1 text-white mt-2 tracking-tight">Top smart wallets</h1>
+          <h1 className="sl-h1 text-white mt-2 tracking-tight">Top 20 smart wallets</h1>
           <p className="sl-body sl-muted mt-2">
-            Live leaderboard from Supabase (<span className="font-mono text-gray-400">{meta.source || "—"}</span>
-            {meta.count != null ? ` · ${meta.count} wallets` : ""}). Labels use your{" "}
-            <Link href="/results" className="text-cyan-300 hover:underline">
-              verified track record
-            </Link>{" "}
-            pipeline + wallet tiers.
+            Ranked by win rate with 30d PnL, estimated return versus average position size, and best resolved signal
+            move when <span className="mono text-gray-400">result_pct</span> is populated. Source:{" "}
+            <span className="font-mono text-gray-400">{meta.source || "—"}</span>
+            {meta.count != null ? ` · ${meta.count} rows` : ""}.
           </p>
           <p className="text-xs text-gray-500 mt-3">
             Trending feed: {trending.isError ? "degraded" : "connected"} ·{" "}
             <button type="button" onClick={() => refetch()} className="text-cyan-400 hover:underline">
               Refresh leaderboard
             </button>
+          </p>
+        </section>
+
+        <section className="glass-card sl-inset space-y-4">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-300">
+            <SlidersHorizontal size={16} className="text-gray-500" />
+            <span className="sl-label text-gray-400">Filters</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label className="space-y-1.5 text-xs text-gray-400">
+              <span className="uppercase tracking-wide">Chain</span>
+              <select
+                className="sl-input w-full h-10 px-3"
+                value={chain}
+                onChange={(e) => setChain(e.target.value)}
+              >
+                <option value="solana">Solana</option>
+                <option value="all">All (same dataset)</option>
+              </select>
+            </label>
+            <label className="space-y-1.5 text-xs text-gray-400">
+              <span className="uppercase tracking-wide">Min win rate %</span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                className="sl-input w-full h-10 px-3 mono"
+                value={minWinRate || ""}
+                placeholder="0"
+                onChange={(e) => setMinWinRate(Number(e.target.value || 0))}
+              />
+            </label>
+            <label className="space-y-1.5 text-xs text-gray-400">
+              <span className="uppercase tracking-wide">Min total trades</span>
+              <input
+                type="number"
+                min={0}
+                className="sl-input w-full h-10 px-3 mono"
+                value={minTrades || ""}
+                placeholder="0"
+                onChange={(e) => setMinTrades(Number(e.target.value || 0))}
+              />
+            </label>
+          </div>
+          <p className="text-[11px] text-gray-600">
+            ROI column is <span className="text-gray-400">30d PnL ÷ avg position size</span> — a coarse multiple, not
+            leverage-adjusted APR.
           </p>
         </section>
 
@@ -71,10 +129,9 @@ export default function SmartMoneyPage() {
 
         {!isLoading && !isError && ranked.length === 0 ? (
           <section className="glass-card sl-inset text-center py-12 space-y-3">
-            <p className="text-gray-300">No rows in smart_wallets yet.</p>
+            <p className="text-gray-300">No rows match filters (or smart_wallets is empty).</p>
             <p className="text-sm text-gray-500 max-w-lg mx-auto">
-              Run <code className="text-gray-400">supabase/seed_smart_wallets_demo.sql</code> in the SQL editor, or let
-              your worker populate the table — then refresh.
+              Run <code className="text-gray-400">npm run seed:terminal-home</code> in backend, or widen filters.
             </p>
             <Link href="/pricing" className="btn-pro inline-flex no-underline mt-2">
               Upgrade for token-level smart money
@@ -84,22 +141,25 @@ export default function SmartMoneyPage() {
 
         {!isLoading && !isError && ranked.length > 0 ? (
           <>
-            <section className="glass-card sl-inset overflow-x-auto hidden lg:block">
-              <table className="w-full min-w-[920px] text-sm">
+            <section className="glass-card sl-inset overflow-x-auto hidden xl:block">
+              <table className="w-full min-w-[1100px] text-sm">
                 <thead>
                   <tr className="text-left text-gray-500 border-b border-white/10">
+                    <th className="py-2 pr-2 w-10">#</th>
                     <th className="py-2 pr-3">Wallet</th>
                     <th className="py-2 pr-3">Win rate</th>
-                    <th className="py-2 pr-3">Hits</th>
-                    <th className="py-2 pr-3">Avg size</th>
+                    <th className="py-2 pr-3">30d ROI†</th>
+                    <th className="py-2 pr-3">30d PnL</th>
+                    <th className="py-2 pr-3">Trades</th>
+                    <th className="py-2 pr-3">Best trade</th>
                     <th className="py-2 pr-3">Last seen</th>
-                    <th className="py-2 pr-3">Decision</th>
-                    <th className="py-2">30d PnL</th>
+                    <th className="py-2">Call</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ranked.map((w) => (
                     <tr key={w.wallet} className="border-b border-white/5 hover:bg-white/[0.02] group">
+                      <td className="py-3 pr-2 text-gray-500 mono text-xs">{w.rank}</td>
                       <td className="py-3 pr-3">
                         <div className="min-w-0">
                           <div className="text-gray-100 font-medium truncate" title={titleFor(w.wallet)}>
@@ -109,22 +169,36 @@ export default function SmartMoneyPage() {
                         </div>
                       </td>
                       <td className="py-3 pr-3 text-emerald-300 tabular-nums">{w.winRate.toFixed(1)}%</td>
-                      <td className="py-3 pr-3 tabular-nums">{w.recentHits}</td>
-                      <td className="py-3 pr-3 tabular-nums">${formatUsdWhole(w.avgPositionSize)}</td>
+                      <td className="py-3 pr-3 text-cyan-200/90 tabular-nums">{Number(w.roi30dVsAvgSize || 0).toFixed(2)}×</td>
+                      <td className="py-3 pr-3 text-emerald-200/90 tabular-nums">+${formatUsdWhole(w.pnl30d)}</td>
+                      <td className="py-3 pr-3 tabular-nums text-gray-200">{w.totalTrades ?? "—"}</td>
+                      <td className="py-3 pr-3 text-xs text-gray-300">
+                        {w.bestTradePct != null ? (
+                          <span className="text-emerald-300 font-mono">+{w.bestTradePct.toFixed(1)}%</span>
+                        ) : (
+                          <span className="text-gray-600">—</span>
+                        )}
+                        {w.bestTradeMint ? (
+                          <div className="text-[10px] text-gray-600 mono truncate max-w-[200px] mt-0.5">
+                            <Link className="hover:text-cyan-300" href={`/token/${w.bestTradeMint}`}>
+                              mint…{w.bestTradeMint.slice(-4)}
+                            </Link>
+                          </div>
+                        ) : null}
+                      </td>
                       <td className="py-3 pr-3 text-gray-400 text-xs whitespace-nowrap">
                         {w.lastSeen ? formatDateTime(w.lastSeen) : "—"}
                       </td>
-                      <td className="py-3 pr-3">
+                      <td className="py-3">
                         <span className={`text-xs px-2 py-1 rounded border ${w.decision.tone}`}>{w.decision.label}</span>
                       </td>
-                      <td className="py-3 text-emerald-300 tabular-nums">+${formatUsdWhole(w.pnl30d)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </section>
 
-            <section className="grid grid-cols-1 gap-3 lg:hidden">
+            <section className="grid grid-cols-1 gap-3 xl:hidden">
               {ranked.map((w) => (
                 <article
                   key={w.wallet}
@@ -133,7 +207,7 @@ export default function SmartMoneyPage() {
                   <div className="flex justify-between gap-2 items-start">
                     <div className="min-w-0">
                       <p className="text-white font-semibold truncate" title={titleFor(w.wallet)}>
-                        {labelFor(w.wallet)}
+                        #{w.rank} · {labelFor(w.wallet)}
                       </p>
                       <p className="font-mono text-[11px] text-gray-500 truncate">{w.wallet}</p>
                     </div>
@@ -141,16 +215,82 @@ export default function SmartMoneyPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs text-gray-300">
                     <span>Win {w.winRate.toFixed(1)}%</span>
-                    <span>Hits {w.recentHits}</span>
-                    <span>Avg ${formatUsdWhole(w.avgPositionSize)}</span>
+                    <span>ROI† {Number(w.roi30dVsAvgSize || 0).toFixed(2)}×</span>
+                    <span>Trades {w.totalTrades ?? "—"}</span>
                     <span className="text-gray-500">{w.lastSeen ? formatDateTime(w.lastSeen) : "—"}</span>
                   </div>
                   <p className="text-emerald-300 text-sm font-mono">+${formatUsdWhole(w.pnl30d)} 30d</p>
+                  {w.bestTradePct != null ? (
+                    <p className="text-[11px] text-gray-400">
+                      Best signal: <span className="text-emerald-300">+{w.bestTradePct.toFixed(1)}%</span>
+                      {w.bestTradeMint ? (
+                        <>
+                          {" "}
+                          on{" "}
+                          <Link href={`/token/${w.bestTradeMint}`} className="text-cyan-300 hover:underline mono">
+                            …{w.bestTradeMint.slice(-4)}
+                          </Link>
+                        </>
+                      ) : null}
+                    </p>
+                  ) : null}
                 </article>
               ))}
             </section>
           </>
         ) : null}
+
+        <section className="glass-card sl-inset space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="sl-label inline-flex items-center gap-2 text-gray-200">
+              <Radio size={14} className="text-purple-300" />
+              Recent activity
+            </p>
+            <button
+              type="button"
+              onClick={() => activity.refetch()}
+              className="text-xs text-cyan-400 hover:underline"
+            >
+              Refresh feed
+            </button>
+          </div>
+          {activity.isLoading ? (
+            <div className="flex items-center gap-2 text-gray-500 text-sm py-6">
+              <Loader2 className="animate-spin" size={18} />
+              Loading latest touches…
+            </div>
+          ) : null}
+          {activity.isError ? (
+            <p className="text-sm text-red-300">{activity.error?.message || "Activity unavailable."}</p>
+          ) : null}
+          {!activity.isLoading && !activity.isError && actRows.length === 0 ? (
+            <p className="text-sm text-gray-500">No recent rows in smart_wallet_signals.</p>
+          ) : null}
+          {!activity.isLoading && !activity.isError && actRows.length > 0 ? (
+            <ul className="divide-y divide-white/[0.06] border border-white/[0.06] rounded-xl overflow-hidden">
+              {actRows.map((r) => (
+                <li key={`${r.wallet}-${r.token}-${r.createdAt}`} className="px-3 py-2.5 flex flex-wrap gap-2 text-sm bg-white/[0.015]">
+                  <span className="mono text-gray-200 text-xs">{r.wallet?.slice(0, 4)}…{r.wallet?.slice(-4)}</span>
+                  <span
+                    className={`text-[11px] font-semibold uppercase px-2 py-0.5 rounded border ${
+                      String(r.side).toLowerCase().includes("sell")
+                        ? "border-red-500/30 text-red-200 bg-red-500/10"
+                        : "border-emerald-500/30 text-emerald-200 bg-emerald-500/10"
+                    }`}
+                  >
+                    {r.side}
+                  </span>
+                  <Link href={`/token/${r.token}`} className="text-cyan-300 hover:underline mono text-xs truncate max-w-[200px]">
+                    {r.token?.slice(0, 4)}…{r.token?.slice(-4)}
+                  </Link>
+                  <span className="text-gray-500 text-xs ml-auto tabular-nums">
+                    {r.createdAt ? formatDateTime(r.createdAt) : "—"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
       </div>
     </>
   );

@@ -3,17 +3,21 @@ import { ExternalLink } from "lucide-react";
 
 export function ChartPanel({ address }) {
   const [timeframe, setTimeframe] = useState("1h");
-  const timeframes = ["1m", "5m", "15m", "1h", "4h", "1d"];
+  const timeframes = ["1h", "4h", "1d", "1w"];
   const iframeUrl = useMemo(() => {
     if (!address) return "";
-    return `https://dexscreener.com/solana/${address}?embed=1&theme=dark&trades=0&info=0&interval=${timeframe}`;
+    const tf = timeframe === "1w" ? "1W" : timeframe;
+    return `https://dexscreener.com/solana/${address}?embed=1&theme=dark&trades=0&info=0&interval=${tf}`;
   }, [address, timeframe]);
 
   if (!address) return <div className="glass-card h-96 skeleton-shimmer" />;
   return (
     <div className="glass-card glass-card-hover overflow-hidden p-0">
       <div className="px-4 py-3 border-b soft-divider flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="text-xs mono text-gray-400">LIVE CHART · DEXSCREENER</div>
+        <div className="text-xs mono text-gray-400">
+          LIVE CHART · DEXSCREENER · enable <span className="text-gray-300">Volume</span> from the embedded chart
+          toolbar if bars are hidden
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           {timeframes.map((tf) => (
             <button
