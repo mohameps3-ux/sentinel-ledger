@@ -63,13 +63,27 @@ router.get("/latest", async (req, res) => {
   const strategy = ["conservative", "aggressive", "balanced"].includes(String(req.query.strategy))
     ? String(req.query.strategy)
     : "balanced";
+  const tokenFilter = String(req.query.token || "").trim().toUpperCase();
   const supabase = safeSupabase();
   try {
-    const body = await getLatestSignalsFeedCached(supabase, lim, strategy);
-    if (String(req.query.format || "").toLowerCase() === "array") {
-      return res.json(Array.isArray(body.data) ? body.data : []);
+    const body = await getLatestSignalsFeedCached(supabase, tokenFilter ? 50 : lim, strategy);
+    let payload = body;
+    if (tokenFilter) {
+      const filtered = (Array.isArray(body?.data) ? body.data : []).filter((row) => {
+        const token = String(row?.token || "").replace("$", "").toUpperCase();
+        const mint = String(row?.tokenAddress || "").toUpperCase();
+        return token === tokenFilter || mint === tokenFilter;
+      });
+      payload = {
+        ...body,
+        data: filtered,
+        meta: { ...(body.meta || {}), filteredBy: tokenFilter, count: filtered.length }
+      };
     }
-    return res.json(body);
+    if (String(req.query.format || "").toLowerCase() === "array") {
+      return res.json(Array.isArray(payload.data) ? payload.data : []);
+    }
+    return res.json(payload);
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message, data: [] });
   }

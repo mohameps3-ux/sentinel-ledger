@@ -5,6 +5,7 @@ const { getMarketData } = require("../services/marketData");
 const { getAnalysis } = require("../services/riskEngine");
 const { tokenPageUrl } = require("../services/marketingLinks");
 const { postMarketingTweet } = require("../services/xMarketing");
+const { detectIntent, executeIntent, formatNluResponse } = require("../services/nluEngine");
 
 let bot = null;
 
@@ -155,7 +156,7 @@ function startTelegramBot() {
     }
 
     return ctx.reply(
-      "Welcome to Sentinel Ledger Bot.\nUse /scan <mint> to analyze a token or /watchlist to view your saved tokens."
+      "Welcome to Sentinel Ledger Bot.\nUse /price SOL, /signal WIF, /wallet <address>, /swap 1 SOL USDC, /scan <mint>, or /watchlist."
     );
   });
 
@@ -204,6 +205,48 @@ function startTelegramBot() {
 
   bot.command("support", async (ctx) => {
     return ctx.reply("Describe your issue in one message and we will escalate it to Sentinel support.");
+  });
+
+  bot.command("price", async (ctx) => {
+    const parts = (ctx.message?.text || "").trim().split(/\s+/);
+    const token = parts[1];
+    if (!token) return ctx.reply("Usage: /price SOL");
+    const result = await executeIntent("GET_PRICE", { token });
+    return ctx.reply(formatNluResponse(result));
+  });
+
+  bot.command("signal", async (ctx) => {
+    const parts = (ctx.message?.text || "").trim().split(/\s+/);
+    const token = parts[1];
+    if (!token) return ctx.reply("Usage: /signal WIF");
+    const result = await executeIntent("GET_SIGNAL", { token });
+    return ctx.reply(formatNluResponse(result));
+  });
+
+  bot.command("wallet", async (ctx) => {
+    const parts = (ctx.message?.text || "").trim().split(/\s+/);
+    const wallet = parts[1];
+    if (!wallet) return ctx.reply("Usage: /wallet <address>");
+    const result = await executeIntent("GET_WALLET", { wallet });
+    return ctx.reply(formatNluResponse(result));
+  });
+
+  bot.command("swap", async (ctx) => {
+    const parts = (ctx.message?.text || "").trim().split(/\s+/);
+    const amount = Number(parts[1]);
+    const inToken = parts[2];
+    const outToken = parts[3] || "USDC";
+    if (!amount || !inToken) return ctx.reply("Usage: /swap 1 SOL USDC");
+    const result = await executeIntent("GET_SWAP_QUOTE", { amount, inToken, outToken });
+    return ctx.reply(formatNluResponse(result));
+  });
+
+  bot.on("text", async (ctx) => {
+    const message = String(ctx.message?.text || "").trim();
+    if (!message || message.startsWith("/")) return;
+    const detected = detectIntent(message);
+    const routed = await executeIntent(detected.intent, detected.entities);
+    return ctx.reply(formatNluResponse(routed));
   });
 
   // Commands via getUpdates polling are optional in production.

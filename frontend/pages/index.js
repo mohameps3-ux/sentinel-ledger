@@ -26,6 +26,7 @@ import { PageHead } from "../components/seo/PageHead";
 import { WelcomeBanner } from "../components/public/WelcomeBanner";
 import { HomeOnboarding } from "../components/public/HomeOnboarding";
 import { useWalletLabels } from "../hooks/useWalletLabels";
+import { NluCommandBar } from "../components/home/NluCommandBar";
 
 const FALLBACK_TRENDING = [
   {
@@ -804,6 +805,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           </div>
         </section>
 
+        <NluCommandBar />
         <Ticker />
 
         <section className="sl-section !pt-2 !pb-2">
