@@ -14,7 +14,7 @@ export function WalletNarrativeCard({ walletAddress, lang = "es" }) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-sm text-gray-400 inline-flex items-center gap-2">
         <Loader2 size={14} className="animate-spin" />
-        Generando narrativa...
+        {lang === "en" ? "Generating narrative..." : "Generando narrativa..."}
       </div>
     );
   }
@@ -22,7 +22,8 @@ export function WalletNarrativeCard({ walletAddress, lang = "es" }) {
   if (query.isError) {
     return (
       <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-3 text-xs text-red-200">
-        No se pudo generar narrativa ({query.error?.message || "error"}).
+        {lang === "en" ? "Could not build narrative" : "No se pudo generar narrativa"} (
+        {query.error?.message || "error"}).
       </div>
     );
   }
@@ -35,7 +36,9 @@ export function WalletNarrativeCard({ walletAddress, lang = "es" }) {
   return (
     <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.08] px-3 py-3 space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-violet-100">{narrative.headline || "Narrativa de wallet"}</p>
+        <p className="text-sm font-semibold text-violet-100">
+          {narrative.headline || (lang === "en" ? "Wallet narrative" : "Narrativa de wallet")}
+        </p>
         <span className="text-[10px] text-violet-200/80">{payload.cached ? "cache" : "live"}</span>
       </div>
       <ul className="space-y-1.5">

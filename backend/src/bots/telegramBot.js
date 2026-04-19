@@ -58,7 +58,7 @@ async function sendGradeAlert(tokenAddress, analysis, marketData) {
     `Grade: ${analysis.grade} (${analysis.confidence}%)`,
     `Price: $${fmtUsdPrice(marketData?.price)}`,
     "",
-    `Scout in app: ${url}`
+    `Open in Sentinel: ${url}`
   ].join("\n");
 
   await bot.telegram.sendMessage(chatId, msg);
@@ -100,7 +100,7 @@ async function sendWalletThreatAlert(tokenAddress, walletIntel, marketData) {
     `Mint: ${tokenAddress}`,
     walletIntel.summary || "Patrones de fee / polvo / churn elevados en muestra reciente.",
     "",
-    `Scout: ${scoutUrl}`
+    `Open in Sentinel: ${scoutUrl}`
   ];
   const sigs = (walletIntel.signals || []).slice(0, 4);
   for (const s of sigs) {

@@ -22,6 +22,7 @@ export default function SmartMoneyPage() {
   const [minWinRate, setMinWinRate] = useState(0);
   const [minTrades, setMinTrades] = useState(0);
   const [expandedWallet, setExpandedWallet] = useState("");
+  const [narrativeLang, setNarrativeLang] = useState("es");
 
   const { data, isLoading, isError, error, refetch } = useSmartWalletsLeaderboard({
     chain,
@@ -74,7 +75,7 @@ export default function SmartMoneyPage() {
             <SlidersHorizontal size={16} className="text-gray-500" />
             <span className="sl-label text-gray-400">Filters</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <label className="space-y-1.5 text-xs text-gray-400">
               <span className="uppercase tracking-wide">Chain</span>
               <select
@@ -108,6 +109,17 @@ export default function SmartMoneyPage() {
                 placeholder="0"
                 onChange={(e) => setMinTrades(Number(e.target.value || 0))}
               />
+            </label>
+            <label className="space-y-1.5 text-xs text-gray-400">
+              <span className="uppercase tracking-wide">Narrative lang</span>
+              <select
+                className="sl-input w-full h-10 px-3"
+                value={narrativeLang}
+                onChange={(e) => setNarrativeLang(e.target.value)}
+              >
+                <option value="es">Español</option>
+                <option value="en">English</option>
+              </select>
             </label>
           </div>
           <p className="text-[11px] text-gray-600">
@@ -166,7 +178,9 @@ export default function SmartMoneyPage() {
                         <td className="py-3 pr-3">
                           <div className="min-w-0">
                             <div className="text-gray-100 font-medium truncate" title={titleFor(w.wallet)}>
-                              {labelFor(w.wallet)}
+                              <Link className="hover:text-cyan-300" href={`/wallet/${w.wallet}?lang=${narrativeLang}`}>
+                                {labelFor(w.wallet)}
+                              </Link>
                             </div>
                             <div className="font-mono text-[11px] text-gray-500 truncate">{w.wallet}</div>
                           </div>
@@ -208,7 +222,7 @@ export default function SmartMoneyPage() {
                       {expandedWallet === w.wallet ? (
                         <tr className="border-b border-white/5 bg-white/[0.015]">
                           <td colSpan={9} className="px-3 py-3">
-                            <WalletNarrativeCard walletAddress={w.wallet} lang="es" />
+                            <WalletNarrativeCard walletAddress={w.wallet} lang={narrativeLang} />
                           </td>
                         </tr>
                       ) : null}
@@ -227,7 +241,10 @@ export default function SmartMoneyPage() {
                   <div className="flex justify-between gap-2 items-start">
                     <div className="min-w-0">
                       <p className="text-white font-semibold truncate" title={titleFor(w.wallet)}>
-                        #{w.rank} · {labelFor(w.wallet)}
+                        #{w.rank} ·{" "}
+                        <Link className="hover:text-cyan-300" href={`/wallet/${w.wallet}?lang=${narrativeLang}`}>
+                          {labelFor(w.wallet)}
+                        </Link>
                       </p>
                       <p className="font-mono text-[11px] text-gray-500 truncate">{w.wallet}</p>
                     </div>
@@ -263,7 +280,9 @@ export default function SmartMoneyPage() {
                       ) : null}
                     </p>
                   ) : null}
-                  {expandedWallet === w.wallet ? <WalletNarrativeCard walletAddress={w.wallet} lang="es" /> : null}
+                  {expandedWallet === w.wallet ? (
+                    <WalletNarrativeCard walletAddress={w.wallet} lang={narrativeLang} />
+                  ) : null}
                 </article>
               ))}
             </section>
