@@ -1,15 +1,47 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const { detectIntent, executeIntent } = require("../services/nluEngine");
+const { ALLOWED_INTENTS, FALLBACK_MESSAGE } = require("../services/nlu/constants");
 
 const router = express.Router();
 
-router.post("/query", async (req, res) => {
+const nluLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 45,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => String(req.ip || "anon")
+});
+
+function sanitizeQuery(input) {
+  return String(input || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 220);
+}
+
+function sanitizeEntities(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (!/^[a-zA-Z0-9_]{1,24}$/.test(k)) continue;
+    if (typeof v === "string") out[k] = v.trim().slice(0, 120);
+    else if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+  }
+  return out;
+}
+
+router.post("/query", nluLimiter, async (req, res) => {
   try {
-    const query = String(req.body?.query || "").trim();
-    const explicitIntent = req.body?.intent ? String(req.body.intent) : null;
-    const entities = req.body?.entities && typeof req.body.entities === "object" ? req.body.entities : {};
+    const query = sanitizeQuery(req.body?.query);
+    const explicitIntentRaw = req.body?.intent ? String(req.body.intent).trim().toUpperCase() : null;
+    const explicitIntent = ALLOWED_INTENTS.has(explicitIntentRaw) ? explicitIntentRaw : null;
+    const entities = sanitizeEntities(req.body?.entities);
 
     const detected = explicitIntent ? { intent: explicitIntent, entities } : detectIntent(query);
+    if (!ALLOWED_INTENTS.has(detected.intent)) {
+      return res.status(400).json({ ok: false, intent: "UNKNOWN", error: FALLBACK_MESSAGE });
+    }
     const mergedEntities = { ...(detected.entities || {}), ...(entities || {}) };
     const result = await executeIntent(detected.intent, mergedEntities);
 
@@ -20,10 +52,10 @@ router.post("/query", async (req, res) => {
       ...result
     });
   } catch (error) {
+    console.error("[nlu-route] query failed:", error.message);
     return res.status(500).json({
       ok: false,
-      error:
-        "I didn't understand that. Try: price of SOL, signal on WIF, analyze wallet [address], swap 1 SOL to USDC."
+      error: FALLBACK_MESSAGE
     });
   }
 });

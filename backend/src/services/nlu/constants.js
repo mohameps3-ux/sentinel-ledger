@@ -1,0 +1,39 @@
+const SOL_MINT = "So11111111111111111111111111111111111111112";
+const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const BTC_MINT = "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E";
+
+const TOKEN_ALIASES = {
+  SOL: SOL_MINT,
+  WSOL: SOL_MINT,
+  USDC: USDC_MINT,
+  BTC: BTC_MINT,
+  WBTC: BTC_MINT
+};
+
+const TTL_BY_INTENT_MS = {
+  GET_PRICE: 30_000,
+  GET_SIGNAL: 60_000,
+  GET_WALLET: 60_000,
+  GET_SWAP_QUOTE: 10_000
+};
+
+const ALLOWED_INTENTS = new Set([
+  "GET_PRICE",
+  "GET_SIGNAL",
+  "GET_WALLET",
+  "GET_SWAP_QUOTE",
+  "UNKNOWN"
+]);
+
+const FALLBACK_MESSAGE =
+  "I didn't understand that. Try: price of SOL, signal on WIF, analyze wallet [address], swap 1 SOL to USDC.";
+
+module.exports = {
+  SOL_MINT,
+  USDC_MINT,
+  TOKEN_ALIASES,
+  TTL_BY_INTENT_MS,
+  ALLOWED_INTENTS,
+  FALLBACK_MESSAGE
+};
+
