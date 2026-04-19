@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
 import { useSmartWalletsLeaderboard } from "../hooks/useSmartWalletsLeaderboard";
@@ -7,6 +7,7 @@ import { useWalletLabels } from "../hooks/useWalletLabels";
 import { formatUsdWhole, formatDateTime } from "../lib/formatStable";
 import { PageHead } from "../components/seo/PageHead";
 import { Loader2, Radio, SlidersHorizontal } from "lucide-react";
+import { WalletNarrativeCard } from "../components/WalletNarrativeCard";
 
 function walletDecision(winRate) {
   const wr = Number(winRate || 0);
@@ -20,6 +21,7 @@ export default function SmartMoneyPage() {
   const [chain, setChain] = useState("solana");
   const [minWinRate, setMinWinRate] = useState(0);
   const [minTrades, setMinTrades] = useState(0);
+  const [expandedWallet, setExpandedWallet] = useState("");
 
   const { data, isLoading, isError, error, refetch } = useSmartWalletsLeaderboard({
     chain,
@@ -158,41 +160,59 @@ export default function SmartMoneyPage() {
                 </thead>
                 <tbody>
                   {ranked.map((w) => (
-                    <tr key={w.wallet} className="border-b border-white/5 hover:bg-white/[0.02] group">
-                      <td className="py-3 pr-2 text-gray-500 mono text-xs">{w.rank}</td>
-                      <td className="py-3 pr-3">
-                        <div className="min-w-0">
-                          <div className="text-gray-100 font-medium truncate" title={titleFor(w.wallet)}>
-                            {labelFor(w.wallet)}
+                    <Fragment key={w.wallet}>
+                      <tr className="border-b border-white/5 hover:bg-white/[0.02] group">
+                        <td className="py-3 pr-2 text-gray-500 mono text-xs">{w.rank}</td>
+                        <td className="py-3 pr-3">
+                          <div className="min-w-0">
+                            <div className="text-gray-100 font-medium truncate" title={titleFor(w.wallet)}>
+                              {labelFor(w.wallet)}
+                            </div>
+                            <div className="font-mono text-[11px] text-gray-500 truncate">{w.wallet}</div>
                           </div>
-                          <div className="font-mono text-[11px] text-gray-500 truncate">{w.wallet}</div>
-                        </div>
-                      </td>
-                      <td className="py-3 pr-3 text-emerald-300 tabular-nums">{w.winRate.toFixed(1)}%</td>
-                      <td className="py-3 pr-3 text-cyan-200/90 tabular-nums">{Number(w.roi30dVsAvgSize || 0).toFixed(2)}×</td>
-                      <td className="py-3 pr-3 text-emerald-200/90 tabular-nums">+${formatUsdWhole(w.pnl30d)}</td>
-                      <td className="py-3 pr-3 tabular-nums text-gray-200">{w.totalTrades ?? "—"}</td>
-                      <td className="py-3 pr-3 text-xs text-gray-300">
-                        {w.bestTradePct != null ? (
-                          <span className="text-emerald-300 font-mono">+{w.bestTradePct.toFixed(1)}%</span>
-                        ) : (
-                          <span className="text-gray-600">—</span>
-                        )}
-                        {w.bestTradeMint ? (
-                          <div className="text-[10px] text-gray-600 mono truncate max-w-[200px] mt-0.5">
-                            <Link className="hover:text-cyan-300" href={`/token/${w.bestTradeMint}`}>
-                              mint…{w.bestTradeMint.slice(-4)}
-                            </Link>
+                        </td>
+                        <td className="py-3 pr-3 text-emerald-300 tabular-nums">{w.winRate.toFixed(1)}%</td>
+                        <td className="py-3 pr-3 text-cyan-200/90 tabular-nums">{Number(w.roi30dVsAvgSize || 0).toFixed(2)}×</td>
+                        <td className="py-3 pr-3 text-emerald-200/90 tabular-nums">+${formatUsdWhole(w.pnl30d)}</td>
+                        <td className="py-3 pr-3 tabular-nums text-gray-200">{w.totalTrades ?? "—"}</td>
+                        <td className="py-3 pr-3 text-xs text-gray-300">
+                          {w.bestTradePct != null ? (
+                            <span className="text-emerald-300 font-mono">+{w.bestTradePct.toFixed(1)}%</span>
+                          ) : (
+                            <span className="text-gray-600">—</span>
+                          )}
+                          {w.bestTradeMint ? (
+                            <div className="text-[10px] text-gray-600 mono truncate max-w-[200px] mt-0.5">
+                              <Link className="hover:text-cyan-300" href={`/token/${w.bestTradeMint}`}>
+                                mint…{w.bestTradeMint.slice(-4)}
+                              </Link>
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="py-3 pr-3 text-gray-400 text-xs whitespace-nowrap">
+                          {w.lastSeen ? formatDateTime(w.lastSeen) : "—"}
+                        </td>
+                        <td className="py-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-1 rounded border ${w.decision.tone}`}>{w.decision.label}</span>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedWallet((v) => (v === w.wallet ? "" : w.wallet))}
+                              className="text-[11px] px-2 py-1 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+                            >
+                              Why
+                            </button>
                           </div>
-                        ) : null}
-                      </td>
-                      <td className="py-3 pr-3 text-gray-400 text-xs whitespace-nowrap">
-                        {w.lastSeen ? formatDateTime(w.lastSeen) : "—"}
-                      </td>
-                      <td className="py-3">
-                        <span className={`text-xs px-2 py-1 rounded border ${w.decision.tone}`}>{w.decision.label}</span>
-                      </td>
-                    </tr>
+                        </td>
+                      </tr>
+                      {expandedWallet === w.wallet ? (
+                        <tr className="border-b border-white/5 bg-white/[0.015]">
+                          <td colSpan={9} className="px-3 py-3">
+                            <WalletNarrativeCard walletAddress={w.wallet} lang="es" />
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -220,6 +240,15 @@ export default function SmartMoneyPage() {
                     <span className="text-gray-500">{w.lastSeen ? formatDateTime(w.lastSeen) : "—"}</span>
                   </div>
                   <p className="text-emerald-300 text-sm font-mono">+${formatUsdWhole(w.pnl30d)} 30d</p>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedWallet((v) => (v === w.wallet ? "" : w.wallet))}
+                      className="text-[11px] px-2 py-1 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+                    >
+                      Why this wallet
+                    </button>
+                  </div>
                   {w.bestTradePct != null ? (
                     <p className="text-[11px] text-gray-400">
                       Best signal: <span className="text-emerald-300">+{w.bestTradePct.toFixed(1)}%</span>
@@ -234,6 +263,7 @@ export default function SmartMoneyPage() {
                       ) : null}
                     </p>
                   ) : null}
+                  {expandedWallet === w.wallet ? <WalletNarrativeCard walletAddress={w.wallet} lang="es" /> : null}
                 </article>
               ))}
             </section>
