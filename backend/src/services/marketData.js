@@ -2,6 +2,10 @@ const axios = require("axios");
 const redis = require("../lib/cache");
 
 const CACHE_TTL_SECONDS = 20;
+const COINGECKO_SIMPLE_PRICE = "https://api.coingecko.com/api/v3/simple/price";
+const WELL_KNOWN_MINT_TO_CG = {
+  So11111111111111111111111111111111111111112: "solana"
+};
 
 async function cacheSetJson(key, ttlSeconds, value) {
   // @upstash/redis uses SET with { ex } instead of SETEX.
@@ -71,6 +75,39 @@ function buildDexPairs(pairs, mintAddress) {
   }));
 }
 
+function toPositiveNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function resolveCoingeckoAsset(address, bestPair) {
+  if (WELL_KNOWN_MINT_TO_CG[address]) return WELL_KNOWN_MINT_TO_CG[address];
+  const symbol = String(bestPair?.baseToken?.symbol || "").toUpperCase();
+  const name = String(bestPair?.baseToken?.name || "").toLowerCase();
+  if (symbol === "SOL" || name.includes("solana")) return "solana";
+  if (symbol === "BTC" || symbol === "WBTC" || name.includes("bitcoin")) return "bitcoin";
+  if (symbol === "ETH" || symbol === "WETH" || name.includes("ethereum")) return "ethereum";
+  return null;
+}
+
+async function fetchCoinGeckoMarketCap(assetId) {
+  if (!assetId) return 0;
+  try {
+    const { data } = await axios.get(COINGECKO_SIMPLE_PRICE, {
+      timeout: 5000,
+      params: {
+        ids: assetId,
+        vs_currencies: "usd",
+        include_market_cap: "true"
+      }
+    });
+    return toPositiveNumber(data?.[assetId]?.usd_market_cap);
+  } catch (error) {
+    console.warn("CoinGecko fallback failed:", error.message);
+    return 0;
+  }
+}
+
 async function getMarketData(address) {
   const cacheKey = `market:${address}`;
   const cached = await redis.get(cacheKey);
@@ -103,11 +140,20 @@ async function getMarketData(address) {
       labs.some((l) => /verified|vouched/i.test(String(l))) ||
       allLabels.some((l) => l.includes("verified") && !l.includes("unverified"));
 
+    // Native mints may have market cap data at token-level providers, not in pair fdv.
+    const pair0Fdv = toPositiveNumber(pairs?.[0]?.fdv);
+    const bestPairFdv = toPositiveNumber(bestPair?.fdv);
+    let marketCap = pair0Fdv || bestPairFdv;
+    if (!marketCap) {
+      const cgAsset = resolveCoingeckoAsset(address, bestPair);
+      marketCap = await fetchCoinGeckoMarketCap(cgAsset);
+    }
+
     const marketData = {
       price: Number(bestPair.priceUsd) || 0,
       priceChange24h: bestPair.priceChange?.h24 || 0,
       volume24h: Number(bestPair.volume?.h24) || 0,
-      marketCap: Number(bestPair.fdv) || 0,
+      marketCap: marketCap || null,
       liquidity: Number(bestPair.liquidity?.usd) || 0,
       symbol: bestPair.baseToken?.symbol || "?",
       name: bestPair.baseToken?.name || "",

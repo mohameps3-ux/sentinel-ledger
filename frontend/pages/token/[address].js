@@ -43,6 +43,12 @@ function normalizeAddress(query) {
   return "";
 }
 
+function usdOrNA(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return "N/A";
+  return `$${formatUsdWhole(n)}`;
+}
+
 export default function TokenPage() {
   const router = useRouter();
   const address = normalizeAddress(router.query);
@@ -250,15 +256,15 @@ export default function TokenPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
           <div className="sl-label">Liquidity</div>
-          <div className="text-lg font-semibold text-white tracking-tight">${formatUsdWhole(market.liquidity)}</div>
+          <div className="text-lg font-semibold text-white tracking-tight">{usdOrNA(market.liquidity)}</div>
         </div>
         <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
           <div className="sl-label">24h volume</div>
-          <div className="text-lg font-semibold text-white tracking-tight">${formatUsdWhole(market.volume24h)}</div>
+          <div className="text-lg font-semibold text-white tracking-tight">{usdOrNA(market.volume24h)}</div>
         </div>
         <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
           <div className="sl-label">FDV</div>
-          <div className="text-lg font-semibold text-white tracking-tight">${formatUsdWhole(market.marketCap)}</div>
+          <div className="text-lg font-semibold text-white tracking-tight">{usdOrNA(market.marketCap)}</div>
         </div>
         <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
           <div className="sl-label inline-flex items-center gap-2">
