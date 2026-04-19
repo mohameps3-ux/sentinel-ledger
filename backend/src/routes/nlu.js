@@ -4,6 +4,7 @@ const { detectIntent, executeIntent } = require("../services/nluEngine");
 const { ALLOWED_INTENTS, FALLBACK_MESSAGE } = require("../services/nlu/constants");
 
 const router = express.Router();
+const MAX_NLU_BODY_BYTES = 16 * 1024;
 
 const nluLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -31,7 +32,15 @@ function sanitizeEntities(raw) {
   return out;
 }
 
-router.post("/query", nluLimiter, async (req, res) => {
+function enforceNluPayloadSize(req, res, next) {
+  const rawLen = Number(req.headers["content-length"] || 0);
+  if (Number.isFinite(rawLen) && rawLen > MAX_NLU_BODY_BYTES) {
+    return res.status(413).json({ ok: false, error: "payload_too_large" });
+  }
+  return next();
+}
+
+router.post("/query", nluLimiter, enforceNluPayloadSize, async (req, res) => {
   try {
     const query = sanitizeQuery(req.body?.query);
     const explicitIntentRaw = req.body?.intent ? String(req.body.intent).trim().toUpperCase() : null;

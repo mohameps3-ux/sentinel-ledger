@@ -1,9 +1,28 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const redis = require("../lib/cache");
 
 const router = express.Router();
 
 const DEDUPE_TTL_SEC = 120;
+const MAX_HELIUS_BODY_BYTES = 512 * 1024;
+
+const heliusLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "rate_limit_exceeded" }
+});
+router.use(heliusLimiter);
+
+function enforceHeliusBodyLimit(req, res, next) {
+  const rawLen = Number(req.headers["content-length"] || 0);
+  if (Number.isFinite(rawLen) && rawLen > MAX_HELIUS_BODY_BYTES) {
+    return res.status(413).json({ ok: false, error: "payload_too_large" });
+  }
+  return next();
+}
 
 async function markFirstEmit(dedupeKey) {
   try {
@@ -55,14 +74,26 @@ function expandHeliusPayload(raw) {
 
 function heliusWebhookAuth(req, res, next) {
   const secret = process.env.HELIUS_WEBHOOK_SECRET;
-  if (!secret) return next();
+  if (!secret) return res.status(503).json({ ok: false, error: "helius_webhook_secret_missing" });
   const bearer = (req.headers.authorization || "").replace(/^Bearer\s+/i, "").trim();
   const header = (req.headers["x-helius-secret"] || "").trim();
   if (bearer === secret || header === secret) return next();
   return res.status(401).json({ ok: false, error: "webhook_unauthorized" });
 }
 
-router.post("/helius", heliusWebhookAuth, async (req, res) => {
+router.get("/helius/health", (_req, res) => {
+  const configured = Boolean(process.env.HELIUS_WEBHOOK_SECRET);
+  if (!configured) {
+    return res.status(503).json({
+      ok: false,
+      warning: "HELIUS_WEBHOOK_SECRET missing",
+      endpoint: "/api/v1/webhooks/helius"
+    });
+  }
+  return res.json({ ok: true, endpoint: "/api/v1/webhooks/helius", auth: "enabled" });
+});
+
+router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, res) => {
   try {
     const body = req.body;
     const events = Array.isArray(body) ? body : body ? [body] : [];

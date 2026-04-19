@@ -70,6 +70,9 @@ app.post(
   stripeWebhookRawBody(),
   stripeWebhookHandler
 );
+app.use("/api/v1/nlu", express.json({ limit: "16kb" }));
+app.use("/api/v1/bots/omni", express.json({ limit: "32kb" }));
+app.use("/api/v1/public", express.json({ limit: "32kb" }));
 app.use(express.json({ limit: "1mb" }));
 
 app.use("/api/v1/public", publicSurfaceRouter);
@@ -84,6 +87,17 @@ app.use(
 );
 
 app.get("/health", async (_, res) => {
+  const missingCritical = [];
+  if (!process.env.HELIUS_WEBHOOK_SECRET) missingCritical.push("HELIUS_WEBHOOK_SECRET");
+  if (!process.env.STRIPE_SECRET_KEY) missingCritical.push("STRIPE_SECRET_KEY");
+  if (
+    !process.env.STRIPE_WEBHOOK_SECRET &&
+    !process.env.STRIPE_WEBHOOK_SECRET_ALT &&
+    !process.env.STRIPE_WEBHOOK_SECRETS
+  ) {
+    missingCritical.push("STRIPE_WEBHOOK_SECRET*");
+  }
+
   let cacheOk = null;
   try {
     await redis.set("health:ping", "1", { ex: 15 });
@@ -93,8 +107,8 @@ app.get("/health", async (_, res) => {
     cacheOk = false;
   }
 
-  res.json({
-    ok: true,
+  const body = {
+    ok: missingCritical.length === 0,
     service: "sentinel-ledger-backend",
     commit:
       process.env.RAILWAY_GIT_COMMIT_SHA ||
@@ -104,10 +118,16 @@ app.get("/health", async (_, res) => {
     cache: cacheOk,
     redisRestConfigured: Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
     bullMqTcpConfigured: Boolean(process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL),
+    heliusWebhookConfigured: Boolean(process.env.HELIUS_WEBHOOK_SECRET),
+    missingCriticalSecrets: missingCritical,
     smartWorkersEnabled: isWorkersEnabled(),
     proAlerts: getProAlertCronStatus(),
     signalPrices: getSignalPriceCronStatus()
-  });
+  };
+  if (missingCritical.length) {
+    return res.status(503).json(body);
+  }
+  return res.json(body);
 });
 
 app.use("/api/v1/auth", authRouter);

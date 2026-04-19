@@ -24,6 +24,20 @@ async function tryClaimStripeEvent(eventId, eventType) {
   throw lastError;
 }
 
+async function getStripeEventRecord(eventId) {
+  const supabase = getSupabase();
+  let { data, error } = await supabase
+    .from("stripe_events")
+    .select("*")
+    .eq("stripe_event_id", eventId)
+    .limit(1)
+    .maybeSingle();
+  if (!error && data) return data;
+  ({ data, error } = await supabase.from("stripe_events").select("*").eq("id", eventId).limit(1).maybeSingle());
+  if (error) throw error;
+  return data || null;
+}
+
 async function releaseStripeEventClaim(eventId) {
   const supabase = getSupabase();
   let { error } = await supabase.from("stripe_events").delete().eq("stripe_event_id", eventId);
@@ -64,6 +78,7 @@ async function appendSystemLog({ category, message, metadata }) {
 }
 
 module.exports = {
+  getStripeEventRecord,
   tryClaimStripeEvent,
   releaseStripeEventClaim,
   markStripeEventProcessed,

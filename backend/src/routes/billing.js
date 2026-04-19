@@ -1,16 +1,15 @@
 const express = require("express");
 const rateLimit = require("express-rate-limit");
+const { randomUUID } = require("crypto");
 const Stripe = require("stripe");
 const { authMiddleware } = require("./auth");
 const {
-  applyCheckoutSessionCompleted,
-  applyInvoicePaid,
-  applySubscriptionDeleted,
+  applyStripeEvent,
   getLatestSubscription
 } = require("../services/subscriptionService");
 const {
+  getStripeEventRecord,
   tryClaimStripeEvent,
-  releaseStripeEventClaim,
   markStripeEventProcessed,
   appendSystemLog
 } = require("../services/stripeAuditLog");
@@ -93,6 +92,8 @@ function constructEventWithAnySecret(stripe, payload, signature, webhookSecrets)
 }
 
 billingRouter.post("/create-checkout-session", authMiddleware, checkoutLimiter, async (req, res) => {
+  const requestId = String(req.headers["x-request-id"] || randomUUID());
+  res.setHeader("x-request-id", requestId);
   try {
     const stripe = getStripe();
     if (!stripe) return res.status(503).json({ ok: false, error: "stripe_not_configured" });
@@ -122,13 +123,15 @@ billingRouter.post("/create-checkout-session", authMiddleware, checkoutLimiter, 
 
     return res.json({ ok: true, url: session.url });
   } catch (error) {
-    console.error("create-checkout-session:", error);
+    console.error(`[billing][${requestId}] create-checkout-session:`, error);
     const mapped = classifyCheckoutError(error);
     return res.status(mapped.status).json({ ok: false, error: mapped.error });
   }
 });
 
 async function createPortalSessionHandler(req, res) {
+  const requestId = String(req.headers["x-request-id"] || randomUUID());
+  res.setHeader("x-request-id", requestId);
   try {
     const stripe = getStripe();
     if (!stripe) return res.status(503).json({ ok: false, error: "stripe_not_configured" });
@@ -145,7 +148,7 @@ async function createPortalSessionHandler(req, res) {
 
     return res.json({ ok: true, url: portal.url });
   } catch (error) {
-    console.error("create-portal-session:", error);
+    console.error(`[billing][${requestId}] create-portal-session:`, error);
     if (String(error?.raw?.message || "").includes("No such customer")) {
       return res.status(400).json({ ok: false, error: "invalid_stripe_customer" });
     }
@@ -157,6 +160,8 @@ billingRouter.post("/create-portal-session", authMiddleware, portalLimiter, crea
 billingRouter.post("/create-customer-portal", authMiddleware, portalLimiter, createPortalSessionHandler);
 
 async function stripeWebhookHandler(req, res) {
+  const requestId = String(req.headers["x-request-id"] || randomUUID());
+  res.setHeader("x-request-id", requestId);
   try {
     const stripe = getStripe();
     const webhookSecrets = getStripeWebhookSecrets();
@@ -183,7 +188,10 @@ async function stripeWebhookHandler(req, res) {
     } catch (err) {
       const sk = process.env.STRIPE_SECRET_KEY || "";
       const modeHint = sk.includes("_test_") ? "test" : sk.includes("_live_") ? "live" : "unknown";
-      console.error("stripe signature:", err.message, { modeHint, secretCount: webhookSecrets.length });
+      console.error(`[stripe-webhook][${requestId}] stripe signature:`, err.message, {
+        modeHint,
+        secretCount: webhookSecrets.length
+      });
       return res.status(400).json({
         ok: false,
         error: "webhook_verification_failed",
@@ -192,50 +200,53 @@ async function stripeWebhookHandler(req, res) {
       });
     }
 
+    const existing = await getStripeEventRecord(event.id).catch((e) => {
+      console.error(`[stripe-webhook][${requestId}] stripe_events select:`, e.message || e);
+      throw e;
+    });
+    if (existing?.processed_at) {
+      return res.json({ received: true, duplicate: true });
+    }
+
     const claimed = await tryClaimStripeEvent(event.id, event.type).catch((e) => {
-      console.error("stripe_events claim:", e);
+      console.error(`[stripe-webhook][${requestId}] stripe_events claim:`, e);
       throw e;
     });
     if (!claimed) {
-      return res.json({ received: true, duplicate: true });
+      const duplicate = await getStripeEventRecord(event.id).catch(() => null);
+      if (duplicate?.processed_at) return res.json({ received: true, duplicate: true });
+      return res.json({ received: true, duplicate: true, status: "in_progress" });
     }
 
     try {
       await appendSystemLog({
         category: "stripe_webhook",
         message: `processing ${event.type}`,
-        metadata: { eventId: event.id, type: event.type }
+        metadata: { eventId: event.id, type: event.type, requestId }
       });
-
-      switch (event.type) {
-        case "checkout.session.completed":
-          await applyCheckoutSessionCompleted(event.data.object);
-          break;
-        case "invoice.paid":
-          await applyInvoicePaid(event.data.object);
-          break;
-        case "customer.subscription.deleted":
-          await applySubscriptionDeleted(event.data.object);
-          break;
-        default:
-          break;
-      }
+      // Atomic sequence boundary in application flow:
+      // claim -> apply side effects -> mark processed.
+      await applyStripeEvent(event);
 
       await markStripeEventProcessed(event.id);
       await appendSystemLog({
         category: "stripe_webhook",
         message: `processed ${event.type}`,
-        metadata: { eventId: event.id, type: event.type, ok: true }
+        metadata: { eventId: event.id, type: event.type, ok: true, requestId }
       });
     } catch (processingError) {
-      await releaseStripeEventClaim(event.id).catch(() => {});
-      console.error("stripe webhook processing:", processingError);
+      await appendSystemLog({
+        category: "stripe_webhook",
+        message: `failed ${event.type}`,
+        metadata: { eventId: event.id, type: event.type, ok: false, requestId, error: processingError?.message || String(processingError) }
+      });
+      console.error(`[stripe-webhook][${requestId}] processing:`, processingError);
       return res.status(500).json({ ok: false, error: "webhook_processing_failed" });
     }
 
     return res.json({ received: true });
   } catch (error) {
-    console.error("stripe-webhook:", error);
+    console.error(`[stripe-webhook][${requestId}] fatal:`, error);
     return res.status(500).json({ ok: false, error: "webhook_failed" });
   }
 }

@@ -1,4 +1,5 @@
 const redis = require("../lib/cache");
+const { randomUUID } = require("crypto");
 const { getSupabase } = require("../lib/supabase");
 const { getMarketData } = require("../services/marketData");
 const { tokenPageUrl } = require("../services/marketingLinks");
@@ -74,6 +75,7 @@ async function shouldNotify(userId, mint, dedupHours) {
 }
 
 async function runProAlertTick() {
+  const requestId = randomUUID();
   lastTickStats = { ...lastTickStats, error: null };
   if (String(process.env.PRO_ALERTS_CRON_ENABLED || "true").toLowerCase() === "false") return;
 
@@ -86,6 +88,7 @@ async function runProAlertTick() {
   let skippedDedup = 0;
 
   try {
+    console.log(`[pro-alert-cron][${requestId}] tick_start`);
     const supabase = getSupabase();
     const { data: users, error } = await supabase
       .from("users")
@@ -94,7 +97,7 @@ async function runProAlertTick() {
       .not("telegram_chat_id", "is", null);
 
     if (error) {
-      console.warn("pro alert users query:", error.message);
+      console.warn(`[pro-alert-cron][${requestId}] users query:`, error.message);
       lastTickStats = { ...lastTickStats, error: error.message };
       lastTickFinishedAt = Date.now();
       return;
@@ -219,8 +222,13 @@ async function runProAlertTick() {
       ...lastTickStats,
       error: e.message || String(e)
     };
-    console.warn("pro alert tick exception:", e.message);
+    console.warn(`[pro-alert-cron][${requestId}] tick_exception:`, e.message);
   } finally {
+    console.log(`[pro-alert-cron][${requestId}] tick_end`, {
+      usersConsidered,
+      watchlistChecks,
+      messagesSent
+    });
     lastTickFinishedAt = Date.now();
   }
 }

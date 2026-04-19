@@ -1,4 +1,5 @@
 const { getSupabase } = require("../lib/supabase");
+const { randomUUID } = require("crypto");
 const { getSmartWalletQueue } = require("../queues/smartWallet.queue");
 const { analyzeWallet } = require("../services/analyzeWallet");
 
@@ -11,6 +12,8 @@ function getDirectLimit() {
 }
 
 async function enqueueActiveWallets() {
+  const requestId = randomUUID();
+  console.log(`[smart-wallet-cron][${requestId}] enqueue_start`);
   const queue = getSmartWalletQueue();
 
   const supabase = getSupabase();
@@ -20,7 +23,7 @@ async function enqueueActiveWallets() {
     .select("wallet_address")
     .gte("bought_at", sevenDaysAgo);
   if (error) {
-    console.warn("smart wallet cron skipped:", error.message);
+    console.warn(`[smart-wallet-cron][${requestId}] skipped:`, error.message);
     return 0;
   }
 
@@ -44,7 +47,7 @@ async function enqueueActiveWallets() {
       .order("updated_at", { ascending: false })
       .limit(100);
     if (seedError) {
-      console.warn("smart wallet seed fallback skipped:", seedError.message);
+      console.warn(`[smart-wallet-cron][${requestId}] seed fallback skipped:`, seedError.message);
     } else {
       targetWallets = (seedRows || []).map((row) => row?.wallet_address).filter(Boolean);
     }
@@ -59,10 +62,10 @@ async function enqueueActiveWallets() {
         await analyzeWallet(walletAddress);
         ok += 1;
       } catch (error) {
-        console.warn(`smart wallet direct analysis failed (${walletAddress}): ${error.message}`);
+        console.warn(`[smart-wallet-cron][${requestId}] direct analysis failed (${walletAddress}): ${error.message}`);
       }
     }
-    console.log(`Smart wallet direct analysis complete: ${ok}/${sample.length}`);
+    console.log(`[smart-wallet-cron][${requestId}] direct analysis complete: ${ok}/${sample.length}`);
     return ok;
   }
 
@@ -77,7 +80,7 @@ async function enqueueActiveWallets() {
       }
     );
   }
-  console.log(`Smart wallet cron enqueued: ${targetWallets.length}`);
+  console.log(`[smart-wallet-cron][${requestId}] enqueued: ${targetWallets.length}`);
   return targetWallets.length;
 }
 

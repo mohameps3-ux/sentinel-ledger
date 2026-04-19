@@ -226,6 +226,21 @@ async function expireStaleSubscriptions() {
   if (error) throw error;
 }
 
+async function applyStripeEvent(event) {
+  const type = String(event?.type || "");
+  if (type === "checkout.session.completed") {
+    await applyCheckoutSessionCompleted(event.data.object);
+    return;
+  }
+  if (type === "invoice.paid") {
+    await applyInvoicePaid(event.data.object);
+    return;
+  }
+  if (type === "customer.subscription.deleted") {
+    await applySubscriptionDeleted(event.data.object);
+  }
+}
+
 module.exports = {
   DAY_MS,
   hasProAccess,
@@ -236,5 +251,6 @@ module.exports = {
   applyCheckoutSessionCompleted,
   applyInvoicePaid,
   applySubscriptionDeleted,
+  applyStripeEvent,
   expireStaleSubscriptions
 };

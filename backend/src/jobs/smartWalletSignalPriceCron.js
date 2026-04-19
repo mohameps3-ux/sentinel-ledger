@@ -1,4 +1,5 @@
 const { getSupabase } = require("../lib/supabase");
+const { randomUUID } = require("crypto");
 const { runSignalPriceEnrichmentOnce } = require("../services/smartWalletSignalPrices");
 
 const TICK_MS_RAW = Number(process.env.SIGNAL_PRICE_TICK_MS || 5 * 60 * 1000);
@@ -11,11 +12,13 @@ let lastTickFinishedAt = null;
 let lastStats = { examined: 0, updated: 0, skipped: 0, errors: 0, tokensFetched: 0, error: null };
 
 async function runSignalPriceTick() {
+  const requestId = randomUUID();
   lastStats = { ...lastStats, error: null };
   if (String(process.env.SIGNAL_PRICE_CRON_ENABLED || "true").toLowerCase() === "false") return;
 
   lastTickStartedAt = Date.now();
   try {
+    console.log(`[signal-price-cron][${requestId}] tick_start`);
     try {
       getSupabase();
     } catch (e) {
@@ -29,8 +32,9 @@ async function runSignalPriceTick() {
       ...lastStats,
       error: e.message || String(e)
     };
-    console.warn("signal price cron:", e.message);
+    console.warn(`[signal-price-cron][${requestId}] tick_exception:`, e.message);
   } finally {
+    console.log(`[signal-price-cron][${requestId}] tick_end`, lastStats);
     lastTickFinishedAt = Date.now();
   }
 }
