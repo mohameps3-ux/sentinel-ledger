@@ -373,6 +373,32 @@ a {
   }
 }
 
+/* Wayfinding + “alive” feedback (respects reduced-motion above) */
+@keyframes sl-breathe {
+  0%,
+  100% {
+    opacity: 0.82;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.sl-live-pulse {
+  animation: sl-breathe 2.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-live-pulse {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+.sl-wayfinding-link:active {
+  transform: scale(0.98);
+}
+
 .safe-bottom-pad {
   padding-bottom: calc(1rem + var(--safe-bottom));
 }

@@ -23,12 +23,12 @@ export function Navbar() {
   return (
     <nav className="fixed top-0 w-full z-50 bg-[#070709]/88 backdrop-blur-xl border-b border-white/[0.07] shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
-        <Link href="/" className="flex items-center gap-2 shrink-0 group">
-          <span className="h-9 w-9 rounded-lg bg-emerald-500/15 border border-emerald-500/35 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.25)] group-hover:shadow-[0_0_28px_rgba(16,185,129,0.45)] transition-shadow">
-            <Shield className="text-emerald-400" size={20} aria-hidden />
+        <Link href="/" className="flex items-center gap-2 shrink-0 group rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[#070709]">
+          <span className="h-9 w-9 rounded-lg border border-white/15 bg-white/[0.04] flex items-center justify-center transition-colors group-hover:bg-white/[0.07] group-hover:border-white/25">
+            <Shield className="text-gray-100" size={20} aria-hidden />
           </span>
-          <span className="text-lg sm:text-xl font-black tracking-tight bg-gradient-to-r from-emerald-300 via-white to-cyan-300 bg-clip-text text-transparent">
-            SENTINEL LEDGER
+          <span className="text-lg sm:text-xl font-bold tracking-tight text-white">
+            Sentinel Ledger
           </span>
         </Link>
 
@@ -44,27 +44,58 @@ export function Navbar() {
           <WalletButton />
         </div>
 
-        <div className="hidden sm:flex items-center gap-4 ml-auto min-w-0">
+        <div className="hidden sm:flex items-center gap-3 ml-auto min-w-0 flex-wrap justify-end">
           <HealthBar />
-          <Link href="/" className="text-sm text-gray-200 hover:text-white">
+          <Link
+            href="/"
+            aria-current={router.pathname === "/" ? "page" : undefined}
+            className={`text-sm transition-colors ${router.pathname === "/" ? "text-white font-semibold underline decoration-white/40 underline-offset-4" : "text-gray-300 hover:text-white"}`}
+          >
             Dashboard
           </Link>
-          <Link href="/results" className="text-sm text-gray-300 hover:text-white">
+          <Link
+            href="/results"
+            aria-current={router.pathname === "/results" ? "page" : undefined}
+            className={`text-sm transition-colors ${router.pathname === "/results" ? "text-white font-semibold underline decoration-white/40 underline-offset-4" : "text-gray-300 hover:text-white"}`}
+          >
             Results
           </Link>
-          <Link href="/scanner" className="text-sm text-gray-300 hover:text-white">
+          <Link
+            href="/scanner"
+            aria-current={router.pathname === "/scanner" ? "page" : undefined}
+            className={`text-sm transition-colors ${router.pathname === "/scanner" ? "text-white font-semibold underline decoration-white/40 underline-offset-4" : "text-gray-300 hover:text-white"}`}
+          >
             Scanner
           </Link>
-          <Link href="/smart-money" className="text-sm text-gray-300 hover:text-white">
+          <Link
+            href="/smart-money"
+            aria-current={router.pathname === "/smart-money" ? "page" : undefined}
+            className={`text-sm transition-colors ${router.pathname === "/smart-money" ? "text-white font-semibold underline decoration-white/40 underline-offset-4" : "text-gray-300 hover:text-white"}`}
+          >
             Smart Money
           </Link>
-          <Link href="/alerts" className="text-sm text-cyan-300 hover:text-cyan-200">
+          <Link
+            href="/alerts"
+            aria-current={router.pathname === "/alerts" ? "page" : undefined}
+            className={`text-sm transition-colors ${router.pathname === "/alerts" ? "text-white font-semibold underline decoration-white/40 underline-offset-4" : "text-gray-300 hover:text-white"}`}
+          >
             Alerts
           </Link>
-          <Link href="/pricing" className="text-sm text-purple-300 hover:text-purple-200">
+          <Link
+            href="/pricing"
+            aria-current={router.pathname === "/pricing" ? "page" : undefined}
+            className={`text-sm transition-colors inline-flex items-center gap-1 ${router.pathname === "/pricing" ? "text-white font-semibold underline decoration-white/40 underline-offset-4" : "text-gray-300 hover:text-white"}`}
+          >
             Pricing
+            <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500 border border-white/15 rounded px-1 py-px">
+              Pro
+            </span>
           </Link>
-          <Link href="/graveyard" className="text-sm text-gray-300 hover:text-white">
+          <Link
+            href="/graveyard"
+            aria-current={router.pathname === "/graveyard" ? "page" : undefined}
+            className={`text-sm transition-colors ${router.pathname === "/graveyard" ? "text-white font-semibold underline decoration-white/40 underline-offset-4" : "text-gray-300 hover:text-white"}`}
+          >
             Graveyard
           </Link>
           <Link
@@ -84,13 +115,25 @@ export function Navbar() {
               </span>
             ) : null}
           </Link>
-          <Link href="/compare" className="text-sm text-gray-300 hover:text-white">
+          <Link
+            href="/compare"
+            aria-current={router.pathname === "/compare" ? "page" : undefined}
+            className={`text-sm transition-colors ${router.pathname === "/compare" ? "text-white font-semibold underline decoration-white/40 underline-offset-4" : "text-gray-300 hover:text-white"}`}
+          >
             Compare
           </Link>
-          <Link href="/watchlist" className="text-sm text-gray-300 hover:text-white">
+          <Link
+            href="/watchlist"
+            aria-current={router.pathname === "/watchlist" ? "page" : undefined}
+            className={`text-sm transition-colors ${router.pathname === "/watchlist" ? "text-white font-semibold underline decoration-white/40 underline-offset-4" : "text-gray-300 hover:text-white"}`}
+          >
             Watchlist
           </Link>
-          <Link href="/portfolio" className="text-sm text-gray-300 hover:text-white">
+          <Link
+            href="/portfolio"
+            aria-current={router.pathname === "/portfolio" ? "page" : undefined}
+            className={`text-sm transition-colors ${router.pathname === "/portfolio" ? "text-white font-semibold underline decoration-white/40 underline-offset-4" : "text-gray-300 hover:text-white"}`}
+          >
             Portfolio
           </Link>
           {!isHome && (
@@ -129,11 +172,12 @@ export function Navbar() {
             <Link href="/portfolio" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
               Portfolio
             </Link>
-            <Link href="/alerts" onClick={() => setMenuOpen(false)} className="text-sm text-cyan-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
+            <Link href="/alerts" onClick={() => setMenuOpen(false)} className="text-sm text-gray-200 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
               Alerts
             </Link>
-            <Link href="/pricing" onClick={() => setMenuOpen(false)} className="text-sm text-purple-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
+            <Link href="/pricing" onClick={() => setMenuOpen(false)} className="text-sm text-gray-200 py-2 rounded-lg px-2 hover:bg-white/[0.04] inline-flex items-center gap-2">
               Pricing
+              <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500 border border-white/15 rounded px-1">Pro</span>
             </Link>
             <Link href="/graveyard" onClick={() => setMenuOpen(false)} className="text-sm text-gray-300 py-2 rounded-lg px-2 hover:bg-white/[0.04]">
               Graveyard

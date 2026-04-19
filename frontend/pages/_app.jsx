@@ -11,6 +11,7 @@ import { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import { AppErrorBoundary } from "../components/layout/AppErrorBoundary";
 import { Navbar } from "../components/layout/Navbar";
+import { GlobalWayfinding } from "../components/layout/GlobalWayfinding";
 import { LiveTensionBar } from "../components/layout/LiveTensionBar";
 import { FinancialDisclaimer } from "../components/layout/FinancialDisclaimer";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
@@ -90,6 +91,7 @@ export default function App({ Component, pageProps }) {
                   isHome ? "pt-[124px] sm:pt-[120px] md:pt-[132px]" : "pt-[88px] md:pt-24"
                 } pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0`}
               >
+                <GlobalWayfinding />
                 <AppErrorBoundary>
                   <Component {...pageProps} />
                 </AppErrorBoundary>
@@ -99,7 +101,10 @@ export default function App({ Component, pageProps }) {
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 mb-6">
                     <div>
                       <p className="text-sm font-semibold text-gray-300 tracking-tight">Sentinel Ledger</p>
-                      <p className="text-xs text-gray-600 mt-1 max-w-xs">Solana intel · Not financial advice.</p>
+                      <p className="text-xs text-gray-600 mt-1 max-w-xs">
+                        Solana intel · Not financial advice. On every page, the strip under the header shows where you
+                        are and where to go next.
+                      </p>
                     </div>
                     <div className="sl-footer-grid text-sm">
                       <Link href="/results" className="hover:text-gray-300 transition py-1">

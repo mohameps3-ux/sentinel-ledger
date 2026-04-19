@@ -723,15 +723,72 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         <section className="sl-section">
           <div className="sl-home-hero sl-inset sm:p-8 md:p-10">
             <div className="sl-home-hero-inner">
-              <p className="sl-label text-emerald-400/90">Solana intelligence terminal</p>
-              <h1 className="sl-display mt-3 bg-gradient-to-br from-white via-gray-100 to-cyan-200/85 bg-clip-text text-transparent max-w-4xl">
+              <p className="sl-label text-gray-400">Solana intelligence terminal</p>
+              <h1 className="sl-display mt-3 text-white max-w-4xl">
                 Trade with the stack, not the noise
               </h1>
               <p className="sl-body text-gray-400 mt-5 max-w-2xl text-[15px] leading-relaxed">
                 Live smart-money feed, verified 24h outcomes, and deep token intel — one flow from scan to size.
                 Always your decision; we surface structure and risk.
               </p>
+              <p className="text-xs text-gray-500 mt-4 max-w-2xl leading-relaxed border-l-2 border-white/15 pl-3">
+                <span className="text-gray-300 font-medium">Navigation:</span> the bar under the header on every page
+                shows <strong className="text-gray-200">where you are</strong> and text links to jump anywhere. The top
+                row repeats the same destinations for muscle memory.
+              </p>
             </div>
+          </div>
+        </section>
+
+        <section className="sl-section !mt-2" aria-labelledby="home-destinations-heading">
+          <h2 id="home-destinations-heading" className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 mb-3">
+            Pick a screen (same links as the strip under the header)
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                href: "/scanner",
+                title: "Scanner",
+                body: "Paste a mint. Opens the full token terminal with risk, flow, and smart money."
+              },
+              {
+                href: "/smart-money",
+                title: "Smart money",
+                body: "Ranked wallets, win rate, and links to each wallet profile (ES/EN narrative)."
+              },
+              {
+                href: "/watchlist",
+                title: "Watchlist",
+                body: "Track mints you care about; combine with alerts and portfolio markets."
+              },
+              {
+                href: "/compare",
+                title: "Compare",
+                body: "Two tokens side by side — grades and liquidity before you size."
+              },
+              {
+                href: "/alerts",
+                title: "Alerts",
+                body: "Wire Telegram and PRO nudges so you do not miss the next pulse."
+              },
+              {
+                href: "/wallet-stalker",
+                title: "Wallet stalker",
+                body: "Follow specific wallets; unread badge in the top bar when something moves."
+              }
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 transition-colors duration-150 hover:border-white/20 hover:bg-white/[0.05] active:scale-[0.99]"
+              >
+                <p className="text-sm font-semibold text-white group-hover:underline decoration-white/30 underline-offset-2">
+                  {item.title}
+                  <span className="text-gray-500 font-normal ml-1">→</span>
+                </p>
+                <p className="text-xs text-gray-500 mt-2 leading-relaxed">{item.body}</p>
+              </Link>
+            ))}
           </div>
         </section>
 
