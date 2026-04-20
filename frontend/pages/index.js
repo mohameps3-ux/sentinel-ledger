@@ -958,7 +958,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                 Sentinel Score · mock + WS-ready
               </span>
             </div>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
             {interpretedSignals.map((sig, idx) => {
               const sec = entryCountdownByMint[sig.mint] || 0;
               const win = sig._api
@@ -985,107 +985,105 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               return (
                 <div
                   key={`${sig.mint}-${idx}`}
-                  className={`rounded-xl border border-white/10 bg-white/[0.02] p-4 sm:p-5 space-y-4 transition-all duration-300 hover:border-emerald-500/20 hover:shadow-[0_0_22px_rgba(16,185,129,0.12)] ${
+                  className={`rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-2.5 transition-all duration-300 hover:border-emerald-500/20 hover:shadow-[0_0_16px_rgba(16,185,129,0.1)] ${
                     hot ? "ring-1 ring-emerald-500/35" : ""
                   }`}
                 >
-                  <div>
-                    <p className="text-2xl sm:text-3xl font-black text-white tracking-tight">${sig.symbol}</p>
-                    <p className="text-[11px] text-cyan-200/90 font-mono mt-1">{sig.smartWallets} wallets · live</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-base font-bold text-white tracking-tight truncate">${sig.symbol}</p>
+                      <p className="text-[10px] text-cyan-200/90 font-mono mt-0.5">{sig.smartWallets} wallets · live</p>
+                    </div>
+                    <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded border ${confidenceTone(sig.signalStrength)}`}>
+                      {confidenceLabel(sig.signalStrength)}
+                    </span>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-end justify-between gap-2">
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Sentinel Score</p>
-                      <span className={`text-[10px] px-2 py-0.5 rounded border ${confidenceTone(sig.signalStrength)}`}>
-                        {confidenceLabel(sig.signalStrength)}
-                      </span>
+                  <div className="space-y-1.5">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="text-[9px] uppercase tracking-[0.18em] text-gray-500 font-semibold">Sentinel Score</p>
+                      <span className="text-[10px] text-gray-500 font-mono">/ 100</span>
                     </div>
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-6xl sm:text-7xl md:text-8xl font-black tabular-nums font-mono text-white leading-[0.9] tracking-tight drop-shadow-[0_0_24px_rgba(255,255,255,0.08)]">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-black tabular-nums font-mono text-white leading-none tracking-tight">
                         {sig.signalStrength}
                       </span>
-                      <span className="text-sm text-gray-500 font-medium pb-1">/ 100</span>
-                    </div>
-                    <div className="h-3 sm:h-3.5 rounded-full bg-gray-900 overflow-hidden ring-1 ring-white/10">
-                      <div
-                        className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(sig.signalStrength)} shadow-[0_0_20px_rgba(52,211,153,0.15)]`}
-                        style={{ width: `${sig.signalStrength}%` }}
-                      />
+                      <div className="flex-1 h-1.5 rounded-full bg-gray-900 overflow-hidden ring-1 ring-white/10 mb-0.5">
+                        <div
+                          className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(sig.signalStrength)}`}
+                          style={{ width: `${sig.signalStrength}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2">
-                    <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">Decision</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`inline-flex items-center justify-center ${feedDecisionPillClass(action, sig.signalStrength)}`}>
-                        {action === "ENTER NOW" ? "🟢 " : action === "PREPARE" ? "🟡 " : "🔴 "}
-                        {action}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex items-center justify-center text-[11px] ${feedDecisionPillClass(action, sig.signalStrength)}`}>
+                      {action === "ENTER NOW" ? "🟢 " : action === "PREPARE" ? "🟡 " : "🔴 "}
+                      {action}
+                    </span>
+                    {sig._api?.confluence || (!sig._api && sig.signalStrength >= 88) ? (
+                      <span className="text-[10px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1.5 py-0.5 font-mono">
+                        🧬 multi
                       </span>
-                    </div>
+                    ) : null}
                   </div>
 
-                  <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-3">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold">Why now</p>
-                    <ul className="text-xs text-gray-200 mt-2 space-y-2 leading-snug">
-                      {whyLines.map((line, li) => (
-                        <li key={li} className="flex gap-2">
+                  <div className="rounded-md border border-white/10 bg-black/30 px-2.5 py-2">
+                    <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Why now</p>
+                    <ul className="text-[11px] text-gray-200 mt-1 space-y-0.5 leading-snug">
+                      {whyLines.slice(0, 3).map((line, li) => (
+                        <li key={li} className="flex gap-1.5">
                           <span className="text-emerald-500/80 shrink-0">•</span>
-                          <span>{line}</span>
+                          <span className="truncate">{line}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
 
-                  <p className="text-xs text-gray-500 font-mono">{sig.context}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {evidenceChipsForSig(sig).map((chip) => (
+                  <div className="flex flex-wrap gap-1">
+                    {evidenceChipsForSig(sig).slice(0, 4).map((chip) => (
                       <span
                         key={chip + idx}
-                        className="text-sm px-2 py-1 rounded-full border border-white/15 bg-white/[0.04] hover:shadow-[0_0_12px_rgba(16,185,129,0.2)] transition-shadow"
+                        className="text-[10px] px-1.5 py-0.5 rounded-full border border-white/12 bg-white/[0.03] text-gray-300"
                         title="Evidence"
                       >
                         {chip}
                       </span>
                     ))}
                   </div>
+
                   {redFlagsForSignal(sig).length ? (
-                    <p className="text-xs text-red-200">
+                    <p className="text-[10px] text-red-200 truncate">
                       RED FLAGS: {redFlagsForSignal(sig).join(" · ")}
                     </p>
                   ) : null}
-                  <div className="space-y-1">
-                    <p className={`text-[11px] font-mono ${vis.text}`}>
-                      ENTRY WINDOW · {win.label} · {win.detail}
+
+                  <div className="space-y-0.5">
+                    <p className={`text-[10px] font-mono ${vis.text}`}>
+                      ENTRY · {win.label} · {win.detail}
                     </p>
-                    <div className="h-1.5 rounded-full bg-gray-900 overflow-hidden">
+                    <div className="h-1 rounded-full bg-gray-900 overflow-hidden">
                       <div
                         className={`h-full rounded-full bg-gradient-to-r ${vis.gradient}`}
                         style={{ width: `${Math.min(100, (sec / 420) * 100)}%` }}
                       />
                     </div>
                   </div>
-                  <p className="text-[11px] text-cyan-200 font-mono">
+
+                  <p className="text-[10px] text-cyan-200/90 font-mono truncate">
                     {sig._api?.timeAdvantage ||
-                      `TIME ADVANTAGE · Earlier than ${Math.max(72, Math.min(96, sig.signalStrength))}% of traders`}
+                      `Earlier than ${Math.max(72, Math.min(96, sig.signalStrength))}% of traders`}
                   </p>
-                  <p className="text-[11px] text-gray-500 font-mono">
-                    {sig._api?.signalDecay ? `SIGNAL DECAY · ${sig._api.signalDecay}` : "SIGNAL DECAY · −3%/min"} · fresh{" "}
-                    {Math.max(1, (signalCursor + idx) % 6) + 1}m
-                  </p>
-                  {sig._api?.confluence || (!sig._api && sig.signalStrength >= 88) ? (
-                    <p className="text-xs text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-2 py-1 inline-flex w-fit font-mono">
-                      🧬 MULTI-SIGNAL DETECTED
-                    </p>
-                  ) : null}
-                  <div className="flex flex-wrap gap-2 pt-1">
+
+                  <div className="flex flex-wrap gap-1 pt-0.5 border-t border-white/[0.04] mt-1">
                     {[0.5, 1, 5].map((size) => (
                       <a
                         key={size}
                         href={buildJupiterSwapUrl(sig.mint, size)}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs px-2.5 py-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 hover:shadow-[0_0_14px_rgba(16,185,129,0.35)] font-mono"
+                        className="text-[10px] px-2 py-1 rounded-md border border-emerald-500/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 font-mono"
                       >
                         {size} SOL
                       </a>
