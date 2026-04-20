@@ -718,7 +718,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       />
       <HomeOnboarding />
       <WelcomeBanner />
-      <div className="min-h-screen w-full max-w-[100vw] overflow-x-clip">
+      <div className="w-full max-w-[100vw] overflow-x-clip">
       <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full mx-4 sm:mx-auto">
         <section className="sl-section">
           <div className="sl-home-hero sl-inset sm:p-8 md:p-10">
@@ -792,7 +792,6 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           </div>
         </section>
 
-        <div className="sticky top-0 z-30 -mx-4 px-4 sm:mx-0 sm:px-0 py-2 mb-1 bg-[#0b0b0e]/92 backdrop-blur-md border-b border-white/[0.07] shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
         <section className="sl-section !pt-2 !pb-2">
           <div className="glass-card sl-inset border border-white/[0.08]">
             <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6">
@@ -1622,7 +1621,6 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             </div>
           )}
         </section>
-      </div>
       </div>
     </>
   );
