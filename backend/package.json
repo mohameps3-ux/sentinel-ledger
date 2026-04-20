@@ -13,7 +13,8 @@
     "seed:smart-wallets": "node scripts/seedSmartWallets.js",
     "seed:terminal-home": "node scripts/seedTerminalHome.js",
     "signal-prices-once": "node scripts/runSignalPricesOnce.js",
-    "simulate:helius": "node scripts/simulate-helius.js"
+    "simulate:helius": "node scripts/simulate-helius.js",
+    "ops:daily": "node scripts/opsDailyReport.js"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.4",
