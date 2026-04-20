@@ -297,6 +297,32 @@ async function getSignalPerformanceSummary(options = {}) {
     .sort((a, b) => b.total - a.total)
     .slice(0, 20);
 
+  // Pairwise conditional stats: E[R | signalA + signalB]
+  const byCombo = new Map();
+  for (const r of resolved) {
+    const out = Number(r.outcome_pct);
+    const tags = [...new Set(asArray(r.signals).map((s) => String(s)).slice(0, 12))].sort();
+    for (let i = 0; i < tags.length; i += 1) {
+      for (let j = i + 1; j < tags.length; j += 1) {
+        const key = `${tags[i]}+${tags[j]}`;
+        const cur = byCombo.get(key) || { combo: key, total: 0, wins: 0, sumPct: 0 };
+        cur.total += 1;
+        if (out >= SUCCESS_MIN_PCT) cur.wins += 1;
+        cur.sumPct += out;
+        byCombo.set(key, cur);
+      }
+    }
+  }
+  const comboStats = [...byCombo.values()]
+    .map((x) => ({
+      combo: x.combo,
+      total: x.total,
+      winRatePct: x.total ? Math.round((x.wins / x.total) * 10000) / 100 : 0,
+      avgOutcomePct: x.total ? Math.round((x.sumPct / x.total) * 1e4) / 1e4 : 0
+    }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 20);
+
   const corr = pearson(
     resolved.map((r) => Number(r.confidence)),
     resolved.map((r) => Number(r.outcome_pct))
@@ -316,7 +342,8 @@ async function getSignalPerformanceSummary(options = {}) {
       maxDrawdownPct: Math.round(maxDd * 1e4) / 1e4,
       confidenceReturnCorrelation: corr
     },
-    signals: signalStats
+    signals: signalStats,
+    combos: comboStats
   };
 }
 

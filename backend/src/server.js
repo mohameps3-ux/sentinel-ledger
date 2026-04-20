@@ -29,6 +29,10 @@ const {
   startSignalOutcomeCron,
   getSignalOutcomeCronStatus
 } = require("./jobs/signalOutcomeCron");
+const {
+  startSignalCalibratorCron,
+  getSignalCalibratorCronStatus
+} = require("./jobs/signalCalibratorCron");
 const publicSurfaceRouter = require("./routes/publicSurface");
 const portfolioRouter = require("./routes/portfolio");
 const signalsRouter = require("./routes/signals");
@@ -150,7 +154,8 @@ app.get("/health", async (_, res) => {
     smartWorkersEnabled: isWorkersEnabled(),
     proAlerts: getProAlertCronStatus(),
     signalPrices: getSignalPriceCronStatus(),
-    signalOutcomes: getSignalOutcomeCronStatus()
+    signalOutcomes: getSignalOutcomeCronStatus(),
+    signalCalibrator: getSignalCalibratorCronStatus()
   };
   if (missingCritical.length) {
     return res.status(503).json(body);
@@ -252,6 +257,7 @@ server.listen(port, () => {
   startProAlertCron();
   startSmartWalletSignalPriceCron();
   startSignalOutcomeCron();
+  startSignalCalibratorCron();
   startSubscriptionExpiryCron();
   console.log(`Sentinel Ledger backend on :${port}`);
 });

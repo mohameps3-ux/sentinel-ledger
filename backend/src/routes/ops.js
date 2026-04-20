@@ -3,6 +3,7 @@
 const express = require("express");
 const { getEntropyGuardOpsSnapshot } = require("../ingestion/entropyGuard");
 const { getSignalPerformanceSummary } = require("../services/signalPerformance");
+const { runCalibrationOnce, getCalibrationSnapshot } = require("../services/signalCalibrator");
 
 const router = express.Router();
 
@@ -30,6 +31,19 @@ router.get("/signal-performance/summary", assertOpsAuth, async (req, res) => {
     return res.status(503).json({ ok: false, error: summary?.error || "signal_perf_unavailable" });
   }
   return res.json({ ok: true, data: summary });
+});
+
+router.get("/signal-performance/calibration", assertOpsAuth, (_req, res) => {
+  return res.json({ ok: true, data: getCalibrationSnapshot() });
+});
+
+router.post("/signal-performance/calibration/run", assertOpsAuth, async (req, res) => {
+  const lookbackHours = Number(req.body?.lookbackHours || 72);
+  const minSamplesPerSignal = Number(req.body?.minSamplesPerSignal || 30);
+  const maxDeltaPct = Number(req.body?.maxDeltaPct || 0.35);
+  const out = await runCalibrationOnce({ lookbackHours, minSamplesPerSignal, maxDeltaPct });
+  if (!out?.ok) return res.status(503).json({ ok: false, error: out?.reason || "calibration_failed" });
+  return res.json({ ok: true, data: out });
 });
 
 module.exports = router;

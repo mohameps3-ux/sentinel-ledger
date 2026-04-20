@@ -23,6 +23,7 @@ export default function OpsPage() {
   const [events, setEvents] = useState([]);
   const [guard, setGuard] = useState(null);
   const [perf, setPerf] = useState(null);
+  const [calib, setCalib] = useState(null);
   const [loading, setLoading] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
 
@@ -43,16 +44,18 @@ export default function OpsPage() {
     if (!hasKey) return toast.error("Set your ops key first.");
     setLoading(true);
     try {
-      const [ticketRes, eventRes, guardRes, perfRes] = await Promise.all([
+      const [ticketRes, eventRes, guardRes, perfRes, calibRes] = await Promise.all([
         withOpsKey("/api/v1/bots/omni/tickets?limit=50", opsKey),
         withOpsKey("/api/v1/bots/omni/events?limit=100", opsKey),
         withOpsKey("/api/v1/ops/entropy-guard/snapshot", opsKey),
-        withOpsKey("/api/v1/ops/signal-performance/summary?lookbackHours=48&maxRows=2000", opsKey)
+        withOpsKey("/api/v1/ops/signal-performance/summary?lookbackHours=48&maxRows=2000", opsKey),
+        withOpsKey("/api/v1/ops/signal-performance/calibration", opsKey)
       ]);
       setTickets(ticketRes.data || []);
       setEvents(eventRes.data || []);
       setGuard(guardRes || null);
       setPerf(perfRes.data || null);
+      setCalib(calibRes.data || null);
       toast.success("Ops data refreshed.");
     } catch (error) {
       toast.error(`Load failed: ${error.message}`);
@@ -258,6 +261,48 @@ export default function OpsPage() {
                 <div className="text-gray-400 text-xs">Max drawdown</div>
                 <div className="text-gray-100 font-semibold mt-1">{perf.metrics?.maxDrawdownPct ?? 0}%</div>
               </div>
+            </div>
+            <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+              <div className="text-xs text-gray-400 mb-2">Top signal combos</div>
+              {!perf.combos?.length ? (
+                <div className="text-gray-500 text-sm">No combo data yet.</div>
+              ) : (
+                <div className="space-y-1 text-sm">
+                  {perf.combos.slice(0, 5).map((c) => (
+                    <div key={c.combo} className="text-gray-200">
+                      {c.combo} <span className="text-gray-400">· WR {c.winRatePct}% · AVG {c.avgOutcomePct}% · n={c.total}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="glass-card p-5">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h2 className="text-lg font-semibold">Calibrator Bot (Advisory)</h2>
+        </div>
+        {!calib?.lastCalibration ? (
+          <div className="text-sm text-gray-500">No calibration snapshot yet.</div>
+        ) : (
+          <div className="space-y-3">
+            <div className="text-xs text-gray-400">
+              Last run: {formatDateTime(calib.lastCalibration.at)} · lookback:{" "}
+              {calib.lastCalibration.lookbackHours}h
+            </div>
+            <div className="space-y-1 text-sm">
+              {(calib.lastCalibration.proposals || [])
+                .filter((p) => p.eligible)
+                .slice(0, 5)
+                .map((p) => (
+                  <div key={p.signal} className="bg-[#0E1318] border soft-divider rounded-xl p-2">
+                    <span className="font-mono text-gray-200">{p.signal}</span>
+                    <span className="text-gray-400"> · suggested {p.suggestedWeight}</span>
+                    <span className="text-gray-500"> (delta {Math.round(p.deltaPct * 10000) / 100}%)</span>
+                  </div>
+                ))}
             </div>
           </div>
         )}

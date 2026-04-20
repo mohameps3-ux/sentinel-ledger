@@ -7,6 +7,7 @@
     "dev": "node src/server.js",
     "start": "node src/server.js",
     "db:ensure-subscriptions": "node scripts/ensureSubscriptionsTable.js",
+    "db:ensure-signal-performance": "node scripts/applySignalPerformanceSchema.js",
     "db:verify-schema": "node scripts/verifySupabaseSchema.js",
     "queue:clean": "node scripts/cleanBullQueues.js",
     "seed:smart-wallets": "node scripts/seedSmartWallets.js",
