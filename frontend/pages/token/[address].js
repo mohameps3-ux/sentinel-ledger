@@ -20,6 +20,7 @@ import { ActionBar } from "../../components/token/ActionBar";
 import { TradeReadinessPanel } from "../../components/token/TradeReadinessPanel";
 import { WalletThreatBanner } from "../../components/token/WalletThreatBanner";
 import { TokenIntelDeck } from "../../components/token/TokenIntelDeck";
+import { ScoreTerminalCard } from "../../components/token/ScoreTerminalCard";
 import { BarChart3, CandlestickChart, Radar, ShieldAlert, Users, Activity } from "lucide-react";
 import { formatUsdWhole } from "../../lib/formatStable";
 import { Ticker } from "../../components/layout/Ticker";
@@ -307,6 +308,8 @@ export default function TokenPage() {
         holders={token?.holders}
         deployer={token?.deployer}
       />
+
+      <ScoreTerminalCard asset={address} />
 
       <TokenIntelDeck
         address={address}
