@@ -1,12 +1,28 @@
 const axios = require("axios");
 const redis = require("../lib/cache");
 const { detectNarrativeTags } = require("./narrativeTags");
+const { createCircuitBreaker } = require("../lib/circuitBreaker");
 
 const CACHE_TTL_SECONDS = 20;
 const COINGECKO_SIMPLE_PRICE = "https://api.coingecko.com/api/v3/simple/price";
 const WELL_KNOWN_MINT_TO_CG = {
   So11111111111111111111111111111111111111112: "solana"
 };
+
+const DEX_BREAKER = createCircuitBreaker({
+  name: "dexscreener",
+  failureThreshold: Number(process.env.MARKETDATA_DEX_CB_FAILURES || 4),
+  openMs: Number(process.env.MARKETDATA_DEX_CB_OPEN_MS || 45_000),
+  halfOpenMaxCalls: Number(process.env.MARKETDATA_DEX_CB_HALF_OPEN_CALLS || 2),
+  halfOpenSuccessThreshold: Number(process.env.MARKETDATA_DEX_CB_HALF_OPEN_SUCCESS || 2)
+});
+const CG_BREAKER = createCircuitBreaker({
+  name: "coingecko",
+  failureThreshold: Number(process.env.MARKETDATA_CG_CB_FAILURES || 4),
+  openMs: Number(process.env.MARKETDATA_CG_CB_OPEN_MS || 45_000),
+  halfOpenMaxCalls: Number(process.env.MARKETDATA_CG_CB_HALF_OPEN_CALLS || 2),
+  halfOpenSuccessThreshold: Number(process.env.MARKETDATA_CG_CB_HALF_OPEN_SUCCESS || 2)
+});
 
 async function cacheSetJson(key, ttlSeconds, value) {
   // @upstash/redis uses SET with { ex } instead of SETEX.
@@ -94,19 +110,38 @@ function resolveCoingeckoAsset(address, bestPair) {
 async function fetchCoinGeckoMarketCap(assetId) {
   if (!assetId) return 0;
   try {
-    const { data } = await axios.get(COINGECKO_SIMPLE_PRICE, {
-      timeout: 5000,
-      params: {
-        ids: assetId,
-        vs_currencies: "usd",
-        include_market_cap: "true"
-      }
-    });
+    const { data } = await CG_BREAKER.execute(() =>
+      axios.get(COINGECKO_SIMPLE_PRICE, {
+        timeout: 5000,
+        params: {
+          ids: assetId,
+          vs_currencies: "usd",
+          include_market_cap: "true"
+        }
+      })
+    );
     return toPositiveNumber(data?.[assetId]?.usd_market_cap);
   } catch (error) {
+    if (error?.code === "CIRCUIT_OPEN" || error?.code === "CIRCUIT_HALF_OPEN_THROTTLED") return 0;
     console.warn("CoinGecko fallback failed:", error.message);
     return 0;
   }
+}
+
+function getMarketDataCircuitStatus() {
+  const dex = DEX_BREAKER.snapshot();
+  const cg = CG_BREAKER.snapshot();
+  return {
+    dexscreener: dex,
+    coingecko: cg,
+    degraded: dex.state !== "CLOSED" || cg.state !== "CLOSED",
+    reason:
+      dex.state !== "CLOSED"
+        ? `dexscreener_${dex.state.toLowerCase()}`
+        : cg.state !== "CLOSED"
+          ? `coingecko_${cg.state.toLowerCase()}`
+          : null
+  };
 }
 
 async function getMarketData(address) {
@@ -115,9 +150,8 @@ async function getMarketData(address) {
   if (cached) return { ...cached, _source: "cache" };
 
   try {
-    const { data } = await axios.get(
-      `https://api.dexscreener.com/latest/dex/tokens/${address}`,
-      { timeout: 5000 }
+    const { data } = await DEX_BREAKER.execute(() =>
+      axios.get(`https://api.dexscreener.com/latest/dex/tokens/${address}`, { timeout: 5000 })
     );
     const pairs = data.pairs || [];
     if (!pairs.length) throw new Error("No pair found");
@@ -179,10 +213,11 @@ async function getMarketData(address) {
     await cacheSetJson(cacheKey, CACHE_TTL_SECONDS, marketData);
     return { ...marketData, _source: "api" };
   } catch (error) {
+    if (error?.code === "CIRCUIT_OPEN" || error?.code === "CIRCUIT_HALF_OPEN_THROTTLED") return null;
     console.error("DexScreener error:", error.message);
     return null;
   }
 }
 
-module.exports = { getMarketData };
+module.exports = { getMarketData, getMarketDataCircuitStatus };
 

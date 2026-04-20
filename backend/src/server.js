@@ -49,6 +49,7 @@ const { isProbableSolanaPubkey } = require("./lib/solanaAddress");
 const redis = require("./lib/cache");
 const { getIngestionSnapshot } = require("./ingestion/ingestionState");
 const { getDedupeStats } = require("./ingestion/dedupe");
+const { getMarketDataCircuitStatus } = require("./services/marketData");
 
 /** Stripe envía `application/json; charset=utf-8`; el matcher por string estricto a veces no aplica raw. */
 function stripeWebhookRawBody() {
@@ -192,6 +193,7 @@ app.get("/health/ingestion", (_req, res) => {
  */
 app.get("/health/sync", (_req, res) => {
   const snap = getIngestionSnapshot();
+  const market = getMarketDataCircuitStatus();
   res.json({
     status: snap.syncStatus,
     reason: snap.syncReason,
@@ -200,8 +202,10 @@ app.get("/health/sync", (_req, res) => {
     networks: snap.networks,
     services: {
       scoring_engine: "operational",
-      alert_dispatcher: "operational"
+      alert_dispatcher: "operational",
+      market_data: market.degraded ? "degraded" : "operational"
     },
+    marketData: market,
     measuredAt: snap.now
   });
 });

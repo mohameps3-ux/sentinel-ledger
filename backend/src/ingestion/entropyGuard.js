@@ -26,7 +26,7 @@ const CONFIG = {
   reportEveryMs: Number(process.env.RULE_ENTROPY_REPORT_MS || 60_000),
 
   // Ops observability + sustained-threshold alerts.
-  historyMaxPoints: Number(process.env.RULE_ENTROPY_HISTORY_POINTS || 180),
+  historyMaxPoints: Number(process.env.RULE_ENTROPY_HISTORY_POINTS || 60),
   alertDropsPerWindow: Number(process.env.RULE_ENTROPY_ALERT_DROPS_PER_WINDOW || 5000),
   alertSustainWindows: Number(process.env.RULE_ENTROPY_ALERT_SUSTAIN_WINDOWS || 3),
   memoryLimitBytes: Number(process.env.RULE_ENTROPY_MEMORY_LIMIT_BYTES || 8 * 1024 * 1024),
