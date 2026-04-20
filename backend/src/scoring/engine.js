@@ -277,6 +277,11 @@ async function evaluate(event, extraCtx = {}) {
   const result = {
     asset: event.data.asset,
     network: event.network,
+    // Server-side evaluation time. Clients use it to compute score age
+    // independent of socket delivery latency or client clock skew. Stamped
+    // here so the cached payload (read via GET /api/v1/scoring/latest/:asset)
+    // is byte-identical to what we emit over the socket.
+    timestamp: new Date().toISOString(),
     scores,
     signals: fired.map((r) => r.signal),
     insights: fired.map((r) => r.insight),

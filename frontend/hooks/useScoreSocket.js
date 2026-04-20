@@ -64,6 +64,35 @@ export function useScoreSocket(asset) {
     let boundHandlers = null;
     let joined = false;
 
+    // Bootstrap from the persistence layer so the card can render a real
+    // score immediately, killing the "WAITING" state whenever the engine
+    // has evaluated the asset in the last 10 minutes (cache TTL on backend).
+    // Runs in parallel with socket setup; whichever arrives first wins, and
+    // any later socket event will naturally overwrite an older bootstrap.
+    (async () => {
+      try {
+        const { getPublicApiUrl } = await import("../lib/publicRuntime");
+        const res = await fetch(
+          `${getPublicApiUrl()}/api/v1/scoring/latest/${encodeURIComponent(asset)}`,
+          { cache: "no-store" }
+        );
+        if (cancelled || !res.ok) return;
+        const body = await res.json();
+        const cached = body?.score;
+        if (!cached || cached.asset !== asset) return;
+        // Only apply bootstrap if no socket event has already populated state
+        // (socket event is source of truth for "now").
+        setScore((prev) => prev || cached);
+        setLastScoreAt((prev) => {
+          if (prev) return prev;
+          const ts = cached.timestamp ? Date.parse(cached.timestamp) : NaN;
+          return Number.isFinite(ts) ? ts : Date.now();
+        });
+      } catch (_) {
+        // Bootstrap is best-effort; socket will populate as events arrive.
+      }
+    })();
+
     (async () => {
       const s = await ensureSocket();
       if (!s || cancelled) return;
