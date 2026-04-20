@@ -21,6 +21,7 @@ export default function OpsPage() {
   const [opsKey, setOpsKey] = useState("");
   const [tickets, setTickets] = useState([]);
   const [events, setEvents] = useState([]);
+  const [guard, setGuard] = useState(null);
   const [loading, setLoading] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
 
@@ -41,12 +42,14 @@ export default function OpsPage() {
     if (!hasKey) return toast.error("Set your ops key first.");
     setLoading(true);
     try {
-      const [ticketRes, eventRes] = await Promise.all([
+      const [ticketRes, eventRes, guardRes] = await Promise.all([
         withOpsKey("/api/v1/bots/omni/tickets?limit=50", opsKey),
-        withOpsKey("/api/v1/bots/omni/events?limit=100", opsKey)
+        withOpsKey("/api/v1/bots/omni/events?limit=100", opsKey),
+        withOpsKey("/api/v1/ops/entropy-guard/snapshot", opsKey)
       ]);
       setTickets(ticketRes.data || []);
       setEvents(eventRes.data || []);
+      setGuard(guardRes || null);
       toast.success("Ops data refreshed.");
     } catch (error) {
       toast.error(`Load failed: ${error.message}`);
@@ -128,6 +131,83 @@ export default function OpsPage() {
             Send
           </button>
         </div>
+      </section>
+
+      <section className="glass-card p-5">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h2 className="text-lg font-semibold">Entropy Guard</h2>
+          <span
+            className={`text-xs px-2 py-1 rounded-full border ${
+              Number(guard?.metrics?.totalDrops || 0) > 0
+                ? "bg-red-500/15 border-red-500/40 text-red-300"
+                : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+            }`}
+          >
+            {Number(guard?.metrics?.totalDrops || 0) > 0 ? "guard active" : "normal"}
+          </span>
+        </div>
+
+        {!guard ? (
+          <div className="text-sm text-gray-500">No guard data loaded.</div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid md:grid-cols-4 gap-2 text-sm">
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-gray-400 text-xs">Tracked mints</div>
+                <div className="text-gray-100 font-semibold mt-1">{guard.metrics?.trackedMints || 0}</div>
+              </div>
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-gray-400 text-xs">Total drops</div>
+                <div className="text-gray-100 font-semibold mt-1">
+                  {guard.metrics?.totalDrops || 0}
+                </div>
+              </div>
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-gray-400 text-xs">Estimated memory</div>
+                <div className="text-gray-100 font-semibold mt-1">
+                  {guard.metrics?.memoryUsageBytes || 0}
+                </div>
+              </div>
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-gray-400 text-xs">Window ms</div>
+                <div className="text-gray-100 font-semibold mt-1">
+                  {guard.config?.windowMs || 0}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-2 text-sm">
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-xs text-gray-400 mb-2">Top offender</div>
+                {guard.topOffenders?.[0] ? (
+                  <div className="text-gray-100">
+                    <span className="font-mono">{guard.topOffenders[0].mint}</span>
+                    <span className="text-gray-400"> · {guard.topOffenders[0].drops} drops</span>
+                  </div>
+                ) : (
+                  <div className="text-gray-500">None</div>
+                )}
+              </div>
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-xs text-gray-400 mb-2">Drop reasons (cumulative)</div>
+                {!guard.metrics?.dropsByReason || !Object.keys(guard.metrics.dropsByReason).length ? (
+                  <div className="text-gray-500">No drops</div>
+                ) : (
+                  <div className="space-y-1">
+                    {Object.entries(guard.metrics.dropsByReason)
+                      .sort((a, b) => Number(b[1]) - Number(a[1]))
+                      .slice(0, 5)
+                      .map(([reason, count]) => (
+                      <div key={reason} className="text-gray-100">
+                        {reason} <span className="text-gray-400">· {count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="grid xl:grid-cols-2 gap-4">

@@ -13,7 +13,9 @@ const {
 const {
   validateWebhookShape,
   analyzeWebhookEntropy,
-  shouldAllowMint
+  shouldAllowMint,
+  recordGuardDrop,
+  getEntropyGuardSnapshot
 } = require("../ingestion/entropyGuard");
 const { evaluate: evaluateScore } = require("../scoring/engine");
 const { getMarketData } = require("../services/marketData");
@@ -141,6 +143,14 @@ function heliusWebhookAuth(req, res, next) {
   return res.status(401).json({ ok: false, error: "webhook_unauthorized" });
 }
 
+function assertOpsAuth(req, res, next) {
+  const expected = process.env.OMNI_BOT_OPS_KEY;
+  if (!expected) return res.status(503).json({ ok: false, error: "ops_key_not_configured" });
+  const provided = String(req.headers["x-ops-key"] || "").trim();
+  if (!provided || provided !== expected) return res.status(401).json({ ok: false, error: "unauthorized" });
+  return next();
+}
+
 router.get("/helius/health", (_req, res) => {
   const configured = Boolean(process.env.HELIUS_WEBHOOK_SECRET);
   if (!configured) {
@@ -153,23 +163,50 @@ router.get("/helius/health", (_req, res) => {
   return res.json({ ok: true, endpoint: "/api/v1/webhooks/helius", auth: "enabled" });
 });
 
+router.get("/helius/entropy-guard", assertOpsAuth, (req, res) => {
+  const limit = Math.max(1, Math.min(240, Number(req.query.limit || 60)));
+  const snapshot = getEntropyGuardSnapshot();
+  return res.json({
+    ok: true,
+    data: {
+      ...snapshot,
+      history: Array.isArray(snapshot.history) ? snapshot.history.slice(-limit) : []
+    }
+  });
+});
+
 router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, res) => {
   try {
     const body = req.body;
     const events = Array.isArray(body) ? body : body ? [body] : [];
     const shape = validateWebhookShape(events);
     if (!shape.ok) {
-      return res.status(413).json({
-        ok: false,
-        error: shape.error || "payload_shape_invalid",
-        reason: shape.reason
+      const estimatedDrops = Number(shape.totalTransfers) > 0 ? Number(shape.totalTransfers) : 1;
+      recordGuardDrop(String(shape.reason || "shape_guard_rejected"), estimatedDrops);
+      return res.status(200).json({
+        ok: true,
+        emitted: 0,
+        droppedByGuard: estimatedDrops,
+        guardRejected: shape.error || "payload_shape_invalid",
+        reason: shape.reason || "shape_guard_rejected"
       });
     }
     const entropy = analyzeWebhookEntropy(events);
     if (!entropy.ok) {
-      return res.status(422).json({
-        ok: false,
-        error: entropy.error || "low_entropy_payload",
+      const estimatedDrops = Number(entropy.totalTransfers) > 0 ? Number(entropy.totalTransfers) : 1;
+      if (entropy.topMint && entropy.topMintCount > 0) {
+        recordGuardDrop("low_entropy_payload", entropy.topMintCount, entropy.topMint);
+        if (estimatedDrops > entropy.topMintCount) {
+          recordGuardDrop("low_entropy_payload", estimatedDrops - entropy.topMintCount);
+        }
+      } else {
+        recordGuardDrop("low_entropy_payload", estimatedDrops);
+      }
+      return res.status(200).json({
+        ok: true,
+        emitted: 0,
+        droppedByGuard: estimatedDrops,
+        guardRejected: entropy.error || "low_entropy_payload",
         reason: "entropy_guard_rejected"
       });
     }

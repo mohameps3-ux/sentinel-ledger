@@ -23,7 +23,12 @@ const CONFIG = {
   maxTrackedMints: Number(process.env.RULE_ENTROPY_MAX_TRACKED_MINTS || 5_000),
 
   // Aggregated reporting (silent defense; no per-event spam).
-  reportEveryMs: Number(process.env.RULE_ENTROPY_REPORT_MS || 60_000)
+  reportEveryMs: Number(process.env.RULE_ENTROPY_REPORT_MS || 60_000),
+
+  // Ops observability + sustained-threshold alerts.
+  historyMaxPoints: Number(process.env.RULE_ENTROPY_HISTORY_POINTS || 180),
+  alertDropsPerWindow: Number(process.env.RULE_ENTROPY_ALERT_DROPS_PER_WINDOW || 1000),
+  alertSustainWindows: Number(process.env.RULE_ENTROPY_ALERT_SUSTAIN_WINDOWS || 3)
 };
 
 // mint -> { tokens:number, lastRefillMs:number, attempts:number[], cooldownUntil:number, lastSeenMs:number }
@@ -33,6 +38,18 @@ const report = {
   droppedTotal: 0,
   droppedByReason: new Map(),
   droppedByMint: new Map()
+};
+const cumulative = {
+  totalDrops: 0,
+  dropsByReason: new Map(),
+  dropsByMint: new Map(), // mint -> { drops:number, lastSeen:number }
+  maxDropsByMintEntries: 2000
+};
+const reportHistory = [];
+const alertState = {
+  sustainedFlood: false,
+  sustainedFloodSince: null,
+  lastTransitionAt: null
 };
 
 function clamp(n, lo, hi) {
@@ -217,6 +234,74 @@ function noteDrop(mint, reason) {
   if (mint) {
     report.droppedByMint.set(mint, (report.droppedByMint.get(mint) || 0) + 1);
   }
+  cumulative.totalDrops += 1;
+  cumulative.dropsByReason.set(reason, (cumulative.dropsByReason.get(reason) || 0) + 1);
+  if (mint) {
+    const prev = cumulative.dropsByMint.get(mint);
+    if (prev) {
+      prev.drops += 1;
+      prev.lastSeen = nowMs();
+    } else {
+      cumulative.dropsByMint.set(mint, { drops: 1, lastSeen: nowMs() });
+      trimCumulativeDropsByMint();
+    }
+  }
+}
+
+/**
+ * Bulk drop accounting for early request-level rejections (shape/entropy).
+ * This keeps the Ops metrics honest even when we reject before per-tx gating.
+ */
+function recordGuardDrop(reason, count = 1, mint = null) {
+  const n = Math.max(1, Math.floor(Number(count) || 1));
+  report.droppedTotal += n;
+  report.droppedByReason.set(reason, (report.droppedByReason.get(reason) || 0) + n);
+  cumulative.totalDrops += n;
+  cumulative.dropsByReason.set(reason, (cumulative.dropsByReason.get(reason) || 0) + n);
+  if (mint) {
+    report.droppedByMint.set(mint, (report.droppedByMint.get(mint) || 0) + n);
+    const prev = cumulative.dropsByMint.get(mint);
+    if (prev) {
+      prev.drops += n;
+      prev.lastSeen = nowMs();
+    } else {
+      cumulative.dropsByMint.set(mint, { drops: n, lastSeen: nowMs() });
+      trimCumulativeDropsByMint();
+    }
+  }
+}
+
+function trimCumulativeDropsByMint() {
+  if (cumulative.dropsByMint.size <= cumulative.maxDropsByMintEntries) return;
+  const overflow = cumulative.dropsByMint.size - cumulative.maxDropsByMintEntries;
+  const entries = [];
+  for (const [mint, st] of cumulative.dropsByMint.entries()) {
+    entries.push({ mint, lastSeen: Number(st.lastSeen) || 0 });
+  }
+  entries.sort((a, b) => a.lastSeen - b.lastSeen);
+  for (let i = 0; i < overflow; i += 1) {
+    const victim = entries[i];
+    if (!victim) break;
+    cumulative.dropsByMint.delete(victim.mint);
+  }
+}
+
+function estimateGuardMemoryUsageBytes() {
+  // Approximation by cardinality and key/value sizes; no heap scan.
+  // Keeps O(1) behavior and avoids observability becoming a perf hazard.
+  const trackedMints = mintState.size;
+  const droppedMints = cumulative.dropsByMint.size;
+  const history = reportHistory.length;
+  const bytesPerTrackedMint = 320;
+  const bytesPerDroppedMint = 120;
+  const bytesPerHistoryPoint = 256;
+  const base = 16 * 1024;
+  return (
+    base +
+    trackedMints * bytesPerTrackedMint +
+    droppedMints * bytesPerDroppedMint +
+    history * bytesPerHistoryPoint
+  );
 }
 
 function trimMintState(now) {
@@ -271,9 +356,8 @@ function shouldAllowMint(mint, now = nowMs()) {
   const refillPerSec = Math.max(0.01, Number(CONFIG.bucketRefillPerSec || 12));
   const cooldownMs = normalizeDurationMs(CONFIG.bucketCooldownMs, 30_000);
 
-  // Sliding-window attempt tracking.
+  // Sliding-window state trimming.
   while (st.attempts.length > 0 && now - st.attempts[0] > windowMs) st.attempts.shift();
-  st.attempts.push(now);
 
   // Fast refill based on elapsed wall-clock.
   const elapsedMs = Math.max(0, now - st.lastRefillMs);
@@ -282,16 +366,22 @@ function shouldAllowMint(mint, now = nowMs()) {
     st.lastRefillMs = now;
   }
 
-  if (st.attempts.length > windowN) {
+  if (st.cooldownUntil > now) {
+    noteDrop(mint, "cooldown");
+    return { allowed: false, reason: "cooldown" };
+  }
+
+  // Window saturation check before tracking this new attempt keeps memory
+  // bounded even under pathological floods while preserving strictness.
+  if (st.attempts.length >= windowN) {
     st.cooldownUntil = Math.max(st.cooldownUntil, now + cooldownMs);
     noteDrop(mint, "window_saturated");
     return { allowed: false, reason: "window_saturated" };
   }
 
-  if (st.cooldownUntil > now) {
-    noteDrop(mint, "cooldown");
-    return { allowed: false, reason: "cooldown" };
-  }
+  st.attempts.push(now);
+  // Hard cap to avoid unbounded arrays if thresholds are misconfigured.
+  if (st.attempts.length > windowN) st.attempts.shift();
 
   if (st.tokens < 1) {
     st.cooldownUntil = Math.max(st.cooldownUntil, now + cooldownMs);
@@ -308,13 +398,42 @@ function flushReport(force = false) {
   const elapsed = now - report.startedAtMs;
   const threshold = normalizeDurationMs(CONFIG.reportEveryMs, 60_000);
   if (!force && elapsed < threshold) return;
+  const reasonsArr = [...report.droppedByReason.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+  const topOffender = [...report.droppedByMint.entries()].sort((a, b) => b[1] - a[1])[0] || null;
+  const point = {
+    at: now,
+    windowMs: elapsed,
+    droppedTotal: report.droppedTotal,
+    uniqueMintsDropped: report.droppedByMint.size,
+    reasons: reasonsArr.map(([reason, count]) => ({ reason, count })),
+    topOffender: topOffender ? { mint: topOffender[0], count: topOffender[1] } : null
+  };
+  reportHistory.push(point);
+  const maxPoints = normalizeCount(CONFIG.historyMaxPoints, 180);
+  while (reportHistory.length > maxPoints) reportHistory.shift();
+
+  const sustainN = normalizeCount(CONFIG.alertSustainWindows, 3);
+  const sustainThreshold = normalizeCount(CONFIG.alertDropsPerWindow, 1000);
+  const recent = reportHistory.slice(-sustainN);
+  const sustainedNow =
+    recent.length >= sustainN && recent.every((x) => Number(x.droppedTotal || 0) >= sustainThreshold);
+  if (sustainedNow !== alertState.sustainedFlood) {
+    alertState.sustainedFlood = sustainedNow;
+    alertState.lastTransitionAt = now;
+    if (sustainedNow) alertState.sustainedFloodSince = now;
+    if (!sustainedNow) alertState.sustainedFloodSince = null;
+    console.warn(
+      `[GUARD_ALERT] sustained_flood=${sustainedNow ? "ON" : "OFF"} threshold=${sustainThreshold}/window windows=${sustainN}`
+    );
+  }
+
   if (report.droppedTotal > 0) {
-    const reasons = [...report.droppedByReason.entries()]
-      .sort((a, b) => b[1] - a[1])
+    const reasons = reasonsArr
       .slice(0, 5)
       .map(([reason, n]) => `${reason}:${n}`)
       .join(", ");
-    const topOffender = [...report.droppedByMint.entries()].sort((a, b) => b[1] - a[1])[0] || null;
     console.warn(
       `[GUARD_REPORT] window_ms=${elapsed} dropped=${report.droppedTotal} mints=${report.droppedByMint.size} top=${topOffender ? `${topOffender[0]}:${topOffender[1]}` : "none"} reasons=${reasons || "none"}`
     );
@@ -329,11 +448,71 @@ const reportTimer = setInterval(() => flushReport(false), normalizeDurationMs(CO
 if (reportTimer && typeof reportTimer.unref === "function") reportTimer.unref();
 
 function getEntropyGuardSnapshot() {
+  const currentTop = [...report.droppedByMint.entries()].sort((a, b) => b[1] - a[1])[0] || null;
   return {
-    config: { ...CONFIG },
+    config: {
+      maxTransfersPerTx: CONFIG.maxTransfersPerTx,
+      maxTransfersPerRequest: CONFIG.maxTransfersPerRequest,
+      minTransfersForEntropyCheck: CONFIG.minTransfersForEntropyCheck,
+      minUniqueMintRatio: CONFIG.minUniqueMintRatio,
+      minShannonBits: CONFIG.minShannonBits,
+      windowMs: CONFIG.windowMs,
+      windowN: CONFIG.windowN,
+      bucketCapacity: CONFIG.bucketCapacity,
+      bucketRefillPerSec: CONFIG.bucketRefillPerSec,
+      bucketCooldownMs: CONFIG.bucketCooldownMs,
+      maxTrackedMints: CONFIG.maxTrackedMints,
+      reportEveryMs: CONFIG.reportEveryMs,
+      historyMaxPoints: CONFIG.historyMaxPoints,
+      alertDropsPerWindow: CONFIG.alertDropsPerWindow,
+      alertSustainWindows: CONFIG.alertSustainWindows
+    },
+    now: Date.now(),
     trackedMints: mintState.size,
-    droppedTotalCurrentWindow: report.droppedTotal,
-    reasonsCurrentWindow: [...report.droppedByReason.entries()]
+    currentWindow: {
+      since: report.startedAtMs,
+      droppedTotal: report.droppedTotal,
+      reasons: [...report.droppedByReason.entries()].map(([reason, count]) => ({ reason, count })),
+      topOffender: currentTop ? { mint: currentTop[0], count: currentTop[1] } : null
+    },
+    alerts: {
+      sustainedFlood: alertState.sustainedFlood,
+      sustainedFloodSince: alertState.sustainedFloodSince,
+      lastTransitionAt: alertState.lastTransitionAt
+    },
+    history: reportHistory.slice()
+  };
+}
+
+function getEntropyGuardOpsSnapshot() {
+  const config = {
+    windowMs: CONFIG.windowMs,
+    bucketCapacity: CONFIG.bucketCapacity,
+    entropyThreshold: CONFIG.minShannonBits
+  };
+  const dropsByReason = {};
+  for (const [reason, n] of cumulative.dropsByReason.entries()) {
+    dropsByReason[reason] = n;
+  }
+  const topOffenders = [...cumulative.dropsByMint.entries()]
+    .sort((a, b) => b[1].drops - a[1].drops)
+    .slice(0, 10)
+    .map(([mint, st]) => ({
+      mint,
+      drops: st.drops,
+      lastSeen: new Date(st.lastSeen).toISOString()
+    }));
+
+  return {
+    status: "active",
+    config,
+    metrics: {
+      trackedMints: mintState.size,
+      memoryUsageBytes: estimateGuardMemoryUsageBytes(),
+      totalDrops: cumulative.totalDrops,
+      dropsByReason
+    },
+    topOffenders
   };
 }
 
@@ -341,7 +520,9 @@ module.exports = {
   validateWebhookShape,
   analyzeWebhookEntropy,
   shouldAllowMint,
+  recordGuardDrop,
   flushEntropyGuardReport: () => flushReport(true),
-  getEntropyGuardSnapshot
+  getEntropyGuardSnapshot,
+  getEntropyGuardOpsSnapshot
 };
 
