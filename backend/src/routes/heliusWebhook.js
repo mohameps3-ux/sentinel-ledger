@@ -3,11 +3,64 @@ const rateLimit = require("express-rate-limit");
 const redis = require("../lib/cache");
 const { getSupabase } = require("../lib/supabase");
 const { trackSmartBuyAndDetect } = require("../services/convergenceService");
+const { normalizeEvent } = require("../ingestion/sentinelEvent");
+const { reserveEventId } = require("../ingestion/dedupe");
+const {
+  recordRawReceived,
+  recordEventEmitted,
+  recordSourceError
+} = require("../ingestion/ingestionState");
+const { evaluate: evaluateScore } = require("../scoring/engine");
+const { getMarketData } = require("../services/marketData");
+
+const SENTINEL_SOURCE = "helius_webhook";
 
 const router = express.Router();
 
 const DEDUPE_TTL_SEC = 120;
 const MAX_HELIUS_BODY_BYTES = 512 * 1024;
+
+/**
+ * Per-asset, in-process market-data memo (60s) used ONLY for scoring enrichment.
+ * Intentionally separate from `getMarketData`'s own Redis cache (20s) so that
+ * other consumers (token detail page, etc.) keep their fresher TTL while the
+ * scoring pipeline avoids hammering the upstream on bursts of events for the
+ * same mint. Capped to bound memory.
+ */
+const MARKET_MEMO_TTL_MS = 60_000;
+const MARKET_MEMO_MAX = 500;
+const marketMemo = new Map();
+
+async function getMarketDataMemoized(asset) {
+  if (!asset) return null;
+  const now = Date.now();
+  const hit = marketMemo.get(asset);
+  if (hit && hit.expiresAt > now) return hit.value;
+  let value = null;
+  try {
+    value = await getMarketData(asset);
+  } catch (_) {
+    value = null;
+  }
+  if (marketMemo.size >= MARKET_MEMO_MAX) {
+    const firstKey = marketMemo.keys().next().value;
+    if (firstKey !== undefined) marketMemo.delete(firstKey);
+  }
+  marketMemo.set(asset, { value, expiresAt: now + MARKET_MEMO_TTL_MS });
+  return value;
+}
+
+/** Builds the optional USD context for the scoring engine. Always returns an object;
+ *  fields are `null` when market data is unavailable (engine handles null gracefully). */
+function buildScoringContext(market, tokenAmount) {
+  const priceUsd = market && Number(market.price) > 0 ? Number(market.price) : null;
+  const liquidityUsd =
+    market && Number(market.liquidity) > 0 ? Number(market.liquidity) : null;
+  const amt = Number(tokenAmount);
+  const amountUsd =
+    priceUsd != null && Number.isFinite(amt) && amt > 0 ? amt * priceUsd : null;
+  return { priceUsd, liquidityUsd, amountUsd };
+}
 
 const heliusLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -102,14 +155,77 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
     let emitted = 0;
 
     for (const raw of events) {
+      recordRawReceived(SENTINEL_SOURCE);
       const txs = expandHeliusPayload(raw);
-      for (const tx of txs) {
+      for (let i = 0; i < txs.length; i += 1) {
+        const tx = txs[i];
         if (!tx.tokenAddress || !global.io) continue;
         const sig = tx.signature || "nosig";
-        const dedupeKey = `helius:tx:${sig}:${tx.tokenAddress}:${tx.wallet}:${tx.type}:${String(tx.amount)}`;
-        const first = await markFirstEmit(dedupeKey);
-        if (!first) continue;
+
+        // SentinelEvent normalization + edge dedup. Non-blocking for legacy emit:
+        // if it fails for any reason we still ship the legacy transaction event.
+        const startedAt = Date.now();
+        let sentinelEvent = null;
+        try {
+          sentinelEvent = normalizeEvent(
+            {
+              network: "solana",
+              type:
+                tx.type === "buy" || tx.type === "sell" || tx.type === "swap"
+                  ? "SWAP"
+                  : "TRANSFER",
+              source: SENTINEL_SOURCE,
+              signature: sig,
+              blockNumber: Number(raw?.slot) || 0,
+              blockHash: raw?.transaction?.message?.recentBlockhash || "",
+              logIndex: i,
+              timestamp: tx.timestamp,
+              data: {
+                actor: tx.wallet,
+                asset: tx.tokenAddress,
+                amount: String(tx.amount ?? "0")
+              },
+              metadata: { confidence: 0.85, labels: [tx.type].filter(Boolean) }
+            },
+            { processingStartedAt: startedAt }
+          );
+        } catch (e) {
+          recordSourceError(SENTINEL_SOURCE, e);
+        }
+
+        // Per-SentinelEvent edge dedup wins over the legacy key.
+        if (sentinelEvent) {
+          const r = await reserveEventId(sentinelEvent.id);
+          if (r.duplicate) continue;
+        } else {
+          const legacyKey = `helius:tx:${sig}:${tx.tokenAddress}:${tx.wallet}:${tx.type}:${String(tx.amount)}`;
+          const first = await markFirstEmit(legacyKey);
+          if (!first) continue;
+        }
+
         global.io.to(tx.tokenAddress).emit("transaction", tx);
+        if (sentinelEvent) {
+          global.io.to(tx.tokenAddress).emit("sentinel:event", sentinelEvent);
+          recordEventEmitted(sentinelEvent, Date.now() - startedAt);
+          // Market-aware scoring — best-effort, never blocks event emission.
+          // 1) fetch market (memoized 60s per asset); 2) compute USD ctx;
+          // 3) evaluate; 4) structured log on high-signal events.
+          getMarketDataMemoized(tx.tokenAddress)
+            .then((market) => {
+              const ctx = buildScoringContext(market, tx.amount);
+              return evaluateScore(sentinelEvent, ctx);
+            })
+            .then((score) => {
+              if (!score || !global.io) return;
+              global.io.to(tx.tokenAddress).emit("sentinel:score", score);
+              if (score.confidence > 70 || (score.signals && score.signals.length > 2)) {
+                console.log(
+                  `[SCORING_SIGNAL] ${score.asset} - ${score.confidence}% - ${(score.signals || []).join(",")}`
+                );
+              }
+            })
+            .catch(() => {});
+        }
         if (tx.type === "buy" || tx.type === "swap") {
           const conv = await trackSmartBuyAndDetect(tx.tokenAddress, tx.wallet, tx.timestamp);
           if (conv?.detected) {

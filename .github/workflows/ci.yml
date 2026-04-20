@@ -21,7 +21,8 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: node --check src/server.js
-      - run: node -e "require('./src/routes/heliusWebhook'); require('./src/routes/walletNarrative'); require('./src/lib/corsOptions'); require('./src/lib/smartMoneyTier'); require('./src/lib/solanaAddress'); require('./src/services/xMarketing'); console.log('backend modules ok')"
+      - run: node -e "require('./src/routes/heliusWebhook'); require('./src/routes/walletNarrative'); require('./src/lib/corsOptions'); require('./src/lib/smartMoneyTier'); require('./src/lib/solanaAddress'); require('./src/services/xMarketing'); require('./src/ingestion/sentinelEvent'); require('./src/ingestion/dedupe'); require('./src/ingestion/ingestionState'); require('./src/scoring/state'); require('./src/scoring/engine'); console.log('backend modules ok')"
+      - run: node test-ingestion.js
 
   frontend-build:
     runs-on: ubuntu-latest

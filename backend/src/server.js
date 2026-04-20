@@ -37,6 +37,8 @@ const { startSubscriptionExpiryCron } = require("./services/subscriptionCron");
 const { corsMiddlewareOptions, socketIoCors } = require("./lib/corsOptions");
 const { isProbableSolanaPubkey } = require("./lib/solanaAddress");
 const redis = require("./lib/cache");
+const { getIngestionSnapshot } = require("./ingestion/ingestionState");
+const { getDedupeStats } = require("./ingestion/dedupe");
 
 /** Stripe envía `application/json; charset=utf-8`; el matcher por string estricto a veces no aplica raw. */
 function stripeWebhookRawBody() {
@@ -147,6 +149,49 @@ app.get("/health", async (_, res) => {
     return res.status(503).json(body);
   }
   return res.json(body);
+});
+
+/**
+ * L2 — Ingestion feed health.
+ * DEGRADED if no SentinelEvent observed in the last 60s; WAITING before the first event.
+ * Always returns 200 so uptime monitors don't false-alarm during cold starts; consumers
+ * must read `status` to decide.
+ */
+app.get("/health/ingestion", (_req, res) => {
+  const snap = getIngestionSnapshot();
+  res.json({
+    ok: snap.ingestionStatus !== "DEGRADED",
+    status: snap.ingestionStatus,
+    lastEventAt: snap.lastEventAt,
+    lastEventAgeMs: snap.lastEventAgeMs,
+    lastEventType: snap.lastEventType,
+    totalEventsEmitted: snap.totalEventsEmitted,
+    totalRawReceived: snap.totalRawReceived,
+    normalizationLatencyEmaMs: snap.normalizationLatencyEmaMs,
+    bufferDepth: snap.bufferDepth,
+    sources: snap.sources,
+    dedupe: getDedupeStats()
+  });
+});
+
+/**
+ * L3 — Sync state. Compares internal state vs chain reality. The frontend LED
+ * (LIVE / SYNCING) reads this endpoint.
+ */
+app.get("/health/sync", (_req, res) => {
+  const snap = getIngestionSnapshot();
+  res.json({
+    status: snap.syncStatus,
+    reason: snap.syncReason,
+    latency_ms: snap.normalizationLatencyEmaMs,
+    bufferDepth: snap.bufferDepth,
+    networks: snap.networks,
+    services: {
+      scoring_engine: "operational",
+      alert_dispatcher: "operational"
+    },
+    measuredAt: snap.now
+  });
 });
 
 app.use("/api/v1/auth", authRouter);
