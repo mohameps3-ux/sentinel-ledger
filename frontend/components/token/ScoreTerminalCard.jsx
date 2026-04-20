@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Activity, AlertTriangle, Radio } from "lucide-react";
 import { useScoreSocket } from "../../hooks/useScoreSocket";
 import { useGlobalHealth } from "../../hooks/useGlobalHealth";
+import { useInsightsRecorder } from "../../hooks/useInsightsRecorder";
+import { InsightsFeed } from "./InsightsFeed";
 
 /**
  * "Terminal" card that surfaces the live `sentinel:score` stream for the
@@ -200,6 +202,10 @@ export function ScoreTerminalCard({ asset }) {
   const { score, isConnected, lastScoreAt } = useScoreSocket(asset);
   const { status: globalStatus, reason: globalReason } = useGlobalHealth();
   useTickOnThreshold(lastScoreAt);
+  // Feed the live score stream into the local, per-asset rolling log
+  // ("flight recorder"). Pure side effect — the recorder does not
+  // re-subscribe to the socket; it reuses the `score` we already have.
+  useInsightsRecorder(asset, score);
 
   const ledKey = useMemo(
     () => deriveLedKey({ isConnected, globalStatus, lastScoreAt, nowMs: Date.now() }),
@@ -288,6 +294,8 @@ export function ScoreTerminalCard({ asset }) {
           </ul>
         )}
       </div>
+
+      <InsightsFeed asset={asset} />
 
       {ledKey === "DEGRADED" ? (
         <p className="text-[10px] text-red-200 inline-flex items-center gap-1.5">
