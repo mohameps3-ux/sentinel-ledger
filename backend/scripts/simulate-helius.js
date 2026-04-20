@@ -134,7 +134,77 @@ function validateScorePayload(payload, expectedAsset) {
   }
   if (!Array.isArray(payload.signals)) errors.push("signals is not an array");
   if (!Array.isArray(payload.insights)) errors.push("insights is not an array");
+
+  // Signature envelope presence. If the operator is running an old backend
+  // without signing wired up, we want to know immediately.
+  if (payload.sigAlg !== "ed25519-v1") {
+    errors.push(`sigAlg expected "ed25519-v1", got ${JSON.stringify(payload.sigAlg)}`);
+  }
+  if (typeof payload.signature !== "string" || !/^[0-9a-f]{128}$/i.test(payload.signature)) {
+    errors.push("signature missing or not 64-byte hex");
+  }
+  if (typeof payload.pubkeyFp !== "string" || !/^[0-9a-f]{16}$/i.test(payload.pubkeyFp)) {
+    errors.push("pubkeyFp missing or not 16-hex fingerprint");
+  }
   return errors;
+}
+
+/** Build the canonical bytes the backend would sign — must match scoreSigner.js. */
+function canonicalize(payload) {
+  const scores = payload.scores || {};
+  const ordered = {
+    asset: String(payload.asset || ""),
+    confidence: Number(payload.confidence),
+    confidenceLabel: String(payload.confidenceLabel || ""),
+    insights: Array.isArray(payload.insights) ? payload.insights.map((x) => String(x)) : [],
+    network: String(payload.network || ""),
+    scores: {
+      momentum: Number(scores.momentum),
+      risk: Number(scores.risk),
+      smart: Number(scores.smart)
+    },
+    signals: Array.isArray(payload.signals) ? payload.signals.map((x) => String(x)) : [],
+    timestamp: String(payload.timestamp || "")
+  };
+  return Buffer.from(JSON.stringify(ordered), "utf8");
+}
+
+async function verifySignatureEndToEnd(payload) {
+  let nacl;
+  try {
+    nacl = require("tweetnacl");
+  } catch (_) {
+    return { ok: false, reason: "tweetnacl not installed in backend" };
+  }
+
+  let info;
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/v1/scoring/public-key`);
+    if (!res.ok) return { ok: false, reason: `public-key endpoint ${res.status}` };
+    info = await res.json();
+  } catch (err) {
+    return { ok: false, reason: `public-key fetch failed: ${err?.message || err}` };
+  }
+
+  if (info?.alg !== "ed25519-v1") return { ok: false, reason: `unexpected alg ${info?.alg}` };
+  if (info.pubkeyFp !== payload.pubkeyFp) {
+    return {
+      ok: false,
+      reason: `pubkeyFp mismatch · payload=${payload.pubkeyFp} key-endpoint=${info.pubkeyFp}`
+    };
+  }
+
+  const pubBytes = Buffer.from(String(info.pubkey), "hex");
+  const sigBytes = Buffer.from(String(payload.signature), "hex");
+  const { signature: _s, pubkeyFp: _f, sigAlg: _a, ...stripped } = payload;
+  const msg = canonicalize(stripped);
+
+  try {
+    const ok = nacl.sign.detached.verify(msg, sigBytes, pubBytes);
+    return ok ? { ok: true, pubkeyFp: info.pubkeyFp } : { ok: false, reason: "signature invalid" };
+  } catch (err) {
+    return { ok: false, reason: `verify threw: ${err?.message || err}` };
+  }
 }
 
 (async () => {
@@ -223,7 +293,19 @@ function validateScorePayload(payload, expectedAsset) {
     for (const e of errors) console.error(`   - ${e}`);
     process.exit(1);
   }
-  info("payload validation OK · asset, timestamp, scores, confidence, signals, insights");
+  info("payload validation OK · asset, timestamp, scores, confidence, signals, insights, signature envelope");
+
+  // End-to-end cryptographic verification. This is the acid test: if a
+  // score arrives over the socket and this script can verify it using only
+  // the public key served by /api/v1/scoring/public-key, then any client —
+  // frontend, backtest pipeline, B2B subscriber — can do the same.
+  const verifyRes = await verifySignatureEndToEnd(first);
+  if (!verifyRes.ok) {
+    socket.close();
+    console.error(`[simulate-helius] FAIL · signature verification failed: ${verifyRes.reason}`);
+    process.exit(1);
+  }
+  info(`signature VERIFIED · pubkeyFp=${verifyRes.pubkeyFp}`);
 
   if (!OBSERVE) {
     socket.close();

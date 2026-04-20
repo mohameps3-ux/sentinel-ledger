@@ -8,8 +8,20 @@ import { useEffect, useRef, useState } from "react";
  * Health/sync status does NOT live here — consumers read it from
  * `useGlobalHealth()` which shares a single poller across the whole tab.
  *
+ * Cryptographic verification
+ * --------------------------
+ * Every payload (socket push and bootstrap fetch) is run through the Ed25519
+ * verifier on arrival. The verification happens OFF the render-critical path
+ * (fire-and-forget promise) and its result is attached to the score object
+ * as `__verification` so consumers can display trust badges without any
+ * extra wiring. Verification NEVER blocks rendering — if the verifier is
+ * slow or offline, the UI stays reactive and the badge downgrades to
+ * "unknown" gracefully.
+ *
  * @param {string} asset  Token mint. Falsy = no-op.
  * @returns {{ score: object | null, isConnected: boolean, lastScoreAt: number | null }}
+ *          The returned `score`, when present, may carry a non-enumerable
+ *          `__verification` field: "verified" | "tampered" | "unsigned" | "unknown".
  */
 
 let socket = null;
@@ -50,6 +62,47 @@ function decrementRoom(asset) {
   return false;
 }
 
+/**
+ * Kick off Ed25519 verification for a score payload off the render path.
+ * When verification resolves, the CURRENT score state is re-issued with a
+ * `__verification` field attached. If the user has moved on to a newer
+ * score (matched by signature), the async result is silently discarded —
+ * we never rewind the UI to an older payload.
+ */
+function startVerification(payload, setScore) {
+  if (!payload || typeof payload !== "object") return;
+  const sigFingerprint = payload.signature || null;
+  (async () => {
+    let status = "unknown";
+    try {
+      const [{ verifyScore }, { getPublicApiUrl }] = await Promise.all([
+        import("../lib/scoreVerifier"),
+        import("../lib/publicRuntime")
+      ]);
+      status = await verifyScore(payload, getPublicApiUrl());
+    } catch (_) {
+      status = "unknown";
+    }
+    if (status === "tampered" && process.env.NODE_ENV !== "production") {
+      console.warn(
+        "[sentinel] score signature failed verification",
+        payload.asset,
+        payload.pubkeyFp
+      );
+    }
+    setScore((prev) => {
+      if (!prev) return prev;
+      // Only stamp the verification if the latest score is the same one we
+      // verified (identity via signature). Prevents a slow verifier from
+      // overwriting a newer score that already arrived over the socket.
+      const prevSig = prev.signature || null;
+      if (prevSig !== sigFingerprint) return prev;
+      if (prev.__verification === status) return prev;
+      return { ...prev, __verification: status };
+    });
+  })();
+}
+
 export function useScoreSocket(asset) {
   const [score, setScore] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -82,12 +135,18 @@ export function useScoreSocket(asset) {
         ]);
         const cached = await bootstrapScore(asset, getPublicApiUrl());
         if (cancelled || !cached || cached.asset !== asset) return;
-        setScore((prev) => prev || cached);
+        let appliedBootstrap = false;
+        setScore((prev) => {
+          if (prev) return prev;
+          appliedBootstrap = true;
+          return cached;
+        });
         setLastScoreAt((prev) => {
           if (prev) return prev;
           const ts = cached.timestamp ? Date.parse(cached.timestamp) : NaN;
           return Number.isFinite(ts) ? ts : Date.now();
         });
+        if (appliedBootstrap) startVerification(cached, setScore);
       } catch (_) {
         // Bootstrap is best-effort; socket will populate as events arrive.
       }
@@ -121,6 +180,7 @@ export function useScoreSocket(asset) {
         // client receive time so the UI still works with older backends.
         const serverTs = payload.timestamp ? Date.parse(payload.timestamp) : NaN;
         setLastScoreAt(Number.isFinite(serverTs) ? serverTs : Date.now());
+        startVerification(payload, setScore);
       };
 
       s.on("connect", onConnect);

@@ -41,6 +41,7 @@ const {
   touchWalletFirstSeen
 } = require("./state");
 const { isSmartWallet } = require("../services/convergenceService");
+const { sign: signScoreResult } = require("../lib/scoreSigner");
 
 const CONFIG = {
   whaleMinUsd: Number(process.env.RULE_WHALE_MIN_USD || 5_000),
@@ -298,14 +299,22 @@ async function evaluate(event, extraCtx = {}) {
     }
   };
 
-  // Best-effort cache; never blocks emission.
+  // Cryptographic signature (Ed25519). Signs only the stable subset of the
+  // result, not `meta`; the canonical form lives in lib/scoreSigner.js and is
+  // byte-identical across every consumer. Failure here is unrecoverable —
+  // we MUST ship signed scores or nothing — so we let the error propagate.
+  const signedResult = signScoreResult(result);
+
+  // Best-effort cache; never blocks emission. Socket payload and cache entry
+  // are byte-identical so the verifier produces the same result regardless
+  // of how the client obtained the score.
   cache
-    .set(`scoring:latest:${event.data.asset}`, JSON.stringify(result), {
+    .set(`scoring:latest:${event.data.asset}`, JSON.stringify(signedResult), {
       ex: CONFIG.cacheTtlSec
     })
     .catch(() => {});
 
-  return result;
+  return signedResult;
 }
 
 async function safeIsElite(wallet) {

@@ -23,8 +23,25 @@
 const express = require("express");
 const cache = require("../lib/cache");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
+const { getPublicKeyInfo } = require("../lib/scoreSigner");
 
 const router = express.Router();
+
+/**
+ * Public Ed25519 key used to verify `sentinel:score` signatures.
+ *
+ * Clients (frontend verifier, backtest scripts, institutional API consumers)
+ * fetch this once per pubkey fingerprint. When the server rotates its key,
+ * incoming scores carry a new `pubkeyFp` that doesn't match the cached key,
+ * and clients re-fetch transparently — no manual coordination required.
+ *
+ * Cache: 5 min at the edge. The key rotates at most on deployment boundaries.
+ */
+router.get("/public-key", (_req, res) => {
+  const info = getPublicKeyInfo();
+  res.set("Cache-Control", "public, max-age=300");
+  res.json({ ok: true, ...info });
+});
 
 router.get("/latest/:asset", async (req, res) => {
   const asset = String(req.params.asset || "").trim();
