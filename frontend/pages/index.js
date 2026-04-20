@@ -18,6 +18,8 @@ import {
 import { formatUsdWhole } from "../lib/formatStable";
 import { ProButton } from "../components/ui/ProButton";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
+import { useSignalsFeed } from "../hooks/useSignalsFeed";
+import { useRankDeltas } from "../hooks/useRankDeltas";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { Ticker } from "../components/layout/Ticker";
 import { AnimatedNumber } from "../components/ui/AnimatedNumber";
@@ -342,9 +344,69 @@ function redFlagsLines(signalStrength, token) {
   return [`Low liquidity ${liqLabel}`, "Dev holding 20%", "Honeypot risk YES"];
 }
 
+/**
+ * Compact rank badge rendered on each feed/hot card. Top 3 get medal tones
+ * (gold/silver/bronze) to make the podium scannable at a glance; the rest
+ * share a neutral slate tone so they don't compete with the content.
+ */
+function RankBadge({ rank }) {
+  if (!Number.isFinite(rank) || rank < 1) return null;
+  const base =
+    "shrink-0 inline-flex items-center justify-center font-mono tabular-nums text-[10px] leading-none font-bold rounded-md border px-1.5 py-0.5";
+  const tone =
+    rank === 1
+      ? "bg-yellow-500/15 text-yellow-200 border-yellow-500/40 shadow-[0_0_10px_rgba(234,179,8,0.25)]"
+      : rank === 2
+        ? "bg-slate-300/10 text-slate-100 border-slate-300/30"
+        : rank === 3
+          ? "bg-orange-500/15 text-orange-200 border-orange-500/30"
+          : "bg-white/[0.03] text-gray-400 border-white/10";
+  return (
+    <span className={`${base} ${tone}`} title={`Rank #${rank}`}>
+      #{rank}
+    </span>
+  );
+}
+
+/**
+ * Visual indicator of how a card's rank moved since the last poll.
+ * - delta > 0  → moved up N positions (green ↑)
+ * - delta < 0  → moved down N positions (red ↓)
+ * - isNew      → first time we see this item after mount (violet NEW)
+ * - everything else → null, so settled rows stay visually quiet.
+ */
+function RankDeltaChip({ delta, isNew }) {
+  if (isNew) {
+    return (
+      <span
+        className="inline-flex items-center gap-0.5 text-[9px] leading-none font-bold uppercase tracking-wider px-1 py-0.5 rounded border border-violet-500/40 bg-violet-500/15 text-violet-200"
+        title="New entry in the ranking"
+      >
+        NEW
+      </span>
+    );
+  }
+  if (!Number.isFinite(delta) || delta === 0) return null;
+  const up = delta > 0;
+  const n = Math.abs(delta);
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 text-[9px] leading-none font-bold font-mono tabular-nums px-1 py-0.5 rounded border ${
+        up
+          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+          : "border-red-500/40 bg-red-500/10 text-red-300"
+      }`}
+      title={up ? `Up ${n} position${n === 1 ? "" : "s"}` : `Down ${n} position${n === 1 ? "" : "s"}`}
+    >
+      {up ? "▲" : "▼"}
+      {n}
+    </span>
+  );
+}
+
 export async function getServerSideProps() {
   try {
-    const res = await fetch(`${getPublicApiUrl()}/api/v1/tokens/hot?limit=12`);
+    const res = await fetch(`${getPublicApiUrl()}/api/v1/tokens/hot?limit=24`);
     if (!res.ok) return { props: { initialTrending: [], initialTrendingMeta: {} } };
     const json = await res.json();
     return {
@@ -436,8 +498,14 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const topWalletLabelAddrs = useMemo(() => rankedWallets.map((w) => w.address).filter(Boolean), [rankedWallets]);
   const { labelFor: topWalletLabel, titleFor: topWalletTitle } = useWalletLabels(topWalletLabelAddrs);
   const interpretedSignals = useMemo(() => {
+    // Build the raw list from either the live API payload or the trending
+    // fallback, then sort deterministically by Sentinel score descending so
+    // the "best" cards physically rise to the top as scores drift over time.
+    // This is what makes the grid feel like a live ranking rather than a
+    // static list.
+    let raw;
     if (apiFeedCards.length) {
-      return apiFeedCards.map((c, idx) => {
+      raw = apiFeedCards.map((c, idx) => {
         const sym = String(c.token || "TOKEN").replace(/^\$/, "").trim() || "TOKEN";
         const liq = liquidityFromApiRedFlags(c.redFlags);
         return {
@@ -459,26 +527,37 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           _api: c
         };
       });
+    } else {
+      raw = (visibleTrending.length ? visibleTrending : FALLBACK_TRENDING).slice(0, 12).map(
+        (token, idx) => {
+          const signalStrength = computeSignalStrength(token);
+          const smartWallets = Math.max(2, Math.min(9, Math.round(signalStrength / 15)));
+          const context =
+            idx % 2 === 0
+              ? `Last similar signal → +${Math.max(18, Math.round(signalStrength * 0.75))}% in 3h`
+              : `Wallet hit rate: ${Math.max(4, Math.round(signalStrength / 20))}/6 last trades`;
+          return {
+            symbol: token.symbol || "TOKEN",
+            mint: token.mint || "So11111111111111111111111111111111111111112",
+            token,
+            signalStrength,
+            smartWallets,
+            context,
+            clusterScore: Math.min(99, Math.max(45, signalStrength - 6)),
+            momentum: token.volume24h || 0
+          };
+        }
+      );
     }
-    return (visibleTrending.length ? visibleTrending : FALLBACK_TRENDING).slice(0, 6).map((token, idx) => {
-      const signalStrength = computeSignalStrength(token);
-      const smartWallets = Math.max(2, Math.min(9, Math.round(signalStrength / 15)));
-      const context =
-        idx % 2 === 0
-          ? `Last similar signal → +${Math.max(18, Math.round(signalStrength * 0.75))}% in 3h`
-          : `Wallet hit rate: ${Math.max(4, Math.round(signalStrength / 20))}/6 last trades`;
-      return {
-        symbol: token.symbol || "TOKEN",
-        mint: token.mint || "So11111111111111111111111111111111111111112",
-        token,
-        signalStrength,
-        smartWallets,
-        context,
-        clusterScore: Math.min(99, Math.max(45, signalStrength - 6)),
-        momentum: token.volume24h || 0
-      };
-    });
+    return raw
+      .slice()
+      .sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
   }, [apiFeedCards, visibleTrending]);
+
+  // Tracks rank changes between refetches so cards can render ↑N / ↓N / NEW
+  // badges when the live ordering moves. Pure client-side; no extra network.
+  const signalsRankDeltas = useRankDeltas(interpretedSignals, (s) => s?.mint);
+  const trendingRankDeltas = useRankDeltas(visibleTrending, (t) => t?.mint);
   const liveSignal = interpretedSignals[signalCursor % Math.max(1, interpretedSignals.length)];
 
   useEffect(() => {
@@ -637,22 +716,19 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     };
   }, []);
 
+  // Poll /api/v1/signals/latest every 15 s via React Query. Keeps previous
+  // data visible during a refetch so the grid never flashes empty, pauses
+  // when the tab is hidden, and re-fires on window focus — effectively
+  // turning the Live Smart Money Feed truly live without any backend work.
+  const signalsFeedQuery = useSignalsFeed({ strategy: strategyMode, limit: 20, refetchMs: 15_000 });
   useEffect(() => {
-    let cancelled = false;
-    fetch(`${getPublicApiUrl()}/api/v1/signals/latest?limit=10&strategy=${encodeURIComponent(strategyMode)}`)
-      .then((r) => r.json())
-      .then((j) => {
-        if (cancelled) return;
-        if (Array.isArray(j?.data) && j.data.length) setApiFeedCards(j.data);
-        else setApiFeedCards([]);
-      })
-      .catch(() => {
-        if (!cancelled) setApiFeedCards([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [strategyMode]);
+    const data = signalsFeedQuery.data?.data;
+    if (Array.isArray(data) && data.length) setApiFeedCards(data);
+    else if (signalsFeedQuery.isError) setApiFeedCards([]);
+  }, [signalsFeedQuery.data, signalsFeedQuery.isError]);
+  const signalsAgeSec = signalsFeedQuery.dataUpdatedAt
+    ? Math.max(0, Math.floor((Date.now() - signalsFeedQuery.dataUpdatedAt) / 1000))
+    : null;
 
   useEffect(() => {
     if (feedMode !== "history") return;
@@ -953,10 +1029,31 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                 </p>
                 <h1 className="sl-h2 text-white mt-1">Live Smart Money Feed</h1>
               </div>
-              <span className="text-[11px] text-gray-500 inline-flex items-center gap-1">
-                <Info size={12} />
-                Sentinel Score · mock + WS-ready
-              </span>
+              <div className="flex flex-col items-start md:items-end gap-1.5">
+                <span
+                  className={`text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border inline-flex items-center gap-1.5 ${
+                    signalsFeedQuery.isError
+                      ? "bg-amber-500/15 text-amber-200 border-amber-500/30"
+                      : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      signalsFeedQuery.isError ? "bg-amber-400" : "bg-emerald-400 animate-pulse"
+                    }`}
+                  />
+                  {signalsFeedQuery.isError ? "Delayed" : "Live"}
+                </span>
+                <span className="text-[11px] text-gray-500 inline-flex items-center gap-1">
+                  <Info size={12} />
+                  {signalsAgeSec === null
+                    ? "syncing…"
+                    : signalsAgeSec <= 2
+                      ? "just now"
+                      : `updated ${signalsAgeSec}s ago`}
+                  {" · "}refresh 15s
+                </span>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
             {interpretedSignals.map((sig, idx) => {
@@ -982,6 +1079,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               const action = sig._api?.decision || suggestedAction(sig.signalStrength, strategyMode, "feed");
               const hot = idx === signalCursor % Math.max(1, interpretedSignals.length);
               const whyLines = whyNowBulletLines(sig);
+              const rankInfo = signalsRankDeltas.get(sig.mint) || { rank: idx + 1, delta: 0, isNew: false };
               return (
                 <div
                   key={`${sig.mint}-${idx}`}
@@ -991,6 +1089,10 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <RankBadge rank={rankInfo.rank} />
+                        <RankDeltaChip delta={rankInfo.delta} isNew={rankInfo.isNew} />
+                      </div>
                       <p className="text-base font-bold text-white tracking-tight truncate">${sig.symbol}</p>
                       <p className="text-[10px] text-cyan-200/90 font-mono mt-0.5">{sig.smartWallets} wallets · live</p>
                     </div>
@@ -1310,16 +1412,21 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               </div>
               <div className="flex flex-col items-start md:items-end gap-1.5">
                 <span
-                  className={`text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border ${
+                  className={`text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border inline-flex items-center gap-1.5 ${
                     feedIsLive
                       ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
                       : "bg-amber-500/15 text-amber-200 border-amber-500/30"
                   }`}
                 >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      feedIsLive ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                    }`}
+                  />
                   {feedLabel}
                 </span>
                 <span className="text-[11px] text-gray-500">
-                  {feedAgeSec === null ? "fresh" : `${feedAgeSec}s ago`} · min liq $
+                  {feedAgeSec === null ? "fresh" : `${feedAgeSec}s ago`} · refresh 25s · min liq $
                   {formatUsdWhole(trendingMeta.minLiquidityUsd || 15000)}
                 </span>
               </div>
@@ -1332,7 +1439,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             ) : null}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
-              {(visibleTrending.length ? visibleTrending : Array.from({ length: 6 })).map((token, idx) => {
+              {(visibleTrending.length ? visibleTrending : Array.from({ length: 8 })).map((token, idx) => {
                 const signalStrength = computeSignalStrength(token);
                 const action = suggestedAction(signalStrength, strategyMode, "token");
                 const confluence = signalStrength >= 85 && Number(token?.change || 0) > 5;
@@ -1340,6 +1447,11 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                 const tokenWindow = entryWindowFromCountdown(entryCountdownByMint[token?.mint] || 0);
                 const changeNum = Number(token?.change || 0);
                 const redFlags = redFlagsForSignal({ signalStrength, token: token || {} });
+                const trendingRank = trendingRankDeltas.get(token?.mint) || {
+                  rank: idx + 1,
+                  delta: 0,
+                  isNew: false
+                };
                 return (
                 <div
                   key={token?.mint || `skeleton-${idx}`}
@@ -1350,6 +1462,12 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
+                      {token?.mint ? (
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <RankBadge rank={trendingRank.rank} />
+                          <RankDeltaChip delta={trendingRank.delta} isNew={trendingRank.isNew} />
+                        </div>
+                      ) : null}
                       <p className="text-base font-bold text-white tracking-tight truncate">
                         {token?.symbol || "Loading"}
                       </p>
