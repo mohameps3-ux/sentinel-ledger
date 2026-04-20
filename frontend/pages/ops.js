@@ -22,6 +22,7 @@ export default function OpsPage() {
   const [tickets, setTickets] = useState([]);
   const [events, setEvents] = useState([]);
   const [guard, setGuard] = useState(null);
+  const [perf, setPerf] = useState(null);
   const [loading, setLoading] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
 
@@ -42,14 +43,16 @@ export default function OpsPage() {
     if (!hasKey) return toast.error("Set your ops key first.");
     setLoading(true);
     try {
-      const [ticketRes, eventRes, guardRes] = await Promise.all([
+      const [ticketRes, eventRes, guardRes, perfRes] = await Promise.all([
         withOpsKey("/api/v1/bots/omni/tickets?limit=50", opsKey),
         withOpsKey("/api/v1/bots/omni/events?limit=100", opsKey),
-        withOpsKey("/api/v1/ops/entropy-guard/snapshot", opsKey)
+        withOpsKey("/api/v1/ops/entropy-guard/snapshot", opsKey),
+        withOpsKey("/api/v1/ops/signal-performance/summary?lookbackHours=48&maxRows=2000", opsKey)
       ]);
       setTickets(ticketRes.data || []);
       setEvents(eventRes.data || []);
       setGuard(guardRes || null);
+      setPerf(perfRes.data || null);
       toast.success("Ops data refreshed.");
     } catch (error) {
       toast.error(`Load failed: ${error.message}`);
@@ -208,6 +211,52 @@ export default function OpsPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="glass-card p-5">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h2 className="text-lg font-semibold">Signal Performance (48h)</h2>
+        </div>
+        {!perf ? (
+          <div className="text-sm text-gray-500">No performance data loaded.</div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid md:grid-cols-4 gap-2 text-sm">
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-gray-400 text-xs">Win rate</div>
+                <div className="text-gray-100 font-semibold mt-1">{perf.metrics?.winRatePct ?? 0}%</div>
+              </div>
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-gray-400 text-xs">Profit factor</div>
+                <div className="text-gray-100 font-semibold mt-1">{perf.metrics?.profitFactor ?? 0}</div>
+              </div>
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-gray-400 text-xs">Avg outcome</div>
+                <div className="text-gray-100 font-semibold mt-1">{perf.metrics?.avgOutcomePct ?? 0}%</div>
+              </div>
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-gray-400 text-xs">Confidence↔Return corr</div>
+                <div className="text-gray-100 font-semibold mt-1">
+                  {perf.metrics?.confidenceReturnCorrelation ?? "n/a"}
+                </div>
+              </div>
+            </div>
+            <div className="grid md:grid-cols-3 gap-2 text-sm">
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-gray-400 text-xs">Resolved rows</div>
+                <div className="text-gray-100 font-semibold mt-1">{perf.resolvedRows ?? 0}</div>
+              </div>
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-gray-400 text-xs">Pending rows</div>
+                <div className="text-gray-100 font-semibold mt-1">{perf.pendingRows ?? 0}</div>
+              </div>
+              <div className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+                <div className="text-gray-400 text-xs">Max drawdown</div>
+                <div className="text-gray-100 font-semibold mt-1">{perf.metrics?.maxDrawdownPct ?? 0}%</div>
               </div>
             </div>
           </div>

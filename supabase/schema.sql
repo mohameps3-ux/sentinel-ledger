@@ -102,6 +102,28 @@ create table if not exists bot_events (
   created_at timestamptz not null default now()
 );
 
+create table if not exists signal_performance (
+  id uuid primary key default gen_random_uuid(),
+  event_id text unique,
+  asset varchar(100) not null,
+  emitted_at timestamptz not null default now(),
+  resolve_after timestamptz not null,
+  horizon_min int not null default 10 check (horizon_min > 0 and horizon_min <= 240),
+  confidence numeric(6,2),
+  signals jsonb not null default '[]'::jsonb,
+  insights jsonb not null default '[]'::jsonb,
+  entry_price_usd numeric(18,8),
+  outcome_price_usd numeric(18,8),
+  outcome_pct numeric(10,4),
+  success boolean,
+  status varchar(20) not null default 'pending' check (status in ('pending', 'resolved', 'failed')),
+  attempts int not null default 0,
+  failure_reason text,
+  resolved_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists idx_users_wallet on users(wallet_address);
 create index if not exists idx_tokens_address on tokens_analyzed(token_address);
 create index if not exists idx_watchlists_user on watchlists(user_id);
@@ -111,6 +133,9 @@ create index if not exists idx_smart_wallet_signals_wallet on smart_wallet_signa
 create index if not exists idx_support_tickets_created_at on support_tickets(created_at desc);
 create index if not exists idx_support_tickets_status on support_tickets(status);
 create index if not exists idx_bot_events_created_at on bot_events(created_at desc);
+create index if not exists idx_signal_perf_asset_emitted on signal_performance(asset, emitted_at desc);
+create index if not exists idx_signal_perf_status_resolve_after on signal_performance(status, resolve_after asc);
+create index if not exists idx_signal_perf_resolved_at on signal_performance(resolved_at desc);
 
 -- ---------------------------------------------------------------------------
 -- Stripe, PRO Telegram alerts, worker tables (idempotent). Same SQL as

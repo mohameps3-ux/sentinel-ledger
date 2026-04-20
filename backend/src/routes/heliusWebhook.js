@@ -18,6 +18,7 @@ const {
   getEntropyGuardSnapshot
 } = require("../ingestion/entropyGuard");
 const { evaluate: evaluateScore } = require("../scoring/engine");
+const { recordSignalEmission } = require("../services/signalPerformance");
 const { getMarketData } = require("../services/marketData");
 
 const SENTINEL_SOURCE = "helius_webhook";
@@ -285,6 +286,9 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
               // it, so the socket payload and the /scoring/latest cache entry
               // stay byte-identical.
               global.io.to(tx.tokenAddress).emit("sentinel:score", score);
+              // Best-effort archival for outcome backtesting (T+N resolution).
+              // Never blocks ingestion.
+              recordSignalEmission(score).catch(() => {});
               if (score.confidence > 70 || (score.signals && score.signals.length > 2)) {
                 console.log(
                   `[SCORING_SIGNAL] ${score.asset} - ${score.confidence}% - ${(score.signals || []).join(",")}`
