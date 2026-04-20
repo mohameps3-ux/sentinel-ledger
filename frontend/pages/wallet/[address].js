@@ -6,6 +6,7 @@ import { PageHead } from "../../components/seo/PageHead";
 import { WalletNarrativeCard } from "../../components/WalletNarrativeCard";
 import { fetchWalletSummary } from "../../lib/api/walletSummary";
 import { formatDateTime, formatUsdWhole } from "../../lib/formatStable";
+import { useT } from "../../lib/i18n";
 
 function normalizeAddress(query) {
   const raw = query?.address;
@@ -27,6 +28,7 @@ export default function WalletDetailPage() {
   const router = useRouter();
   const address = normalizeAddress(router.query);
   const lang = normalizeLang(router.query);
+  const tr = useT(lang);
 
   const summary = useQuery({
     queryKey: ["wallet-summary", address],
@@ -39,7 +41,7 @@ export default function WalletDetailPage() {
       <div className="sl-container py-10">
         <div className="glass-card sl-inset inline-flex items-center gap-2 text-gray-400">
           <Loader2 size={16} className="animate-spin" />
-          Loading wallet...
+          {tr("wallet.page.loadingWallet")}
         </div>
       </div>
     );
@@ -48,12 +50,14 @@ export default function WalletDetailPage() {
   if (!address || address.length < 32) {
     return (
       <div className="sl-container py-10">
-        <div className="glass-card sl-inset text-red-300">Invalid wallet address.</div>
+        <div className="glass-card sl-inset text-red-300">{tr("wallet.page.invalidAddress")}</div>
       </div>
     );
   }
 
   const row = summary.data?.data || null;
+  const otherLang = lang === "es" ? "en" : "es";
+  const switchLabel = lang === "es" ? "English" : "Español";
 
   return (
     <>
@@ -65,7 +69,7 @@ export default function WalletDetailPage() {
         <section className="glass-card sl-inset">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="sl-label">Wallet profile</p>
+              <p className="sl-label">{tr("wallet.page.profileLabel")}</p>
               <h1 className="text-xl text-white font-semibold mt-1">
                 {address.slice(0, 4)}...{address.slice(-4)}
               </h1>
@@ -73,13 +77,13 @@ export default function WalletDetailPage() {
             </div>
             <div className="flex items-center gap-2">
               <Link href="/smart-money" className="text-xs px-3 py-2 rounded border border-white/10 bg-white/5 hover:bg-white/10">
-                Back to Smart Money
+                {tr("wallet.page.backToSmartMoney")}
               </Link>
               <Link
-                href={`/wallet/${address}?lang=${lang === "es" ? "en" : "es"}`}
+                href={`/wallet/${address}?lang=${otherLang}`}
                 className="text-xs px-3 py-2 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
               >
-                {lang === "es" ? "English" : "Español"}
+                {switchLabel}
               </Link>
             </div>
           </div>
@@ -87,40 +91,40 @@ export default function WalletDetailPage() {
           {summary.isLoading ? (
             <div className="mt-4 inline-flex items-center gap-2 text-sm text-gray-400">
               <Loader2 size={14} className="animate-spin" />
-              Loading summary...
+              {tr("wallet.summary.loading")}
             </div>
           ) : null}
 
           {summary.isError ? (
             <p className="mt-4 text-sm text-red-300">
               {summary.error?.message === "wallet_not_found"
-                ? "Wallet not found in smart_wallets yet."
-                : `Could not load wallet summary (${summary.error?.message || "error"}).`}
+                ? tr("wallet.summary.notFound")
+                : tr("wallet.summary.loadError", { error: summary.error?.message || "error" })}
             </p>
           ) : null}
 
           {row ? (
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-                <p className="text-gray-500 text-xs">Win rate</p>
+                <p className="text-gray-500 text-xs">{tr("wallet.summary.winRate")}</p>
                 <p className="text-emerald-300 font-semibold">{Number(row.winRate || 0).toFixed(1)}%</p>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-                <p className="text-gray-500 text-xs">30d PnL</p>
+                <p className="text-gray-500 text-xs">{tr("wallet.summary.pnl30d")}</p>
                 <p className="text-emerald-300 font-semibold">+${formatUsdWhole(row.pnl30d || 0)}</p>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-                <p className="text-gray-500 text-xs">Trades</p>
+                <p className="text-gray-500 text-xs">{tr("wallet.summary.trades")}</p>
                 <p className="text-white font-semibold">{row.totalTrades ?? "—"}</p>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-                <p className="text-gray-500 text-xs">Best trade</p>
+                <p className="text-gray-500 text-xs">{tr("wallet.summary.bestTrade")}</p>
                 <p className="text-emerald-300 font-semibold">
                   {row.bestTradePct != null ? `+${Number(row.bestTradePct).toFixed(1)}%` : "—"}
                 </p>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 col-span-2 md:col-span-4">
-                <p className="text-gray-500 text-xs">Last seen</p>
+                <p className="text-gray-500 text-xs">{tr("wallet.summary.lastSeen")}</p>
                 <p className="text-gray-200">{row.lastSeen ? formatDateTime(row.lastSeen) : "—"}</p>
               </div>
             </div>
@@ -128,11 +132,10 @@ export default function WalletDetailPage() {
         </section>
 
         <section className="glass-card sl-inset">
-          <p className="sl-label mb-3">Why this wallet?</p>
+          <p className="sl-label mb-3">{tr("wallet.page.whyThisWallet")}</p>
           <WalletNarrativeCard walletAddress={address} lang={lang} />
         </section>
       </div>
     </>
   );
 }
-

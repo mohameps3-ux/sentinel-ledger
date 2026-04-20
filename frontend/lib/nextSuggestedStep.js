@@ -1,28 +1,21 @@
+import { t } from "./i18n";
+
 /**
- * One-line contextual guidance for GlobalWayfinding (English, product voice).
- * Return null to hide the "Next suggested step" row.
+ * One-line contextual guidance for GlobalWayfinding.
+ * Returns a localized string or null when the route has no advice.
  *
  * @param {string} pathname - Next.js `router.pathname` (e.g. `/token/[address]`)
+ * @param {string} [lang] - "en" | "es"
  * @returns {string | null}
  */
-export function getNextSuggestedStep(pathname) {
+export function getNextSuggestedStep(pathname, lang = "en") {
   if (!pathname || typeof pathname !== "string") return null;
 
-  if (pathname === "/smart-money") {
-    return "Open a wallet row for its profile (ES/EN narrative), or use Scanner if you already have a mint.";
-  }
-  if (pathname === "/scanner") {
-    return "Paste a Solana mint (32–44 characters), then Analyze to open the full token terminal.";
-  }
-  if (pathname === "/watchlist") {
-    return "Add mints from Home or Scanner, then open Portfolio for watchlist markets or Compare for two tokens side by side.";
-  }
-  if (pathname.startsWith("/token/")) {
-    return "Add this mint to Watchlist to track it, check Smart money for wallets in flow, or Compare it against another token.";
-  }
-  if (pathname.startsWith("/wallet/")) {
-    return "Return to Smart money for the full leaderboard, or Scanner if you want to pivot to a specific mint.";
-  }
+  if (pathname === "/smart-money") return t("wayfinding.steps.smartMoney", lang);
+  if (pathname === "/scanner") return t("wayfinding.steps.scanner", lang);
+  if (pathname === "/watchlist") return t("wayfinding.steps.watchlist", lang);
+  if (pathname.startsWith("/token/")) return t("wayfinding.steps.token", lang);
+  if (pathname.startsWith("/wallet/")) return t("wayfinding.steps.wallet", lang);
 
   return null;
 }
