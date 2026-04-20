@@ -138,12 +138,12 @@ export default function OpsPage() {
           <h2 className="text-lg font-semibold">Entropy Guard</h2>
           <span
             className={`text-xs px-2 py-1 rounded-full border ${
-              Number(guard?.metrics?.totalDrops || 0) > 0
+              guard?.alerts?.highIngestionPressure
                 ? "bg-red-500/15 border-red-500/40 text-red-300"
                 : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
             }`}
           >
-            {Number(guard?.metrics?.totalDrops || 0) > 0 ? "guard active" : "normal"}
+            {guard?.alerts?.highIngestionPressure ? "ALERT: high ingestion pressure" : "normal"}
           </span>
         </div>
 
@@ -174,6 +174,10 @@ export default function OpsPage() {
                   {guard.config?.windowMs || 0}
                 </div>
               </div>
+            </div>
+            <div className="text-xs text-gray-400">
+              Pressure flags · sustainedDrops: {String(Boolean(guard?.alerts?.sustainedDrops))} · memoryPressure:{" "}
+              {String(Boolean(guard?.alerts?.memoryPressure))}
             </div>
 
             <div className="grid md:grid-cols-2 gap-2 text-sm">

@@ -27,8 +27,12 @@ const CONFIG = {
 
   // Ops observability + sustained-threshold alerts.
   historyMaxPoints: Number(process.env.RULE_ENTROPY_HISTORY_POINTS || 180),
-  alertDropsPerWindow: Number(process.env.RULE_ENTROPY_ALERT_DROPS_PER_WINDOW || 1000),
-  alertSustainWindows: Number(process.env.RULE_ENTROPY_ALERT_SUSTAIN_WINDOWS || 3)
+  alertDropsPerWindow: Number(process.env.RULE_ENTROPY_ALERT_DROPS_PER_WINDOW || 5000),
+  alertSustainWindows: Number(process.env.RULE_ENTROPY_ALERT_SUSTAIN_WINDOWS || 3),
+  memoryLimitBytes: Number(process.env.RULE_ENTROPY_MEMORY_LIMIT_BYTES || 8 * 1024 * 1024),
+  memoryPressureRatio: Number(process.env.RULE_ENTROPY_MEMORY_PRESSURE_RATIO || 0.8),
+  alertWebhookCooldownMs: Number(process.env.RULE_ENTROPY_ALERT_WEBHOOK_COOLDOWN_MS || 300_000),
+  opsAlertWebhookUrl: String(process.env.OPS_ALERT_WEBHOOK_URL || "").trim()
 };
 
 // mint -> { tokens:number, lastRefillMs:number, attempts:number[], cooldownUntil:number, lastSeenMs:number }
@@ -47,9 +51,12 @@ const cumulative = {
 };
 const reportHistory = [];
 const alertState = {
-  sustainedFlood: false,
-  sustainedFloodSince: null,
-  lastTransitionAt: null
+  sustainedDrops: false,
+  memoryPressure: false,
+  highIngestionPressure: false,
+  highIngestionSince: null,
+  lastTransitionAt: null,
+  lastWebhookAt: null
 };
 
 function clamp(n, lo, hi) {
@@ -304,6 +311,53 @@ function estimateGuardMemoryUsageBytes() {
   );
 }
 
+function shortMint(mint) {
+  if (!mint || typeof mint !== "string") return "none";
+  return mint.length > 10 ? `${mint.slice(0, 6)}...${mint.slice(-4)}` : mint;
+}
+
+async function sendOpsCriticalWebhook({
+  mode,
+  dropsPerWindow,
+  topOffenderMint,
+  topOffenderDrops,
+  memoryUsageBytes
+}) {
+  const url = CONFIG.opsAlertWebhookUrl;
+  if (!url) return;
+  const now = nowMs();
+  const cooldown = normalizeDurationMs(CONFIG.alertWebhookCooldownMs, 300_000);
+  if (alertState.lastWebhookAt && now - alertState.lastWebhookAt < cooldown) return;
+  alertState.lastWebhookAt = now;
+  const msg =
+    `[OPS_ALERT] ⚠️ HIGH_INGESTION_PRESSURE | Drops: ${Math.round(dropsPerWindow)} /m` +
+    ` | Mode: ${mode}` +
+    ` | TopOffender: ${shortMint(topOffenderMint)} (${topOffenderDrops || 0})` +
+    ` | Mem: ${Math.round(memoryUsageBytes / 1024)}KB`;
+
+  const payload = {
+    text: msg,
+    content: msg,
+    username: "Sentinel Ops Guard",
+    embeds: [
+      {
+        title: "HIGH_INGESTION_PRESSURE",
+        description: msg,
+        color: 15158332
+      }
+    ]
+  };
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (_) {
+    // Silent by design: webhook transport must never affect ingestion.
+  }
+}
+
 function trimMintState(now) {
   const maxTracked = normalizeCount(CONFIG.maxTrackedMints, 5_000);
   if (mintState.size <= maxTracked) return;
@@ -415,18 +469,52 @@ function flushReport(force = false) {
   while (reportHistory.length > maxPoints) reportHistory.shift();
 
   const sustainN = normalizeCount(CONFIG.alertSustainWindows, 3);
-  const sustainThreshold = normalizeCount(CONFIG.alertDropsPerWindow, 1000);
+  const sustainThreshold = normalizeCount(CONFIG.alertDropsPerWindow, 5000);
+  const memoryLimitBytes = normalizeCount(CONFIG.memoryLimitBytes, 8 * 1024 * 1024);
+  const memoryPressureRatio = clamp(Number(CONFIG.memoryPressureRatio || 0.8), 0.1, 0.99);
+  const memoryUsageBytes = estimateGuardMemoryUsageBytes();
+  const memoryThresholdBytes = Math.floor(memoryLimitBytes * memoryPressureRatio);
   const recent = reportHistory.slice(-sustainN);
-  const sustainedNow =
+  const sustainedDropsNow =
     recent.length >= sustainN && recent.every((x) => Number(x.droppedTotal || 0) >= sustainThreshold);
-  if (sustainedNow !== alertState.sustainedFlood) {
-    alertState.sustainedFlood = sustainedNow;
+  const memoryPressureNow = memoryUsageBytes >= memoryThresholdBytes;
+  const highPressureNow = sustainedDropsNow || memoryPressureNow;
+  const topOffenderMint = topOffender ? topOffender[0] : null;
+  const topOffenderDrops = topOffender ? topOffender[1] : 0;
+  const mode = sustainedDropsNow ? "SHANNON_ENTROPY_BLOCK" : "MEMORY_PRESSURE";
+  if (highPressureNow !== alertState.highIngestionPressure) {
     alertState.lastTransitionAt = now;
-    if (sustainedNow) alertState.sustainedFloodSince = now;
-    if (!sustainedNow) alertState.sustainedFloodSince = null;
+    alertState.highIngestionPressure = highPressureNow;
+    alertState.sustainedDrops = sustainedDropsNow;
+    alertState.memoryPressure = memoryPressureNow;
+    if (highPressureNow) alertState.highIngestionSince = now;
+    if (!highPressureNow) alertState.highIngestionSince = null;
     console.warn(
-      `[GUARD_ALERT] sustained_flood=${sustainedNow ? "ON" : "OFF"} threshold=${sustainThreshold}/window windows=${sustainN}`
+      `[OPS_ALERT] ⚠️ HIGH_INGESTION_PRESSURE | Drops: ${Math.round(point.droppedTotal)} /m | Mode: ${mode}` +
+        ` | TopOffender: ${shortMint(topOffenderMint)} (${topOffenderDrops})` +
+        ` | Mem: ${Math.round(memoryUsageBytes / 1024)}KB`
     );
+    if (highPressureNow) {
+      sendOpsCriticalWebhook({
+        mode,
+        dropsPerWindow: point.droppedTotal,
+        topOffenderMint,
+        topOffenderDrops,
+        memoryUsageBytes
+      });
+    }
+  } else if (highPressureNow) {
+    // If pressure is ongoing, allow periodic critical webhook (cooldown-gated).
+    sendOpsCriticalWebhook({
+      mode,
+      dropsPerWindow: point.droppedTotal,
+      topOffenderMint,
+      topOffenderDrops,
+      memoryUsageBytes
+    });
+  } else {
+    alertState.sustainedDrops = sustainedDropsNow;
+    alertState.memoryPressure = memoryPressureNow;
   }
 
   if (report.droppedTotal > 0) {
@@ -465,7 +553,10 @@ function getEntropyGuardSnapshot() {
       reportEveryMs: CONFIG.reportEveryMs,
       historyMaxPoints: CONFIG.historyMaxPoints,
       alertDropsPerWindow: CONFIG.alertDropsPerWindow,
-      alertSustainWindows: CONFIG.alertSustainWindows
+      alertSustainWindows: CONFIG.alertSustainWindows,
+      memoryLimitBytes: CONFIG.memoryLimitBytes,
+      memoryPressureRatio: CONFIG.memoryPressureRatio,
+      alertWebhookCooldownMs: CONFIG.alertWebhookCooldownMs
     },
     now: Date.now(),
     trackedMints: mintState.size,
@@ -476,8 +567,10 @@ function getEntropyGuardSnapshot() {
       topOffender: currentTop ? { mint: currentTop[0], count: currentTop[1] } : null
     },
     alerts: {
-      sustainedFlood: alertState.sustainedFlood,
-      sustainedFloodSince: alertState.sustainedFloodSince,
+      sustainedDrops: alertState.sustainedDrops,
+      memoryPressure: alertState.memoryPressure,
+      highIngestionPressure: alertState.highIngestionPressure,
+      highIngestionSince: alertState.highIngestionSince,
       lastTransitionAt: alertState.lastTransitionAt
     },
     history: reportHistory.slice()
@@ -512,7 +605,14 @@ function getEntropyGuardOpsSnapshot() {
       totalDrops: cumulative.totalDrops,
       dropsByReason
     },
-    topOffenders
+    topOffenders,
+    alerts: {
+      highIngestionPressure: alertState.highIngestionPressure,
+      sustainedDrops: alertState.sustainedDrops,
+      memoryPressure: alertState.memoryPressure,
+      highIngestionSince: alertState.highIngestionSince,
+      lastTransitionAt: alertState.lastTransitionAt
+    }
   };
 }
 
