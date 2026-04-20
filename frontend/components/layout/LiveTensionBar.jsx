@@ -2,7 +2,30 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 /**
- * Fixed strip directly under the navbar (home). Mock dynamics + PRO CTA.
+ * Fixed strip pinned directly under the navbar (home only). Mock
+ * dynamics + PRO CTA.
+ *
+ * Layout contract
+ * ---------------
+ * This component participates in the site-wide "fixed chrome" layout
+ * skeleton driven by CSS variables (see :root in globals.css):
+ *
+ *   - It positions itself at `top: var(--sl-nav-h)` so it always sits
+ *     exactly under the navbar regardless of the navbar's height at the
+ *     current breakpoint. No more `top-16`/`top-12` magic numbers drifting
+ *     when the navbar changes.
+ *
+ *   - While mounted it tags <html data-has-tension-bar="1">, which the
+ *     stylesheet reads to lift `--sl-bar-h` from 0 to the bar's real
+ *     per-breakpoint height. <main>'s padding-top is computed from
+ *     (--sl-nav-h + --sl-bar-h + --sl-safe-gap), so content always clears
+ *     the bar with a consistent gap and *no code in _app.jsx needs to
+ *     know whether this bar exists*. Unmount removes the flag; padding
+ *     shrinks automatically.
+ *
+ * If the bar grows or changes layout in the future, only the
+ * `--sl-bar-h` numbers in globals.css need updating — a single source
+ * of truth.
  */
 export function LiveTensionBar() {
   const [live24h, setLive24h] = useState(37);
@@ -23,11 +46,24 @@ export function LiveTensionBar() {
     return () => clearInterval(id);
   }, []);
 
+  // Publish presence to the layout system. We use a dataset attribute
+  // (reversible, lives on <html> so media queries can key on it) rather
+  // than inline-mutating CSS variables, so SSR stays pure and cleanup
+  // is a single delete.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.dataset.hasTensionBar = "1";
+    return () => {
+      delete document.documentElement.dataset.hasTensionBar;
+    };
+  }, []);
+
   const rounded = Math.max(5, Math.round(nextSec / 5) * 5);
 
   return (
     <div
-      className="fixed top-16 left-0 right-0 z-40 border-b border-emerald-500/25 bg-[#040508]/95 backdrop-blur-md shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
+      className="fixed left-0 right-0 z-40 border-b border-emerald-500/25 bg-[#040508]/95 backdrop-blur-md shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
+      style={{ top: "var(--sl-nav-h)" }}
       role="status"
       aria-live="polite"
     >

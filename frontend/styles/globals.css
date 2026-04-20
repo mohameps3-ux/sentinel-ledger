@@ -19,6 +19,44 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+
+  /* -- Layout skeleton variables (fixed top chrome -> <main> padding) --
+     Every fixed element anchored to the top of the viewport declares its
+     own contribution here so the main-content padding is a simple sum.
+     Rules:
+       - --sl-nav-h   : navbar height. Always present. Matches Navbar.jsx
+                        (h-12 mobile / h-[3.25rem] sm+).
+       - --sl-bar-h   : LiveTensionBar height. Zero by default; the bar
+                        itself sets html[data-has-tension-bar="1"] when
+                        mounted, which overrides this to its real height.
+       - --sl-safe-gap: visual breathing room between fixed chrome and
+                        first pixel of content.
+     <main> then uses: padding-top: calc(var(--sl-nav-h) + var(--sl-bar-h) + var(--sl-safe-gap))
+     No per-page ternaries, no magic pixel grid to keep in sync. */
+  --sl-nav-h: 48px;
+  --sl-bar-h: 0px;
+  --sl-safe-gap: 8px;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --sl-nav-h: 52px;
+    --sl-safe-gap: 12px;
+  }
+}
+
+/* When the LiveTensionBar is mounted it tags the html element; these
+   rules lift --sl-bar-h to its real per-breakpoint height. On mobile
+   the bar stacks into two lines (~80px); from sm up it's a single row
+   (~40px). Values chosen so there is no vertical jump on the breakpoint. */
+html[data-has-tension-bar="1"] {
+  --sl-bar-h: 80px;
+}
+
+@media (min-width: 640px) {
+  html[data-has-tension-bar="1"] {
+    --sl-bar-h: 40px;
+  }
 }
 
 @media (min-width: 768px) {

@@ -86,12 +86,16 @@ export default function App({ Component, pageProps }) {
             >
               <Navbar />
               {isHome ? <LiveTensionBar /> : null}
+              {/* padding-top is derived from CSS variables published by the
+                  fixed top chrome (see :root in globals.css and the
+                  `data-has-tension-bar` contract in LiveTensionBar.jsx).
+                  This main no longer needs to know which page it is on. */}
               <main
-                className={`${
-                  isHome
-                    ? "pt-[124px] sm:pt-[120px] md:pt-[132px]"
-                    : "pt-[108px] sm:pt-[118px] md:pt-[122px]"
-                } pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0`}
+                style={{
+                  paddingTop:
+                    "calc(var(--sl-nav-h) + var(--sl-bar-h) + var(--sl-safe-gap))"
+                }}
+                className="pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0"
               >
                 <GlobalWayfinding />
                 <AppErrorBoundary>
