@@ -67,21 +67,21 @@ export function useScoreSocket(asset) {
     // Bootstrap from the persistence layer so the card can render a real
     // score immediately, killing the "WAITING" state whenever the engine
     // has evaluated the asset in the last 10 minutes (cache TTL on backend).
-    // Runs in parallel with socket setup; whichever arrives first wins, and
-    // any later socket event will naturally overwrite an older bootstrap.
+    //
+    // Uses the shared `scoreBootstrapQueue` so that mounting N cards at once
+    // (home feed: up to 44 concurrent) produces at most 6 parallel HTTP
+    // requests, deduplicates any asset that appears in more than one card,
+    // and short-circuits remounts within a 60 s TTL. Socket events remain
+    // the source of truth for "now" — bootstrap is only applied if state
+    // hasn't been populated by a socket push yet.
     (async () => {
       try {
-        const { getPublicApiUrl } = await import("../lib/publicRuntime");
-        const res = await fetch(
-          `${getPublicApiUrl()}/api/v1/scoring/latest/${encodeURIComponent(asset)}`,
-          { cache: "no-store" }
-        );
-        if (cancelled || !res.ok) return;
-        const body = await res.json();
-        const cached = body?.score;
-        if (!cached || cached.asset !== asset) return;
-        // Only apply bootstrap if no socket event has already populated state
-        // (socket event is source of truth for "now").
+        const [{ bootstrapScore }, { getPublicApiUrl }] = await Promise.all([
+          import("../lib/scoreBootstrapQueue"),
+          import("../lib/publicRuntime")
+        ]);
+        const cached = await bootstrapScore(asset, getPublicApiUrl());
+        if (cancelled || !cached || cached.asset !== asset) return;
         setScore((prev) => prev || cached);
         setLastScoreAt((prev) => {
           if (prev) return prev;

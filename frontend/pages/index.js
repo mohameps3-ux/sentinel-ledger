@@ -29,6 +29,7 @@ import { WelcomeBanner } from "../components/public/WelcomeBanner";
 import { HomeOnboarding } from "../components/public/HomeOnboarding";
 import { useWalletLabels } from "../hooks/useWalletLabels";
 import { NluCommandBar } from "../components/home/NluCommandBar";
+import { LiveCardOverlay } from "../components/home/LiveCardOverlay";
 
 const FALLBACK_TRENDING = [
   {
@@ -1143,6 +1144,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                     </ul>
                   </div>
 
+                  <LiveCardOverlay mint={sig.mint} />
+
                   <div className="flex flex-wrap gap-1">
                     {evidenceChipsForSig(sig).slice(0, 4).map((chip) => (
                       <span
@@ -1520,6 +1523,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                       ) : null}
                     </div>
                   </div>
+
+                  {token?.mint ? <LiveCardOverlay mint={token.mint} /> : null}
 
                   <div className="flex items-baseline justify-between gap-2 text-[11px] font-mono">
                     <span className="text-white truncate">
