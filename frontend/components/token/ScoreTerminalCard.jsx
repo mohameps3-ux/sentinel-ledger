@@ -1,17 +1,32 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Activity, AlertTriangle, Radio } from "lucide-react";
 import { useScoreSocket } from "../../hooks/useScoreSocket";
+import { useGlobalHealth } from "../../hooks/useGlobalHealth";
 
 /**
- * Compact "terminal" card that surfaces the live `sentinel:score` stream for the
+ * "Terminal" card that surfaces the live `sentinel:score` stream for the
  * current token: Risk / Smart / Momentum bars, confidence, signals, insights,
- * and a sync LED driven by `/health/sync`.
+ * plus a LED driven by a combined state machine (score recency + socket +
+ * global /health/sync).
  *
- * Stateless with respect to history — it only renders the latest score payload.
- * A signal/insight feed can be layered on top later if needed.
+ * Design notes
+ * ------------
+ * - Score socket is a module-level singleton shared across consumers.
+ * - `/health/sync` is polled ONCE per tab via `useGlobalHealth`, not per card.
+ * - The age readout re-renders on a requestAnimationFrame loop that only
+ *   commits state when the integer second changes, and pauses while the tab
+ *   is hidden. It lives in an isolated `<AgeCounter />` subcomponent so the
+ *   rest of the card (bars, chips, insights) stays stable across ticks.
+ * - The LED recomputes on threshold crossings of score age; a lightweight
+ *   hook (`useTickOnThreshold`) wakes us up exactly at those instants.
  */
 
-const LED_MAP = {
+const LED_THRESHOLDS = {
+  LIVE_MAX_SEC: 10,
+  SYNCING_MAX_SEC: 30
+};
+
+const LED_STYLES = {
   LIVE: {
     label: "LIVE",
     dot: "bg-emerald-400",
@@ -49,6 +64,16 @@ const LED_MAP = {
   }
 };
 
+function deriveLedKey({ isConnected, globalStatus, lastScoreAt, nowMs }) {
+  if (!isConnected) return "OFFLINE";
+  if (globalStatus === "DEGRADED") return "DEGRADED";
+  if (!lastScoreAt) return "WAITING";
+  const ageSec = Math.max(0, Math.floor((nowMs - lastScoreAt) / 1000));
+  if (ageSec > LED_THRESHOLDS.SYNCING_MAX_SEC) return "DEGRADED";
+  if (ageSec > LED_THRESHOLDS.LIVE_MAX_SEC) return "SYNCING";
+  return "LIVE";
+}
+
 function barTone(kind, value) {
   const v = Number.isFinite(value) ? value : 0;
   if (kind === "risk") {
@@ -61,7 +86,6 @@ function barTone(kind, value) {
     if (v >= 40) return "from-cyan-500 to-sky-500";
     return "from-slate-500 to-slate-400";
   }
-  // momentum
   if (v >= 70) return "from-violet-400 to-fuchsia-400";
   if (v >= 40) return "from-indigo-400 to-violet-500";
   return "from-slate-500 to-slate-400";
@@ -73,15 +97,83 @@ function confidenceTone(c) {
   return "text-gray-300 border-white/12 bg-white/[0.04]";
 }
 
+/**
+ * Commits a new integer age every second via requestAnimationFrame.
+ * Benefits over `setInterval(…, 1000)`:
+ *   - Auto-pauses when the tab is hidden (browsers throttle/suspend RAF).
+ *   - No drift after sleep/hibernate: age is computed from `Date.now()` at each
+ *     tick, not accumulated, so resuming from hibernate shows the true elapsed
+ *     time rather than "5 minutes" when hours have passed.
+ *   - Only calls setState when the integer second changes, not every frame.
+ */
 function useAgeSec(since) {
-  const [now, setNow] = useState(() => Date.now());
+  const [ageSec, setAgeSec] = useState(() =>
+    since ? Math.max(0, Math.floor((Date.now() - since) / 1000)) : null
+  );
+  const rafRef = useRef(null);
+  const lastEmittedRef = useRef(-1);
+
+  useEffect(() => {
+    if (!since) {
+      setAgeSec(null);
+      lastEmittedRef.current = -1;
+      return undefined;
+    }
+    const loop = () => {
+      const current = Math.max(0, Math.floor((Date.now() - since) / 1000));
+      if (current !== lastEmittedRef.current) {
+        lastEmittedRef.current = current;
+        setAgeSec(current);
+      }
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+  }, [since]);
+
+  return ageSec;
+}
+
+/** Isolated child so the age tick does not re-render the whole card body. */
+function AgeCounter({ since }) {
+  const age = useAgeSec(since);
+  if (!since) return <span className="text-[10px] text-gray-500">awaiting…</span>;
+  return <span className="text-[10px] text-gray-500">{age ?? 0}s ago</span>;
+}
+
+/**
+ * Wakes the LED at the next threshold crossing (10s, 30s) after `since`, so
+ * the LED transitions LIVE → SYNCING → DEGRADED even in the absence of new
+ * events, without forcing a 1Hz re-render of the whole card.
+ */
+function useTickOnThreshold(since) {
+  const [, setTick] = useState(0);
   useEffect(() => {
     if (!since) return undefined;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
+    let tid = null;
+    const schedule = () => {
+      const ageSec = Math.max(0, (Date.now() - since) / 1000);
+      let delayMs;
+      if (ageSec < LED_THRESHOLDS.LIVE_MAX_SEC) {
+        delayMs = (LED_THRESHOLDS.LIVE_MAX_SEC - ageSec) * 1000 + 50;
+      } else if (ageSec < LED_THRESHOLDS.SYNCING_MAX_SEC) {
+        delayMs = (LED_THRESHOLDS.SYNCING_MAX_SEC - ageSec) * 1000 + 50;
+      } else {
+        return;
+      }
+      tid = setTimeout(() => {
+        setTick((n) => n + 1);
+        schedule();
+      }, Math.max(100, delayMs));
+    };
+    schedule();
+    return () => {
+      if (tid) clearTimeout(tid);
+    };
   }, [since]);
-  if (!since) return null;
-  return Math.max(0, Math.round((now - since) / 1000));
 }
 
 function ScoreBar({ label, value, kind }) {
@@ -105,22 +197,24 @@ function ScoreBar({ label, value, kind }) {
 }
 
 export function ScoreTerminalCard({ asset }) {
-  const { score, syncStatus, syncReason, isConnected, lastScoreAt } = useScoreSocket(asset);
-  const ageSec = useAgeSec(lastScoreAt);
+  const { score, isConnected, lastScoreAt } = useScoreSocket(asset);
+  const { status: globalStatus, reason: globalReason } = useGlobalHealth();
+  useTickOnThreshold(lastScoreAt);
 
-  let ledKey = "WAITING";
-  if (!isConnected && (!syncStatus || syncStatus === "OFFLINE")) ledKey = "OFFLINE";
-  else if (syncStatus === "DEGRADED") ledKey = "DEGRADED";
-  else if (syncStatus === "SYNCING") ledKey = "SYNCING";
-  else if (syncStatus === "LIVE") ledKey = "LIVE";
-  else if (isConnected && !score) ledKey = "WAITING";
-  const led = LED_MAP[ledKey] || LED_MAP.WAITING;
+  const ledKey = useMemo(
+    () => deriveLedKey({ isConnected, globalStatus, lastScoreAt, nowMs: Date.now() }),
+    // Recompute when inputs change; useTickOnThreshold forces a re-render at
+    // LIVE→SYNCING and SYNCING→DEGRADED boundaries.
+    [isConnected, globalStatus, lastScoreAt]
+  );
+  const led = LED_STYLES[ledKey] || LED_STYLES.WAITING;
 
   const scores = score?.scores || { risk: 50, smart: 50, momentum: 50 };
   const confidence = Number.isFinite(score?.confidence) ? score.confidence : null;
   const confidenceLabel = score?.confidenceLabel || "—";
   const signals = Array.isArray(score?.signals) ? score.signals : [];
   const insights = Array.isArray(score?.insights) ? score.insights : [];
+  const ledTooltip = globalReason || (ledKey === "OFFLINE" ? "socket disconnected" : undefined);
 
   return (
     <section className="rounded-xl border border-white/10 bg-[#0a0d12]/80 backdrop-blur-sm p-3 sm:p-4 space-y-3 font-mono">
@@ -133,7 +227,7 @@ export function ScoreTerminalCard({ asset }) {
         </div>
         <span
           className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border ${led.pill}`}
-          title={syncReason || undefined}
+          title={ledTooltip}
         >
           <span
             className={`inline-block w-1.5 h-1.5 rounded-full ${led.dot} ${led.glow} ${led.pulse ? "animate-pulse" : ""}`}
@@ -174,9 +268,7 @@ export function ScoreTerminalCard({ asset }) {
           <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">
             Insights
           </p>
-          <span className="text-[10px] text-gray-500">
-            {lastScoreAt ? `${ageSec ?? 0}s ago` : "awaiting…"}
-          </span>
+          <AgeCounter since={lastScoreAt} />
         </div>
         {insights.length === 0 ? (
           <p className="text-[11px] text-gray-500 mt-1 leading-snug inline-flex items-center gap-1.5">
@@ -197,10 +289,10 @@ export function ScoreTerminalCard({ asset }) {
         )}
       </div>
 
-      {syncStatus === "DEGRADED" ? (
+      {ledKey === "DEGRADED" ? (
         <p className="text-[10px] text-red-200 inline-flex items-center gap-1.5">
           <AlertTriangle size={10} />
-          Sync degraded: {syncReason || "unknown"}
+          Sync degraded{ledTooltip ? `: ${ledTooltip}` : ""}
         </p>
       ) : null}
     </section>
