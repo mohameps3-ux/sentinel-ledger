@@ -1331,135 +1331,109 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               </div>
             ) : null}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
               {(visibleTrending.length ? visibleTrending : Array.from({ length: 6 })).map((token, idx) => {
                 const signalStrength = computeSignalStrength(token);
                 const action = suggestedAction(signalStrength, strategyMode, "token");
                 const confluence = signalStrength >= 85 && Number(token?.change || 0) > 5;
                 const timeAdvantage = Math.max(52, Math.min(97, 100 - Math.round(signalStrength / 2)));
                 const tokenWindow = entryWindowFromCountdown(entryCountdownByMint[token?.mint] || 0);
+                const changeNum = Number(token?.change || 0);
+                const redFlags = redFlagsForSignal({ signalStrength, token: token || {} });
                 return (
                 <div
                   key={token?.mint || `skeleton-${idx}`}
                   translate="no"
-                  className={`glass-card p-4 rounded-2xl flex flex-col gap-4 transition-transform duration-200 ${
-                    token?.mint ? "hover:scale-[1.02] hover:shadow-[0_0_8px_rgba(139,92,246,0.5)]" : "opacity-75 animate-pulse"
+                  className={`glass-card p-3 rounded-xl flex flex-col gap-2 transition-transform duration-200 ${
+                    token?.mint ? "hover:scale-[1.01] hover:shadow-[0_0_10px_rgba(139,92,246,0.4)]" : "opacity-75 animate-pulse"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xl font-bold text-white mt-1 tracking-tight">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-base font-bold text-white tracking-tight truncate">
                         {token?.symbol || "Loading"}
                       </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {token?.mint ? `${token.mint.slice(0, 6)}...${token.mint.slice(-4)}` : "Loading setup"}
+                      <p className="text-[10px] text-gray-500 font-mono truncate">
+                        {token?.mint ? `${token.mint.slice(0, 4)}…${token.mint.slice(-4)}` : "…"}
                       </p>
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {(token?.narrativeTags || []).slice(0, 3).map((tag) => (
-                          <span
-                            key={tag}
-                            className="text-[10px] px-1.5 py-0.5 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
                     </div>
                     <span
-                      className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border ${gradeClass(token?.grade || "C")}`}
+                      className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border ${gradeClass(token?.grade || "C")}`}
                     >
                       {token?.grade || "…"}
                     </span>
                   </div>
 
-                  <div className="rounded-[10px] border border-white/[0.08] bg-white/[0.02] px-3 py-3 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500 uppercase tracking-wide">Sentinel Score</span>
-                      <span className="text-emerald-300 font-bold font-mono tabular-nums">{signalStrength}/100</span>
+                  {(token?.narrativeTags || []).length ? (
+                    <div className="flex flex-wrap gap-1">
+                      {(token?.narrativeTags || []).slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[10px] px-1.5 py-0.5 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200"
+                        >
+                          {tag}
+                        </span>
+                      ))}
                     </div>
-                    <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+                  ) : null}
+
+                  <div className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-2 space-y-1.5">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-[9px] uppercase tracking-wider text-gray-500">Score</span>
+                      <span className="text-emerald-300 font-bold font-mono tabular-nums text-xs">{signalStrength}/100</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-gray-900 overflow-hidden">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-400"
                         style={{ width: `${signalStrength}%` }}
                       />
                     </div>
-                    <div className="flex items-center justify-between gap-2 text-[11px]">
-                      <span className={`px-2 py-1 rounded border ${actionTone(signalStrength)} ${signalStrength > 90 ? "animate-pulse" : ""}`}>
-                        Decision: {action}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${actionTone(signalStrength)} ${signalStrength > 90 ? "animate-pulse" : ""}`}>
+                        {action}
                       </span>
-                      <span
-                        className={`px-2 py-1 rounded border ${confidenceTone(signalStrength)}`}
-                      >
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${confidenceTone(signalStrength)}`}>
                         {confidenceLabel(signalStrength)}
                       </span>
                       {confluence ? (
-                        <span className="text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-2 py-1">
-                          🧬 Confluence
+                        <span className="text-[10px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1.5 py-0.5">
+                          🧬
                         </span>
                       ) : null}
                     </div>
-                    <div className="text-[11px] text-gray-400">Time Advantage: You are earlier than {timeAdvantage}% of wallets</div>
-                    <div className="text-[11px] text-gray-400">
-                      Entry Window: <span className={tokenWindow.tone}>{tokenWindow.label}</span> ({tokenWindow.detail})
-                    </div>
-                    <div className="text-[11px] text-gray-500">
-                      Signal freshness: {Math.max(1, idx + 1)}m ago · Confidence decay: -3%/min
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {evidenceChipsEmoji(signalStrength, token || {}).map((chip) => (
-                        <span key={chip} className="text-[10px] px-2 py-1 rounded-full border border-white/15 bg-white/[0.03] text-gray-200">
-                          {chip}
-                        </span>
-                      ))}
-                    </div>
-                    {redFlagsForSignal({ signalStrength, token: token || {} }).length ? (
-                      <div className="text-[11px] text-red-200">
-                        {redFlagsForSignal({ signalStrength, token: token || {} }).join(" | ")}
-                      </div>
-                    ) : null}
                   </div>
 
-                  <div className="text-xl font-mono text-white">
-                    <AnimatedNumber value={Number(token?.price || 0)} prefix="$" decimalPlaces={6} />
-                  </div>
-
-                  <div className="flex justify-between text-xs">
-                    <span>Vol: $<AnimatedNumber value={Number(token?.volume24h || 0)} decimalPlaces={0} /></span>
-                    <span className={Number(token?.change || 0) >= 0 ? "text-green-500" : "text-red-500"}>
+                  <div className="flex items-baseline justify-between gap-2 text-[11px] font-mono">
+                    <span className="text-white truncate">
+                      <AnimatedNumber value={Number(token?.price || 0)} prefix="$" decimalPlaces={6} />
+                    </span>
+                    <span className={changeNum >= 0 ? "text-emerald-400" : "text-red-400"}>
                       <AnimatedNumber
-                        value={Number(token?.change || 0)}
-                        decimalPlaces={2}
-                        prefix={Number(token?.change || 0) >= 0 ? "+" : ""}
+                        value={changeNum}
+                        decimalPlaces={1}
+                        prefix={changeNum >= 0 ? "+" : ""}
                         suffix="%"
                       />
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className="flex items-center gap-3 rounded-[10px] bg-white/[0.03] border border-white/[0.06] px-3 py-3">
-                      <BarChart3 size={18} className="text-cyan-400 shrink-0" />
-                      <div>
-                        <p className="sl-label !text-[10px]">Volume</p>
-                        <p className="sl-body font-medium text-gray-100">
-                          ${formatUsdWhole(token?.volume24h || 0)}
-                        </p>
-                      </div>
+                  <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                    <div className="flex items-center gap-1.5 rounded-md bg-white/[0.03] border border-white/[0.06] px-2 py-1.5">
+                      <BarChart3 size={12} className="text-cyan-400 shrink-0" />
+                      <span className="text-gray-100 truncate">${formatUsdWhole(token?.volume24h || 0)}</span>
                     </div>
-                    <div className="flex items-center gap-3 rounded-[10px] bg-white/[0.03] border border-white/[0.06] px-3 py-3">
-                      <Waves size={18} className="text-purple-300 shrink-0" />
-                      <div>
-                        <p className="sl-label !text-[10px]">Flow</p>
-                        <p className="sl-body font-medium text-gray-200">{token?.flowLabel || "Loading flow…"}</p>
-                      </div>
+                    <div className="flex items-center gap-1.5 rounded-md bg-white/[0.03] border border-white/[0.06] px-2 py-1.5">
+                      <Waves size={12} className="text-purple-300 shrink-0" />
+                      <span className="text-gray-200 truncate">{token?.flowLabel || "flow…"}</span>
                     </div>
                   </div>
 
-                  <div className="rounded-[10px] border border-white/[0.08] bg-white/[0.02] px-3 py-3">
-                    <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1.5">
-                      <span>Cluster heat</span>
-                      <span className="text-lg leading-none">{clusterHeatEmoji(Math.min(99, signalStrength - 4))}</span>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-between text-[10px] text-gray-500">
+                      <span>Heat</span>
+                      <span className="leading-none">{clusterHeatEmoji(Math.min(99, signalStrength - 4))}</span>
                     </div>
-                    <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+                    <div className="h-1 rounded-full bg-gray-900 overflow-hidden">
                       <div
                         className={`h-full rounded-full bg-gradient-to-r ${heatClass(Math.min(99, signalStrength - 4))}`}
                         style={{ width: `${Math.min(99, signalStrength - 4)}%` }}
@@ -1467,31 +1441,31 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                     </div>
                   </div>
 
-                  <div className="rounded-[10px] bg-white/[0.02] border border-white/[0.07] px-3 py-3 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="sl-label !text-[10px]">Why this trade</p>
-                      <span className="text-[11px] text-cyan-200 font-semibold">
-                        Alpha speed: {token?.alphaSpeedMins ?? "—"}m
+                  <p className="text-[10px] text-gray-500 truncate">
+                    Earlier than {timeAdvantage}% · <span className={tokenWindow.tone}>{tokenWindow.label}</span>
+                  </p>
+
+                  {redFlags.length ? (
+                    <p className="text-[10px] text-red-200 truncate">⚠ {redFlags.join(" · ")}</p>
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-1">
+                    {evidenceChipsEmoji(signalStrength, token || {}).slice(0, 4).map((chip) => (
+                      <span key={chip} className="text-[10px] px-1.5 py-0.5 rounded-full border border-white/12 bg-white/[0.03] text-gray-300">
+                        {chip}
                       </span>
-                    </div>
-                    <ul className="text-[12px] text-gray-300 space-y-1">
-                      {(token?.whyTrade?.length ? token.whyTrade : ["Signal model still collecting context."]).map(
-                        (reason, i) => (
-                          <li key={i}>• {reason}</li>
-                        )
-                      )}
-                    </ul>
+                    ))}
                   </div>
 
-                  <div className="mt-auto pt-1">
-                    <div className="grid grid-cols-3 gap-2">
+                  <div className="mt-auto pt-1 space-y-1.5 border-t border-white/[0.04]">
+                    <div className="grid grid-cols-3 gap-1">
                       {[0.5, 1, 5].map((size) => (
                         <a
                           key={size}
                           href={buildJupiterSwapUrl(token?.mint, size)}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-[11px] text-center px-2 py-1.5 rounded-lg border border-cyan-500/35 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20"
+                          className="text-[10px] text-center px-1.5 py-1 rounded-md border border-cyan-500/35 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 font-mono"
                         >
                           {size} SOL
                         </a>
@@ -1500,10 +1474,10 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                     <button
                       type="button"
                       onClick={() => token?.mint && router.push(`/token/${token.mint}`)}
-                      className="mt-3 w-full py-2 text-center bg-purple-600/20 rounded-lg text-sm hover:bg-purple-600/40 transition-transform hover:scale-105 inline-flex items-center justify-center gap-2"
+                      className="w-full py-1.5 text-center bg-purple-600/20 rounded-md text-[11px] hover:bg-purple-600/40 transition-transform hover:scale-[1.01] inline-flex items-center justify-center gap-1.5"
                       disabled={!token?.mint}
                     >
-                      <TrendingUp size={15} />
+                      <TrendingUp size={12} />
                       Scout →
                     </button>
                   </div>
