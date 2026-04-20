@@ -10,6 +10,11 @@ const {
   recordEventEmitted,
   recordSourceError
 } = require("../ingestion/ingestionState");
+const {
+  validateWebhookShape,
+  analyzeWebhookEntropy,
+  shouldAllowMint
+} = require("../ingestion/entropyGuard");
 const { evaluate: evaluateScore } = require("../scoring/engine");
 const { getMarketData } = require("../services/marketData");
 
@@ -152,7 +157,24 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
   try {
     const body = req.body;
     const events = Array.isArray(body) ? body : body ? [body] : [];
+    const shape = validateWebhookShape(events);
+    if (!shape.ok) {
+      return res.status(413).json({
+        ok: false,
+        error: shape.error || "payload_shape_invalid",
+        reason: shape.reason
+      });
+    }
+    const entropy = analyzeWebhookEntropy(events);
+    if (!entropy.ok) {
+      return res.status(422).json({
+        ok: false,
+        error: entropy.error || "low_entropy_payload",
+        reason: "entropy_guard_rejected"
+      });
+    }
     let emitted = 0;
+    let droppedByGuard = 0;
 
     for (const raw of events) {
       recordRawReceived(SENTINEL_SOURCE);
@@ -160,6 +182,11 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
       for (let i = 0; i < txs.length; i += 1) {
         const tx = txs[i];
         if (!tx.tokenAddress || !global.io) continue;
+        const gate = shouldAllowMint(tx.tokenAddress);
+        if (!gate.allowed) {
+          droppedByGuard += 1;
+          continue;
+        }
         const sig = tx.signature || "nosig";
 
         // SentinelEvent normalization + edge dedup. Non-blocking for legacy emit:
@@ -266,7 +293,7 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
       }
     }
 
-    res.status(200).json({ ok: true, emitted });
+    res.status(200).json({ ok: true, emitted, droppedByGuard });
   } catch (error) {
     console.error("helius webhook:", error);
     res.sendStatus(500);

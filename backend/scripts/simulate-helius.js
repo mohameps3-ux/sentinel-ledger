@@ -41,8 +41,12 @@ const SECRET = process.env.HELIUS_WEBHOOK_SECRET || "";
 const ASSET =
   process.env.ASSET || "So11111111111111111111111111111111111111112"; // wrapped SOL, valid on-chain mint
 const OBSERVE = process.argv.includes("--observe");
+const FLOOD = process.argv.includes("--flood");
 const RECEIVE_TIMEOUT_MS = Number(process.env.RECEIVE_TIMEOUT_MS || 8000);
 const OBSERVE_DURATION_MS = Number(process.env.OBSERVE_DURATION_MS || 40_000);
+const FLOOD_REQUESTS = Number(process.env.FLOOD_REQUESTS || 200);
+const FLOOD_RECOVERY_WAIT_MS = Number(process.env.FLOOD_RECOVERY_WAIT_MS || 2500);
+const FLOOD_PROBE_REQUESTS = Number(process.env.FLOOD_PROBE_REQUESTS || 12);
 
 const LED_THRESHOLDS = { LIVE_MAX_SEC: 10, SYNCING_MAX_SEC: 30 };
 
@@ -81,6 +85,25 @@ function buildSyntheticPayload(asset) {
           mint: asset,
           tokenAmount: 25_000,
           toUserAccount: mockWallet,
+          fromUserAccount: null
+        }
+      ]
+    }
+  ];
+}
+
+function buildFloodPayload(asset, nonce) {
+  const wallet = `FloodWalletSimulated${String(nonce).padStart(6, "0")}`;
+  return [
+    {
+      signature: `flood-${nonce}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      feePayer: wallet,
+      timestamp: Math.floor(Date.now() / 1000),
+      tokenTransfers: [
+        {
+          mint: asset,
+          tokenAmount: 1_000 + (nonce % 10),
+          toUserAccount: wallet,
           fromUserAccount: null
         }
       ]
@@ -207,6 +230,63 @@ async function verifySignatureEndToEnd(payload) {
   }
 }
 
+async function runFloodValidation() {
+  info(`flood mode ON · requests=${FLOOD_REQUESTS} recovery_wait_ms=${FLOOD_RECOVERY_WAIT_MS}`);
+  const burst = [];
+  for (let i = 0; i < FLOOD_REQUESTS; i += 1) {
+    burst.push(
+      post(`${BACKEND_URL}/api/v1/webhooks/helius`, buildFloodPayload(ASSET, i), {
+        "x-helius-secret": SECRET
+      })
+    );
+  }
+  const burstResults = await Promise.all(burst);
+  let emittedBurst = 0;
+  let droppedBurst = 0;
+  let non2xx = 0;
+  for (const r of burstResults) {
+    if (!r || r.status >= 300) {
+      non2xx += 1;
+      continue;
+    }
+    emittedBurst += Number(r.body?.emitted || 0);
+    droppedBurst += Number(r.body?.droppedByGuard || 0);
+  }
+  info(
+    `flood burst completed · emitted=${emittedBurst} droppedByGuard=${droppedBurst} non2xx=${non2xx}`
+  );
+  if (non2xx > 0) {
+    fail("flood burst produced non-2xx responses", `non2xx=${non2xx}`);
+  }
+  if (droppedBurst <= 0) {
+    fail(
+      "entropy guard did not drop events during flood burst",
+      `emitted=${emittedBurst} droppedByGuard=${droppedBurst} requests=${FLOOD_REQUESTS}`
+    );
+  }
+
+  await new Promise((r) => setTimeout(r, FLOOD_RECOVERY_WAIT_MS));
+  let emittedProbe = 0;
+  let droppedProbe = 0;
+  for (let i = 0; i < FLOOD_PROBE_REQUESTS; i += 1) {
+    const res = await post(`${BACKEND_URL}/api/v1/webhooks/helius`, buildFloodPayload(ASSET, 10_000 + i), {
+      "x-helius-secret": SECRET
+    });
+    if (res.status >= 300) fail(`flood probe returned ${res.status}`, res.body);
+    emittedProbe += Number(res.body?.emitted || 0);
+    droppedProbe += Number(res.body?.droppedByGuard || 0);
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  info(`flood recovery probe · emitted=${emittedProbe} droppedByGuard=${droppedProbe}`);
+  if (emittedProbe <= 0) {
+    fail(
+      "bucket did not recover after cooldown/refill",
+      `emittedProbe=${emittedProbe} droppedProbe=${droppedProbe}`
+    );
+  }
+  info("flood validation PASS · bucket drains and recovers");
+}
+
 (async () => {
   if (!SECRET) fail("HELIUS_WEBHOOK_SECRET env var is required");
 
@@ -217,7 +297,7 @@ async function verifySignatureEndToEnd(payload) {
     fail("socket.io-client not installed — run `npm i` inside backend/");
   }
 
-  info(`backend=${BACKEND_URL} asset=${ASSET} observe=${OBSERVE}`);
+  info(`backend=${BACKEND_URL} asset=${ASSET} observe=${OBSERVE} flood=${FLOOD}`);
   const socket = io(BACKEND_URL, {
     transports: ["websocket", "polling"],
     reconnection: false,
@@ -260,6 +340,12 @@ async function verifySignatureEndToEnd(payload) {
 
   // Small breath to make sure join-token was processed server-side.
   await new Promise((r) => setTimeout(r, 200));
+
+  if (FLOOD) {
+    await runFloodValidation();
+    socket.close();
+    process.exit(0);
+  }
 
   const body = buildSyntheticPayload(ASSET);
   info(`POST /api/v1/webhooks/helius · 1 tx, 1 transfer`);
