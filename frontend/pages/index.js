@@ -30,6 +30,7 @@ import { HomeOnboarding } from "../components/public/HomeOnboarding";
 import { useWalletLabels } from "../hooks/useWalletLabels";
 import { NluCommandBar } from "../components/home/NluCommandBar";
 import { LiveCardOverlay } from "../components/home/LiveCardOverlay";
+import { WatchedCardShell } from "../components/home/WatchedCardShell";
 
 const FALLBACK_TRENDING = [
   {
@@ -1082,11 +1083,13 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               const whyLines = whyNowBulletLines(sig);
               const rankInfo = signalsRankDeltas.get(sig.mint) || { rank: idx + 1, delta: 0, isNew: false };
               return (
-                <div
+                <WatchedCardShell
                   key={`${sig.mint}-${idx}`}
-                  className={`rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-2.5 transition-all duration-300 hover:border-emerald-500/20 hover:shadow-[0_0_16px_rgba(16,185,129,0.1)] ${
+                  mint={sig.mint}
+                  baseClassName={`rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-2.5 transition-all duration-300 hover:border-emerald-500/20 hover:shadow-[0_0_16px_rgba(16,185,129,0.1)] ${
                     hot ? "ring-1 ring-emerald-500/35" : ""
                   }`}
+                  watchedClassName="!border-emerald-500/35 ring-1 ring-emerald-500/50 shadow-[0_0_18px_rgba(16,185,129,0.18)]"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -1194,7 +1197,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                       </a>
                     ))}
                   </div>
-                </div>
+                </WatchedCardShell>
               );
             })}
           </div>
@@ -1456,12 +1459,14 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                   isNew: false
                 };
                 return (
-                <div
+                <WatchedCardShell
                   key={token?.mint || `skeleton-${idx}`}
+                  mint={token?.mint}
                   translate="no"
-                  className={`glass-card p-3 rounded-xl flex flex-col gap-2 transition-transform duration-200 ${
+                  baseClassName={`glass-card p-3 rounded-xl flex flex-col gap-2 transition-transform duration-200 ${
                     token?.mint ? "hover:scale-[1.01] hover:shadow-[0_0_10px_rgba(139,92,246,0.4)]" : "opacity-75 animate-pulse"
                   }`}
+                  watchedClassName="ring-1 ring-emerald-500/50 shadow-[0_0_18px_rgba(16,185,129,0.18)]"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -1604,7 +1609,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                       Scout →
                     </button>
                   </div>
-                </div>
+                </WatchedCardShell>
               )})}
             </div>
           </div>
