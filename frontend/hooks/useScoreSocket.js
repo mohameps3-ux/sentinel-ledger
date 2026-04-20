@@ -88,7 +88,10 @@ export function useScoreSocket(asset) {
         if (cancelled || !payload) return;
         if (payload.asset && assetRef.current && payload.asset !== assetRef.current) return;
         setScore(payload);
-        setLastScoreAt(Date.now());
+        // Prefer server-side emission time when available; falls back to
+        // client receive time so the UI still works with older backends.
+        const serverTs = payload.timestamp ? Date.parse(payload.timestamp) : NaN;
+        setLastScoreAt(Number.isFinite(serverTs) ? serverTs : Date.now());
       };
 
       s.on("connect", onConnect);

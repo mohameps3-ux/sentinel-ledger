@@ -112,9 +112,23 @@ function ensureVisibilityBinding() {
   visibilityBound = true;
 }
 
+const DEV = process.env.NODE_ENV !== "production";
+
+function logSubscribers(action) {
+  if (!DEV || typeof window === "undefined") return;
+  // One-line console debug so you can verify in devtools that N tarjetas
+  // share a single poller (count should never exceed your actual consumer
+  // components; the poller runs once regardless).
+  // eslint-disable-next-line no-console
+  console.debug(
+    `[globalHealth] ${action} · subscribers=${subscribers.size} · pollerActive=${Boolean(timer) || inFlight}`
+  );
+}
+
 export function subscribeGlobalHealth(listener) {
   if (typeof listener !== "function") return () => {};
   subscribers.add(listener);
+  logSubscribers("subscribe");
   // Replay current snapshot to the new subscriber immediately.
   try {
     listener({ ...state });
@@ -128,11 +142,29 @@ export function subscribeGlobalHealth(listener) {
   }
   return () => {
     subscribers.delete(listener);
+    logSubscribers("unsubscribe");
     if (subscribers.size === 0 && timer) {
       clearTimeout(timer);
       timer = null;
     }
   };
+}
+
+/**
+ * Debug helper exposed for ad-hoc inspection from the browser console:
+ *   window.__sentinelHealthStats?.()
+ */
+export function getHealthStoreStats() {
+  return {
+    subscribers: subscribers.size,
+    pollerActive: Boolean(timer) || inFlight,
+    ...state
+  };
+}
+
+if (DEV && typeof window !== "undefined") {
+  // eslint-disable-next-line no-underscore-dangle
+  window.__sentinelHealthStats = getHealthStoreStats;
 }
 
 export function getGlobalHealthSnapshot() {

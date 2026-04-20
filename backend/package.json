@@ -11,7 +11,8 @@
     "queue:clean": "node scripts/cleanBullQueues.js",
     "seed:smart-wallets": "node scripts/seedSmartWallets.js",
     "seed:terminal-home": "node scripts/seedTerminalHome.js",
-    "signal-prices-once": "node scripts/runSignalPricesOnce.js"
+    "signal-prices-once": "node scripts/runSignalPricesOnce.js",
+    "simulate:helius": "node scripts/simulate-helius.js"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.4",
@@ -36,5 +37,8 @@
     "twitter-api-v2": "^1.18.2",
     "utf-8-validate": "^5.0.10",
     "uuid": "^11.0.5"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.3"
   }
 }

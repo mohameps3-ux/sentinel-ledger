@@ -217,10 +217,13 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
             })
             .then((score) => {
               if (!score || !global.io) return;
-              global.io.to(tx.tokenAddress).emit("sentinel:score", score);
-              if (score.confidence > 70 || (score.signals && score.signals.length > 2)) {
+              // Stamp with server-side emission time so clients can compute
+              // accurate score age independent of delivery latency / clock skew.
+              const payload = { ...score, timestamp: new Date().toISOString() };
+              global.io.to(tx.tokenAddress).emit("sentinel:score", payload);
+              if (payload.confidence > 70 || (payload.signals && payload.signals.length > 2)) {
                 console.log(
-                  `[SCORING_SIGNAL] ${score.asset} - ${score.confidence}% - ${(score.signals || []).join(",")}`
+                  `[SCORING_SIGNAL] ${payload.asset} - ${payload.confidence}% - ${(payload.signals || []).join(",")}`
                 );
               }
             })
