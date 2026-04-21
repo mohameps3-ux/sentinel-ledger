@@ -175,6 +175,11 @@ export function LiveTab({
             {sig._api.signalDecay}
           </p>
         ) : null}
+        {sig._api?.poolAgeLabel ? (
+          <p className="text-[10px] text-slate-400 font-mono truncate" title="Approximate DEX pair age when upstream provides pairCreatedAt">
+            {sig._api.poolAgeLabel}
+          </p>
+        ) : null}
         {sig._api?.signalQuality &&
         (sig._api.signalQuality.baseSentinelScore != null || sig._api.signalQuality.stack != null) ? (
           <div className="rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1.5 space-y-0.5">

@@ -94,11 +94,53 @@ function clampQualityStack(perfW, recW) {
   return clamp(raw, minStack, maxStack);
 }
 
+/** DexScreener may return ms (13 digits) or seconds (10 digits). */
+function normalizePairCreatedMs(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (n < 1e12) return Math.floor(n * 1000);
+  return Math.floor(n);
+}
+
+/**
+ * Optional feed gates on DEX pair age. Unknown timestamp → do not exclude (avoid starving the feed).
+ * @returns {{ exclude: boolean, reason?: string }}
+ */
+function gateDexPairAge(pairCreatedAtRaw, minAgeMinutes, maxAgeDays) {
+  const minM = Number(minAgeMinutes);
+  const maxD = Number(maxAgeDays);
+  const hasMin = Number.isFinite(minM) && minM > 0;
+  const hasMax = Number.isFinite(maxD) && maxD > 0;
+  if (!hasMin && !hasMax) return { exclude: false };
+  const ms = normalizePairCreatedMs(pairCreatedAtRaw);
+  if (ms == null) return { exclude: false };
+  const ageMin = (Date.now() - ms) / 60000;
+  const ageDays = ageMin / (60 * 24);
+  if (!Number.isFinite(ageMin) || ageMin < 0) return { exclude: false };
+  if (hasMin && ageMin < minM) return { exclude: true, reason: "pair_too_young" };
+  if (hasMax && ageDays > maxD) return { exclude: true, reason: "pair_too_old" };
+  return { exclude: false };
+}
+
+function poolAgeLabelFromMs(pairCreatedAtRaw) {
+  const ms = normalizePairCreatedMs(pairCreatedAtRaw);
+  if (ms == null) return null;
+  const ageMin = (Date.now() - ms) / 60000;
+  if (!Number.isFinite(ageMin) || ageMin < 0) return null;
+  if (ageMin < 90) return `Pool ~${Math.round(ageMin)}m on DEX`;
+  if (ageMin < 72 * 60) return `Pool ~${(ageMin / 60).toFixed(1)}h on DEX`;
+  const d = ageMin / (60 * 24);
+  const dStr = d < 14 ? d.toFixed(1) : String(Math.round(d));
+  return `Pool ~${dStr}d on DEX`;
+}
+
 module.exports = {
   asSignalTags,
   combinedPerformanceWeight,
   recencyMultiplier,
   recencyDecayLabel,
   isAnomalousOutcomePct,
-  clampQualityStack
+  clampQualityStack,
+  gateDexPairAge,
+  poolAgeLabelFromMs
 };

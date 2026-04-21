@@ -9,7 +9,9 @@ const {
   recencyMultiplier,
   recencyDecayLabel,
   isAnomalousOutcomePct,
-  clampQualityStack
+  clampQualityStack,
+  gateDexPairAge,
+  poolAgeLabelFromMs
 } = require("./signalFeedQuality");
 
 const CACHE_TTL_SEC = Number(process.env.HOME_TERMINAL_CACHE_TTL_SEC || 180);
@@ -709,12 +711,16 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
   const { rows: raw, sourceTable } = await fetchLatestSignalRowsSupabase(supabase, since, 400);
   const anomalyAbsPct = Number(process.env.SIGNAL_FEED_EXCLUDE_ABS_OUTCOME_PCT || 0);
   const minLiquidityUsd = Number(process.env.SIGNAL_FEED_MIN_LIQUIDITY_USD || 0);
+  const minPairAgeMin = Number(process.env.SIGNAL_FEED_MIN_PAIR_AGE_MINUTES || 0);
+  const maxPairAgeDays = Number(process.env.SIGNAL_FEED_MAX_PAIR_AGE_DAYS || 0);
   const weightMap = getActiveSignalWeightMap();
 
   const seen = new Set();
   const picks = [];
   let excludedAnomalies = 0;
   let excludedLowLiquidity = 0;
+  let excludedPairTooYoung = 0;
+  let excludedPairTooOld = 0;
   for (const row of raw || []) {
     const pctProbe =
       row.result_pct != null ? Number(row.result_pct) : pctFromPrices(row.entry_price_usd, row.price_1h_usd);
@@ -753,6 +759,12 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       liqUsd < minLiquidityUsd
     ) {
       excludedLowLiquidity += 1;
+      continue;
+    }
+    const pairGate = gateDexPairAge(md?.pairCreatedAt, minPairAgeMin, maxPairAgeDays);
+    if (pairGate.exclude) {
+      if (pairGate.reason === "pair_too_young") excludedPairTooYoung += 1;
+      else if (pairGate.reason === "pair_too_old") excludedPairTooOld += 1;
       continue;
     }
     const symbol = md.symbol || mint.slice(0, 4).toUpperCase();
@@ -801,6 +813,7 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       entryWindowMinutesLeft,
       timeAdvantage: `You are earlier than ${Math.min(97, 52 + Math.round(sentinelScore / 2))}% of traders`,
       signalDecay: recencyDecayLabel(row.created_at, recW),
+      poolAgeLabel: poolAgeLabelFromMs(md?.pairCreatedAt) || null,
       confluence: sentinelScore >= 88 && walletCount >= 3,
       evidenceChips: evidenceChipsFor(sentinelScore),
       contextHistory,
@@ -827,8 +840,12 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       signalQuality: {
         excludedAnomalies,
         excludedLowLiquidity,
+        excludedPairTooYoung,
+        excludedPairTooOld,
         anomalyAbsThreshold: anomalyAbsPct > 0 ? anomalyAbsPct : null,
-        minLiquidityUsd: minLiquidityUsd > 0 ? minLiquidityUsd : null
+        minLiquidityUsd: minLiquidityUsd > 0 ? minLiquidityUsd : null,
+        minPairAgeMinutes: minPairAgeMin > 0 ? minPairAgeMin : null,
+        maxPairAgeDays: maxPairAgeDays > 0 ? maxPairAgeDays : null
       }
     }
   };
@@ -1153,7 +1170,7 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
     recordFreshness("signalsLatest", out?.meta || {});
     return out;
   }
-  const key = `terminal:signals:latest:v5:${limit}:${strategy}`;
+  const key = `terminal:signals:latest:v6:${limit}:${strategy}`;
   let payload;
   let cache;
   try {

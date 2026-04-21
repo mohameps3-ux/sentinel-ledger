@@ -190,6 +190,13 @@ function buildMarketDataFromDex(address, data) {
   // Native mints may have market cap data at token-level providers, not in pair fdv.
   const pair0Fdv = toPositiveNumber(pairs?.[0]?.fdv);
   const bestPairFdv = toPositiveNumber(bestPair?.fdv);
+  const pairCreatedRaw = bestPair?.pairCreatedAt ?? bestPair?.pairCreated ?? null;
+  const pairCreatedAt =
+    Number.isFinite(Number(pairCreatedRaw)) && Number(pairCreatedRaw) > 0
+      ? Number(pairCreatedRaw) < 1e12
+        ? Math.floor(Number(pairCreatedRaw) * 1000)
+        : Math.floor(Number(pairCreatedRaw))
+      : null;
   return {
     marketData: {
       price: Number(bestPair.priceUsd) || 0,
@@ -197,6 +204,7 @@ function buildMarketDataFromDex(address, data) {
       volume24h: Number(bestPair.volume?.h24) || 0,
       marketCap: pair0Fdv || bestPairFdv || null,
       liquidity: Number(bestPair.liquidity?.usd) || 0,
+      pairCreatedAt,
       symbol: bestPair.baseToken?.symbol || "?",
       name: bestPair.baseToken?.name || "",
       deployerAddress,
