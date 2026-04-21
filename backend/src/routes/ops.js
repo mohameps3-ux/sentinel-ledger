@@ -4,6 +4,7 @@ const express = require("express");
 const { getEntropyGuardOpsSnapshot } = require("../ingestion/entropyGuard");
 const { getSignalPerformanceSummary } = require("../services/signalPerformance");
 const { runCalibrationOnce, getCalibrationSnapshot } = require("../services/signalCalibrator");
+const { getLatestSignalsFallbackOpsSnapshot } = require("../services/homeTerminalApi");
 
 const router = express.Router();
 
@@ -21,6 +22,10 @@ function assertOpsAuth(req, res, next) {
  */
 router.get("/entropy-guard/snapshot", assertOpsAuth, (_req, res) => {
   return res.json(getEntropyGuardOpsSnapshot());
+});
+
+router.get("/signals-latest-fallback/snapshot", assertOpsAuth, (_req, res) => {
+  return res.json(getLatestSignalsFallbackOpsSnapshot());
 });
 
 router.get("/signal-performance/summary", assertOpsAuth, async (req, res) => {

@@ -6,12 +6,31 @@ const { detectNarrativeTags } = require("./narrativeTags");
 
 const CACHE_TTL_SEC = Number(process.env.HOME_TERMINAL_CACHE_TTL_SEC || 180);
 const FORCE_STATIC_SIGNALS_FALLBACK = String(process.env.HOME_TERMINAL_FORCE_STATIC_FALLBACK || "").toLowerCase() === "true";
+const SIGNALS_STATIC_FALLBACK_ALERT_AFTER_MS = Math.max(
+  1_000,
+  Math.floor(Number(process.env.SIGNALS_LATEST_STATIC_ALERT_AFTER_MINUTES || 10) * 60_000)
+);
+const SIGNALS_STATIC_FALLBACK_ALERT_COOLDOWN_MS = Math.max(
+  5_000,
+  Math.floor(Number(process.env.SIGNALS_LATEST_STATIC_ALERT_COOLDOWN_MS || 300_000))
+);
+const OPS_ALERT_WEBHOOK_URL = String(process.env.OPS_ALERT_WEBHOOK_URL || "").trim();
 const STATIC_SIGNAL_FALLBACK = [
   { token: "$BONK", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", score: 88 },
   { token: "$WIF", mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", score: 84 },
   { token: "$JUP", mint: "JUPyiwrYJFksjQVdKWvHJHGzS76nqbwsjZBM74fATFc", score: 80 },
   { token: "$SOL", mint: "So11111111111111111111111111111111111111112", score: 78 }
 ];
+const latestSignalsFallbackState = {
+  activeSinceMs: null,
+  lastStaticSeenMs: null,
+  lastRecoveryAtMs: null,
+  lastSource: null,
+  lastCount: 0,
+  lastAlertAtMs: null,
+  alertsSent: 0,
+  lastIncidentDurationMs: null
+};
 
 function jupiterSwapUrl(mint, sol) {
   if (!mint) return "";
@@ -87,6 +106,141 @@ function evidenceChipsFor(score) {
   if (score >= 80) chips.push("🔥 Cluster");
   else chips.push("💧 Flow");
   return chips.slice(0, 5);
+}
+
+function buildStaticFallbackCards(limit, strategy, contextMessage) {
+  return STATIC_SIGNAL_FALLBACK.slice(0, Math.max(1, Number(limit) || 10)).map((row) => {
+    const score = Number(row.score || 75);
+    return {
+      token: row.token,
+      tokenAddress: row.mint,
+      sentinelScore: score,
+      decision: decisionFromScore(score, strategy),
+      whyNow: whyNowLines({
+        walletCount: 2,
+        entryWindowMinutesLeft: 5,
+        sentinelScore: score,
+        symbol: row.token
+      }),
+      redFlags: [],
+      entryWindow: "OPEN",
+      entryWindowMinutesLeft: 5,
+      timeAdvantage: `You are earlier than ${Math.min(97, 52 + Math.round(score / 2))}% of traders`,
+      signalDecay: "Confidence -3%/min",
+      confluence: score >= 88,
+      evidenceChips: evidenceChipsFor(score),
+      contextHistory: `${contextMessage} ${row.token}`,
+      createdAt: new Date().toISOString()
+    };
+  });
+}
+
+async function sendStaticFallbackOpsAlert(durationMs, count) {
+  if (!OPS_ALERT_WEBHOOK_URL) return;
+  const mins = Math.max(0, Math.round(durationMs / 60000));
+  const msg =
+    `[OPS_ALERT] ⚠️ SIGNALS_LATEST_STATIC_FALLBACK_SUSTAINED` +
+    ` | Duration: ${mins}m` +
+    ` | Count: ${count}` +
+    ` | Threshold: ${Math.round(SIGNALS_STATIC_FALLBACK_ALERT_AFTER_MS / 60000)}m`;
+  const payload = {
+    text: msg,
+    content: msg,
+    username: "Sentinel Ops Guard",
+    embeds: [
+      {
+        title: "SIGNALS_LATEST_STATIC_FALLBACK_SUSTAINED",
+        description: msg,
+        color: 15158332
+      }
+    ]
+  };
+  try {
+    await fetch(OPS_ALERT_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (_) {
+    // Silent by design: fallback observability must never impact API response path.
+  }
+}
+
+function trackLatestSignalsSource(meta = {}) {
+  const now = Date.now();
+  const source = String(meta?.source || "unknown");
+  const count = Number(meta?.count || 0);
+  latestSignalsFallbackState.lastSource = source;
+  latestSignalsFallbackState.lastCount = count;
+
+  if (source === "static_fallback") {
+    latestSignalsFallbackState.lastStaticSeenMs = now;
+    if (!latestSignalsFallbackState.activeSinceMs) {
+      latestSignalsFallbackState.activeSinceMs = now;
+      console.warn("[OPS_ALERT] signals/latest switched to static_fallback");
+      return;
+    }
+    const durationMs = now - latestSignalsFallbackState.activeSinceMs;
+    const cooldownOk =
+      !latestSignalsFallbackState.lastAlertAtMs ||
+      now - latestSignalsFallbackState.lastAlertAtMs >= SIGNALS_STATIC_FALLBACK_ALERT_COOLDOWN_MS;
+    if (durationMs >= SIGNALS_STATIC_FALLBACK_ALERT_AFTER_MS && cooldownOk) {
+      latestSignalsFallbackState.lastAlertAtMs = now;
+      latestSignalsFallbackState.alertsSent += 1;
+      sendStaticFallbackOpsAlert(durationMs, count);
+    }
+    return;
+  }
+
+  if (latestSignalsFallbackState.activeSinceMs) {
+    latestSignalsFallbackState.lastIncidentDurationMs = now - latestSignalsFallbackState.activeSinceMs;
+    latestSignalsFallbackState.lastRecoveryAtMs = now;
+    latestSignalsFallbackState.activeSinceMs = null;
+    console.warn(
+      `[OPS_ALERT] signals/latest recovered from static_fallback after ${Math.round(
+        latestSignalsFallbackState.lastIncidentDurationMs / 1000
+      )}s`
+    );
+  }
+}
+
+function withLatestSignalsSourceTracking(payload) {
+  trackLatestSignalsSource(payload?.meta || {});
+  return payload;
+}
+
+function getLatestSignalsFallbackOpsSnapshot() {
+  const now = Date.now();
+  const activeForMs = latestSignalsFallbackState.activeSinceMs ? now - latestSignalsFallbackState.activeSinceMs : 0;
+  return {
+    status: latestSignalsFallbackState.activeSinceMs ? "static_fallback_active" : "healthy",
+    config: {
+      alertAfterMs: SIGNALS_STATIC_FALLBACK_ALERT_AFTER_MS,
+      alertCooldownMs: SIGNALS_STATIC_FALLBACK_ALERT_COOLDOWN_MS
+    },
+    latest: {
+      source: latestSignalsFallbackState.lastSource,
+      count: latestSignalsFallbackState.lastCount
+    },
+    staticFallback: {
+      active: Boolean(latestSignalsFallbackState.activeSinceMs),
+      activeSince: latestSignalsFallbackState.activeSinceMs
+        ? new Date(latestSignalsFallbackState.activeSinceMs).toISOString()
+        : null,
+      activeForMs,
+      lastStaticSeenAt: latestSignalsFallbackState.lastStaticSeenMs
+        ? new Date(latestSignalsFallbackState.lastStaticSeenMs).toISOString()
+        : null,
+      lastRecoveryAt: latestSignalsFallbackState.lastRecoveryAtMs
+        ? new Date(latestSignalsFallbackState.lastRecoveryAtMs).toISOString()
+        : null,
+      lastIncidentDurationMs: latestSignalsFallbackState.lastIncidentDurationMs,
+      alertsSent: latestSignalsFallbackState.alertsSent,
+      lastAlertAt: latestSignalsFallbackState.lastAlertAtMs
+        ? new Date(latestSignalsFallbackState.lastAlertAtMs).toISOString()
+        : null
+    }
+  };
 }
 
 function redFlagsFromMarket(md, score) {
@@ -262,30 +416,7 @@ function buildSignalCardFromHotToken(row, strategy) {
 
 async function buildLatestSignalsFallback({ limit = 10, strategy = "balanced", supabase = null, forceStatic = false } = {}) {
   if (forceStatic) {
-    const hardFallbackForced = STATIC_SIGNAL_FALLBACK.slice(0, Math.max(1, Number(limit) || 10)).map((row) => {
-      const score = Number(row.score || 75);
-      return {
-        token: row.token,
-        tokenAddress: row.mint,
-        sentinelScore: score,
-        decision: decisionFromScore(score, strategy),
-        whyNow: whyNowLines({
-          walletCount: 2,
-          entryWindowMinutesLeft: 5,
-          sentinelScore: score,
-          symbol: row.token
-        }),
-        redFlags: [],
-        entryWindow: "OPEN",
-        entryWindowMinutesLeft: 5,
-        timeAdvantage: `You are earlier than ${Math.min(97, 52 + Math.round(score / 2))}% of traders`,
-        signalDecay: "Confidence -3%/min",
-        confluence: score >= 88,
-        evidenceChips: evidenceChipsFor(score),
-        contextHistory: `Static fallback card for ${row.token} (forced fallback simulation)`,
-        createdAt: new Date().toISOString()
-      };
-    });
+    const hardFallbackForced = buildStaticFallbackCards(limit, strategy, "Static fallback card for (forced fallback simulation):");
     return {
       ok: true,
       data: hardFallbackForced,
@@ -303,30 +434,11 @@ async function buildLatestSignalsFallback({ limit = 10, strategy = "balanced", s
       meta: { source: "dexscreener_fallback", count: data.length, strategy }
     };
   }
-  const hardFallback = STATIC_SIGNAL_FALLBACK.slice(0, Math.max(1, Number(limit) || 10)).map((row) => {
-    const score = Number(row.score || 75);
-    return {
-      token: row.token,
-      tokenAddress: row.mint,
-      sentinelScore: score,
-      decision: decisionFromScore(score, strategy),
-      whyNow: whyNowLines({
-        walletCount: 2,
-        entryWindowMinutesLeft: 5,
-        sentinelScore: score,
-        symbol: row.token
-      }),
-      redFlags: [],
-      entryWindow: "OPEN",
-      entryWindowMinutesLeft: 5,
-      timeAdvantage: `You are earlier than ${Math.min(97, 52 + Math.round(score / 2))}% of traders`,
-      signalDecay: "Confidence -3%/min",
-      confluence: score >= 88,
-      evidenceChips: evidenceChipsFor(score),
-      contextHistory: `Static fallback card for ${row.token} (upstream feed temporarily unavailable)`,
-      createdAt: new Date().toISOString()
-    };
-  });
+  const hardFallback = buildStaticFallbackCards(
+    limit,
+    strategy,
+    "Static fallback card for (upstream feed temporarily unavailable):"
+  );
   return {
     ok: true,
     data: hardFallback,
@@ -546,20 +658,20 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
     const { payload, cache } = await withCache(key, () =>
       buildLatestSignalsFallback({ limit, strategy, supabase: null, forceStatic: true })
     );
-    return { ...payload, meta: { ...(payload.meta || {}), cache } };
+    return withLatestSignalsSourceTracking({ ...payload, meta: { ...(payload.meta || {}), cache } });
   }
 
   if (!supabase) {
     const key = `terminal:signals:latest:fallback:v2:${limit}:${strategy}`;
     const { payload, cache } = await withCache(key, () => buildLatestSignalsFallback({ limit, strategy, supabase: null }));
-    return { ...payload, meta: { ...(payload.meta || {}), cache } };
+    return withLatestSignalsSourceTracking({ ...payload, meta: { ...(payload.meta || {}), cache } });
   }
   const key = `terminal:signals:latest:v3:${limit}:${strategy}`;
   const { payload, cache } = await withCache(key, () => buildLatestSignalsFeed(supabase, { limit, strategy }));
   const hasRows = Array.isArray(payload?.data) && payload.data.length > 0;
-  if (hasRows) return { ...payload, meta: { ...(payload.meta || {}), cache } };
+  if (hasRows) return withLatestSignalsSourceTracking({ ...payload, meta: { ...(payload.meta || {}), cache } });
   const fb = await buildLatestSignalsFallback({ limit, strategy, supabase });
-  return { ...fb, meta: { ...(fb.meta || {}), cache: `${cache}+fallback` } };
+  return withLatestSignalsSourceTracking({ ...fb, meta: { ...(fb.meta || {}), cache: `${cache}+fallback` } });
 }
 
 async function getOutcomesProofCached(supabase, hours, recentN) {
@@ -606,6 +718,7 @@ module.exports = {
   getOutcomesProofCached,
   getSmartWalletsTopCached,
   getHotTokensCached,
+  getLatestSignalsFallbackOpsSnapshot,
   jupiterSwapUrl,
   decisionFromScore
 };
