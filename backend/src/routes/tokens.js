@@ -36,7 +36,16 @@ router.get("/hot", publicTerminalLimiter, async (req, res) => {
     });
   } catch (e) {
     console.error("tokens/hot:", e.message);
-    return res.status(500).json({ ok: false, error: "hot_tokens_failed", data: [] });
+    return res.json({
+      ok: true,
+      data: [],
+      meta: {
+        source: "route_fallback",
+        degraded: true,
+        fallbackReason: "route_exception",
+        count: 0
+      }
+    });
   }
 });
 

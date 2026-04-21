@@ -1,10 +1,12 @@
 const redis = require("../lib/cache");
-const { getMarketData } = require("./marketData");
+const { getMarketData, getMarketDataCircuitStatus } = require("./marketData");
 const { pctFromPrices } = require("./smartWalletSignalPrices");
 const { fetchTrendingList } = require("./trendingList");
 const { detectNarrativeTags } = require("./narrativeTags");
 
 const CACHE_TTL_SEC = Number(process.env.HOME_TERMINAL_CACHE_TTL_SEC || 180);
+const HOT_CACHE_TTL_SEC = Math.max(30, Number(process.env.HOME_TERMINAL_HOT_CACHE_TTL_SEC || 90));
+const LATEST_SIGNALS_CACHE_TTL_SEC = Math.max(30, Number(process.env.HOME_TERMINAL_LATEST_CACHE_TTL_SEC || 90));
 const FORCE_STATIC_SIGNALS_FALLBACK = String(process.env.HOME_TERMINAL_FORCE_STATIC_FALLBACK || "").toLowerCase() === "true";
 const SIGNALS_STATIC_FALLBACK_ALERT_AFTER_MS = Math.max(
   1_000,
@@ -20,6 +22,12 @@ const STATIC_SIGNAL_FALLBACK = [
   { token: "$WIF", mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", score: 84 },
   { token: "$JUP", mint: "JUPyiwrYJFksjQVdKWvHJHGzS76nqbwsjZBM74fATFc", score: 80 },
   { token: "$SOL", mint: "So11111111111111111111111111111111111111112", score: 78 }
+];
+const STATIC_HOT_FALLBACK = [
+  { symbol: "BONK", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", price: 0.00002, change: 0, volume24h: 0, liquidity: 0 },
+  { symbol: "WIF", mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", price: 0.0, change: 0, volume24h: 0, liquidity: 0 },
+  { symbol: "JUP", mint: "JUPyiwrYJFksjQVdKWvHJHGzS76nqbwsjZBM74fATFc", price: 0.0, change: 0, volume24h: 0, liquidity: 0 },
+  { symbol: "SOL", mint: "So11111111111111111111111111111111111111112", price: 0.0, change: 0, volume24h: 0, liquidity: 0 }
 ];
 const latestSignalsFallbackState = {
   activeSinceMs: null,
@@ -75,7 +83,7 @@ function computedSmartScore(row) {
   return Math.min(100, Math.max(35, Math.round(wr)));
 }
 
-async function withCache(key, producer) {
+async function withCache(key, producer, ttlSec = CACHE_TTL_SEC) {
   try {
     const hit = await redis.get(key);
     if (hit != null) {
@@ -87,11 +95,85 @@ async function withCache(key, producer) {
   }
   const payload = await producer();
   try {
-    await redis.set(key, JSON.stringify(payload), { ex: CACHE_TTL_SEC });
+    await redis.set(key, JSON.stringify(payload), { ex: Math.max(5, Number(ttlSec) || CACHE_TTL_SEC) });
   } catch (e) {
     console.warn("[homeTerminalApi] cache set", key, e.message);
   }
   return { payload, cache: "miss" };
+}
+
+function upstreamStatusSnapshot() {
+  const market = getMarketDataCircuitStatus();
+  return {
+    degraded: Boolean(market?.degraded),
+    reason: market?.reason || null,
+    providers: market || null
+  };
+}
+
+function computeRealDataRatio(source, count, limit) {
+  const n = Math.max(0, Number(count) || 0);
+  const lim = Math.max(1, Number(limit) || 1);
+  if (source === "static_fallback" || source === "static_hot_fallback") return 0;
+  return Math.min(1, Number((n / lim).toFixed(3)));
+}
+
+function enrichSignalsMeta(payload, { limit, fallbackReason = null }) {
+  const source = String(payload?.meta?.source || "unknown");
+  const count = Array.isArray(payload?.data) ? payload.data.length : Number(payload?.meta?.count || 0);
+  const upstreamStatus = upstreamStatusSnapshot();
+  return {
+    ...payload,
+    meta: {
+      ...(payload?.meta || {}),
+      count,
+      upstreamStatus,
+      fallbackReason,
+      realDataRatio: computeRealDataRatio(source, count, limit)
+    }
+  };
+}
+
+function emergencyHotPayload(limit, reason = "upstream_unavailable") {
+  const lim = Math.min(24, Math.max(1, Number(limit) || 10));
+  const data = STATIC_HOT_FALLBACK.slice(0, lim).map((t) => {
+    const sentinelScore = computeHotSentinel(t);
+    return {
+      ...t,
+      token: t.symbol,
+      tokenAddress: t.mint,
+      grade: "D",
+      flowLabel: "Degraded upstream",
+      alphaSpeedMins: null,
+      whyTrade: ["Emergency fallback: upstream market feed temporarily unavailable."],
+      sentinelScore,
+      decision: decisionFromScore(sentinelScore, "balanced"),
+      entryWindow: "OPEN",
+      entryWindowMinutesLeft: 5,
+      clusterHeat: clusterHeatFromScore(sentinelScore),
+      evidenceChips: evidenceChipsFor(sentinelScore).map((s) => s.split(" ")[0]),
+      quickBuy: {
+        "0.5Sol": jupiterSwapUrl(t.mint, 0.5),
+        "1Sol": jupiterSwapUrl(t.mint, 1),
+        "5Sol": jupiterSwapUrl(t.mint, 5)
+      },
+      narrativeTags: [],
+      degraded: true
+    };
+  });
+  return {
+    ok: true,
+    data,
+    meta: {
+      source: "static_hot_fallback",
+      degraded: true,
+      fallbackReason: reason,
+      endpoint: "tokens/hot",
+      count: data.length,
+      upstreamStatus: upstreamStatusSnapshot(),
+      realDataRatio: 0
+    }
+  };
 }
 
 function clusterHeatFromScore(score) {
@@ -590,8 +672,14 @@ function computeHotSentinel(token) {
 
 async function buildHotTokens({ limit = 10, supabase = null } = {}) {
   const lim = Math.min(24, Math.max(1, Number(limit) || 10));
-  const payload = await fetchTrendingList(lim);
+  let payload;
+  try {
+    payload = await fetchTrendingList(lim);
+  } catch (error) {
+    return emergencyHotPayload(lim, String(error?.message || "fetch_trending_failed"));
+  }
   const list = Array.isArray(payload?.data) ? payload.data : [];
+  if (!list.length) return emergencyHotPayload(lim, "upstream_empty");
   const iaByMint = new Map();
   if (supabase && list.length) {
     try {
@@ -636,7 +724,8 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
         "5Sol": jupiterSwapUrl(mint, 5)
       },
       iaScore: ia != null ? Math.round(ia) : null,
-      narrativeTags: detectNarrativeTags({ name: t.name, symbol: t.symbol })
+      narrativeTags: detectNarrativeTags({ name: t.name, symbol: t.symbol }),
+      degraded: false
     };
   });
   data.sort((a, b) => (b.sentinelScore || 0) - (a.sentinelScore || 0));
@@ -647,7 +736,10 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
       ...(payload.meta || {}),
       endpoint: "tokens/hot",
       count: data.length,
-      tokensAnalyzedMerged: iaByMint.size > 0
+      tokensAnalyzedMerged: iaByMint.size > 0,
+      degraded: false,
+      upstreamStatus: upstreamStatusSnapshot(),
+      realDataRatio: computeRealDataRatio(String(payload?.meta?.source || "unknown"), data.length, lim)
     }
   };
 }
@@ -656,22 +748,54 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
   if (FORCE_STATIC_SIGNALS_FALLBACK) {
     const key = `terminal:signals:latest:forced-static:v1:${limit}:${strategy}`;
     const { payload, cache } = await withCache(key, () =>
-      buildLatestSignalsFallback({ limit, strategy, supabase: null, forceStatic: true })
+      buildLatestSignalsFallback({ limit, strategy, supabase: null, forceStatic: true }),
+      LATEST_SIGNALS_CACHE_TTL_SEC
     );
-    return withLatestSignalsSourceTracking({ ...payload, meta: { ...(payload.meta || {}), cache } });
+    return withLatestSignalsSourceTracking(
+      enrichSignalsMeta({ ...payload, meta: { ...(payload.meta || {}), cache } }, { limit, fallbackReason: "forced_static" })
+    );
   }
 
   if (!supabase) {
     const key = `terminal:signals:latest:fallback:v2:${limit}:${strategy}`;
-    const { payload, cache } = await withCache(key, () => buildLatestSignalsFallback({ limit, strategy, supabase: null }));
-    return withLatestSignalsSourceTracking({ ...payload, meta: { ...(payload.meta || {}), cache } });
+    const { payload, cache } = await withCache(
+      key,
+      () => buildLatestSignalsFallback({ limit, strategy, supabase: null }),
+      LATEST_SIGNALS_CACHE_TTL_SEC
+    );
+    return withLatestSignalsSourceTracking(
+      enrichSignalsMeta({ ...payload, meta: { ...(payload.meta || {}), cache } }, { limit, fallbackReason: "supabase_unconfigured" })
+    );
   }
   const key = `terminal:signals:latest:v3:${limit}:${strategy}`;
-  const { payload, cache } = await withCache(key, () => buildLatestSignalsFeed(supabase, { limit, strategy }));
+  let payload;
+  let cache;
+  try {
+    const out = await withCache(
+      key,
+      () => buildLatestSignalsFeed(supabase, { limit, strategy }),
+      LATEST_SIGNALS_CACHE_TTL_SEC
+    );
+    payload = out.payload;
+    cache = out.cache;
+  } catch (_) {
+    const fb = await buildLatestSignalsFallback({ limit, strategy, supabase });
+    const fallbackReason = fb?.meta?.source === "static_fallback" ? "supabase_query_failed_and_upstream_unavailable" : "supabase_query_failed";
+    return withLatestSignalsSourceTracking(
+      enrichSignalsMeta({ ...fb, meta: { ...(fb.meta || {}), cache: "miss+fallback" } }, { limit, fallbackReason })
+    );
+  }
   const hasRows = Array.isArray(payload?.data) && payload.data.length > 0;
-  if (hasRows) return withLatestSignalsSourceTracking({ ...payload, meta: { ...(payload.meta || {}), cache } });
+  if (hasRows) {
+    return withLatestSignalsSourceTracking(
+      enrichSignalsMeta({ ...payload, meta: { ...(payload.meta || {}), cache } }, { limit, fallbackReason: null })
+    );
+  }
   const fb = await buildLatestSignalsFallback({ limit, strategy, supabase });
-  return withLatestSignalsSourceTracking({ ...fb, meta: { ...(fb.meta || {}), cache: `${cache}+fallback` } });
+  const fallbackReason = fb?.meta?.source === "static_fallback" ? "supabase_empty_and_upstream_unavailable" : "supabase_empty";
+  return withLatestSignalsSourceTracking(
+    enrichSignalsMeta({ ...fb, meta: { ...(fb.meta || {}), cache: `${cache}+fallback` } }, { limit, fallbackReason })
+  );
 }
 
 async function getOutcomesProofCached(supabase, hours, recentN) {
@@ -704,7 +828,7 @@ async function getSmartWalletsTopCached(supabase, limit) {
 
 async function getHotTokensCached(limit, supabase) {
   const key = `terminal:tokens:hot:v3:${limit}`;
-  const { payload, cache } = await withCache(key, () => buildHotTokens({ limit, supabase }));
+  const { payload, cache } = await withCache(key, () => buildHotTokens({ limit, supabase }), HOT_CACHE_TTL_SEC);
   return { ...payload, meta: { ...(payload.meta || {}), cache } };
 }
 
