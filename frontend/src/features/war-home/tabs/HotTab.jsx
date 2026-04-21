@@ -32,6 +32,7 @@ export function HotTab({
   onToggleHeatExpanded,
   heatTokensForGrid,
   heatTokenPool,
+  feedStatus,
   feedIsLive,
   feedLabel,
   feedAgeSec,
@@ -76,12 +77,22 @@ export function HotTab({
             </button>
             <span
               className={`text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border inline-flex items-center gap-1.5 ${
-                feedIsLive
-                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                  : "bg-amber-500/15 text-amber-200 border-amber-500/30"
+                feedStatus === "SNAPSHOT"
+                  ? "bg-slate-500/15 text-slate-200 border-slate-400/30"
+                  : feedIsLive
+                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                    : "bg-amber-500/15 text-amber-200 border-amber-500/30"
               }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${feedIsLive ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  feedStatus === "SNAPSHOT"
+                    ? "bg-slate-300"
+                    : feedIsLive
+                      ? "bg-emerald-400 animate-pulse"
+                      : "bg-amber-400"
+                }`}
+              />
               {feedLabel}
             </span>
             <span className="text-[11px] text-gray-500">

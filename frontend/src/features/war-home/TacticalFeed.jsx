@@ -25,6 +25,7 @@ export default function TacticalFeed({
   onToggleHeatExpanded,
   heatTokensForGrid,
   heatTokenPool,
+  feedStatus,
   feedIsLive,
   feedLabel,
   feedAgeSec,
@@ -60,6 +61,7 @@ export default function TacticalFeed({
           onToggleHeatExpanded={onToggleHeatExpanded}
           heatTokensForGrid={heatTokensForGrid}
           heatTokenPool={heatTokenPool}
+          feedStatus={feedStatus}
           feedIsLive={feedIsLive}
           feedLabel={feedLabel}
           feedAgeSec={feedAgeSec}

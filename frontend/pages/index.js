@@ -110,8 +110,15 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const feedAgeSec = trendingQuery.dataUpdatedAt
     ? Math.max(0, Math.floor((Date.now() - trendingQuery.dataUpdatedAt) / 1000))
     : null;
-  const feedIsLive = !trendingQuery.isError && !!trending.length && (feedAgeSec === null || feedAgeSec <= 90);
-  const feedLabel = feedIsLive ? "Live" : "Delayed";
+  const feedStatus = useMemo(() => {
+    const source = String(trendingMeta?.source || "").toLowerCase();
+    const degraded = Boolean(trendingMeta?.degraded);
+    if (trendingQuery.isError || source.includes("static") || source.includes("route_fallback")) return "SNAPSHOT";
+    if (degraded || source.includes("fallback")) return "LIVE-DEGRADED";
+    return "LIVE";
+  }, [trendingMeta, trendingQuery.isError]);
+  const feedIsLive = feedStatus === "LIVE";
+  const feedLabel = feedStatus;
   const rankedWallets = useMemo(() => {
     const source = topWalletsApi.length ? topWalletsApi : TOP_SMART_WALLETS;
     return source
@@ -572,6 +579,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           onToggleHeatExpanded={() => setHeatExpanded((v) => !v)}
           heatTokensForGrid={heatTokensForGrid}
           heatTokenPool={heatTokenPool}
+          feedStatus={feedStatus}
           feedIsLive={feedIsLive}
           feedLabel={feedLabel}
           feedAgeSec={feedAgeSec}
