@@ -10,7 +10,7 @@ import { getPublicApiUrl } from "../../lib/publicRuntime";
 import { formatUsdWhole } from "../../lib/formatStable";
 import { isProbableSolanaMint } from "../../lib/solanaMint";
 
-/** @param {import("@tanstack/react-query").UseQueryResult<any>} tokenQuery */
+/** @param {object | null | undefined} token Token payload from `useTokenData().data?.data` */
 export function deskAntiSummaryTone(token) {
   if (!token) return "neutral";
   const wi = token.walletIntel;
