@@ -708,11 +708,13 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
   const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
   const { rows: raw, sourceTable } = await fetchLatestSignalRowsSupabase(supabase, since, 400);
   const anomalyAbsPct = Number(process.env.SIGNAL_FEED_EXCLUDE_ABS_OUTCOME_PCT || 0);
+  const minLiquidityUsd = Number(process.env.SIGNAL_FEED_MIN_LIQUIDITY_USD || 0);
   const weightMap = getActiveSignalWeightMap();
 
   const seen = new Set();
   const picks = [];
   let excludedAnomalies = 0;
+  let excludedLowLiquidity = 0;
   for (const row of raw || []) {
     const pctProbe =
       row.result_pct != null ? Number(row.result_pct) : pctFromPrices(row.entry_price_usd, row.price_1h_usd);
@@ -742,6 +744,16 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       md = (await getMarketData(mint)) || {};
     } catch (_) {
       md = {};
+    }
+    const liqUsd = Number(md?.liquidity);
+    if (
+      minLiquidityUsd > 0 &&
+      Number.isFinite(liqUsd) &&
+      liqUsd > 0 &&
+      liqUsd < minLiquidityUsd
+    ) {
+      excludedLowLiquidity += 1;
+      continue;
     }
     const symbol = md.symbol || mint.slice(0, 4).toUpperCase();
     let wallets = [];
@@ -814,7 +826,9 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       providerUsed: sourceTable,
       signalQuality: {
         excludedAnomalies,
-        anomalyAbsThreshold: anomalyAbsPct > 0 ? anomalyAbsPct : null
+        excludedLowLiquidity,
+        anomalyAbsThreshold: anomalyAbsPct > 0 ? anomalyAbsPct : null,
+        minLiquidityUsd: minLiquidityUsd > 0 ? minLiquidityUsd : null
       }
     }
   };
@@ -1139,7 +1153,7 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
     recordFreshness("signalsLatest", out?.meta || {});
     return out;
   }
-  const key = `terminal:signals:latest:v4:${limit}:${strategy}`;
+  const key = `terminal:signals:latest:v5:${limit}:${strategy}`;
   let payload;
   let cache;
   try {

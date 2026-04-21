@@ -170,6 +170,24 @@ export function LiveTab({
         <p className="text-[10px] text-cyan-200/90 font-mono truncate">
           {sig._api?.timeAdvantage || `Earlier than ${Math.max(72, Math.min(96, sig.signalStrength))}% of traders`}
         </p>
+        {sig._api?.signalDecay ? (
+          <p className="text-[10px] text-gray-500 font-mono truncate" title="Server-side recency adjustment for the displayed score">
+            {sig._api.signalDecay}
+          </p>
+        ) : null}
+        {sig._api?.signalQuality &&
+        (sig._api.signalQuality.baseSentinelScore != null || sig._api.signalQuality.stack != null) ? (
+          <div className="rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1.5 space-y-0.5">
+            <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Signal quality</p>
+            <p className="text-[10px] text-gray-400 font-mono leading-relaxed">
+              base {sig._api.signalQuality.baseSentinelScore ?? "—"} → adj {sig.signalStrength}
+              {" · "}
+              perf×{sig._api.signalQuality.performanceWeight ?? "—"} rec×{sig._api.signalQuality.recencyWeight ?? "—"}
+              {" · "}
+              stack {sig._api.signalQuality.stack ?? "—"}
+            </p>
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap gap-1 pt-0.5 border-t border-white/[0.04] mt-1">
           {[0.5, 1, 5].map((size) => {

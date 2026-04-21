@@ -42,6 +42,8 @@ const {
 } = require("./state");
 const { isSmartWallet } = require("../services/convergenceService");
 const { sign: signScoreResult } = require("../lib/scoreSigner");
+const { getActiveSignalWeightMap } = require("../services/signalCalibrator");
+const { combinedPerformanceWeight, clampQualityStack } = require("../services/signalFeedQuality");
 
 const CONFIG = {
   whaleMinUsd: Number(process.env.RULE_WHALE_MIN_USD || 5_000),
@@ -268,12 +270,25 @@ async function evaluate(event, extraCtx = {}) {
     25,
     Math.round(Math.log10(1 + (assetStats.eventsInWindow || 0)) * 12)
   );
-  const confidence = computeConfidence({
+  let confidence = computeConfidence({
     rulesTriggered: fired.length,
     uniqueWallets: assetStats.uniqueWalletsInWindow,
     recentActivityBoost,
     contradictions: detectContradictions(fired)
   });
+
+  let perfWeightForMeta = null;
+  let confStackForMeta = null;
+  if (fired.length) {
+    const perfW = combinedPerformanceWeight(
+      fired.map((r) => r.signal),
+      getActiveSignalWeightMap()
+    );
+    const stack = clampQualityStack(perfW, 1);
+    perfWeightForMeta = Math.round(perfW * 10000) / 10000;
+    confStackForMeta = Math.round(stack * 10000) / 10000;
+    confidence = clamp(Math.round(confidence * stack), 0, 100);
+  }
 
   const result = {
     asset: event.data.asset,
@@ -295,7 +310,15 @@ async function evaluate(event, extraCtx = {}) {
       txLastMin: assetStats.txLastMin,
       baselinePerMin: Number(assetStats.baselinePerMin.toFixed(2)),
       liquidityProvided: ctx.liquidityUsd != null,
-      amountUsdProvided: ctx.amountUsd != null
+      amountUsdProvided: ctx.amountUsd != null,
+      ...(perfWeightForMeta != null
+        ? {
+            signalQuality: {
+              performanceWeight: perfWeightForMeta,
+              confidenceStack: confStackForMeta
+            }
+          }
+        : {})
     }
   };
 

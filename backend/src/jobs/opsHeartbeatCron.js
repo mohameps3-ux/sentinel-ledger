@@ -1,6 +1,7 @@
 "use strict";
 
 const { getDataFreshnessSnapshot } = require("../services/homeTerminalApi");
+const { getSignalPerformanceSummary } = require("../services/signalPerformance");
 
 const TICK_MS_RAW = Number(process.env.OPS_HEARTBEAT_TICK_MS || 24 * 60 * 60 * 1000);
 const TICK_MS = Number.isFinite(TICK_MS_RAW) && TICK_MS_RAW >= 60 * 60 * 1000 ? TICK_MS_RAW : 24 * 60 * 60 * 1000;
@@ -23,6 +24,10 @@ function getWebhookUrl() {
   return String(process.env.OPS_ALERT_WEBHOOK_URL || "").trim();
 }
 
+function signalPerfHeartbeatEnabled() {
+  return String(process.env.OPS_HEARTBEAT_SIGNAL_PERF || "true").toLowerCase() !== "false";
+}
+
 async function runOpsHeartbeatTick() {
   if (!isEnabled()) return;
   lastTickStartedAt = Date.now();
@@ -40,13 +45,34 @@ async function runOpsHeartbeatTick() {
     const topProvider = Object.entries(signals?.providerUsedBreakdown24h || {}).sort(
       (a, b) => Number(b[1] || 0) - Number(a[1] || 0)
     )[0];
+    let perfSuffix = "";
+    if (signalPerfHeartbeatEnabled()) {
+      try {
+        const perf = await getSignalPerformanceSummary({
+          lookbackHours: Math.min(168, Math.max(24, Number(process.env.OPS_HEARTBEAT_SIGNAL_PERF_LOOKBACK_H || 48)))
+        });
+        if (perf?.ok) {
+          const m = perf.metrics || {};
+          perfSuffix =
+            ` | perf.winRatePct=${Number(m.winRatePct || 0).toFixed(2)}` +
+            ` | perf.profitFactor=${Number(m.profitFactor || 0).toFixed(3)}` +
+            ` | perf.resolved=${Number(perf.resolvedRows || 0)}` +
+            ` | perf.pending=${Number(perf.pendingRows || 0)}`;
+        } else {
+          perfSuffix = ` | perf.err=${String(perf?.error || "unavailable")}`;
+        }
+      } catch (e) {
+        perfSuffix = ` | perf.err=${String(e?.message || e)}`;
+      }
+    }
     const msg =
       `[OPS_HEARTBEAT] ok ${new Date().toISOString()}` +
       ` | signals.realRatio24h=${Number(signals?.realRatio24h || 0).toFixed(3)}` +
       ` | signals.supabaseRate24h=${Number(signals?.supabaseSourceRate24h || 0).toFixed(3)}` +
       ` | signals.staticFallbackRate24h=${Number(signals?.staticFallbackRate24h || 0).toFixed(3)}` +
       ` | topFallback=${topFallback ? `${topFallback[0]}:${topFallback[1]}` : "n/a"}` +
-      ` | topProvider=${topProvider ? `${topProvider[0]}:${topProvider[1]}` : "n/a"}`;
+      ` | topProvider=${topProvider ? `${topProvider[0]}:${topProvider[1]}` : "n/a"}` +
+      perfSuffix;
     const payload = {
       content: msg,
       text: msg,
