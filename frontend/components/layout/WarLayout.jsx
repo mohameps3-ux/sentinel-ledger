@@ -21,8 +21,8 @@ export function WarLayout({ header, feed, desk }) {
       />
       <div className="shrink-0 border-b border-cyan-950/50 bg-[#050a10]/95 px-3 py-2 sm:px-4">{header}</div>
 
-      {/* Feed = main surface (flex), desk = fixed-width rail — avoids 40/60 where feed looked "half an app" */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(19rem,26rem)]">
+      {/* Feed = casi todo el ancho; desk = rail estrecho a la derecha */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(12.5rem,15rem)]">
         {/* Mobile / tablet: desk first so Intel + ?t= is visible without scrolling past the whole feed */}
         <div className="order-2 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border-slate-800/80 lg:order-1 lg:border-r">
           {feed}
