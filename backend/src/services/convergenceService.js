@@ -3,6 +3,7 @@ const { getSupabase } = require("../lib/supabase");
 
 const WINDOW_SEC = 10 * 60;
 const MIN_WALLETS = 3;
+const SIGNAL_INSERT_DEDUP_SEC = Math.max(20, Number(process.env.SMART_WALLET_SIGNAL_DEDUP_SEC || 120));
 
 function keyForMint(mint) {
   return `convergence:mint:${mint}`;
@@ -34,6 +35,58 @@ async function isSmartWallet(walletAddress) {
   }
 }
 
+function confidenceFromWalletRow(row) {
+  const smartScore = Number(row?.smart_score);
+  if (Number.isFinite(smartScore) && smartScore > 0) return Math.max(1, Math.min(100, Math.round(smartScore)));
+  const winRate = Number(row?.win_rate);
+  if (Number.isFinite(winRate) && winRate > 0) return Math.max(1, Math.min(100, Math.round(winRate)));
+  return 70;
+}
+
+async function reserveSignalInsert(mint, walletAddress, timestampMs) {
+  const atSec = Math.floor((Number(timestampMs) || Date.now()) / 1000);
+  const windowBucket = Math.floor(atSec / SIGNAL_INSERT_DEDUP_SEC);
+  const dedupeKey = `smart-signal:${mint}:${walletAddress}:${windowBucket}`;
+  try {
+    const setRes = await redis.set(dedupeKey, "1", { nx: true, ex: SIGNAL_INSERT_DEDUP_SEC + 30 });
+    return setRes != null;
+  } catch (_) {
+    // Fail-open: if cache is down we still try to persist signals.
+    return true;
+  }
+}
+
+async function recordSmartWalletSignal(mint, walletAddress, timestampMs, action = "buy") {
+  if (!mint || !walletAddress) return;
+  const shouldInsert = await reserveSignalInsert(mint, walletAddress, timestampMs);
+  if (!shouldInsert) return;
+  try {
+    const supabase = getSupabase();
+    const { data: walletRow } = await supabase
+      .from("smart_wallets")
+      .select("wallet_address, win_rate, smart_score")
+      .eq("wallet_address", walletAddress)
+      .maybeSingle();
+    const confidence = confidenceFromWalletRow(walletRow);
+    const createdAtIso = new Date(Number(timestampMs) || Date.now()).toISOString();
+    const { error } = await supabase.from("smart_wallet_signals").insert({
+      token_address: mint,
+      wallet_address: walletAddress,
+      last_action: action === "sell" ? "sell" : "buy",
+      confidence,
+      created_minute: new Date(Math.floor(Date.parse(createdAtIso) / 60_000) * 60_000).toISOString(),
+      created_at: createdAtIso
+    });
+    if (error) {
+      const msg = String(error.message || "");
+      if (msg.toLowerCase().includes("duplicate key")) return;
+      console.warn(`[convergence] smart_wallet_signals insert skipped: ${error.message}`);
+    }
+  } catch (e) {
+    console.warn(`[convergence] smart_wallet_signals insert failed: ${e?.message || e}`);
+  }
+}
+
 async function getConvergenceState(mint) {
   if (!mint) return { detected: false, wallets: [], threshold: MIN_WALLETS, windowMinutes: 10 };
   const key = keyForMint(mint);
@@ -57,10 +110,12 @@ async function getConvergenceState(mint) {
   }
 }
 
-async function trackSmartBuyAndDetect(mint, walletAddress, timestampMs) {
+async function trackSmartBuyAndDetect(mint, walletAddress, timestampMs, action = "buy") {
   if (!mint || !walletAddress) return null;
   const smart = await isSmartWallet(walletAddress);
   if (!smart) return null;
+  // Never block webhook ingestion on analytics persistence.
+  recordSmartWalletSignal(mint, walletAddress, timestampMs, action).catch(() => {});
 
   const key = keyForMint(mint);
   const score = Math.floor((Number(timestampMs) || Date.now()) / 1000);

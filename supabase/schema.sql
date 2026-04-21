@@ -77,6 +77,7 @@ create table if not exists smart_wallet_signals (
   wallet_address varchar(100) not null,
   last_action varchar(20) not null default 'buy',
   confidence int not null default 0,
+  created_minute timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -124,18 +125,35 @@ create table if not exists signal_performance (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists market_snapshots (
+  mint varchar(100) primary key,
+  symbol varchar(32) not null default '?',
+  name varchar(120) not null default '',
+  price numeric(24,10) not null default 0,
+  liquidity numeric(24,4) not null default 0,
+  volume24h numeric(24,4) not null default 0,
+  price_change24h numeric(10,4) not null default 0,
+  market_cap numeric(24,4),
+  source varchar(40) not null default 'market_data',
+  provider_used varchar(40),
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists idx_users_wallet on users(wallet_address);
 create index if not exists idx_tokens_address on tokens_analyzed(token_address);
 create index if not exists idx_watchlists_user on watchlists(user_id);
 create index if not exists idx_alerts_user on alerts(user_id);
 create index if not exists idx_smart_wallet_signals_token on smart_wallet_signals(token_address);
 create index if not exists idx_smart_wallet_signals_wallet on smart_wallet_signals(wallet_address);
+create unique index if not exists ux_smart_wallet_signals_wallet_token_action_minute
+on smart_wallet_signals (wallet_address, token_address, last_action, created_minute);
 create index if not exists idx_support_tickets_created_at on support_tickets(created_at desc);
 create index if not exists idx_support_tickets_status on support_tickets(status);
 create index if not exists idx_bot_events_created_at on bot_events(created_at desc);
 create index if not exists idx_signal_perf_asset_emitted on signal_performance(asset, emitted_at desc);
 create index if not exists idx_signal_perf_status_resolve_after on signal_performance(status, resolve_after asc);
 create index if not exists idx_signal_perf_resolved_at on signal_performance(resolved_at desc);
+create index if not exists idx_market_snapshots_updated_at on market_snapshots(updated_at desc);
 
 -- ---------------------------------------------------------------------------
 -- Stripe, PRO Telegram alerts, worker tables (idempotent). Same SQL as

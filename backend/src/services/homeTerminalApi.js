@@ -16,6 +16,24 @@ const SIGNALS_STATIC_FALLBACK_ALERT_COOLDOWN_MS = Math.max(
   5_000,
   Math.floor(Number(process.env.SIGNALS_LATEST_STATIC_ALERT_COOLDOWN_MS || 300_000))
 );
+const SIGNALS_SUPABASE_SLO_ALERT_ENABLED =
+  String(process.env.SIGNALS_SUPABASE_SLO_ALERT_ENABLED || "true").toLowerCase() !== "false";
+const SIGNALS_SUPABASE_SLO_ALERT_AFTER_MS = Math.max(
+  60_000,
+  Math.floor(Number(process.env.SIGNALS_SUPABASE_SLO_ALERT_AFTER_MINUTES || 20) * 60_000)
+);
+const SIGNALS_SUPABASE_SLO_ALERT_COOLDOWN_MS = Math.max(
+  5_000,
+  Math.floor(Number(process.env.SIGNALS_SUPABASE_SLO_ALERT_COOLDOWN_MS || 300_000))
+);
+const SIGNALS_SUPABASE_SLO_ALERT_MIN_REQUESTS_24H = Math.max(
+  1,
+  Math.floor(Number(process.env.SIGNALS_SUPABASE_SLO_ALERT_MIN_REQUESTS_24H || 25))
+);
+const SIGNALS_SUPABASE_SLO_EVAL_MS = Math.max(
+  5_000,
+  Math.floor(Number(process.env.SIGNALS_SUPABASE_SLO_EVAL_MS || 30_000))
+);
 const OPS_ALERT_WEBHOOK_URL = String(process.env.OPS_ALERT_WEBHOOK_URL || "").trim();
 const STATIC_SIGNAL_FALLBACK = [
   { token: "$BONK", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", score: 88 },
@@ -39,7 +57,23 @@ const latestSignalsFallbackState = {
   alertsSent: 0,
   lastIncidentDurationMs: null
 };
+const signalsSupabaseSloState = {
+  activeSinceMs: null,
+  lastAlertAtMs: null,
+  alertsSent: 0,
+  lastRecoveryAtMs: null,
+  lastIncidentDurationMs: null,
+  lastRate: null,
+  lastRequests24h: 0,
+  lastTopFallbackReason: null,
+  lastTopProviderUsed: null
+};
+let signalsSupabaseSloIntervalRef = null;
 const FRESHNESS_WINDOW_MS = 24 * 60 * 60 * 1000;
+const SIGNALS_SUPABASE_SLO_TARGET = Math.min(
+  1,
+  Math.max(0, Number(process.env.SIGNALS_LATEST_SUPABASE_SLO_TARGET || 0.8))
+);
 const freshnessState = {
   signalsLatest: [],
   tokensHot: []
@@ -126,30 +160,60 @@ function recordFreshness(endpoint, meta = {}) {
   target.push({
     at: now,
     source: String(meta?.source || "unknown"),
-    realDataRatio: Number(meta?.realDataRatio || 0)
+    realDataRatio: Number(meta?.realDataRatio || 0),
+    fallbackReason: meta?.fallbackReason ? String(meta.fallbackReason) : null,
+    providerUsed: meta?.providerUsed ? String(meta.providerUsed) : null
   });
   trimFreshnessWindow(target, now);
 }
 
-function summarizeFreshness(events) {
+function summarizeFreshness(events, endpoint) {
   const total = events.length;
   if (!total) {
     return {
       requests24h: 0,
       realRatio24h: 0,
-      staticFallbackRate24h: 0
+      staticFallbackRate24h: 0,
+      sourceBreakdown24h: {},
+      fallbackReasonBreakdown24h: {},
+      providerUsedBreakdown24h: {},
+      supabaseSourceRate24h: 0,
+      slo: endpoint === "signalsLatest" ? { targetSupabaseRate: SIGNALS_SUPABASE_SLO_TARGET, met: false } : null
     };
   }
   let realSum = 0;
   let staticCount = 0;
+  let supabaseCount = 0;
+  const sourceCounts = new Map();
+  const fallbackCounts = new Map();
+  const providerCounts = new Map();
   for (const ev of events) {
     realSum += Number(ev.realDataRatio || 0);
     if (ev.source === "static_fallback" || ev.source === "static_hot_fallback") staticCount += 1;
+    if (ev.source === "supabase") supabaseCount += 1;
+    sourceCounts.set(ev.source, (sourceCounts.get(ev.source) || 0) + 1);
+    if (ev.fallbackReason) fallbackCounts.set(ev.fallbackReason, (fallbackCounts.get(ev.fallbackReason) || 0) + 1);
+    if (ev.providerUsed) providerCounts.set(ev.providerUsed, (providerCounts.get(ev.providerUsed) || 0) + 1);
   }
+  const sourceBreakdown24h = Object.fromEntries([...sourceCounts.entries()].sort((a, b) => b[1] - a[1]));
+  const fallbackReasonBreakdown24h = Object.fromEntries([...fallbackCounts.entries()].sort((a, b) => b[1] - a[1]));
+  const providerUsedBreakdown24h = Object.fromEntries([...providerCounts.entries()].sort((a, b) => b[1] - a[1]));
+  const supabaseSourceRate24h = Number((supabaseCount / total).toFixed(4));
   return {
     requests24h: total,
     realRatio24h: Number((realSum / total).toFixed(4)),
-    staticFallbackRate24h: Number((staticCount / total).toFixed(4))
+    staticFallbackRate24h: Number((staticCount / total).toFixed(4)),
+    sourceBreakdown24h,
+    fallbackReasonBreakdown24h,
+    providerUsedBreakdown24h,
+    supabaseSourceRate24h,
+    slo:
+      endpoint === "signalsLatest"
+        ? {
+            targetSupabaseRate: SIGNALS_SUPABASE_SLO_TARGET,
+            met: supabaseSourceRate24h >= SIGNALS_SUPABASE_SLO_TARGET
+          }
+        : null
   };
 }
 
@@ -159,8 +223,8 @@ function getDataFreshnessSnapshot() {
   trimFreshnessWindow(freshnessState.tokensHot, now);
   return {
     generatedAt: now,
-    signalsLatest: summarizeFreshness(freshnessState.signalsLatest),
-    tokensHot: summarizeFreshness(freshnessState.tokensHot)
+    signalsLatest: summarizeFreshness(freshnessState.signalsLatest, "signalsLatest"),
+    tokensHot: summarizeFreshness(freshnessState.tokensHot, "tokensHot")
   };
 }
 
@@ -276,6 +340,13 @@ function buildStaticFallbackCards(limit, strategy, contextMessage) {
   });
 }
 
+function topBreakdownEntry(obj = {}) {
+  const entries = Object.entries(obj || {});
+  if (!entries.length) return null;
+  entries.sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0));
+  return entries[0];
+}
+
 async function sendStaticFallbackOpsAlert(durationMs, count) {
   if (!OPS_ALERT_WEBHOOK_URL) return;
   const mins = Math.max(0, Math.round(durationMs / 60000));
@@ -304,6 +375,146 @@ async function sendStaticFallbackOpsAlert(durationMs, count) {
     });
   } catch (_) {
     // Silent by design: fallback observability must never impact API response path.
+  }
+}
+
+async function sendSupabaseSloOpsAlert(summary, durationMs) {
+  if (!OPS_ALERT_WEBHOOK_URL) return;
+  const mins = Math.max(0, Math.round(durationMs / 60000));
+  const rate = Number(summary?.supabaseSourceRate24h || 0);
+  const target = Number(summary?.slo?.targetSupabaseRate || SIGNALS_SUPABASE_SLO_TARGET);
+  const requests = Number(summary?.requests24h || 0);
+  const topFallback = topBreakdownEntry(summary?.fallbackReasonBreakdown24h || {});
+  const topProvider = topBreakdownEntry(summary?.providerUsedBreakdown24h || {});
+  const msg =
+    `[OPS_ALERT] ⚠️ SIGNALS_SUPABASE_SLO_BREACH` +
+    ` | Duration: ${mins}m` +
+    ` | supabaseRate24h=${rate.toFixed(4)}` +
+    ` | target=${target.toFixed(4)}` +
+    ` | requests24h=${requests}` +
+    ` | topFallback=${topFallback ? `${topFallback[0]}:${topFallback[1]}` : "n/a"}` +
+    ` | topProvider=${topProvider ? `${topProvider[0]}:${topProvider[1]}` : "n/a"}`;
+  const payload = {
+    text: msg,
+    content: msg,
+    username: "Sentinel Ops Guard",
+    embeds: [
+      {
+        title: "SIGNALS_SUPABASE_SLO_BREACH",
+        description: msg,
+        color: 15105570
+      }
+    ]
+  };
+  try {
+    await fetch(OPS_ALERT_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (_) {
+    // Silent by design: alert transport must not affect API path.
+  }
+}
+
+function trackSignalsSupabaseSlo(summary = {}) {
+  if (!SIGNALS_SUPABASE_SLO_ALERT_ENABLED) return;
+  const now = Date.now();
+  const requests24h = Number(summary?.requests24h || 0);
+  const rate = Number(summary?.supabaseSourceRate24h || 0);
+  const target = Number(summary?.slo?.targetSupabaseRate || SIGNALS_SUPABASE_SLO_TARGET);
+  const topFallback = topBreakdownEntry(summary?.fallbackReasonBreakdown24h || {});
+  const topProvider = topBreakdownEntry(summary?.providerUsedBreakdown24h || {});
+  signalsSupabaseSloState.lastRate = Number.isFinite(rate) ? rate : 0;
+  signalsSupabaseSloState.lastRequests24h = requests24h;
+  signalsSupabaseSloState.lastTopFallbackReason = topFallback ? `${topFallback[0]}:${topFallback[1]}` : null;
+  signalsSupabaseSloState.lastTopProviderUsed = topProvider ? `${topProvider[0]}:${topProvider[1]}` : null;
+
+  const enoughVolume = requests24h >= SIGNALS_SUPABASE_SLO_ALERT_MIN_REQUESTS_24H;
+  const breach = enoughVolume && rate < target;
+  if (breach) {
+    if (!signalsSupabaseSloState.activeSinceMs) {
+      signalsSupabaseSloState.activeSinceMs = now;
+      console.warn(
+        `[OPS_ALERT] signals/latest supabase SLO breach started rate=${rate.toFixed(4)} target=${target.toFixed(4)}`
+      );
+      return;
+    }
+    const durationMs = now - signalsSupabaseSloState.activeSinceMs;
+    const cooldownOk =
+      !signalsSupabaseSloState.lastAlertAtMs ||
+      now - signalsSupabaseSloState.lastAlertAtMs >= SIGNALS_SUPABASE_SLO_ALERT_COOLDOWN_MS;
+    if (durationMs >= SIGNALS_SUPABASE_SLO_ALERT_AFTER_MS && cooldownOk) {
+      signalsSupabaseSloState.lastAlertAtMs = now;
+      signalsSupabaseSloState.alertsSent += 1;
+      sendSupabaseSloOpsAlert(summary, durationMs);
+    }
+    return;
+  }
+
+  if (signalsSupabaseSloState.activeSinceMs) {
+    signalsSupabaseSloState.lastIncidentDurationMs = now - signalsSupabaseSloState.activeSinceMs;
+    signalsSupabaseSloState.lastRecoveryAtMs = now;
+    signalsSupabaseSloState.activeSinceMs = null;
+    console.warn(
+      `[OPS_ALERT] signals/latest supabase SLO recovered after ${Math.round(
+        signalsSupabaseSloState.lastIncidentDurationMs / 1000
+      )}s`
+    );
+  }
+}
+
+function getSignalsSupabaseSloOpsSnapshot() {
+  const now = Date.now();
+  const activeForMs = signalsSupabaseSloState.activeSinceMs ? now - signalsSupabaseSloState.activeSinceMs : 0;
+  return {
+    status: signalsSupabaseSloState.activeSinceMs ? "slo_breach_active" : "healthy",
+    enabled: SIGNALS_SUPABASE_SLO_ALERT_ENABLED,
+    config: {
+      targetSupabaseRate: SIGNALS_SUPABASE_SLO_TARGET,
+      alertAfterMs: SIGNALS_SUPABASE_SLO_ALERT_AFTER_MS,
+      alertCooldownMs: SIGNALS_SUPABASE_SLO_ALERT_COOLDOWN_MS,
+      minRequests24h: SIGNALS_SUPABASE_SLO_ALERT_MIN_REQUESTS_24H
+    },
+    latest: {
+      supabaseRate24h: signalsSupabaseSloState.lastRate,
+      requests24h: signalsSupabaseSloState.lastRequests24h,
+      topFallbackReason: signalsSupabaseSloState.lastTopFallbackReason,
+      topProviderUsed: signalsSupabaseSloState.lastTopProviderUsed
+    },
+    breach: {
+      active: Boolean(signalsSupabaseSloState.activeSinceMs),
+      activeSince: signalsSupabaseSloState.activeSinceMs
+        ? new Date(signalsSupabaseSloState.activeSinceMs).toISOString()
+        : null,
+      activeForMs,
+      lastRecoveryAt: signalsSupabaseSloState.lastRecoveryAtMs
+        ? new Date(signalsSupabaseSloState.lastRecoveryAtMs).toISOString()
+        : null,
+      lastIncidentDurationMs: signalsSupabaseSloState.lastIncidentDurationMs,
+      alertsSent: signalsSupabaseSloState.alertsSent,
+      lastAlertAt: signalsSupabaseSloState.lastAlertAtMs
+        ? new Date(signalsSupabaseSloState.lastAlertAtMs).toISOString()
+        : null
+    }
+  };
+}
+
+function runSignalsSupabaseSloEvaluation() {
+  const now = Date.now();
+  trimFreshnessWindow(freshnessState.signalsLatest, now);
+  const summary = summarizeFreshness(freshnessState.signalsLatest, "signalsLatest");
+  trackSignalsSupabaseSlo(summary);
+}
+
+function startSignalsSupabaseSloEvaluationLoop() {
+  if (signalsSupabaseSloIntervalRef) return;
+  runSignalsSupabaseSloEvaluation();
+  signalsSupabaseSloIntervalRef = setInterval(() => {
+    runSignalsSupabaseSloEvaluation();
+  }, SIGNALS_SUPABASE_SLO_EVAL_MS);
+  if (signalsSupabaseSloIntervalRef && typeof signalsSupabaseSloIntervalRef.unref === "function") {
+    signalsSupabaseSloIntervalRef.unref();
   }
 }
 
@@ -438,18 +649,54 @@ function avgWalletSentinel(wallets) {
 /**
  * Latest signals → one card per token (most recent signal per mint).
  */
-async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanced" } = {}) {
-  const lim = Math.min(50, Math.max(1, Number(limit) || 10));
-  const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
-  const { data: raw, error } = await supabase
+async function fetchLatestSignalRowsSupabase(supabase, since, limitRows) {
+  const { data: rawSignals, error: signalsError } = await supabase
     .from("smart_wallet_signals")
     .select(
       "id, token_address, wallet_address, confidence, created_at, entry_price_usd, price_1h_usd, price_4h_usd, result_pct"
     )
     .gte("created_at", since)
     .order("created_at", { ascending: false })
-    .limit(400);
-  if (error) throw error;
+    .limit(limitRows);
+  if (signalsError) throw signalsError;
+  if ((rawSignals || []).length > 0) {
+    return {
+      rows: rawSignals || [],
+      sourceTable: "smart_wallet_signals"
+    };
+  }
+
+  const { data: perfRows, error: perfError } = await supabase
+    .from("signal_performance")
+    .select("id, asset, emitted_at, confidence, entry_price_usd, outcome_pct")
+    .gte("emitted_at", since)
+    .order("emitted_at", { ascending: false })
+    .limit(limitRows);
+  if (perfError) throw perfError;
+
+  const synthetic = (perfRows || [])
+    .filter((row) => row?.asset)
+    .map((row) => ({
+      id: row.id,
+      token_address: row.asset,
+      wallet_address: `perf:${String(row.id || "").slice(0, 8) || "seed"}`,
+      confidence: Number(row.confidence || 0),
+      created_at: row.emitted_at || new Date().toISOString(),
+      entry_price_usd: row.entry_price_usd,
+      price_1h_usd: null,
+      price_4h_usd: null,
+      result_pct: row.outcome_pct
+    }));
+  return {
+    rows: synthetic,
+    sourceTable: "signal_performance"
+  };
+}
+
+async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanced" } = {}) {
+  const lim = Math.min(50, Math.max(1, Number(limit) || 10));
+  const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+  const { rows: raw, sourceTable } = await fetchLatestSignalRowsSupabase(supabase, since, 400);
 
   const seen = new Set();
   const picks = [];
@@ -523,7 +770,16 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
     });
   }
 
-  return { ok: true, data: out, meta: { source: "supabase", count: out.length, strategy } };
+  return {
+    ok: true,
+    data: out,
+    meta: {
+      source: "supabase",
+      count: out.length,
+      strategy,
+      providerUsed: sourceTable
+    }
+  };
 }
 
 function buildSignalCardFromHotToken(row, strategy) {
@@ -918,6 +1174,8 @@ async function getHotTokensCached(limit, supabase) {
   return out;
 }
 
+startSignalsSupabaseSloEvaluationLoop();
+
 module.exports = {
   CACHE_TTL_SEC,
   buildLatestSignalsFeed,
@@ -929,6 +1187,7 @@ module.exports = {
   getSmartWalletsTopCached,
   getHotTokensCached,
   getLatestSignalsFallbackOpsSnapshot,
+  getSignalsSupabaseSloOpsSnapshot,
   getDataFreshnessSnapshot,
   jupiterSwapUrl,
   decisionFromScore

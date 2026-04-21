@@ -4,8 +4,20 @@ const express = require("express");
 const { getEntropyGuardOpsSnapshot } = require("../ingestion/entropyGuard");
 const { getSignalPerformanceSummary } = require("../services/signalPerformance");
 const { runCalibrationOnce, getCalibrationSnapshot } = require("../services/signalCalibrator");
-const { getLatestSignalsFallbackOpsSnapshot, getDataFreshnessSnapshot } = require("../services/homeTerminalApi");
+const {
+  getLatestSignalsFallbackOpsSnapshot,
+  getSignalsSupabaseSloOpsSnapshot,
+  getDataFreshnessSnapshot
+} = require("../services/homeTerminalApi");
 const { getOpsHeartbeatCronStatus, runOpsHeartbeatTick } = require("../jobs/opsHeartbeatCron");
+const {
+  getMarketSnapshotWarmupStatus,
+  runMarketSnapshotWarmupTick
+} = require("../jobs/marketSnapshotWarmupCron");
+const {
+  getSmartWalletSignalBackfillStatus,
+  runSmartWalletSignalBackfillTick
+} = require("../jobs/smartWalletSignalBackfillCron");
 
 const router = express.Router();
 
@@ -29,6 +41,10 @@ router.get("/signals-latest-fallback/snapshot", assertOpsAuth, (_req, res) => {
   return res.json(getLatestSignalsFallbackOpsSnapshot());
 });
 
+router.get("/signals-supabase-slo/snapshot", assertOpsAuth, (_req, res) => {
+  return res.json(getSignalsSupabaseSloOpsSnapshot());
+});
+
 router.get("/data-freshness", assertOpsAuth, (_req, res) => {
   return res.json({ ok: true, data: getDataFreshnessSnapshot() });
 });
@@ -40,6 +56,24 @@ router.get("/heartbeat/status", assertOpsAuth, (_req, res) => {
 router.post("/heartbeat/run", assertOpsAuth, async (_req, res) => {
   await runOpsHeartbeatTick();
   return res.json({ ok: true, data: getOpsHeartbeatCronStatus() });
+});
+
+router.get("/market-snapshot-warmup/status", assertOpsAuth, (_req, res) => {
+  return res.json({ ok: true, data: getMarketSnapshotWarmupStatus() });
+});
+
+router.post("/market-snapshot-warmup/run", assertOpsAuth, async (_req, res) => {
+  await runMarketSnapshotWarmupTick();
+  return res.json({ ok: true, data: getMarketSnapshotWarmupStatus() });
+});
+
+router.get("/smart-signal-backfill/status", assertOpsAuth, (_req, res) => {
+  return res.json({ ok: true, data: getSmartWalletSignalBackfillStatus() });
+});
+
+router.post("/smart-signal-backfill/run", assertOpsAuth, async (_req, res) => {
+  await runSmartWalletSignalBackfillTick();
+  return res.json({ ok: true, data: getSmartWalletSignalBackfillStatus() });
 });
 
 router.get("/signal-performance/summary", assertOpsAuth, async (req, res) => {

@@ -2,6 +2,7 @@ const axios = require("axios");
 const redis = require("../lib/cache");
 const { detectNarrativeTags } = require("./narrativeTags");
 const { createCircuitBreaker } = require("../lib/circuitBreaker");
+const { getRecentMarketSnapshot, upsertMarketSnapshot } = require("./marketSnapshots");
 
 const CACHE_TTL_SECONDS = 20;
 const COINGECKO_SIMPLE_PRICE = "https://api.coingecko.com/api/v3/simple/price";
@@ -487,7 +488,34 @@ async function getMarketDataUncached(address) {
     }
   }
 
-  if (!marketData) return null;
+  if (!marketData) {
+    const snap = await getRecentMarketSnapshot(address);
+    if (!snap) return null;
+    return {
+      price: snap.price,
+      priceChange24h: snap.priceChange24h,
+      volume24h: snap.volume24h,
+      marketCap: snap.marketCap,
+      liquidity: snap.liquidity,
+      symbol: snap.symbol,
+      name: snap.name,
+      deployerAddress: null,
+      lpLocked: null,
+      lpLockDuration: 0,
+      lpLockDetail: null,
+      dexPairs: [],
+      socials: { websites: [], twitter: null, telegram: null, discord: null },
+      dexLabels: [],
+      honeypotHint: "unknown",
+      verifiedListingHint: false,
+      pairUrl: null,
+      narrativeTags: detectNarrativeTags({ name: snap.name, symbol: snap.symbol }),
+      _source: "snapshot",
+      _provider: snap.providerUsed || "snapshot_db",
+      _attempts: Math.max(1, attempts),
+      _circuitState: circuitState || "UNKNOWN"
+    };
+  }
 
   // Native mints may have market cap data at token-level providers, not in pair fdv.
   if (!marketData.marketCap) {
@@ -496,6 +524,11 @@ async function getMarketDataUncached(address) {
   }
 
   await cacheSetJson(cacheKey, CACHE_TTL_SECONDS, marketData);
+  // Best-effort persistence for stale-safe reads when upstream degrades.
+  upsertMarketSnapshot(address, marketData, {
+    source: "market_data",
+    providerUsed: providerUsed || "unknown"
+  }).catch(() => {});
   return {
     ...marketData,
     _source: "api",

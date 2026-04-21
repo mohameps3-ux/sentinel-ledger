@@ -298,7 +298,7 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
             .catch(() => {});
         }
         if (tx.type === "buy" || tx.type === "swap") {
-          const conv = await trackSmartBuyAndDetect(tx.tokenAddress, tx.wallet, tx.timestamp);
+          const conv = await trackSmartBuyAndDetect(tx.tokenAddress, tx.wallet, tx.timestamp, tx.type);
           if (conv?.detected) {
             global.io.to(tx.tokenAddress).emit("convergence", {
               tokenAddress: tx.tokenAddress,

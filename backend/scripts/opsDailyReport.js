@@ -73,14 +73,15 @@ function printLine(line = "") {
 
 async function main() {
   try {
-    const [health, sync, guard, perf, calib] = await Promise.all([
+    const [health, sync, guard, perf, calib, freshness] = await Promise.all([
       getJson("/health"),
       getJson("/health/sync"),
       getJson("/api/v1/ops/entropy-guard/snapshot", { withOpsKey: true }),
       getJson("/api/v1/ops/signal-performance/summary?lookbackHours=48&maxRows=2000", {
         withOpsKey: true
       }),
-      getJson("/api/v1/ops/signal-performance/calibration", { withOpsKey: true })
+      getJson("/api/v1/ops/signal-performance/calibration", { withOpsKey: true }),
+      getJson("/api/v1/ops/data-freshness", { withOpsKey: true })
     ]);
 
     const healthOk = Boolean(health?.ok);
@@ -99,6 +100,13 @@ async function main() {
 
     const calibData = calib?.data || {};
     const topProposal = pickTopProposal(calibData);
+    const freshnessSignals = freshness?.data?.signalsLatest || {};
+    const topFallbackReason = Object.entries(freshnessSignals?.fallbackReasonBreakdown24h || {}).sort(
+      (a, b) => Number(b[1] || 0) - Number(a[1] || 0)
+    )[0];
+    const topProviderUsed = Object.entries(freshnessSignals?.providerUsedBreakdown24h || {}).sort(
+      (a, b) => Number(b[1] || 0) - Number(a[1] || 0)
+    )[0];
 
     const status = deriveStatus({
       healthOk,
@@ -134,6 +142,22 @@ async function main() {
       `- top proposal: ${
         topProposal ? `${topProposal.signal}:${topProposal.suggestedWeight} (eligible=${String(topProposal.eligible)})` : "n/a"
       }`
+    );
+    printLine("");
+    printLine("Freshness 24h:");
+    printLine(`- signals realRatio24h: ${fmt(freshnessSignals?.realRatio24h, 4)}`);
+    printLine(`- signals supabaseSourceRate24h: ${fmt(freshnessSignals?.supabaseSourceRate24h, 4)}`);
+    printLine(`- signals staticFallbackRate24h: ${fmt(freshnessSignals?.staticFallbackRate24h, 4)}`);
+    printLine(
+      `- SLO (supabase>=${fmt(freshnessSignals?.slo?.targetSupabaseRate, 2)}): ${
+        freshnessSignals?.slo?.met ? "PASS" : "FAIL"
+      }`
+    );
+    printLine(
+      `- top fallbackReason: ${topFallbackReason ? `${topFallbackReason[0]} (${topFallbackReason[1]})` : "n/a"}`
+    );
+    printLine(
+      `- top providerUsed: ${topProviderUsed ? `${topProviderUsed[0]} (${topProviderUsed[1]})` : "n/a"}`
     );
     printLine("");
     printLine("Decision:");
