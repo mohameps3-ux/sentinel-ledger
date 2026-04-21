@@ -12,3 +12,4 @@ pnpm-debug.log*
 # Supabase CLI local link state (do not commit)
 supabase/.temp/
 
+.vercel
