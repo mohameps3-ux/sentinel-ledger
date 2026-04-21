@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "jsx": "react-jsx",
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -12,6 +15,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "include": ["pages", "components", "hooks", "lib"],
+  "include": ["pages", "components", "hooks", "lib", "src"],
   "exclude": ["node_modules", ".next"]
 }
