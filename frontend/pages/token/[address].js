@@ -173,7 +173,34 @@ export default function TokenPage() {
     );
   }
 
-  if (!token.market || !token.analysis) return <TokenSkeleton />;
+  if (!token.market || !token.analysis) {
+    return (
+      <>
+        <PageHead
+          title={`${shortMint(address)} — Sentinel Ledger`}
+          description="Token intelligence for this Solana mint on Sentinel Ledger."
+        />
+        <div className="max-w-xl mx-auto px-4 py-20">
+          <div className="glass-card p-8 text-center space-y-4">
+            <h2 className="text-xl font-semibold text-amber-200">Incomplete response</h2>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              The server returned a payload without market or analysis fields — you would otherwise see an endless
+              loading state here. Retry, or confirm this mint has a live pair on supported venues (DexScreener path).
+            </p>
+            <button
+              type="button"
+              onClick={() => query.refetch()}
+              disabled={query.isFetching}
+              className="px-4 py-2.5 rounded-xl border border-white/15 bg-white/[0.06] text-sm text-gray-100 hover:bg-white/10 disabled:opacity-50"
+            >
+              {query.isFetching ? "Retrying…" : "Retry"}
+            </button>
+            <p className="text-[11px] text-gray-600 font-mono break-all">{address}</p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const { market, analysis, private: privateData } = token;
   const convergence = liveConvergence?.detected ? liveConvergence : token?.convergence;

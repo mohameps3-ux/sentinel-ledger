@@ -31,6 +31,14 @@ import { useWalletLabels } from "../hooks/useWalletLabels";
 import { NluCommandBar } from "../components/home/NluCommandBar";
 import { LiveCardOverlay } from "../components/home/LiveCardOverlay";
 import { WatchedCardShell } from "../components/home/WatchedCardShell";
+import { GlobalWayfinding } from "../components/layout/GlobalWayfinding";
+import { WarLayout } from "../components/layout/WarLayout";
+import { TokenDesk } from "../components/cockpit/TokenDesk";
+import { TacticalTabs } from "../components/cockpit/TacticalTabs";
+import { buildJupiterSwapUrl } from "../lib/jupiterSwap";
+import { isProbableSolanaMint } from "../lib/solanaMint";
+
+const TACTICAL_TAB_LS_KEY = "sentinel.cockpit.tacticalTab";
 
 const FALLBACK_TRENDING = [
   {
@@ -165,6 +173,47 @@ function computeSignalStrength(token) {
   return Math.max(35, Math.round(base));
 }
 
+function signalFromToken(token, idx = 0) {
+  const mint = token?.mint && isProbableSolanaMint(token.mint) ? token.mint : null;
+  const signalStrength = computeSignalStrength(token);
+  const smartWallets = Math.max(2, Math.min(9, Math.round(signalStrength / 15)));
+  const context =
+    idx % 2 === 0
+      ? `Last similar signal -> +${Math.max(18, Math.round(signalStrength * 0.75))}% in 3h`
+      : `Wallet hit rate: ${Math.max(4, Math.round(signalStrength / 20))}/6 last trades`;
+  return {
+    symbol: token.symbol || "TOKEN",
+    mint,
+    token,
+    signalStrength,
+    smartWallets,
+    context,
+    clusterScore: Math.min(99, Math.max(45, signalStrength - 6)),
+    momentum: token.volume24h || 0
+  };
+}
+
+function tokenFromSignal(sig, idx = 0) {
+  const source = sig?.token || {};
+  const rawMint = source.mint || sig?.mint;
+  const mint = rawMint && isProbableSolanaMint(rawMint) ? rawMint : null;
+  const signalStrength = Number(sig?.signalStrength || computeSignalStrength(source));
+  const change = Number(source?.change ?? Math.round((signalStrength - 60) / 6));
+  const grade = signalStrength >= 90 ? "A+" : signalStrength >= 80 ? "A" : signalStrength >= 68 ? "B" : "C";
+  return {
+    symbol: source.symbol || sig?.symbol || `TOKEN${idx + 1}`,
+    mint,
+    grade,
+    price: Number(source.price || 0),
+    change,
+    volume24h: Number(source.volume24h || Math.max(250000, signalStrength * 12500)),
+    flowLabel: source.flowLabel || (change >= 0 ? "Buy pressure" : "Mixed flow"),
+    liquidity: Number(source.liquidity || Math.max(80000, signalStrength * 1800)),
+    alphaSpeedMins: Number(source.alphaSpeedMins || Math.max(3, 18 - Math.round(signalStrength / 8))),
+    whyTrade: Array.isArray(source.whyTrade) ? source.whyTrade : []
+  };
+}
+
 function heatClass(score) {
   if (score >= 90) return "from-red-500 to-orange-500";
   if (score >= 70) return "from-amber-500 to-orange-400";
@@ -284,12 +333,6 @@ function entryWindowFromCountdown(sec) {
   return { label: "CLOSED", detail: "window consumed", tone: "text-red-300" };
 }
 
-function buildJupiterSwapUrl(mint, amountSol) {
-  if (!mint) return "#";
-  const amountLamports = Math.round(Number(amountSol || 0) * 1_000_000_000);
-  return `https://jup.ag/swap/SOL-${mint}?amount=${amountLamports}`;
-}
-
 function redFlagsForSignal(sig) {
   const api = sig?._api;
   if (Array.isArray(api?.redFlags) && api.redFlags.length) return api.redFlags;
@@ -377,6 +420,21 @@ function RankBadge({ rank }) {
  * - isNew      → first time we see this item after mount (violet NEW)
  * - everything else → null, so settled rows stay visually quiet.
  */
+/** Mint selected in cockpit desk via `?t=` (shallow routing on `/`). */
+function deskMintFromQuery(query) {
+  const raw = query?.t;
+  const s = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof s !== "string") return null;
+  const t = s.trim();
+  return isProbableSolanaMint(t) ? t : null;
+}
+
+function cockpitCardClickTargetIsInteractive(e) {
+  const el = e?.target;
+  if (!el || typeof el.closest !== "function") return true;
+  return Boolean(el.closest("a, button"));
+}
+
 function RankDeltaChip({ delta, isNew }) {
   if (isNew) {
     return (
@@ -436,7 +494,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const [visibleTrending, setVisibleTrending] = useState(
     Array.isArray(initialTrending) && initialTrending.length ? initialTrending : []
   );
-  const [feedMode, setFeedMode] = useState("live");
+  const [tacticalTab, setTacticalTab] = useState("live");
   const [historyRows, setHistoryRows] = useState([]);
   const [outcomesSummary, setOutcomesSummary] = useState(null);
   const [bestRecentFromApi, setBestRecentFromApi] = useState(null);
@@ -447,11 +505,18 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const [clusterScanCount, setClusterScanCount] = useState(11);
   const [wsBump, setWsBump] = useState(0);
   const [entryCountdownByMint, setEntryCountdownByMint] = useState({});
+  const [liveExpanded, setLiveExpanded] = useState(false);
+  const [heatExpanded, setHeatExpanded] = useState(false);
   const debounceTimerRef = useRef(null);
+  const skipTacticalTabPersistRef = useRef(true);
   const onWsSignal = useCallback(() => setWsBump((n) => n + 1), []);
   useLiveFeedSocket({ onSignal: onWsSignal });
   const router = useRouter();
-  const trendingQuery = useTrendingTokens(initialTrending, initialTrendingMeta);
+  const selectedMint = useMemo(() => deskMintFromQuery(router.query), [router.query]);
+  const trendingQuery = useTrendingTokens(initialTrending, initialTrendingMeta, "", {
+    limit: heatExpanded ? 48 : 24,
+    refetchMs: 25_000
+  });
   const trending = trendingQuery.data?.data || (trendingQuery.isError ? FALLBACK_TRENDING : []);
   const trendingMeta = trendingQuery.data?.meta || {};
   const updateVisibleTrending = useCallback((nextTrending) => {
@@ -510,9 +575,11 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       raw = apiFeedCards.map((c, idx) => {
         const sym = String(c.token || "TOKEN").replace(/^\$/, "").trim() || "TOKEN";
         const liq = liquidityFromApiRedFlags(c.redFlags);
+        const mint =
+          c.tokenAddress && isProbableSolanaMint(c.tokenAddress) ? c.tokenAddress : null;
         return {
           symbol: sym,
-          mint: c.tokenAddress || "So11111111111111111111111111111111111111112",
+          mint,
           token: {
             symbol: sym,
             mint: c.tokenAddress,
@@ -530,37 +597,356 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         };
       });
     } else {
-      raw = (visibleTrending.length ? visibleTrending : FALLBACK_TRENDING).slice(0, 12).map(
-        (token, idx) => {
-          const signalStrength = computeSignalStrength(token);
-          const smartWallets = Math.max(2, Math.min(9, Math.round(signalStrength / 15)));
-          const context =
-            idx % 2 === 0
-              ? `Last similar signal → +${Math.max(18, Math.round(signalStrength * 0.75))}% in 3h`
-              : `Wallet hit rate: ${Math.max(4, Math.round(signalStrength / 20))}/6 last trades`;
-          return {
-            symbol: token.symbol || "TOKEN",
-            mint: token.mint || "So11111111111111111111111111111111111111112",
-            token,
-            signalStrength,
-            smartWallets,
-            context,
-            clusterScore: Math.min(99, Math.max(45, signalStrength - 6)),
-            momentum: token.volume24h || 0
-          };
-        }
-      );
+      raw = (visibleTrending.length ? visibleTrending : FALLBACK_TRENDING)
+        .slice(0, 24)
+        .map((token, idx) => signalFromToken(token, idx));
+    }
+    raw = raw.filter((row) => row.mint && isProbableSolanaMint(row.mint));
+    if (!raw.length) {
+      raw = FALLBACK_TRENDING.map((token, idx) => signalFromToken(token, idx)).filter((row) => row.mint);
     }
     return raw
       .slice()
       .sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
   }, [apiFeedCards, visibleTrending]);
 
+  const liveSignalPool = useMemo(() => {
+    const minCards = 12;
+    const byMint = new Map();
+    interpretedSignals.forEach((sig) => {
+      if (!sig?.mint || !isProbableSolanaMint(sig.mint)) return;
+      if (!byMint.has(sig.mint)) byMint.set(sig.mint, sig);
+    });
+    (visibleTrending.length ? visibleTrending : FALLBACK_TRENDING).forEach((token, idx) => {
+      const built = signalFromToken(token, idx);
+      if (built.mint && !byMint.has(built.mint)) byMint.set(built.mint, built);
+    });
+    const out = Array.from(byMint.values()).sort(
+      (a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0)
+    );
+    if (out.length >= minCards) return out;
+    const seed = visibleTrending.length ? visibleTrending : FALLBACK_TRENDING;
+    let cursor = 0;
+    while (out.length < minCards && seed.length) {
+      const built = signalFromToken(seed[cursor % seed.length], out.length);
+      if (built.mint) out.push(built);
+      cursor += 1;
+      if (cursor > seed.length * 40) break;
+    }
+    return out.sort(
+      (a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0)
+    );
+  }, [interpretedSignals, visibleTrending]);
+
+  const liveSignalsForGrid = useMemo(
+    () => liveSignalPool.slice(0, liveExpanded ? 48 : 12),
+    [liveExpanded, liveSignalPool]
+  );
+
+  const heatTokenPool = useMemo(() => {
+    const minCards = 12;
+    const out = [];
+    const seen = new Set();
+
+    const tryAdd = (t) => {
+      if (!t?.mint || !isProbableSolanaMint(t.mint)) return;
+      if (seen.has(t.mint)) return;
+      seen.add(t.mint);
+      out.push(t);
+    };
+
+    (visibleTrending.length ? visibleTrending : []).forEach((t) => tryAdd(t));
+    interpretedSignals.forEach((sig, idx) => tryAdd(tokenFromSignal(sig, idx)));
+
+    let fi = 0;
+    while (out.length < minCards && FALLBACK_TRENDING.length) {
+      tryAdd(FALLBACK_TRENDING[fi % FALLBACK_TRENDING.length]);
+      fi += 1;
+      if (fi > FALLBACK_TRENDING.length * 24) break;
+    }
+
+    let dup = 0;
+    while (out.length < minCards && FALLBACK_TRENDING.length) {
+      const src = FALLBACK_TRENDING[dup % FALLBACK_TRENDING.length];
+      if (src?.mint && isProbableSolanaMint(src.mint)) out.push({ ...src });
+      dup += 1;
+      if (dup > 96) break;
+    }
+
+    return out
+      .slice()
+      .sort((a, b) => computeSignalStrength(b) - computeSignalStrength(a));
+  }, [interpretedSignals, visibleTrending]);
+
+  const heatTokensForGrid = useMemo(
+    () => heatTokenPool.slice(0, heatExpanded ? 48 : 12),
+    [heatExpanded, heatTokenPool]
+  );
+
   // Tracks rank changes between refetches so cards can render ↑N / ↓N / NEW
   // badges when the live ordering moves. Pure client-side; no extra network.
   const signalsRankDeltas = useRankDeltas(interpretedSignals, (s) => s?.mint);
-  const trendingRankDeltas = useRankDeltas(visibleTrending, (t) => t?.mint);
+  const trendingRankDeltas = useRankDeltas(heatTokenPool, (t) => t?.mint);
   const liveSignal = interpretedSignals[signalCursor % Math.max(1, interpretedSignals.length)];
+
+  const panelHot = (
+        <section className="sl-section">
+          <div className="glass-card sl-inset">
+            <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500/25 to-amber-600/15 border border-orange-500/25 flex items-center justify-center shrink-0">
+                  <Flame className="text-orange-300" size={22} />
+                </div>
+                <div>
+                  <p className="sl-label">Hot Tokens</p>
+                  <button
+                    type="button"
+                    onClick={() => setHeatExpanded((v) => !v)}
+                    className="sl-h2 text-white mt-0.5 text-left hover:text-orange-200 transition-colors"
+                  >
+                    Heat-ranked · decision-ready {heatExpanded ? "[-]" : "[+]"}
+                  </button>
+                  <p className="sl-body sl-muted mt-2 max-w-xl text-sm">
+                    Score, window, chips, one-click buy — scan fast.
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    {heatTokensForGrid.length} cards visible · {heatTokenPool.length} ranked
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-start md:items-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setHeatExpanded((v) => !v)}
+                  className="text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border border-orange-500/35 bg-orange-500/10 text-orange-200 hover:bg-orange-500/20"
+                >
+                  {heatExpanded ? "Compact view" : "Expand heat board"}
+                </button>
+                <span
+                  className={`text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border inline-flex items-center gap-1.5 ${
+                    feedIsLive
+                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                      : "bg-amber-500/15 text-amber-200 border-amber-500/30"
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      feedIsLive ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                    }`}
+                  />
+                  {feedLabel}
+                </span>
+                <span className="text-[11px] text-gray-500">
+                  {feedAgeSec === null ? "fresh" : `${feedAgeSec}s ago`} · refresh 25s · min liq $
+                  {formatUsdWhole(trendingMeta.minLiquidityUsd || 15000)}
+                </span>
+              </div>
+            </div>
+
+            {trendingQuery.isError ? (
+              <div className="sl-nested sl-inset text-center text-sm text-red-300">
+                Could not load trending tokens right now. Try again in a moment.
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
+              {heatTokensForGrid.map((token, idx) => {
+                const signalStrength = computeSignalStrength(token);
+                const action = suggestedAction(signalStrength, strategyMode, "token");
+                const confluence = signalStrength >= 85 && Number(token?.change || 0) > 5;
+                const timeAdvantage = Math.max(52, Math.min(97, 100 - Math.round(signalStrength / 2)));
+                const tokenWindow = entryWindowFromCountdown(entryCountdownByMint[token?.mint] || 0);
+                const changeNum = Number(token?.change || 0);
+                const redFlags = redFlagsForSignal({ signalStrength, token: token || {} });
+                const trendingRank = trendingRankDeltas.get(token?.mint) || {
+                  rank: idx + 1,
+                  delta: 0,
+                  isNew: false
+                };
+                return (
+                <WatchedCardShell
+                  key={`${token?.mint || "token"}-${idx}`}
+                  mint={token?.mint}
+                  translate="no"
+                  title={token?.mint && isProbableSolanaMint(token.mint) ? "Click to show on desk (?t=)" : undefined}
+                  onClick={(e) => {
+                    if (!token?.mint || !isProbableSolanaMint(token.mint)) return;
+                    if (cockpitCardClickTargetIsInteractive(e)) return;
+                    e.preventDefault();
+                    router.push(`/?t=${encodeURIComponent(token.mint)}`, undefined, { shallow: true });
+                  }}
+                  baseClassName={`glass-card p-3 rounded-xl flex flex-col gap-2 transition-transform duration-200 ${
+                    token?.mint ? "hover:scale-[1.01] hover:shadow-[0_0_10px_rgba(139,92,246,0.4)]" : "opacity-75"
+                  } ${token?.mint && isProbableSolanaMint(token.mint) ? "cursor-pointer" : ""} ${
+                    selectedMint && token?.mint === selectedMint ? "ring-2 ring-cyan-500/40" : ""
+                  }`}
+                  watchedClassName="ring-1 ring-emerald-500/50 shadow-[0_0_18px_rgba(16,185,129,0.18)]"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      {token?.mint ? (
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <RankBadge rank={trendingRank.rank} />
+                          <RankDeltaChip delta={trendingRank.delta} isNew={trendingRank.isNew} />
+                        </div>
+                      ) : null}
+                      <p className="text-base font-bold text-white tracking-tight truncate">
+                        {token?.symbol || "Loading"}
+                      </p>
+                      <p className="text-[10px] text-gray-500 font-mono truncate">
+                        {token?.mint ? `${token.mint.slice(0, 4)}…${token.mint.slice(-4)}` : "…"}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border ${gradeClass(token?.grade || "C")}`}
+                    >
+                      {token?.grade || "…"}
+                    </span>
+                  </div>
+
+                  {(token?.narrativeTags || []).length ? (
+                    <div className="flex flex-wrap gap-1">
+                      {(token?.narrativeTags || []).slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[10px] px-1.5 py-0.5 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-2 space-y-1.5">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-[9px] uppercase tracking-wider text-gray-500">Score</span>
+                      <span className="text-emerald-300 font-bold font-mono tabular-nums text-xs">{signalStrength}/100</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-gray-900 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-400"
+                        style={{ width: `${signalStrength}%` }}
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${actionTone(signalStrength)} ${signalStrength > 90 ? "animate-pulse" : ""}`}>
+                        {action}
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${confidenceTone(signalStrength)}`}>
+                        {confidenceLabel(signalStrength)}
+                      </span>
+                      {confluence ? (
+                        <span className="text-[10px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1.5 py-0.5">
+                          🧬
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {token?.mint ? <LiveCardOverlay mint={token.mint} /> : null}
+
+                  <div className="flex items-baseline justify-between gap-2 text-[11px] font-mono">
+                    <span className="text-white truncate">
+                      <AnimatedNumber value={Number(token?.price || 0)} prefix="$" decimalPlaces={6} />
+                    </span>
+                    <span className={changeNum >= 0 ? "text-emerald-400" : "text-red-400"}>
+                      <AnimatedNumber
+                        value={changeNum}
+                        decimalPlaces={1}
+                        prefix={changeNum >= 0 ? "+" : ""}
+                        suffix="%"
+                      />
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                    <div className="flex items-center gap-1.5 rounded-md bg-white/[0.03] border border-white/[0.06] px-2 py-1.5">
+                      <BarChart3 size={12} className="text-cyan-400 shrink-0" />
+                      <span className="text-gray-100 truncate">${formatUsdWhole(token?.volume24h || 0)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 rounded-md bg-white/[0.03] border border-white/[0.06] px-2 py-1.5">
+                      <Waves size={12} className="text-purple-300 shrink-0" />
+                      <span className="text-gray-200 truncate">{token?.flowLabel || "flow…"}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-between text-[10px] text-gray-500">
+                      <span>Heat</span>
+                      <span className="leading-none">{clusterHeatEmoji(Math.min(99, signalStrength - 4))}</span>
+                    </div>
+                    <div className="h-1 rounded-full bg-gray-900 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full bg-gradient-to-r ${heatClass(Math.min(99, signalStrength - 4))}`}
+                        style={{ width: `${Math.min(99, signalStrength - 4)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-gray-500 truncate">
+                    Earlier than {timeAdvantage}% · <span className={tokenWindow.tone}>{tokenWindow.label}</span>
+                  </p>
+
+                  {redFlags.length ? (
+                    <p className="text-[10px] text-red-200 truncate">⚠ {redFlags.join(" · ")}</p>
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-1">
+                    {evidenceChipsEmoji(signalStrength, token || {}).slice(0, 4).map((chip) => (
+                      <span key={chip} className="text-[10px] px-1.5 py-0.5 rounded-full border border-white/12 bg-white/[0.03] text-gray-300">
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="mt-auto pt-1 space-y-1.5 border-t border-white/[0.04]">
+                    <div className="grid grid-cols-3 gap-1">
+                      {[0.5, 1, 5].map((size) => {
+                        const canSwap = token?.mint && isProbableSolanaMint(token.mint);
+                        return (
+                          <a
+                            key={size}
+                            href={canSwap ? buildJupiterSwapUrl(token.mint, size) : "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-disabled={!canSwap}
+                            onClick={(e) => {
+                              if (!canSwap) e.preventDefault();
+                            }}
+                            className={`text-[10px] text-center px-1.5 py-1 rounded-md border font-mono ${
+                              canSwap
+                                ? "border-cyan-500/35 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20"
+                                : "border-white/10 bg-white/[0.03] text-gray-600 cursor-not-allowed pointer-events-none"
+                            }`}
+                          >
+                            {size} SOL
+                          </a>
+                        );
+                      })}
+                    </div>
+                    {token?.mint && isProbableSolanaMint(token.mint) ? (
+                      <Link
+                        href={`/token/${token.mint}`}
+                        className="w-full py-1.5 text-center bg-purple-600/20 rounded-md text-[11px] hover:bg-purple-600/40 transition-transform hover:scale-[1.01] inline-flex items-center justify-center gap-1.5 text-gray-100 no-underline"
+                      >
+                        <TrendingUp size={12} />
+                        Scout →
+                      </Link>
+                    ) : (
+                      <p
+                        className="w-full py-1.5 text-center rounded-md border border-white/10 bg-white/[0.02] text-[10px] text-gray-500"
+                        title="No mint on the card yet — cannot open the token terminal."
+                      >
+                        Scout · mint pending
+                      </p>
+                    )}
+                  </div>
+                </WatchedCardShell>
+              )})}
+            </div>
+          </div>
+        </section>
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -570,12 +956,25 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       const recents = JSON.parse(localStorage.getItem("sentinel-recents") || "[]");
       setRecentSearches(recents.slice(0, 5));
       setIsLoggedIn(Boolean(localStorage.getItem("token")));
+      const tab = localStorage.getItem(TACTICAL_TAB_LS_KEY);
+      if (tab === "live" || tab === "hot" || tab === "history") setTacticalTab(tab);
     } catch (_) {
       setAlerts([]);
       setRecentSearches([]);
       setIsLoggedIn(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (skipTacticalTabPersistRef.current) {
+      skipTacticalTabPersistRef.current = false;
+      return;
+    }
+    try {
+      localStorage.setItem(TACTICAL_TAB_LS_KEY, tacticalTab);
+    } catch (_) {}
+  }, [tacticalTab]);
   useEffect(() => {
     updateVisibleTrending(trending);
     return () => {
@@ -722,7 +1121,11 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   // data visible during a refetch so the grid never flashes empty, pauses
   // when the tab is hidden, and re-fires on window focus — effectively
   // turning the Live Smart Money Feed truly live without any backend work.
-  const signalsFeedQuery = useSignalsFeed({ strategy: strategyMode, limit: 20, refetchMs: 15_000 });
+  const signalsFeedQuery = useSignalsFeed({
+    strategy: strategyMode,
+    limit: liveExpanded ? 48 : 24,
+    refetchMs: 15_000
+  });
   useEffect(() => {
     const data = signalsFeedQuery.data?.data;
     if (Array.isArray(data) && data.length) setApiFeedCards(data);
@@ -733,7 +1136,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     : null;
 
   useEffect(() => {
-    if (feedMode !== "history") return;
+    if (tacticalTab !== "history") return;
     let cancelled = false;
     fetch(`${getPublicApiUrl()}/api/v1/signals/history?limit=30`)
       .then((r) => r.json())
@@ -757,7 +1160,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     return () => {
       cancelled = true;
     };
-  }, [feedMode]);
+  }, [tacticalTab]);
 
   const marketMood = useMemo(() => {
     if (!visibleTrending.length) return { label: "Loading", className: "text-gray-300" };
@@ -794,10 +1197,296 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         title="Sentinel Ledger — Smart Money Tracker for Solana in Real Time"
         description="Track the highest win-rate wallets on Solana. Interpreted signals, not raw noise. Free to start."
       />
-      <HomeOnboarding />
-      <WelcomeBanner />
-      <div className="w-full max-w-[100vw] overflow-x-clip">
-      <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full mx-4 sm:mx-auto">
+      <WarLayout
+        header={
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] sm:text-xs text-gray-400">
+            <span className="font-semibold uppercase tracking-[0.16em] text-gray-500">War cockpit</span>
+            <span className="text-gray-600">Feed + Intel desk · tabs LIVE / HOT / HISTORY</span>
+          </div>
+        }
+        feed={
+          <>
+            <HomeOnboarding />
+            <WelcomeBanner />
+            <div className="w-full max-w-[100vw] overflow-x-clip">
+        <div className="px-2 sm:px-3 pt-1 pb-2 border-b border-cyan-500/20 bg-[#050a0f]/80">
+
+        <TacticalTabs
+          activeTab={tacticalTab}
+          onTabChange={setTacticalTab}
+          panelHistory={(
+
+          <section translate="no" className="sl-section">
+            <h2 className="sl-h2 text-white mb-2">24h verified outcomes</h2>
+            <p className="text-xs text-gray-500 mb-4">On-chain linked signals from the last 24 hours.</p>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {historyRows.length === 0 ? (
+                <p className="text-sm text-gray-500 col-span-full">
+                  No rows in the last 24h. Add signals and prices in Supabase, or switch to LIVE.
+                </p>
+              ) : (
+                historyRows.map((r) => (
+                  <div
+                    key={r.id}
+                    className={`rounded-xl border p-4 space-y-2 font-mono text-sm ${
+                      r.status === "WIN"
+                        ? "bg-emerald-500/[0.06] border-emerald-500/25"
+                        : r.status === "LOSS"
+                          ? "bg-red-500/[0.06] border-red-500/25"
+                          : "bg-white/[0.02] border-white/10"
+                    }`}
+                  >
+                    <div className="flex justify-between gap-2">
+                      <span className="text-gray-200">{r.token?.slice(0, 8)}…</span>
+                      <span
+                        className={
+                          r.status === "WIN"
+                            ? "text-emerald-300"
+                            : r.status === "LOSS"
+                              ? "text-red-300"
+                              : "text-gray-400"
+                        }
+                      >
+                        {r.status}
+                      </span>
+                    </div>
+                    <p className="text-emerald-200">
+                      {r.resultPct != null && !Number.isNaN(Number(r.resultPct))
+                        ? `${Number(r.resultPct) >= 0 ? "+" : ""}${Number(r.resultPct).toFixed(1)}% (1h est.)`
+                        : "PENDING"}
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      Signal {hoursAgoLabel(r.signalAt)} — result verified on-chain
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+          )}
+          panelLive={(
+          <section translate="no" className="sl-section">
+            <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+              <div>
+                <p className="sl-label inline-flex items-center gap-2">
+                  <Sparkles size={14} className="text-emerald-400" />
+                  Decision Feed
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setLiveExpanded((v) => !v)}
+                  className="sl-h2 text-white mt-1 text-left hover:text-emerald-200 transition-colors"
+                >
+                  Live Smart Money Feed {liveExpanded ? "[-]" : "[+]"}
+                </button>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  {liveSignalsForGrid.length} cards visible · {liveSignalPool.length} tracked
+                </p>
+              </div>
+              <div className="flex flex-col items-start md:items-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setLiveExpanded((v) => !v)}
+                  className="text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border border-cyan-500/35 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+                >
+                  {liveExpanded ? "Compact view" : "Expand full feed"}
+                </button>
+                <span
+                  className={`text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border inline-flex items-center gap-1.5 ${
+                    signalsFeedQuery.isError
+                      ? "bg-amber-500/15 text-amber-200 border-amber-500/30"
+                      : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      signalsFeedQuery.isError ? "bg-amber-400" : "bg-emerald-400 animate-pulse"
+                    }`}
+                  />
+                  {signalsFeedQuery.isError ? "Delayed" : "Live"}
+                </span>
+                <span className="text-[11px] text-gray-500 inline-flex items-center gap-1">
+                  <Info size={12} />
+                  {signalsAgeSec === null
+                    ? "syncing…"
+                    : signalsAgeSec <= 2
+                      ? "just now"
+                      : `updated ${signalsAgeSec}s ago`}
+                  {" · "}refresh 15s
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
+            {liveSignalsForGrid.map((sig, idx) => {
+              const sec = entryCountdownByMint[sig.mint] || 0;
+              const win = sig._api
+                ? {
+                    label: sig._api.entryWindow || "OPEN",
+                    detail:
+                      sig._api.entryWindowMinutesLeft != null
+                        ? `${sig._api.entryWindowMinutesLeft} min left (server)`
+                        : "—",
+                    tone:
+                      sig._api.entryWindow === "OPEN"
+                        ? "text-emerald-300"
+                        : sig._api.entryWindow === "CLOSING"
+                          ? "text-amber-300"
+                          : "text-red-300"
+                  }
+                : entryWindowFromCountdown(sec);
+              const vis = sig._api
+                ? entryWindowVisual(Math.max(0, (Number(sig._api.entryWindowMinutesLeft) || 0) * 45))
+                : entryWindowVisual(sec);
+              const action = sig._api?.decision || suggestedAction(sig.signalStrength, strategyMode, "feed");
+              const hot = idx === signalCursor % Math.max(1, liveSignalsForGrid.length);
+              const whyLines = whyNowBulletLines(sig);
+              const rankInfo = signalsRankDeltas.get(sig.mint) || { rank: idx + 1, delta: 0, isNew: false };
+              return (
+                <WatchedCardShell
+                  key={`${sig.mint}-${idx}`}
+                  mint={sig.mint}
+                  title={sig.mint && isProbableSolanaMint(sig.mint) ? "Click to show on desk (?t=)" : undefined}
+                  onClick={(e) => {
+                    if (!sig.mint || !isProbableSolanaMint(sig.mint)) return;
+                    if (cockpitCardClickTargetIsInteractive(e)) return;
+                    e.preventDefault();
+                    router.push(`/?t=${encodeURIComponent(sig.mint)}`, undefined, { shallow: true });
+                  }}
+                  baseClassName={`rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-2.5 transition-all duration-300 hover:border-emerald-500/20 hover:shadow-[0_0_16px_rgba(16,185,129,0.1)] ${
+                    hot ? "ring-1 ring-emerald-500/35" : ""
+                  } ${sig.mint && isProbableSolanaMint(sig.mint) ? "cursor-pointer" : ""} ${
+                    selectedMint && sig.mint === selectedMint ? "ring-2 ring-cyan-500/40" : ""
+                  }`}
+                  watchedClassName="!border-emerald-500/35 ring-1 ring-emerald-500/50 shadow-[0_0_18px_rgba(16,185,129,0.18)]"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <RankBadge rank={rankInfo.rank} />
+                        <RankDeltaChip delta={rankInfo.delta} isNew={rankInfo.isNew} />
+                      </div>
+                      <p className="text-base font-bold text-white tracking-tight truncate">${sig.symbol}</p>
+                      <p className="text-[10px] text-cyan-200/90 font-mono mt-0.5">{sig.smartWallets} wallets · live</p>
+                    </div>
+                    <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded border ${confidenceTone(sig.signalStrength)}`}>
+                      {confidenceLabel(sig.signalStrength)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="text-[9px] uppercase tracking-[0.18em] text-gray-500 font-semibold">Sentinel Score</p>
+                      <span className="text-[10px] text-gray-500 font-mono">/ 100</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-black tabular-nums font-mono text-white leading-none tracking-tight">
+                        {sig.signalStrength}
+                      </span>
+                      <div className="flex-1 h-1.5 rounded-full bg-gray-900 overflow-hidden ring-1 ring-white/10 mb-0.5">
+                        <div
+                          className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(sig.signalStrength)}`}
+                          style={{ width: `${sig.signalStrength}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex items-center justify-center text-[11px] ${feedDecisionPillClass(action, sig.signalStrength)}`}>
+                      {action === "ENTER NOW" ? "🟢 " : action === "PREPARE" ? "🟡 " : "🔴 "}
+                      {action}
+                    </span>
+                    {sig._api?.confluence || (!sig._api && sig.signalStrength >= 88) ? (
+                      <span className="text-[10px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1.5 py-0.5 font-mono">
+                        🧬 multi
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="rounded-md border border-white/10 bg-black/30 px-2.5 py-2">
+                    <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Why now</p>
+                    <ul className="text-[11px] text-gray-200 mt-1 space-y-0.5 leading-snug">
+                      {whyLines.slice(0, 3).map((line, li) => (
+                        <li key={li} className="flex gap-1.5">
+                          <span className="text-emerald-500/80 shrink-0">•</span>
+                          <span className="truncate">{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <LiveCardOverlay mint={sig.mint} />
+
+                  <div className="flex flex-wrap gap-1">
+                    {evidenceChipsForSig(sig).slice(0, 4).map((chip) => (
+                      <span
+                        key={chip + idx}
+                        className="text-[10px] px-1.5 py-0.5 rounded-full border border-white/12 bg-white/[0.03] text-gray-300"
+                        title="Evidence"
+                      >
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+
+                  {redFlagsForSignal(sig).length ? (
+                    <p className="text-[10px] text-red-200 truncate">
+                      RED FLAGS: {redFlagsForSignal(sig).join(" · ")}
+                    </p>
+                  ) : null}
+
+                  <div className="space-y-0.5">
+                    <p className={`text-[10px] font-mono ${vis.text}`}>
+                      ENTRY · {win.label} · {win.detail}
+                    </p>
+                    <div className="h-1 rounded-full bg-gray-900 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full bg-gradient-to-r ${vis.gradient}`}
+                        style={{ width: `${Math.min(100, (sec / 420) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-cyan-200/90 font-mono truncate">
+                    {sig._api?.timeAdvantage ||
+                      `Earlier than ${Math.max(72, Math.min(96, sig.signalStrength))}% of traders`}
+                  </p>
+
+                  <div className="flex flex-wrap gap-1 pt-0.5 border-t border-white/[0.04] mt-1">
+                    {[0.5, 1, 5].map((size) => {
+                      const canSwap = sig.mint && isProbableSolanaMint(sig.mint);
+                      return (
+                        <a
+                          key={size}
+                          href={canSwap ? buildJupiterSwapUrl(sig.mint, size) : "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-disabled={!canSwap}
+                          onClick={(e) => {
+                            if (!canSwap) e.preventDefault();
+                          }}
+                          className={`text-[10px] px-2 py-1 rounded-md border font-mono ${
+                            canSwap
+                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20"
+                              : "border-white/10 bg-white/[0.03] text-gray-600 cursor-not-allowed pointer-events-none"
+                          }`}
+                        >
+                          {size} SOL
+                        </a>
+                      );
+                    })}
+                  </div>
+                </WatchedCardShell>
+              );
+            })}
+          </div>
+        </section>
+          )}
+          panelHot={panelHot}
+        />
+
+        </div>
+      <div className="sl-container py-4 sm:py-8 md:py-12 max-w-full mx-4 sm:mx-auto">
         <section className="sl-section">
           <div className="sl-home-hero sl-inset sm:p-8 md:p-10">
             <div className="sl-home-hero-inner">
@@ -941,268 +1630,10 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
 
         <NluCommandBar />
         <Ticker />
+        <GlobalWayfinding />
 
-        <section className="sl-section !pt-2 !pb-2">
-          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Feed mode">
-            <span className="text-[11px] text-gray-500 uppercase tracking-wide">Feed</span>
-            <button
-              type="button"
-              onClick={() => setFeedMode("live")}
-              className={`text-xs px-3 py-1.5 rounded-lg border font-semibold ${
-                feedMode === "live"
-                  ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
-                  : "border-white/10 bg-white/[0.03] text-gray-400"
-              }`}
-              aria-pressed={feedMode === "live"}
-            >
-              LIVE
-            </button>
-            <button
-              type="button"
-              onClick={() => setFeedMode("history")}
-              className={`text-xs px-3 py-1.5 rounded-lg border font-semibold ${
-                feedMode === "history"
-                  ? "border-cyan-500/50 bg-cyan-500/15 text-cyan-200"
-                  : "border-white/10 bg-white/[0.03] text-gray-400"
-              }`}
-              aria-pressed={feedMode === "history"}
-            >
-              24H HISTORY
-            </button>
-          </div>
-        </section>
         </div>
 
-        {feedMode === "history" ? (
-          <section translate="no" className="sl-section">
-            <h2 className="sl-h2 text-white mb-2">24h verified outcomes</h2>
-            <p className="text-xs text-gray-500 mb-4">On-chain linked signals from the last 24 hours.</p>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {historyRows.length === 0 ? (
-                <p className="text-sm text-gray-500 col-span-full">
-                  No rows in the last 24h. Add signals and prices in Supabase, or switch to LIVE.
-                </p>
-              ) : (
-                historyRows.map((r) => (
-                  <div
-                    key={r.id}
-                    className={`rounded-xl border p-4 space-y-2 font-mono text-sm ${
-                      r.status === "WIN"
-                        ? "bg-emerald-500/[0.06] border-emerald-500/25"
-                        : r.status === "LOSS"
-                          ? "bg-red-500/[0.06] border-red-500/25"
-                          : "bg-white/[0.02] border-white/10"
-                    }`}
-                  >
-                    <div className="flex justify-between gap-2">
-                      <span className="text-gray-200">{r.token?.slice(0, 8)}…</span>
-                      <span
-                        className={
-                          r.status === "WIN"
-                            ? "text-emerald-300"
-                            : r.status === "LOSS"
-                              ? "text-red-300"
-                              : "text-gray-400"
-                        }
-                      >
-                        {r.status}
-                      </span>
-                    </div>
-                    <p className="text-emerald-200">
-                      {r.resultPct != null && !Number.isNaN(Number(r.resultPct))
-                        ? `${Number(r.resultPct) >= 0 ? "+" : ""}${Number(r.resultPct).toFixed(1)}% (1h est.)`
-                        : "PENDING"}
-                    </p>
-                    <p className="text-[11px] text-gray-500">
-                      Signal {hoursAgoLabel(r.signalAt)} — result verified on-chain
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        ) : (
-          <section translate="no" className="sl-section">
-            <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
-              <div>
-                <p className="sl-label inline-flex items-center gap-2">
-                  <Sparkles size={14} className="text-emerald-400" />
-                  Decision Feed
-                </p>
-                <h1 className="sl-h2 text-white mt-1">Live Smart Money Feed</h1>
-              </div>
-              <div className="flex flex-col items-start md:items-end gap-1.5">
-                <span
-                  className={`text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border inline-flex items-center gap-1.5 ${
-                    signalsFeedQuery.isError
-                      ? "bg-amber-500/15 text-amber-200 border-amber-500/30"
-                      : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                  }`}
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      signalsFeedQuery.isError ? "bg-amber-400" : "bg-emerald-400 animate-pulse"
-                    }`}
-                  />
-                  {signalsFeedQuery.isError ? "Delayed" : "Live"}
-                </span>
-                <span className="text-[11px] text-gray-500 inline-flex items-center gap-1">
-                  <Info size={12} />
-                  {signalsAgeSec === null
-                    ? "syncing…"
-                    : signalsAgeSec <= 2
-                      ? "just now"
-                      : `updated ${signalsAgeSec}s ago`}
-                  {" · "}refresh 15s
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
-            {interpretedSignals.map((sig, idx) => {
-              const sec = entryCountdownByMint[sig.mint] || 0;
-              const win = sig._api
-                ? {
-                    label: sig._api.entryWindow || "OPEN",
-                    detail:
-                      sig._api.entryWindowMinutesLeft != null
-                        ? `${sig._api.entryWindowMinutesLeft} min left (server)`
-                        : "—",
-                    tone:
-                      sig._api.entryWindow === "OPEN"
-                        ? "text-emerald-300"
-                        : sig._api.entryWindow === "CLOSING"
-                          ? "text-amber-300"
-                          : "text-red-300"
-                  }
-                : entryWindowFromCountdown(sec);
-              const vis = sig._api
-                ? entryWindowVisual(Math.max(0, (Number(sig._api.entryWindowMinutesLeft) || 0) * 45))
-                : entryWindowVisual(sec);
-              const action = sig._api?.decision || suggestedAction(sig.signalStrength, strategyMode, "feed");
-              const hot = idx === signalCursor % Math.max(1, interpretedSignals.length);
-              const whyLines = whyNowBulletLines(sig);
-              const rankInfo = signalsRankDeltas.get(sig.mint) || { rank: idx + 1, delta: 0, isNew: false };
-              return (
-                <WatchedCardShell
-                  key={`${sig.mint}-${idx}`}
-                  mint={sig.mint}
-                  baseClassName={`rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-2.5 transition-all duration-300 hover:border-emerald-500/20 hover:shadow-[0_0_16px_rgba(16,185,129,0.1)] ${
-                    hot ? "ring-1 ring-emerald-500/35" : ""
-                  }`}
-                  watchedClassName="!border-emerald-500/35 ring-1 ring-emerald-500/50 shadow-[0_0_18px_rgba(16,185,129,0.18)]"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <RankBadge rank={rankInfo.rank} />
-                        <RankDeltaChip delta={rankInfo.delta} isNew={rankInfo.isNew} />
-                      </div>
-                      <p className="text-base font-bold text-white tracking-tight truncate">${sig.symbol}</p>
-                      <p className="text-[10px] text-cyan-200/90 font-mono mt-0.5">{sig.smartWallets} wallets · live</p>
-                    </div>
-                    <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded border ${confidenceTone(sig.signalStrength)}`}>
-                      {confidenceLabel(sig.signalStrength)}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className="text-[9px] uppercase tracking-[0.18em] text-gray-500 font-semibold">Sentinel Score</p>
-                      <span className="text-[10px] text-gray-500 font-mono">/ 100</span>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-black tabular-nums font-mono text-white leading-none tracking-tight">
-                        {sig.signalStrength}
-                      </span>
-                      <div className="flex-1 h-1.5 rounded-full bg-gray-900 overflow-hidden ring-1 ring-white/10 mb-0.5">
-                        <div
-                          className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(sig.signalStrength)}`}
-                          style={{ width: `${sig.signalStrength}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`inline-flex items-center justify-center text-[11px] ${feedDecisionPillClass(action, sig.signalStrength)}`}>
-                      {action === "ENTER NOW" ? "🟢 " : action === "PREPARE" ? "🟡 " : "🔴 "}
-                      {action}
-                    </span>
-                    {sig._api?.confluence || (!sig._api && sig.signalStrength >= 88) ? (
-                      <span className="text-[10px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1.5 py-0.5 font-mono">
-                        🧬 multi
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div className="rounded-md border border-white/10 bg-black/30 px-2.5 py-2">
-                    <p className="text-[9px] text-gray-500 uppercase tracking-wide font-semibold">Why now</p>
-                    <ul className="text-[11px] text-gray-200 mt-1 space-y-0.5 leading-snug">
-                      {whyLines.slice(0, 3).map((line, li) => (
-                        <li key={li} className="flex gap-1.5">
-                          <span className="text-emerald-500/80 shrink-0">•</span>
-                          <span className="truncate">{line}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <LiveCardOverlay mint={sig.mint} />
-
-                  <div className="flex flex-wrap gap-1">
-                    {evidenceChipsForSig(sig).slice(0, 4).map((chip) => (
-                      <span
-                        key={chip + idx}
-                        className="text-[10px] px-1.5 py-0.5 rounded-full border border-white/12 bg-white/[0.03] text-gray-300"
-                        title="Evidence"
-                      >
-                        {chip}
-                      </span>
-                    ))}
-                  </div>
-
-                  {redFlagsForSignal(sig).length ? (
-                    <p className="text-[10px] text-red-200 truncate">
-                      RED FLAGS: {redFlagsForSignal(sig).join(" · ")}
-                    </p>
-                  ) : null}
-
-                  <div className="space-y-0.5">
-                    <p className={`text-[10px] font-mono ${vis.text}`}>
-                      ENTRY · {win.label} · {win.detail}
-                    </p>
-                    <div className="h-1 rounded-full bg-gray-900 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full bg-gradient-to-r ${vis.gradient}`}
-                        style={{ width: `${Math.min(100, (sec / 420) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <p className="text-[10px] text-cyan-200/90 font-mono truncate">
-                    {sig._api?.timeAdvantage ||
-                      `Earlier than ${Math.max(72, Math.min(96, sig.signalStrength))}% of traders`}
-                  </p>
-
-                  <div className="flex flex-wrap gap-1 pt-0.5 border-t border-white/[0.04] mt-1">
-                    {[0.5, 1, 5].map((size) => (
-                      <a
-                        key={size}
-                        href={buildJupiterSwapUrl(sig.mint, size)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[10px] px-2 py-1 rounded-md border border-emerald-500/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 font-mono"
-                      >
-                        {size} SOL
-                      </a>
-                    ))}
-                  </div>
-                </WatchedCardShell>
-              );
-            })}
-          </div>
-        </section>
-        )}
 
         <section className="sl-section sl-scan-hero sl-inset sm:p-6 md:p-8">
           <form onSubmit={handleSearch} className="space-y-4">
@@ -1400,220 +1831,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           </div>
         </section>
 
-        {/* Hot tokens */}
-        <section className="sl-section">
-          <div className="glass-card sl-inset">
-            <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
-              <div className="flex items-start gap-4">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500/25 to-amber-600/15 border border-orange-500/25 flex items-center justify-center shrink-0">
-                  <Flame className="text-orange-300" size={22} />
-                </div>
-                <div>
-                  <p className="sl-label">Hot Tokens</p>
-                  <h2 className="sl-h2 text-white mt-0.5">Heat-ranked · decision-ready</h2>
-                  <p className="sl-body sl-muted mt-2 max-w-xl text-sm">
-                    Score, window, chips, one-click buy — scan fast.
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col items-start md:items-end gap-1.5">
-                <span
-                  className={`text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border inline-flex items-center gap-1.5 ${
-                    feedIsLive
-                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                      : "bg-amber-500/15 text-amber-200 border-amber-500/30"
-                  }`}
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      feedIsLive ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
-                    }`}
-                  />
-                  {feedLabel}
-                </span>
-                <span className="text-[11px] text-gray-500">
-                  {feedAgeSec === null ? "fresh" : `${feedAgeSec}s ago`} · refresh 25s · min liq $
-                  {formatUsdWhole(trendingMeta.minLiquidityUsd || 15000)}
-                </span>
-              </div>
-            </div>
 
-            {trendingQuery.isError ? (
-              <div className="sl-nested sl-inset text-center text-sm text-red-300">
-                Could not load trending tokens right now. Try again in a moment.
-              </div>
-            ) : null}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
-              {(visibleTrending.length ? visibleTrending : Array.from({ length: 8 })).map((token, idx) => {
-                const signalStrength = computeSignalStrength(token);
-                const action = suggestedAction(signalStrength, strategyMode, "token");
-                const confluence = signalStrength >= 85 && Number(token?.change || 0) > 5;
-                const timeAdvantage = Math.max(52, Math.min(97, 100 - Math.round(signalStrength / 2)));
-                const tokenWindow = entryWindowFromCountdown(entryCountdownByMint[token?.mint] || 0);
-                const changeNum = Number(token?.change || 0);
-                const redFlags = redFlagsForSignal({ signalStrength, token: token || {} });
-                const trendingRank = trendingRankDeltas.get(token?.mint) || {
-                  rank: idx + 1,
-                  delta: 0,
-                  isNew: false
-                };
-                return (
-                <WatchedCardShell
-                  key={token?.mint || `skeleton-${idx}`}
-                  mint={token?.mint}
-                  translate="no"
-                  baseClassName={`glass-card p-3 rounded-xl flex flex-col gap-2 transition-transform duration-200 ${
-                    token?.mint ? "hover:scale-[1.01] hover:shadow-[0_0_10px_rgba(139,92,246,0.4)]" : "opacity-75 animate-pulse"
-                  }`}
-                  watchedClassName="ring-1 ring-emerald-500/50 shadow-[0_0_18px_rgba(16,185,129,0.18)]"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      {token?.mint ? (
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <RankBadge rank={trendingRank.rank} />
-                          <RankDeltaChip delta={trendingRank.delta} isNew={trendingRank.isNew} />
-                        </div>
-                      ) : null}
-                      <p className="text-base font-bold text-white tracking-tight truncate">
-                        {token?.symbol || "Loading"}
-                      </p>
-                      <p className="text-[10px] text-gray-500 font-mono truncate">
-                        {token?.mint ? `${token.mint.slice(0, 4)}…${token.mint.slice(-4)}` : "…"}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border ${gradeClass(token?.grade || "C")}`}
-                    >
-                      {token?.grade || "…"}
-                    </span>
-                  </div>
-
-                  {(token?.narrativeTags || []).length ? (
-                    <div className="flex flex-wrap gap-1">
-                      {(token?.narrativeTags || []).slice(0, 3).map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-[10px] px-1.5 py-0.5 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <div className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-2 space-y-1.5">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-[9px] uppercase tracking-wider text-gray-500">Score</span>
-                      <span className="text-emerald-300 font-bold font-mono tabular-nums text-xs">{signalStrength}/100</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-gray-900 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-400"
-                        style={{ width: `${signalStrength}%` }}
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${actionTone(signalStrength)} ${signalStrength > 90 ? "animate-pulse" : ""}`}>
-                        {action}
-                      </span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${confidenceTone(signalStrength)}`}>
-                        {confidenceLabel(signalStrength)}
-                      </span>
-                      {confluence ? (
-                        <span className="text-[10px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1.5 py-0.5">
-                          🧬
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  {token?.mint ? <LiveCardOverlay mint={token.mint} /> : null}
-
-                  <div className="flex items-baseline justify-between gap-2 text-[11px] font-mono">
-                    <span className="text-white truncate">
-                      <AnimatedNumber value={Number(token?.price || 0)} prefix="$" decimalPlaces={6} />
-                    </span>
-                    <span className={changeNum >= 0 ? "text-emerald-400" : "text-red-400"}>
-                      <AnimatedNumber
-                        value={changeNum}
-                        decimalPlaces={1}
-                        prefix={changeNum >= 0 ? "+" : ""}
-                        suffix="%"
-                      />
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-                    <div className="flex items-center gap-1.5 rounded-md bg-white/[0.03] border border-white/[0.06] px-2 py-1.5">
-                      <BarChart3 size={12} className="text-cyan-400 shrink-0" />
-                      <span className="text-gray-100 truncate">${formatUsdWhole(token?.volume24h || 0)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 rounded-md bg-white/[0.03] border border-white/[0.06] px-2 py-1.5">
-                      <Waves size={12} className="text-purple-300 shrink-0" />
-                      <span className="text-gray-200 truncate">{token?.flowLabel || "flow…"}</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <div className="flex items-center justify-between text-[10px] text-gray-500">
-                      <span>Heat</span>
-                      <span className="leading-none">{clusterHeatEmoji(Math.min(99, signalStrength - 4))}</span>
-                    </div>
-                    <div className="h-1 rounded-full bg-gray-900 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full bg-gradient-to-r ${heatClass(Math.min(99, signalStrength - 4))}`}
-                        style={{ width: `${Math.min(99, signalStrength - 4)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <p className="text-[10px] text-gray-500 truncate">
-                    Earlier than {timeAdvantage}% · <span className={tokenWindow.tone}>{tokenWindow.label}</span>
-                  </p>
-
-                  {redFlags.length ? (
-                    <p className="text-[10px] text-red-200 truncate">⚠ {redFlags.join(" · ")}</p>
-                  ) : null}
-
-                  <div className="flex flex-wrap gap-1">
-                    {evidenceChipsEmoji(signalStrength, token || {}).slice(0, 4).map((chip) => (
-                      <span key={chip} className="text-[10px] px-1.5 py-0.5 rounded-full border border-white/12 bg-white/[0.03] text-gray-300">
-                        {chip}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="mt-auto pt-1 space-y-1.5 border-t border-white/[0.04]">
-                    <div className="grid grid-cols-3 gap-1">
-                      {[0.5, 1, 5].map((size) => (
-                        <a
-                          key={size}
-                          href={buildJupiterSwapUrl(token?.mint, size)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[10px] text-center px-1.5 py-1 rounded-md border border-cyan-500/35 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 font-mono"
-                        >
-                          {size} SOL
-                        </a>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => token?.mint && router.push(`/token/${token.mint}`)}
-                      className="w-full py-1.5 text-center bg-purple-600/20 rounded-md text-[11px] hover:bg-purple-600/40 transition-transform hover:scale-[1.01] inline-flex items-center justify-center gap-1.5"
-                      disabled={!token?.mint}
-                    >
-                      <TrendingUp size={12} />
-                      Scout →
-                    </button>
-                  </div>
-                </WatchedCardShell>
-              )})}
-            </div>
-          </div>
-        </section>
 
         {isLoggedIn ? (
           <section className="sl-section">
@@ -1722,6 +1940,10 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           )}
         </section>
       </div>
+          </>
+        }
+        desk={<TokenDesk key={selectedMint ?? "__desk_none__"} mint={selectedMint} />}
+      />
     </>
   );
 }

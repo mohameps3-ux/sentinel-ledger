@@ -97,7 +97,8 @@ export default function App({ Component, pageProps }) {
                 }}
                 className="pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0"
               >
-                <GlobalWayfinding />
+                {/* Home renders GlobalWayfinding inside the cockpit feed so the War band is first paint. */}
+                {!isHome ? <GlobalWayfinding /> : null}
                 <AppErrorBoundary>
                   <Component {...pageProps} />
                 </AppErrorBoundary>
