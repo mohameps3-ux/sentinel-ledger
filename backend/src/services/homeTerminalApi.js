@@ -3,6 +3,14 @@ const { getMarketData, getMarketDataCircuitStatus } = require("./marketData");
 const { pctFromPrices } = require("./smartWalletSignalPrices");
 const { fetchTrendingList } = require("./trendingList");
 const { detectNarrativeTags } = require("./narrativeTags");
+const { getActiveSignalWeightMap } = require("./signalCalibrator");
+const {
+  combinedPerformanceWeight,
+  recencyMultiplier,
+  recencyDecayLabel,
+  isAnomalousOutcomePct,
+  clampQualityStack
+} = require("./signalFeedQuality");
 
 const CACHE_TTL_SEC = Number(process.env.HOME_TERMINAL_CACHE_TTL_SEC || 180);
 const HOT_CACHE_TTL_SEC = Math.max(30, Number(process.env.HOME_TERMINAL_HOT_CACHE_TTL_SEC || 90));
@@ -660,15 +668,16 @@ async function fetchLatestSignalRowsSupabase(supabase, since, limitRows) {
     .limit(limitRows);
   if (signalsError) throw signalsError;
   if ((rawSignals || []).length > 0) {
+    const rows = (rawSignals || []).map((row) => ({ ...row, signal_tags: [] }));
     return {
-      rows: rawSignals || [],
+      rows,
       sourceTable: "smart_wallet_signals"
     };
   }
 
   const { data: perfRows, error: perfError } = await supabase
     .from("signal_performance")
-    .select("id, asset, emitted_at, confidence, entry_price_usd, outcome_pct")
+    .select("id, asset, emitted_at, confidence, entry_price_usd, outcome_pct, signals")
     .gte("emitted_at", since)
     .order("emitted_at", { ascending: false })
     .limit(limitRows);
@@ -685,7 +694,8 @@ async function fetchLatestSignalRowsSupabase(supabase, since, limitRows) {
       entry_price_usd: row.entry_price_usd,
       price_1h_usd: null,
       price_4h_usd: null,
-      result_pct: row.outcome_pct
+      result_pct: row.outcome_pct,
+      signal_tags: Array.isArray(row.signals) ? row.signals.map((s) => String(s)).filter(Boolean).slice(0, 16) : []
     }));
   return {
     rows: synthetic,
@@ -697,10 +707,19 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
   const lim = Math.min(50, Math.max(1, Number(limit) || 10));
   const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
   const { rows: raw, sourceTable } = await fetchLatestSignalRowsSupabase(supabase, since, 400);
+  const anomalyAbsPct = Number(process.env.SIGNAL_FEED_EXCLUDE_ABS_OUTCOME_PCT || 0);
+  const weightMap = getActiveSignalWeightMap();
 
   const seen = new Set();
   const picks = [];
+  let excludedAnomalies = 0;
   for (const row of raw || []) {
+    const pctProbe =
+      row.result_pct != null ? Number(row.result_pct) : pctFromPrices(row.entry_price_usd, row.price_1h_usd);
+    if (isAnomalousOutcomePct(pctProbe, anomalyAbsPct)) {
+      excludedAnomalies += 1;
+      continue;
+    }
     if (seen.has(row.token_address)) continue;
     seen.add(row.token_address);
     picks.push(row);
@@ -735,6 +754,13 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
     if (sentinelScore == null) {
       sentinelScore = Math.min(100, Math.max(40, Math.round(Number(row.confidence || 70) * 0.92)));
     }
+    const baseSentinelScore = sentinelScore;
+    const perfW = combinedPerformanceWeight(row.signal_tags, weightMap);
+    const recW = recencyMultiplier(row.created_at);
+    const stack = clampQualityStack(perfW, recW);
+    sentinelScore = Math.round(
+      Math.min(100, Math.max(35, baseSentinelScore * stack))
+    );
     const decision = decisionFromScore(sentinelScore, strategy);
     const { entryWindow, entryWindowMinutesLeft } = entryWindowFromAge(row.created_at);
     const walletCount = Math.max(walletSet.size, 2);
@@ -762,13 +788,21 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       entryWindow,
       entryWindowMinutesLeft,
       timeAdvantage: `You are earlier than ${Math.min(97, 52 + Math.round(sentinelScore / 2))}% of traders`,
-      signalDecay: "Confidence -3%/min",
+      signalDecay: recencyDecayLabel(row.created_at, recW),
       confluence: sentinelScore >= 88 && walletCount >= 3,
       evidenceChips: evidenceChipsFor(sentinelScore),
       contextHistory,
-      createdAt: row.created_at
+      createdAt: row.created_at,
+      signalQuality: {
+        baseSentinelScore,
+        performanceWeight: Math.round(perfW * 10000) / 10000,
+        recencyWeight: Math.round(recW * 10000) / 10000,
+        stack: Math.round(stack * 10000) / 10000
+      }
     });
   }
+
+  out.sort((a, b) => (b.sentinelScore || 0) - (a.sentinelScore || 0));
 
   return {
     ok: true,
@@ -777,7 +811,11 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       source: "supabase",
       count: out.length,
       strategy,
-      providerUsed: sourceTable
+      providerUsed: sourceTable,
+      signalQuality: {
+        excludedAnomalies,
+        anomalyAbsThreshold: anomalyAbsPct > 0 ? anomalyAbsPct : null
+      }
     }
   };
 }
@@ -1101,7 +1139,7 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
     recordFreshness("signalsLatest", out?.meta || {});
     return out;
   }
-  const key = `terminal:signals:latest:v3:${limit}:${strategy}`;
+  const key = `terminal:signals:latest:v4:${limit}:${strategy}`;
   let payload;
   let cache;
   try {

@@ -94,8 +94,24 @@ function getCalibrationSnapshot() {
   };
 }
 
+/** Merged baseline + last eligible calibration weights (for live signal feed). */
+function getActiveSignalWeightMap() {
+  const out = { ...BASELINE_WEIGHTS };
+  const lc = lastCalibration;
+  if (!lc?.ok || !Array.isArray(lc.proposals)) return out;
+  for (const p of lc.proposals) {
+    if (!p?.signal || !p.eligible) continue;
+    const w = Number(p.suggestedWeight);
+    if (Number.isFinite(w)) {
+      out[String(p.signal)] = clamp(w, CONFIG.minWeight, CONFIG.maxWeight);
+    }
+  }
+  return out;
+}
+
 module.exports = {
   runCalibrationOnce,
-  getCalibrationSnapshot
+  getCalibrationSnapshot,
+  getActiveSignalWeightMap
 };
 
