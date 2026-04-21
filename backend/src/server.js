@@ -53,7 +53,8 @@ const { isProbableSolanaPubkey } = require("./lib/solanaAddress");
 const redis = require("./lib/cache");
 const { getIngestionSnapshot } = require("./ingestion/ingestionState");
 const { getDedupeStats } = require("./ingestion/dedupe");
-const { getMarketDataCircuitStatus } = require("./services/marketData");
+const { getMarketDataCircuitStatus, getMarketDataProviderStats } = require("./services/marketData");
+const { getDataFreshnessSnapshot } = require("./services/homeTerminalApi");
 
 /** Stripe envía `application/json; charset=utf-8`; el matcher por string estricto a veces no aplica raw. */
 function stripeWebhookRawBody() {
@@ -199,6 +200,14 @@ app.get("/health/ingestion", (_req, res) => {
 app.get("/health/sync", (_req, res) => {
   const snap = getIngestionSnapshot();
   const market = getMarketDataCircuitStatus();
+  const providerRates = getMarketDataProviderStats();
+  const freshness = getDataFreshnessSnapshot();
+  const dexTokenState = market?.providers?.dex_token || market?.dexscreener || {};
+  const dexToken429Rate = Number(providerRates?.dex_token?.rate429 || 0);
+  const dexTokenOpenMs =
+    dexTokenState?.state === "OPEN" && Number(dexTokenState?.openedAt)
+      ? Math.max(0, Date.now() - Number(dexTokenState.openedAt))
+      : 0;
   res.json({
     status: snap.syncStatus,
     reason: snap.syncReason,
@@ -209,6 +218,20 @@ app.get("/health/sync", (_req, res) => {
       scoring_engine: "operational",
       alert_dispatcher: "operational",
       market_data: market.degraded ? "degraded" : "operational"
+    },
+    providers: {
+      dex: {
+        "429Rate": dexToken429Rate,
+        circuitOpenMs: dexTokenOpenMs
+      }
+    },
+    dataFreshness: {
+      signalsLatest: {
+        realRatio24h: freshness?.signalsLatest?.realRatio24h || 0
+      },
+      tokensHot: {
+        realRatio24h: freshness?.tokensHot?.realRatio24h || 0
+      }
     },
     marketData: market,
     measuredAt: snap.now

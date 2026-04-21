@@ -39,6 +39,11 @@ const latestSignalsFallbackState = {
   alertsSent: 0,
   lastIncidentDurationMs: null
 };
+const FRESHNESS_WINDOW_MS = 24 * 60 * 60 * 1000;
+const freshnessState = {
+  signalsLatest: [],
+  tokensHot: []
+};
 
 function jupiterSwapUrl(mint, sol) {
   if (!mint) return "";
@@ -111,6 +116,54 @@ function upstreamStatusSnapshot() {
   };
 }
 
+function trimFreshnessWindow(arr, now) {
+  while (arr.length > 0 && now - Number(arr[0]?.at || 0) > FRESHNESS_WINDOW_MS) arr.shift();
+}
+
+function recordFreshness(endpoint, meta = {}) {
+  const now = Date.now();
+  const target = endpoint === "tokensHot" ? freshnessState.tokensHot : freshnessState.signalsLatest;
+  target.push({
+    at: now,
+    source: String(meta?.source || "unknown"),
+    realDataRatio: Number(meta?.realDataRatio || 0)
+  });
+  trimFreshnessWindow(target, now);
+}
+
+function summarizeFreshness(events) {
+  const total = events.length;
+  if (!total) {
+    return {
+      requests24h: 0,
+      realRatio24h: 0,
+      staticFallbackRate24h: 0
+    };
+  }
+  let realSum = 0;
+  let staticCount = 0;
+  for (const ev of events) {
+    realSum += Number(ev.realDataRatio || 0);
+    if (ev.source === "static_fallback" || ev.source === "static_hot_fallback") staticCount += 1;
+  }
+  return {
+    requests24h: total,
+    realRatio24h: Number((realSum / total).toFixed(4)),
+    staticFallbackRate24h: Number((staticCount / total).toFixed(4))
+  };
+}
+
+function getDataFreshnessSnapshot() {
+  const now = Date.now();
+  trimFreshnessWindow(freshnessState.signalsLatest, now);
+  trimFreshnessWindow(freshnessState.tokensHot, now);
+  return {
+    generatedAt: now,
+    signalsLatest: summarizeFreshness(freshnessState.signalsLatest),
+    tokensHot: summarizeFreshness(freshnessState.tokensHot)
+  };
+}
+
 function computeRealDataRatio(source, count, limit) {
   const n = Math.max(0, Number(count) || 0);
   const lim = Math.max(1, Number(limit) || 1);
@@ -129,6 +182,9 @@ function enrichSignalsMeta(payload, { limit, fallbackReason = null }) {
       count,
       upstreamStatus,
       fallbackReason,
+      providerUsed: payload?.meta?.providerUsed || source,
+      attempts: Number(payload?.meta?.attempts || 1),
+      circuitState: payload?.meta?.circuitState || null,
       realDataRatio: computeRealDataRatio(source, count, limit)
     }
   };
@@ -166,6 +222,9 @@ function emergencyHotPayload(limit, reason = "upstream_unavailable") {
     data,
     meta: {
       source: "static_hot_fallback",
+      providerUsed: "static_hot_fallback",
+      attempts: 1,
+      circuitState: null,
       degraded: true,
       fallbackReason: reason,
       endpoint: "tokens/hot",
@@ -443,6 +502,8 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       token: symbol.startsWith("$") ? symbol : `$${symbol}`,
       tokenAddress: mint,
       sentinelScore,
+      degraded: !md?.symbol,
+      providerUsed: md?._provider || null,
       decision,
       whyNow: whyNowLines({
         walletCount,
@@ -482,6 +543,8 @@ function buildSignalCardFromHotToken(row, strategy) {
     token: symbol.startsWith("$") ? symbol : `$${symbol}`,
     tokenAddress: mint,
     sentinelScore,
+    degraded: Boolean(row?.degraded),
+    providerUsed: row?.providerUsed || null,
     decision,
     whyNow,
     redFlags: Array.isArray(row?.redFlags) ? row.redFlags : [],
@@ -510,10 +573,18 @@ async function buildLatestSignalsFallback({ limit = 10, strategy = "balanced", s
   const rows = Array.isArray(hot?.data) ? hot.data : [];
   const data = rows.slice(0, limit).map((row) => buildSignalCardFromHotToken(row, strategy));
   if (data.length > 0) {
+    const providerUsed = hot?.meta?.providerUsed || hot?.meta?.source || "provider_fallback";
     return {
       ok: true,
       data,
-      meta: { source: "dexscreener_fallback", count: data.length, strategy }
+      meta: {
+        source: "provider_fallback",
+        count: data.length,
+        strategy,
+        providerUsed,
+        attempts: Number(hot?.meta?.attempts || 1),
+        circuitState: hot?.meta?.circuitState || null
+      }
     };
   }
   const hardFallback = buildStaticFallbackCards(
@@ -725,7 +796,7 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
       },
       iaScore: ia != null ? Math.round(ia) : null,
       narrativeTags: detectNarrativeTags({ name: t.name, symbol: t.symbol }),
-      degraded: false
+      degraded: Boolean(t?.degraded)
     };
   });
   data.sort((a, b) => (b.sentinelScore || 0) - (a.sentinelScore || 0));
@@ -737,7 +808,10 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
       endpoint: "tokens/hot",
       count: data.length,
       tokensAnalyzedMerged: iaByMint.size > 0,
-      degraded: false,
+      degraded: Boolean(payload?.meta?.source !== "dexscreener"),
+      providerUsed: payload?.meta?.providerUsed || payload?.meta?.source || "unknown",
+      attempts: Number(payload?.meta?.attempts || 1),
+      circuitState: payload?.meta?.circuitState || null,
       upstreamStatus: upstreamStatusSnapshot(),
       realDataRatio: computeRealDataRatio(String(payload?.meta?.source || "unknown"), data.length, lim)
     }
@@ -751,9 +825,11 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
       buildLatestSignalsFallback({ limit, strategy, supabase: null, forceStatic: true }),
       LATEST_SIGNALS_CACHE_TTL_SEC
     );
-    return withLatestSignalsSourceTracking(
+    const out = withLatestSignalsSourceTracking(
       enrichSignalsMeta({ ...payload, meta: { ...(payload.meta || {}), cache } }, { limit, fallbackReason: "forced_static" })
     );
+    recordFreshness("signalsLatest", out?.meta || {});
+    return out;
   }
 
   if (!supabase) {
@@ -763,9 +839,11 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
       () => buildLatestSignalsFallback({ limit, strategy, supabase: null }),
       LATEST_SIGNALS_CACHE_TTL_SEC
     );
-    return withLatestSignalsSourceTracking(
+    const out = withLatestSignalsSourceTracking(
       enrichSignalsMeta({ ...payload, meta: { ...(payload.meta || {}), cache } }, { limit, fallbackReason: "supabase_unconfigured" })
     );
+    recordFreshness("signalsLatest", out?.meta || {});
+    return out;
   }
   const key = `terminal:signals:latest:v3:${limit}:${strategy}`;
   let payload;
@@ -781,21 +859,27 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
   } catch (_) {
     const fb = await buildLatestSignalsFallback({ limit, strategy, supabase });
     const fallbackReason = fb?.meta?.source === "static_fallback" ? "supabase_query_failed_and_upstream_unavailable" : "supabase_query_failed";
-    return withLatestSignalsSourceTracking(
+    const out = withLatestSignalsSourceTracking(
       enrichSignalsMeta({ ...fb, meta: { ...(fb.meta || {}), cache: "miss+fallback" } }, { limit, fallbackReason })
     );
+    recordFreshness("signalsLatest", out?.meta || {});
+    return out;
   }
   const hasRows = Array.isArray(payload?.data) && payload.data.length > 0;
   if (hasRows) {
-    return withLatestSignalsSourceTracking(
+    const out = withLatestSignalsSourceTracking(
       enrichSignalsMeta({ ...payload, meta: { ...(payload.meta || {}), cache } }, { limit, fallbackReason: null })
     );
+    recordFreshness("signalsLatest", out?.meta || {});
+    return out;
   }
   const fb = await buildLatestSignalsFallback({ limit, strategy, supabase });
   const fallbackReason = fb?.meta?.source === "static_fallback" ? "supabase_empty_and_upstream_unavailable" : "supabase_empty";
-  return withLatestSignalsSourceTracking(
+  const out = withLatestSignalsSourceTracking(
     enrichSignalsMeta({ ...fb, meta: { ...(fb.meta || {}), cache: `${cache}+fallback` } }, { limit, fallbackReason })
   );
+  recordFreshness("signalsLatest", out?.meta || {});
+  return out;
 }
 
 async function getOutcomesProofCached(supabase, hours, recentN) {
@@ -829,7 +913,9 @@ async function getSmartWalletsTopCached(supabase, limit) {
 async function getHotTokensCached(limit, supabase) {
   const key = `terminal:tokens:hot:v3:${limit}`;
   const { payload, cache } = await withCache(key, () => buildHotTokens({ limit, supabase }), HOT_CACHE_TTL_SEC);
-  return { ...payload, meta: { ...(payload.meta || {}), cache } };
+  const out = { ...payload, meta: { ...(payload.meta || {}), cache } };
+  recordFreshness("tokensHot", out?.meta || {});
+  return out;
 }
 
 module.exports = {
@@ -843,6 +929,7 @@ module.exports = {
   getSmartWalletsTopCached,
   getHotTokensCached,
   getLatestSignalsFallbackOpsSnapshot,
+  getDataFreshnessSnapshot,
   jupiterSwapUrl,
   decisionFromScore
 };

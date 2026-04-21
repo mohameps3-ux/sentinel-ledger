@@ -92,7 +92,21 @@ router.get("/latest", async (req, res) => {
     }
     return res.json(payload);
   } catch (e) {
-    return res.status(500).json({ ok: false, error: e.message, data: [] });
+    return res.json({
+      ok: true,
+      data: [],
+      meta: {
+        source: "route_fallback",
+        degraded: true,
+        fallbackReason: "route_exception",
+        count: 0,
+        upstreamStatus: null,
+        realDataRatio: 0,
+        providerUsed: "route_fallback",
+        attempts: 1,
+        circuitState: null
+      }
+    });
   }
 });
 
