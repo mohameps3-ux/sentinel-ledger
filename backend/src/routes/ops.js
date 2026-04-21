@@ -5,6 +5,7 @@ const { getEntropyGuardOpsSnapshot } = require("../ingestion/entropyGuard");
 const { getSignalPerformanceSummary } = require("../services/signalPerformance");
 const { runCalibrationOnce, getCalibrationSnapshot } = require("../services/signalCalibrator");
 const { getLatestSignalsFallbackOpsSnapshot } = require("../services/homeTerminalApi");
+const { getOpsHeartbeatCronStatus, runOpsHeartbeatTick } = require("../jobs/opsHeartbeatCron");
 
 const router = express.Router();
 
@@ -26,6 +27,15 @@ router.get("/entropy-guard/snapshot", assertOpsAuth, (_req, res) => {
 
 router.get("/signals-latest-fallback/snapshot", assertOpsAuth, (_req, res) => {
   return res.json(getLatestSignalsFallbackOpsSnapshot());
+});
+
+router.get("/heartbeat/status", assertOpsAuth, (_req, res) => {
+  return res.json({ ok: true, data: getOpsHeartbeatCronStatus() });
+});
+
+router.post("/heartbeat/run", assertOpsAuth, async (_req, res) => {
+  await runOpsHeartbeatTick();
+  return res.json({ ok: true, data: getOpsHeartbeatCronStatus() });
 });
 
 router.get("/signal-performance/summary", assertOpsAuth, async (req, res) => {
