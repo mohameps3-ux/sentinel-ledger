@@ -245,7 +245,7 @@ async function getSignalPerformanceSummary(options = {}) {
   const { data: rows, error } = await supabase
     .from("signal_performance")
     .select(
-      "asset,emitted_at,resolved_at,confidence,signals,entry_price_usd,outcome_price_usd,outcome_pct,success,status"
+      "asset,emitted_at,resolved_at,confidence,signals,entry_price_usd,outcome_price_usd,outcome_pct,success,status,failure_reason"
     )
     .gte("emitted_at", sinceIso)
     .order("emitted_at", { ascending: true })
@@ -328,6 +328,32 @@ async function getSignalPerformanceSummary(options = {}) {
     resolved.map((r) => Number(r.outcome_pct))
   );
 
+  const statusBreakdown = { pending: 0, resolved: 0, failed: 0, other: 0 };
+  const failedReasons = new Map();
+  let pendingMissingEntryPrice = 0;
+  let resolvedIncompleteOutcome = 0;
+  for (const r of all) {
+    const st = String(r.status || "");
+    if (st === "pending") {
+      statusBreakdown.pending += 1;
+      const e = Number(r.entry_price_usd);
+      if (!Number.isFinite(e) || e <= 0) pendingMissingEntryPrice += 1;
+    } else if (st === "resolved") {
+      statusBreakdown.resolved += 1;
+      if (!Number.isFinite(Number(r.outcome_pct))) resolvedIncompleteOutcome += 1;
+    } else if (st === "failed") {
+      statusBreakdown.failed += 1;
+      const fr = r.failure_reason ? String(r.failure_reason) : "(no_reason)";
+      failedReasons.set(fr, (failedReasons.get(fr) || 0) + 1);
+    } else {
+      statusBreakdown.other += 1;
+    }
+  }
+  const failedReasonTop = [...failedReasons.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([reason, count]) => ({ reason, count }));
+
   return {
     ok: true,
     lookbackHours,
@@ -335,6 +361,14 @@ async function getSignalPerformanceSummary(options = {}) {
     resolvedRows: resolved.length,
     pendingRows: all.filter((r) => r.status === "pending").length,
     failedRows: all.filter((r) => r.status === "failed").length,
+    diagnostics: {
+      hitSampleLimit: all.length >= maxRows,
+      statusBreakdown,
+      resolvedIncompleteOutcome,
+      pendingMissingEntryPrice,
+      failedReasonTop,
+      defaultHorizonMin: DEFAULT_HORIZON_MIN
+    },
     metrics: {
       winRatePct: Math.round(winRate * 100) / 100,
       avgOutcomePct: Math.round(avgRet * 1e4) / 1e4,

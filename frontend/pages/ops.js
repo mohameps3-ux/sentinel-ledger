@@ -575,11 +575,59 @@ export default function OpsPage() {
                         value={perf.metrics?.confidenceReturnCorrelation ?? "n/a"}
                       />
                     </div>
-                    <div className="grid sm:grid-cols-3 gap-3">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <Kpi label="Resolved rows" value={formatInteger(perf.resolvedRows ?? 0)} />
                       <Kpi label="Pending rows" value={formatInteger(perf.pendingRows ?? 0)} />
+                      <Kpi label="Failed rows" value={formatInteger(perf.failedRows ?? 0)} />
                       <Kpi label="Max drawdown" value={`${perf.metrics?.maxDrawdownPct ?? 0}%`} />
                     </div>
+                    {perf.diagnostics ? (
+                      <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4 space-y-3">
+                        <div className="text-[11px] text-gray-500 font-semibold">Why resolved might look low</div>
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                          <strong className="text-gray-300">Resolved rows</strong> here means resolved with a numeric{" "}
+                          <code className="text-gray-500">outcome_pct</code> (used for win rate).{" "}
+                          <strong className="text-gray-300">Sampled</strong> is capped at{" "}
+                          <code className="text-gray-500">maxRows</code>; if you hit the cap, older rows in the window
+                          are omitted.
+                        </p>
+                        <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                          <div className="space-y-1">
+                            <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Status (sample)</p>
+                            <ul className="text-gray-300 space-y-0.5 font-mono text-[12px]">
+                              <li>pending: {formatInteger(perf.diagnostics.statusBreakdown?.pending ?? 0)}</li>
+                              <li>resolved: {formatInteger(perf.diagnostics.statusBreakdown?.resolved ?? 0)}</li>
+                              <li>failed: {formatInteger(perf.diagnostics.statusBreakdown?.failed ?? 0)}</li>
+                              <li>other: {formatInteger(perf.diagnostics.statusBreakdown?.other ?? 0)}</li>
+                            </ul>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Pipeline hints</p>
+                            <ul className="text-gray-300 space-y-0.5 font-mono text-[12px]">
+                              <li>sample cap hit: {perf.diagnostics.hitSampleLimit ? "yes" : "no"}</li>
+                              <li>pending w/o entry price: {formatInteger(perf.diagnostics.pendingMissingEntryPrice ?? 0)}</li>
+                              <li>resolved w/o outcome: {formatInteger(perf.diagnostics.resolvedIncompleteOutcome ?? 0)}</li>
+                              <li>default horizon (min): {formatInteger(perf.diagnostics.defaultHorizonMin ?? 0)}</li>
+                            </ul>
+                          </div>
+                        </div>
+                        {perf.diagnostics.failedReasonTop?.length ? (
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-2">
+                              Top failure reasons
+                            </p>
+                            <ul className="space-y-1 text-sm text-gray-200">
+                              {perf.diagnostics.failedReasonTop.map((row) => (
+                                <li key={row.reason} className="flex justify-between gap-3">
+                                  <span className="text-gray-300 break-all min-w-0">{row.reason}</span>
+                                  <span className="tabular-nums text-gray-500 shrink-0">{formatInteger(row.count)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                       <div className="text-[11px] text-gray-500 font-semibold mb-3">Top signal combos</div>
                       {!perf.combos?.length ? (
