@@ -222,6 +222,48 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
   return { ok: true, data: out, meta: { source: "supabase", count: out.length, strategy } };
 }
 
+function buildSignalCardFromHotToken(row, strategy) {
+  const sentinelScore = Number(row?.sentinelScore || 0);
+  const mint = String(row?.tokenAddress || row?.mint || "");
+  const symbol = String(row?.token || row?.symbol || mint.slice(0, 4) || "TOKEN");
+  const decision = row?.decision || decisionFromScore(sentinelScore, strategy);
+  const whyNow = Array.isArray(row?.whyTrade) && row.whyTrade.length
+    ? row.whyTrade.slice(0, 3)
+    : whyNowLines({
+        walletCount: 2,
+        entryWindowMinutesLeft: Number(row?.entryWindowMinutesLeft || 5),
+        sentinelScore,
+        symbol
+      });
+  return {
+    token: symbol.startsWith("$") ? symbol : `$${symbol}`,
+    tokenAddress: mint,
+    sentinelScore,
+    decision,
+    whyNow,
+    redFlags: Array.isArray(row?.redFlags) ? row.redFlags : [],
+    entryWindow: String(row?.entryWindow || "OPEN"),
+    entryWindowMinutesLeft: Number(row?.entryWindowMinutesLeft || 5),
+    timeAdvantage: `You are earlier than ${Math.min(97, 52 + Math.round(sentinelScore / 2))}% of traders`,
+    signalDecay: "Confidence -3%/min",
+    confluence: Boolean(row?.confluence || sentinelScore >= 88),
+    evidenceChips: Array.isArray(row?.evidenceChips) ? row.evidenceChips : evidenceChipsFor(sentinelScore),
+    contextHistory: `Market-derived setup for ${symbol} (no wallet-row data yet)`,
+    createdAt: new Date().toISOString()
+  };
+}
+
+async function buildLatestSignalsFallback({ limit = 10, strategy = "balanced", supabase = null } = {}) {
+  const hot = await buildHotTokens({ limit: Math.min(24, Math.max(6, Number(limit) || 10)), supabase });
+  const rows = Array.isArray(hot?.data) ? hot.data : [];
+  const data = rows.slice(0, limit).map((row) => buildSignalCardFromHotToken(row, strategy));
+  return {
+    ok: true,
+    data,
+    meta: { source: "dexscreener_fallback", count: data.length, strategy }
+  };
+}
+
 /**
  * Proof of edge — only rows with non-null result_pct (worker-filled).
  */
@@ -429,10 +471,17 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
 }
 
 async function getLatestSignalsFeedCached(supabase, limit, strategy) {
-  if (!supabase) return { ok: true, data: [], meta: { source: "unconfigured", cache: "bypass" } };
+  if (!supabase) {
+    const key = `terminal:signals:latest:fallback:v1:${limit}:${strategy}`;
+    const { payload, cache } = await withCache(key, () => buildLatestSignalsFallback({ limit, strategy, supabase: null }));
+    return { ...payload, meta: { ...(payload.meta || {}), cache } };
+  }
   const key = `terminal:signals:latest:v2:${limit}:${strategy}`;
   const { payload, cache } = await withCache(key, () => buildLatestSignalsFeed(supabase, { limit, strategy }));
-  return { ...payload, meta: { ...(payload.meta || {}), cache } };
+  const hasRows = Array.isArray(payload?.data) && payload.data.length > 0;
+  if (hasRows) return { ...payload, meta: { ...(payload.meta || {}), cache } };
+  const fb = await buildLatestSignalsFallback({ limit, strategy, supabase });
+  return { ...fb, meta: { ...(fb.meta || {}), cache: `${cache}+fallback` } };
 }
 
 async function getOutcomesProofCached(supabase, hours, recentN) {

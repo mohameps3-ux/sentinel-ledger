@@ -5,6 +5,15 @@ const STRICT_MIN_LIQUIDITY = 15000;
 const STRICT_MIN_VOLUME_24H = 25000;
 const RELAXED_MIN_LIQUIDITY = 2000;
 const RELAXED_MIN_VOLUME_24H = 5000;
+const CURATED_SOLANA_MINTS = [
+  // Core large-liquidity references used as deterministic backup pool.
+  "So11111111111111111111111111111111111111112", // SOL
+  "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", // BONK
+  "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", // WIF
+  "JUPyiwrYJFksjQVdKWvHJHGzS76nqbwsjZBM74fATFc", // JUP
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
+  "Es9vMFrzaCERmJfrF4H2i6rPz9vywgq6Z9erjRzCQXD" // USDT
+];
 
 function deriveTrendingGrade(market) {
   const liq = Number(market?.liquidity || 0);
@@ -89,24 +98,35 @@ async function fetchTrendingList(limit = 6) {
   const strict = [];
   const relaxed = [];
   const seenMints = new Set();
-
-  for (const item of candidates.slice(0, 36)) {
+  const mintCandidates = [];
+  for (const item of candidates.slice(0, 120)) {
     const mint = item?.tokenAddress;
     if (!mint || typeof mint !== "string" || seenMints.has(mint)) continue;
-    const market = await getMarketData(mint);
-    if (!market || !market.symbol) continue;
     seenMints.add(mint);
+    mintCandidates.push(mint);
+  }
 
-    const liq = Number(market?.liquidity || 0);
-    const vol = Number(market?.volume24h || 0);
-    const normalized = normalizeTrendingEntry(mint, market);
-
-    if (liq >= STRICT_MIN_LIQUIDITY && vol >= STRICT_MIN_VOLUME_24H) {
-      strict.push(normalized);
-    } else if (liq >= RELAXED_MIN_LIQUIDITY && vol >= RELAXED_MIN_VOLUME_24H) {
-      relaxed.push(normalized);
+  const BATCH = 8;
+  for (let i = 0; i < mintCandidates.length; i += BATCH) {
+    const batch = mintCandidates.slice(i, i + BATCH);
+    const markets = await Promise.all(
+      batch.map(async (mint) => {
+        try {
+          const market = await getMarketData(mint);
+          return { mint, market };
+        } catch {
+          return { mint, market: null };
+        }
+      })
+    );
+    for (const { mint, market } of markets) {
+      if (!market || !market.symbol) continue;
+      const liq = Number(market?.liquidity || 0);
+      const vol = Number(market?.volume24h || 0);
+      const normalized = normalizeTrendingEntry(mint, market);
+      if (liq >= STRICT_MIN_LIQUIDITY && vol >= STRICT_MIN_VOLUME_24H) strict.push(normalized);
+      else if (liq >= RELAXED_MIN_LIQUIDITY && vol >= RELAXED_MIN_VOLUME_24H) relaxed.push(normalized);
     }
-
     if (strict.length >= cap) break;
   }
 
@@ -115,6 +135,21 @@ async function fetchTrendingList(limit = 6) {
     for (const token of relaxed) {
       out.push(token);
       if (out.length >= cap) break;
+    }
+  }
+
+  if (out.length < cap) {
+    for (const mint of CURATED_SOLANA_MINTS) {
+      if (out.length >= cap) break;
+      if (out.some((t) => t.mint === mint)) continue;
+      try {
+        const market = await getMarketData(mint);
+        if (!market || !market.symbol) continue;
+        const normalized = normalizeTrendingEntry(mint, market);
+        out.push(normalized);
+      } catch {
+        // Best-effort fallback pool; ignore single mint failures.
+      }
     }
   }
 
