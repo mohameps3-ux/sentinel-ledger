@@ -21,8 +21,11 @@ import { getPublicApiUrl } from "./publicRuntime";
  *   }
  */
 
-const POLL_INTERVAL_MS = 30_000;
+/** Default when no consumer has applied War Mode prefs yet (see `setGlobalHealthPollIntervalMs`). */
+const DEFAULT_POLL_INTERVAL_MS = 10_000;
 const FETCH_TIMEOUT_MS = 8_000;
+
+let pollIntervalMs = DEFAULT_POLL_INTERVAL_MS;
 
 const state = {
   status: null,
@@ -88,7 +91,7 @@ function scheduleNext() {
   timer = setTimeout(async () => {
     await pollOnce();
     if (subscribers.size > 0) scheduleNext();
-  }, POLL_INTERVAL_MS);
+  }, pollIntervalMs);
 }
 
 function onVisibility() {
@@ -169,4 +172,22 @@ if (DEV && typeof window !== "undefined") {
 
 export function getGlobalHealthSnapshot() {
   return { ...state };
+}
+
+/**
+ * Adjust `/health/sync` poll cadence without spawning extra pollers.
+ * Clamped to a safe band so a bad caller cannot tight-loop the API.
+ *
+ * @param {number} ms
+ */
+export function setGlobalHealthPollIntervalMs(ms) {
+  const n = Number(ms);
+  const next = Number.isFinite(n) ? Math.min(120_000, Math.max(2_000, Math.floor(n))) : DEFAULT_POLL_INTERVAL_MS;
+  if (next === pollIntervalMs) return;
+  pollIntervalMs = next;
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+  if (subscribers.size > 0) scheduleNext();
 }

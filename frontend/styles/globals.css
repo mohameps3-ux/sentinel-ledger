@@ -560,3 +560,11 @@ nav .wallet-adapter-dropdown {
   border-color: rgba(129, 140, 248, 0.45) !important;
   background: rgba(129, 140, 248, 0.08) !important;
 }
+
+/* War mode: strip motion-heavy CSS so reorder + polling feel instant (see WarModeContext). */
+body.war-mode *,
+body.war-mode *::before,
+body.war-mode *::after {
+  transition: none !important;
+  animation: none !important;
+}

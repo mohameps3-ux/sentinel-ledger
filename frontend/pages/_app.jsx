@@ -7,6 +7,7 @@ import { useRouter } from "next/router";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WarModeProvider } from "../contexts/WarModeContext";
 import { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import { AppErrorBoundary } from "../components/layout/AppErrorBoundary";
@@ -80,6 +81,7 @@ export default function App({ Component, pageProps }) {
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
           <QueryClientProvider client={queryClient}>
+            <WarModeProvider>
             <div
               className={`${inter.className} min-h-screen bg-[#070709] text-white antialiased selection:bg-emerald-500/25 selection:text-emerald-100`}
               translate="no"
@@ -193,6 +195,7 @@ export default function App({ Component, pageProps }) {
                 }}
               />
             </div>
+            </WarModeProvider>
           </QueryClientProvider>
         </WalletModalProvider>
       </WalletProvider>
