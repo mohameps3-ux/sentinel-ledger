@@ -1,7 +1,16 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const { getSupabase } = require("../lib/supabase");
+const { getFreshnessExportEd25519PublicKeyBytes } = require("../lib/freshnessSignedExport");
 
 const router = express.Router();
+
+const freshnessExportKeyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 function safeSupabase() {
   try {
@@ -70,6 +79,21 @@ router.get("/stats", async (_req, res) => {
       error: e.message
     });
   }
+});
+
+/** GET /api/v1/public/freshness-export-verification-key — Ed25519 public key for offline signed export verification (F4.8). */
+router.get("/freshness-export-verification-key", freshnessExportKeyLimiter, (_req, res) => {
+  const pub = getFreshnessExportEd25519PublicKeyBytes();
+  if (!pub) {
+    return res.status(404).json({ ok: false, error: "ed25519_not_configured" });
+  }
+  return res.json({
+    ok: true,
+    algorithm: "ed25519",
+    publicKeyBase64: Buffer.from(pub).toString("base64"),
+    publicKeyHex: Buffer.from(pub).toString("hex"),
+    message: "Verify detached signature over UTF-8 bytes of document.integrity.proofInput (tweetnacl.sign.detached.verify)."
+  });
 });
 
 /** GET /api/v1/public/track-record */

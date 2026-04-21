@@ -45,6 +45,10 @@ const {
   startSmartWalletSignalBackfillCron,
   getSmartWalletSignalBackfillStatus
 } = require("./jobs/smartWalletSignalBackfillCron");
+const {
+  startDataFreshnessHistoryCron,
+  getDataFreshnessHistoryCronStatus
+} = require("./jobs/dataFreshnessHistoryCron");
 const publicSurfaceRouter = require("./routes/publicSurface");
 const portfolioRouter = require("./routes/portfolio");
 const signalsRouter = require("./routes/signals");
@@ -54,6 +58,7 @@ const walletStalkerRouter = require("./routes/walletStalker");
 const walletNarrativeRouter = require("./routes/walletNarrative");
 const scoringRouter = require("./routes/scoring");
 const opsRouter = require("./routes/ops");
+const { verifyFreshnessHistorySignedExport } = require("./lib/freshnessSignedExport");
 const { startTelegramBot } = require("./bots/telegramBot");
 const { startSubscriptionExpiryCron } = require("./services/subscriptionCron");
 const { corsMiddlewareOptions, socketIoCors } = require("./lib/corsOptions");
@@ -102,6 +107,48 @@ app.post(
 app.use("/api/v1/nlu", express.json({ limit: "16kb" }));
 app.use("/api/v1/bots/omni", express.json({ limit: "32kb" }));
 app.use("/api/v1/public", express.json({ limit: "32kb" }));
+
+const verifySignedExportLimiter = rateLimit({
+  windowMs: Math.max(60_000, Number(process.env.FRESHNESS_HISTORY_VERIFY_WINDOW_MS || 900_000)),
+  max: Math.max(1, Math.floor(Number(process.env.FRESHNESS_HISTORY_VERIFY_MAX_PER_WINDOW || 30))),
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+function signedExportVerifyEnabled() {
+  return String(process.env.FRESHNESS_HISTORY_VERIFY_ENABLED || "true").toLowerCase() !== "false";
+}
+
+/**
+ * F4.7 — Public integrity verification for signed freshness exports.
+ * No auth: third parties POST the full export JSON; server returns PASS/FAIL only (secret never leaves).
+ * Stricter body limit + dedicated rate limit (abuse protection).
+ */
+app.post(
+  "/api/v1/ops/verify-signed-export",
+  express.json({ limit: "4mb" }),
+  verifySignedExportLimiter,
+  (req, res) => {
+    if (!signedExportVerifyEnabled()) {
+      return res.status(404).json({ ok: false, error: "not_found" });
+    }
+    const out = verifyFreshnessHistorySignedExport(req.body);
+    if (!out.ok) {
+      return res.status(503).json({ ok: false, error: out.reason || "verify_unavailable" });
+    }
+    return res.status(200).json({
+      ok: true,
+      valid: out.valid,
+      hashMatches: out.hashMatches,
+      proofInputMatches: out.proofInputMatches,
+      signatureMatches: out.signatureMatches,
+      reason: out.valid ? null : out.reason,
+      hashAlgorithm: "sha256",
+      signatureAlgorithm: out.signatureAlgorithm || null
+    });
+  }
+);
+
 app.use(express.json({ limit: "1mb" }));
 
 /**
@@ -172,7 +219,8 @@ app.get("/health", async (_, res) => {
     signalCalibrator: getSignalCalibratorCronStatus(),
     opsHeartbeat: getOpsHeartbeatCronStatus(),
     marketSnapshotWarmup: getMarketSnapshotWarmupStatus(),
-    smartSignalBackfill: getSmartWalletSignalBackfillStatus()
+    smartSignalBackfill: getSmartWalletSignalBackfillStatus(),
+    dataFreshnessHistory: getDataFreshnessHistoryCronStatus()
   };
   if (missingCritical.length) {
     return res.status(503).json(body);
@@ -303,6 +351,7 @@ server.listen(port, () => {
   startOpsHeartbeatCron();
   startMarketSnapshotWarmupCron();
   startSmartWalletSignalBackfillCron();
+  startDataFreshnessHistoryCron();
   startSubscriptionExpiryCron();
   console.log(`Sentinel Ledger backend on :${port}`);
 });

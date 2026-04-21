@@ -23,6 +23,32 @@
 - Automation: daily heartbeat embeds `realRatio24h`, `supabaseSourceRate24h`, top `fallbackReason`, and top `providerUsed`.
 - Alerting: `GET /api/v1/ops/signals-supabase-slo/snapshot` exposes sustained-breach state for automatic webhook alerts when rate stays below target.
 
+## data freshness history (phase 4)
+
+- Scope:
+  - `GET /api/v1/ops/data-freshness/history?hours=24&endpoint=signalsLatest`
+  - `GET /api/v1/ops/data-freshness/history/export?hours=24&endpoint=signalsLatest` (CSV)
+  - `GET /api/v1/ops/data-freshness/history/export/signed?hours=24&endpoint=signalsLatest` (JSON + SHA256 + HMAC)
+  - `POST /api/v1/ops/verify-signed-export` (public, no `x-ops-key`: full signed JSON body → `{ valid, hashMatches, proofInputMatches, signatureMatches }`)
+  - `GET /api/v1/ops/data-freshness/history/status`
+  - `POST /api/v1/ops/data-freshness/history/run`
+- Goal: persist and query historical freshness/SLO metrics across restarts and deploys.
+- Cron config: `FRESHNESS_HISTORY_CRON_ENABLED`, `FRESHNESS_HISTORY_TICK_MS`, `FRESHNESS_HISTORY_RETENTION_DAYS`.
+- Verify: status endpoint reports successful inserts and pruning, and history endpoint returns time-ordered rows.
+- Signed export config: `FRESHNESS_HISTORY_EXPORT_SIGNING_KEY` (falls back to `OMNI_BOT_OPS_KEY` if unset).
+- Integrity fields to archive with exports: `payloadHash`, `proofInput`, `signature`.
+- Public verify (F4.7): `FRESHNESS_HISTORY_VERIFY_*` controls enablement, rate limit window, max requests per window, and max rows accepted per verify. **Trust model:** with HMAC, third parties verify by asking *your* honest server (secret stays server-side). For offline / trust-minimized verification, configure **Ed25519** (see `freshness export Ed25519 (F4.8)` below).
+
+## freshness export Ed25519 (F4.8)
+
+- When `FRESHNESS_HISTORY_EXPORT_ED25519_SEED_BASE64` is set (32-byte seed, base64), `GET /api/v1/ops/data-freshness/history/export/signed` uses **Ed25519** detached signatures over UTF-8 `integrity.proofInput` (same `payloadHash` / `proofInput` contract as HMAC exports).
+- Public key (no auth): `GET /api/v1/public/freshness-export-verification-key` — use with `tweetnacl.sign.detached.verify` for offline verification. Optional `FRESHNESS_HISTORY_EXPORT_ED25519_PUBLIC_BASE64` if you publish the key without keeping the seed on the same host.
+- `POST /api/v1/ops/verify-signed-export` accepts both `signatureAlgorithm: ed25519` and `hmac-sha256` documents. For Ed25519, the server can verify using only the **public** key (env or embedded `publicKeyHex`); if both env and document embed a key, they must match.
+- Generate a seed once (example): `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` — store only in the secrets manager / Railway variables.
+- Historical alerting (F4.4): `data.trendAlert` in the status response now evaluates sustained degradation (`rate < target` for multiple points) plus negative slope.
+- Alert config: `FRESHNESS_HISTORY_ALERT_*` controls lookback, minimum points, sustained points, slope threshold, min request volume, and cooldown.
+- Trigger meaning: when `trendAlert.breach.active=true`, quality is not only below target now, it is also getting worse over time.
+
 ## market snapshot warmup
 
 - Scope: `GET /api/v1/ops/market-snapshot-warmup/status` and `POST /api/v1/ops/market-snapshot-warmup/run` (requires `x-ops-key`).

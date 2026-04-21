@@ -32,6 +32,44 @@ function formatBytes(n) {
   return `${x < 10 ? x.toFixed(1) : Math.round(x)} ${units[i]}`;
 }
 
+function formatPctUnit(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return `${(n * 100).toFixed(1)}%`;
+}
+
+function topBreakdownEntry(breakdown = {}) {
+  const entries = Object.entries(breakdown || {});
+  if (!entries.length) return null;
+  entries.sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0));
+  return entries[0];
+}
+
+function Sparkline({ points = [], stroke = "#22d3ee" }) {
+  if (!Array.isArray(points) || points.length < 2) {
+    return <div className="h-12 rounded-lg border border-white/[0.08] bg-[#0b0f13]/80" />;
+  }
+  const w = 260;
+  const h = 46;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const span = max - min || 1;
+  const path = points
+    .map((p, i) => {
+      const x = (i / (points.length - 1)) * (w - 2) + 1;
+      const y = h - ((p - min) / span) * (h - 4) - 2;
+      return `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+  return (
+    <div className="h-12 rounded-lg border border-white/[0.08] bg-[#0b0f13]/80 px-2 py-1">
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full" role="img" aria-label="sparkline">
+        <path d={path} fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "ingestion", label: "Ingestion" },
@@ -85,8 +123,15 @@ export default function OpsPage() {
   const [guard, setGuard] = useState(null);
   const [perf, setPerf] = useState(null);
   const [calib, setCalib] = useState(null);
+  const [freshness, setFreshness] = useState(null);
+  const [freshnessHistory, setFreshnessHistory] = useState([]);
+  const [sloSnapshot, setSloSnapshot] = useState(null);
+  const [historyStatus, setHistoryStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
+  const [verifyPaste, setVerifyPaste] = useState("");
+  const [verifyResult, setVerifyResult] = useState(null);
+  const [verifyBusy, setVerifyBusy] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -105,18 +150,26 @@ export default function OpsPage() {
     if (!hasKey) return toast.error("Set your ops key first.");
     setLoading(true);
     try {
-      const [ticketRes, eventRes, guardRes, perfRes, calibRes] = await Promise.all([
+      const [ticketRes, eventRes, guardRes, perfRes, calibRes, freshRes, histRes, sloRes, histStatusRes] = await Promise.all([
         withOpsKey("/api/v1/bots/omni/tickets?limit=50", opsKey),
         withOpsKey("/api/v1/bots/omni/events?limit=100", opsKey),
         withOpsKey("/api/v1/ops/entropy-guard/snapshot", opsKey),
         withOpsKey("/api/v1/ops/signal-performance/summary?lookbackHours=48&maxRows=2000", opsKey),
-        withOpsKey("/api/v1/ops/signal-performance/calibration", opsKey)
+        withOpsKey("/api/v1/ops/signal-performance/calibration", opsKey),
+        withOpsKey("/api/v1/ops/data-freshness", opsKey),
+        withOpsKey("/api/v1/ops/data-freshness/history?hours=168&endpoint=signalsLatest&limit=1000", opsKey),
+        withOpsKey("/api/v1/ops/signals-supabase-slo/snapshot", opsKey),
+        withOpsKey("/api/v1/ops/data-freshness/history/status", opsKey)
       ]);
       setTickets(ticketRes.data || []);
       setEvents(eventRes.data || []);
       setGuard(guardRes || null);
       setPerf(perfRes.data || null);
       setCalib(calibRes.data || null);
+      setFreshness(freshRes.data || null);
+      setFreshnessHistory(histRes.data?.rows || []);
+      setSloSnapshot(sloRes || null);
+      setHistoryStatus(histStatusRes.data || null);
       toast.success("Ops data refreshed.");
     } catch (error) {
       toast.error(`Load failed: ${error.message}`);
@@ -157,6 +210,90 @@ export default function OpsPage() {
     }
   };
 
+  const downloadHistoryCsv = async (hours) => {
+    if (!hasKey) return toast.error("Set your ops key first.");
+    try {
+      const url = `${getPublicApiUrl()}/api/v1/ops/data-freshness/history/export?hours=${hours}&endpoint=signalsLatest&limit=5000`;
+      const res = await fetch(url, {
+        headers: {
+          "x-ops-key": opsKey.trim()
+        }
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "export_failed");
+      }
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `signals-freshness-${hours}h.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+      toast.success(`CSV ${hours}h downloaded.`);
+    } catch (error) {
+      toast.error(`CSV export failed: ${error.message}`);
+    }
+  };
+
+  const downloadHistorySignedJson = async (hours) => {
+    if (!hasKey) return toast.error("Set your ops key first.");
+    try {
+      const url = `${getPublicApiUrl()}/api/v1/ops/data-freshness/history/export/signed?hours=${hours}&endpoint=signalsLatest&limit=5000`;
+      const res = await fetch(url, {
+        headers: {
+          "x-ops-key": opsKey.trim()
+        }
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "signed_export_failed");
+      }
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `signals-freshness-signed-${hours}h.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+      toast.success(`Signed JSON ${hours}h downloaded.`);
+    } catch (error) {
+      toast.error(`Signed export failed: ${error.message}`);
+    }
+  };
+
+  const verifyPublicSignedExport = async () => {
+    const raw = verifyPaste.trim();
+    if (!raw) return toast.error("Paste a signed export JSON first.");
+    if (raw.length > 3_500_000) return toast.error("Payload too large for this browser check.");
+    setVerifyBusy(true);
+    setVerifyResult(null);
+    try {
+      const doc = JSON.parse(raw);
+      const res = await fetch(`${getPublicApiUrl()}/api/v1/ops/verify-signed-export`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(doc)
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "verify_failed");
+      setVerifyResult(body);
+      toast.success(body.valid ? "PASS — integrity verified" : "FAIL — see details");
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        toast.error("Invalid JSON.");
+      } else {
+        toast.error(`Verify failed: ${error.message}`);
+      }
+    } finally {
+      setVerifyBusy(false);
+    }
+  };
+
   const guardPressure = Boolean(guard?.alerts?.highIngestionPressure);
   const sustained = Boolean(guard?.alerts?.sustainedDrops);
   const memAlert = Boolean(guard?.alerts?.memoryPressure);
@@ -167,6 +304,23 @@ export default function OpsPage() {
     : sustained || memAlert
       ? "Watch"
       : "Healthy";
+  const signalsFresh = freshness?.signalsLatest || null;
+  const supabaseRate24h = Number(signalsFresh?.supabaseSourceRate24h || 0);
+  const sloTarget = Number(signalsFresh?.slo?.targetSupabaseRate || 0.8);
+  const sloMet = Boolean(signalsFresh?.slo?.met);
+  const topFallback = topBreakdownEntry(signalsFresh?.fallbackReasonBreakdown24h || {});
+  const topProvider = topBreakdownEntry(signalsFresh?.providerUsedBreakdown24h || {});
+  const historyRows = Array.isArray(freshnessHistory) ? freshnessHistory : [];
+  const nowMs = Date.now();
+  const rows24h = historyRows.filter((row) => nowMs - Date.parse(row.captured_at || 0) <= 24 * 60 * 60 * 1000);
+  const supabaseSeries24h = rows24h
+    .map((row) => Number(row.supabase_source_rate_24h))
+    .filter((n) => Number.isFinite(n));
+  const supabaseSeries7d = historyRows
+    .map((row) => Number(row.supabase_source_rate_24h))
+    .filter((n) => Number.isFinite(n));
+  const trendAlertStatus = historyStatus?.trendAlert?.breach?.active ? "ACTIVE" : "HEALTHY";
+  const trendSlope = Number(historyStatus?.trendAlert?.latest?.slopePerHour);
 
   return (
     <>
@@ -176,8 +330,8 @@ export default function OpsPage() {
           <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Internal</p>
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Omni Ops Console</h1>
           <p className="text-sm text-gray-500 max-w-2xl leading-relaxed">
-            Authenticate once, then use tabs to focus: overview snapshot, ingestion guard, signal intelligence, or
-            support tools. Nothing leaves this browser except signed API calls you trigger.
+            Authenticate once for Ops APIs. Signed export integrity checks use a separate public endpoint (no ops key,
+            rate-limited) so third parties can validate evidence you share.
           </p>
         </header>
 
@@ -260,6 +414,24 @@ export default function OpsPage() {
                   label="Profit factor"
                   value={perf?.metrics?.profitFactor != null ? String(perf.metrics.profitFactor) : "—"}
                   hint="Observed outcomes"
+                  tone="neutral"
+                />
+                <Kpi
+                  label="Supabase source (24h)"
+                  value={signalsFresh ? formatPctUnit(supabaseRate24h) : "—"}
+                  hint={signalsFresh ? `Target ${formatPctUnit(sloTarget)}` : "Refresh to load"}
+                  tone={!signalsFresh ? "neutral" : sloMet ? "good" : "warn"}
+                />
+                <Kpi
+                  label="SLO status"
+                  value={!signalsFresh ? "—" : sloMet ? "PASS" : "FAIL"}
+                  hint={`Requests24h ${formatInteger(signalsFresh?.requests24h || 0)}`}
+                  tone={!signalsFresh ? "neutral" : sloMet ? "good" : "bad"}
+                />
+                <Kpi
+                  label="History points (7d)"
+                  value={formatInteger(historyRows.length)}
+                  hint={`Tick ${formatInteger(historyStatus?.tickIntervalMs || 0)} ms`}
                   tone="neutral"
                 />
               </div>
@@ -430,6 +602,147 @@ export default function OpsPage() {
                     </div>
                   </>
                 )}
+              </div>
+
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
+                <h2 className="text-lg font-semibold text-white">Freshness trend (signalsLatest)</h2>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <Kpi
+                    label="Supabase rate (24h)"
+                    value={signalsFresh ? formatPctUnit(supabaseRate24h) : "—"}
+                    hint={signalsFresh ? `Target ${formatPctUnit(sloTarget)}` : "Refresh to load"}
+                    tone={!signalsFresh ? "neutral" : sloMet ? "good" : "warn"}
+                  />
+                  <Kpi
+                    label="Top fallback reason"
+                    value={topFallback ? topFallback[0] : "none"}
+                    hint={topFallback ? `hits ${formatInteger(topFallback[1])}` : "No fallback in window"}
+                    tone="neutral"
+                  />
+                  <Kpi
+                    label="Top provider used"
+                    value={topProvider ? topProvider[0] : "n/a"}
+                    hint={topProvider ? `hits ${formatInteger(topProvider[1])}` : "No provider stats"}
+                    tone="neutral"
+                  />
+                </div>
+                <div className="grid lg:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">
+                      Last 24h ({formatInteger(supabaseSeries24h.length)} points)
+                    </p>
+                    <Sparkline points={supabaseSeries24h} stroke="#22d3ee" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">
+                      Last 7d ({formatInteger(supabaseSeries7d.length)} points)
+                    </p>
+                    <Sparkline points={supabaseSeries7d} stroke="#a78bfa" />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-600">
+                  SLO alert engine: {sloSnapshot?.status || "n/a"} · history cron{" "}
+                  {historyStatus?.cronEnabled ? "enabled" : "disabled"} · retention{" "}
+                  {formatInteger(historyStatus?.retentionDays || 0)}d
+                </p>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <Kpi
+                    label="History trend alert"
+                    value={historyStatus?.trendAlert ? trendAlertStatus : "—"}
+                    hint={historyStatus?.trendAlert?.enabled ? "sustained + slope model" : "disabled"}
+                    tone={!historyStatus?.trendAlert ? "neutral" : trendAlertStatus === "ACTIVE" ? "bad" : "good"}
+                  />
+                  <Kpi
+                    label="Trend slope (/h)"
+                    value={Number.isFinite(trendSlope) ? trendSlope.toFixed(4) : "—"}
+                    hint="Negative means worsening"
+                    tone={
+                      !Number.isFinite(trendSlope) ? "neutral" : trendSlope < 0 ? "warn" : "good"
+                    }
+                  />
+                  <Kpi
+                    label="History alerts sent"
+                    value={formatInteger(historyStatus?.trendAlert?.breach?.alertsSent || 0)}
+                    hint={historyStatus?.trendAlert?.breach?.lastAlertAt ? "last alert recorded" : "no alerts yet"}
+                    tone="neutral"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => downloadHistoryCsv(24)}
+                    className="h-9 px-3 rounded-lg border border-white/[0.1] bg-white/[0.03] text-xs text-gray-200 hover:bg-white/[0.06] transition"
+                  >
+                    Export CSV (24h)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadHistoryCsv(168)}
+                    className="h-9 px-3 rounded-lg border border-white/[0.1] bg-white/[0.03] text-xs text-gray-200 hover:bg-white/[0.06] transition"
+                  >
+                    Export CSV (7d)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadHistorySignedJson(24)}
+                    className="h-9 px-3 rounded-lg border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
+                  >
+                    Export Signed JSON (24h)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadHistorySignedJson(168)}
+                    className="h-9 px-3 rounded-lg border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
+                  >
+                    Export Signed JSON (7d)
+                  </button>
+                </div>
+
+                <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-3 sm:p-4 space-y-2">
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">
+                    Third-party verify (F4.7)
+                  </div>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">
+                    POST full signed JSON to{" "}
+                    <code className="text-gray-400 break-all">
+                      {getPublicApiUrl()}/api/v1/ops/verify-signed-export
+                    </code>
+                    . No secrets in the body; server returns PASS/FAIL only. Ed25519 exports can also be checked offline
+                    using{" "}
+                    <code className="text-gray-400 break-all">
+                      {getPublicApiUrl()}/api/v1/public/freshness-export-verification-key
+                    </code>{" "}
+                    (when configured).
+                  </p>
+                  <textarea
+                    value={verifyPaste}
+                    onChange={(e) => setVerifyPaste(e.target.value)}
+                    rows={4}
+                    spellCheck={false}
+                    placeholder='Paste entire signed export JSON here (starts with {"ok":true,"type":"ops_data_freshness_history_signed_export"…})'
+                    className="w-full min-h-[88px] rounded-lg bg-[#0E1318] border border-white/[0.08] px-2.5 py-2 text-xs text-gray-200 font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/25"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={verifyPublicSignedExport}
+                      disabled={verifyBusy}
+                      className="h-9 px-3 rounded-lg border border-emerald-500/35 bg-emerald-500/10 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/15 disabled:opacity-40 transition"
+                    >
+                      {verifyBusy ? "Verifying…" : "Verify integrity (public)"}
+                    </button>
+                    {verifyResult ? (
+                      <span
+                        className={`text-[11px] font-semibold tabular-nums ${
+                          verifyResult.valid ? "text-emerald-300" : "text-amber-200"
+                        }`}
+                      >
+                        {verifyResult.valid ? "PASS" : "FAIL"} · hash {String(verifyResult.hashMatches)} · proof{" "}
+                        {String(verifyResult.proofInputMatches)} · sig {String(verifyResult.signatureMatches)}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
               </div>
 
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
