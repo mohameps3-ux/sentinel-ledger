@@ -5,6 +5,13 @@ const { fetchTrendingList } = require("./trendingList");
 const { detectNarrativeTags } = require("./narrativeTags");
 
 const CACHE_TTL_SEC = Number(process.env.HOME_TERMINAL_CACHE_TTL_SEC || 180);
+const FORCE_STATIC_SIGNALS_FALLBACK = String(process.env.HOME_TERMINAL_FORCE_STATIC_FALLBACK || "").toLowerCase() === "true";
+const STATIC_SIGNAL_FALLBACK = [
+  { token: "$BONK", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", score: 88 },
+  { token: "$WIF", mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", score: 84 },
+  { token: "$JUP", mint: "JUPyiwrYJFksjQVdKWvHJHGzS76nqbwsjZBM74fATFc", score: 80 },
+  { token: "$SOL", mint: "So11111111111111111111111111111111111111112", score: 78 }
+];
 
 function jupiterSwapUrl(mint, sol) {
   if (!mint) return "";
@@ -253,14 +260,77 @@ function buildSignalCardFromHotToken(row, strategy) {
   };
 }
 
-async function buildLatestSignalsFallback({ limit = 10, strategy = "balanced", supabase = null } = {}) {
+async function buildLatestSignalsFallback({ limit = 10, strategy = "balanced", supabase = null, forceStatic = false } = {}) {
+  if (forceStatic) {
+    const hardFallbackForced = STATIC_SIGNAL_FALLBACK.slice(0, Math.max(1, Number(limit) || 10)).map((row) => {
+      const score = Number(row.score || 75);
+      return {
+        token: row.token,
+        tokenAddress: row.mint,
+        sentinelScore: score,
+        decision: decisionFromScore(score, strategy),
+        whyNow: whyNowLines({
+          walletCount: 2,
+          entryWindowMinutesLeft: 5,
+          sentinelScore: score,
+          symbol: row.token
+        }),
+        redFlags: [],
+        entryWindow: "OPEN",
+        entryWindowMinutesLeft: 5,
+        timeAdvantage: `You are earlier than ${Math.min(97, 52 + Math.round(score / 2))}% of traders`,
+        signalDecay: "Confidence -3%/min",
+        confluence: score >= 88,
+        evidenceChips: evidenceChipsFor(score),
+        contextHistory: `Static fallback card for ${row.token} (forced fallback simulation)`,
+        createdAt: new Date().toISOString()
+      };
+    });
+    return {
+      ok: true,
+      data: hardFallbackForced,
+      meta: { source: "static_fallback", count: hardFallbackForced.length, strategy, forced: true }
+    };
+  }
+
   const hot = await buildHotTokens({ limit: Math.min(24, Math.max(6, Number(limit) || 10)), supabase });
   const rows = Array.isArray(hot?.data) ? hot.data : [];
   const data = rows.slice(0, limit).map((row) => buildSignalCardFromHotToken(row, strategy));
+  if (data.length > 0) {
+    return {
+      ok: true,
+      data,
+      meta: { source: "dexscreener_fallback", count: data.length, strategy }
+    };
+  }
+  const hardFallback = STATIC_SIGNAL_FALLBACK.slice(0, Math.max(1, Number(limit) || 10)).map((row) => {
+    const score = Number(row.score || 75);
+    return {
+      token: row.token,
+      tokenAddress: row.mint,
+      sentinelScore: score,
+      decision: decisionFromScore(score, strategy),
+      whyNow: whyNowLines({
+        walletCount: 2,
+        entryWindowMinutesLeft: 5,
+        sentinelScore: score,
+        symbol: row.token
+      }),
+      redFlags: [],
+      entryWindow: "OPEN",
+      entryWindowMinutesLeft: 5,
+      timeAdvantage: `You are earlier than ${Math.min(97, 52 + Math.round(score / 2))}% of traders`,
+      signalDecay: "Confidence -3%/min",
+      confluence: score >= 88,
+      evidenceChips: evidenceChipsFor(score),
+      contextHistory: `Static fallback card for ${row.token} (upstream feed temporarily unavailable)`,
+      createdAt: new Date().toISOString()
+    };
+  });
   return {
     ok: true,
-    data,
-    meta: { source: "dexscreener_fallback", count: data.length, strategy }
+    data: hardFallback,
+    meta: { source: "static_fallback", count: hardFallback.length, strategy }
   };
 }
 
@@ -471,12 +541,20 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
 }
 
 async function getLatestSignalsFeedCached(supabase, limit, strategy) {
+  if (FORCE_STATIC_SIGNALS_FALLBACK) {
+    const key = `terminal:signals:latest:forced-static:v1:${limit}:${strategy}`;
+    const { payload, cache } = await withCache(key, () =>
+      buildLatestSignalsFallback({ limit, strategy, supabase: null, forceStatic: true })
+    );
+    return { ...payload, meta: { ...(payload.meta || {}), cache } };
+  }
+
   if (!supabase) {
-    const key = `terminal:signals:latest:fallback:v1:${limit}:${strategy}`;
+    const key = `terminal:signals:latest:fallback:v2:${limit}:${strategy}`;
     const { payload, cache } = await withCache(key, () => buildLatestSignalsFallback({ limit, strategy, supabase: null }));
     return { ...payload, meta: { ...(payload.meta || {}), cache } };
   }
-  const key = `terminal:signals:latest:v2:${limit}:${strategy}`;
+  const key = `terminal:signals:latest:v3:${limit}:${strategy}`;
   const { payload, cache } = await withCache(key, () => buildLatestSignalsFeed(supabase, { limit, strategy }));
   const hasRows = Array.isArray(payload?.data) && payload.data.length > 0;
   if (hasRows) return { ...payload, meta: { ...(payload.meta || {}), cache } };
