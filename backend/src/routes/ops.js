@@ -4,7 +4,7 @@ const express = require("express");
 const { getEntropyGuardOpsSnapshot } = require("../ingestion/entropyGuard");
 const { getSignalPerformanceSummary } = require("../services/signalPerformance");
 const { runCalibrationOnce, getCalibrationSnapshot } = require("../services/signalCalibrator");
-const { getLatestSignalsFallbackOpsSnapshot } = require("../services/homeTerminalApi");
+const { getLatestSignalsFallbackOpsSnapshot, getDataFreshnessSnapshot } = require("../services/homeTerminalApi");
 const { getOpsHeartbeatCronStatus, runOpsHeartbeatTick } = require("../jobs/opsHeartbeatCron");
 
 const router = express.Router();
@@ -27,6 +27,10 @@ router.get("/entropy-guard/snapshot", assertOpsAuth, (_req, res) => {
 
 router.get("/signals-latest-fallback/snapshot", assertOpsAuth, (_req, res) => {
   return res.json(getLatestSignalsFallbackOpsSnapshot());
+});
+
+router.get("/data-freshness", assertOpsAuth, (_req, res) => {
+  return res.json({ ok: true, data: getDataFreshnessSnapshot() });
 });
 
 router.get("/heartbeat/status", assertOpsAuth, (_req, res) => {

@@ -1,5 +1,4 @@
-const axios = require("axios");
-const { getMarketData } = require("./marketData");
+const { getMarketData, fetchDexHotProfilesLatest, fetchBirdeyeHotCandidates } = require("./marketData");
 
 const STRICT_MIN_LIQUIDITY = 15000;
 const STRICT_MIN_VOLUME_24H = 25000;
@@ -79,6 +78,9 @@ function normalizeTrendingEntry(mint, market) {
     change: Number(market.priceChange24h || 0),
     volume24h: Number(market.volume24h || 0),
     liquidity: Number(market.liquidity || 0),
+    providerUsed: market?._provider || "unknown",
+    attempts: Number(market?._attempts || 1),
+    circuitState: market?._circuitState || "UNKNOWN",
     grade: deriveTrendingGrade(market),
     flowLabel: deriveFlowLabel(market),
     alphaSpeedMins,
@@ -91,20 +93,41 @@ function normalizeTrendingEntry(mint, market) {
  */
 async function fetchTrendingList(limit = 6) {
   const cap = Math.min(24, Math.max(1, Number(limit) || 6));
-  const { data } = await axios.get("https://api.dexscreener.com/token-profiles/latest/v1", {
-    timeout: 5000
-  });
-  const candidates = Array.isArray(data) ? data.filter((x) => x?.chainId === "solana") : [];
+  let providerUsed = "dex_hot";
+  let attempts = 0;
+  let circuitState = "UNKNOWN";
+  let mintCandidates = [];
+  try {
+    const dex = await fetchDexHotProfilesLatest();
+    attempts += Number(dex?.attempts || 1);
+    circuitState = dex?.circuitState || circuitState;
+    const candidates = Array.isArray(dex?.data) ? dex.data.filter((x) => x?.chainId === "solana") : [];
+    const seenMints = new Set();
+    for (const item of candidates.slice(0, 120)) {
+      const mint = item?.tokenAddress;
+      if (!mint || typeof mint !== "string" || seenMints.has(mint)) continue;
+      seenMints.add(mint);
+      mintCandidates.push(mint);
+    }
+  } catch (_) {
+    mintCandidates = [];
+  }
+
+  if (!mintCandidates.length) {
+    try {
+      const be = await fetchBirdeyeHotCandidates(120);
+      attempts += Number(be?.attempts || 1);
+      circuitState = be?.circuitState || circuitState;
+      mintCandidates = Array.isArray(be?.mints) ? be.mints.slice(0, 120) : [];
+      providerUsed = "birdeye_hot";
+    } catch (_) {
+      mintCandidates = [];
+      providerUsed = "hot_provider_unavailable";
+    }
+  }
+
   const strict = [];
   const relaxed = [];
-  const seenMints = new Set();
-  const mintCandidates = [];
-  for (const item of candidates.slice(0, 120)) {
-    const mint = item?.tokenAddress;
-    if (!mint || typeof mint !== "string" || seenMints.has(mint)) continue;
-    seenMints.add(mint);
-    mintCandidates.push(mint);
-  }
 
   const BATCH = 8;
   for (let i = 0; i < mintCandidates.length; i += BATCH) {
@@ -157,7 +180,10 @@ async function fetchTrendingList(limit = 6) {
     ok: true,
     data: out,
     meta: {
-      source: "dexscreener",
+      source: providerUsed === "dex_hot" ? "dexscreener" : providerUsed,
+      providerUsed,
+      attempts: Math.max(1, attempts || 1),
+      circuitState,
       count: out.length,
       strictCount: strict.length,
       generatedAt: Date.now(),

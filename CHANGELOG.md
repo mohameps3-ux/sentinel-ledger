@@ -6,3 +6,4 @@
 - backend: added controlled simulation toggle `HOME_TERMINAL_FORCE_STATIC_FALLBACK=true` to validate failover behavior safely.
 - backend: added sustained `static_fallback` Ops alerting (`SIGNALS_LATEST_STATIC_ALERT_*`) and snapshot endpoint at `/api/v1/ops/signals-latest-fallback/snapshot`.
 - backend: added daily Ops webhook heartbeat (`OPS_HEARTBEAT_*`) with status endpoint and on-demand trigger (`/api/v1/ops/heartbeat/*`).
+- backend: phase 2 market failover hardening — separate provider breakers (`dex_hot`, `dex_token`, `birdeye_token`), 429 jitter-retry, per-mint dedupe, provider-fallback metadata, and ops freshness endpoint (`/api/v1/ops/data-freshness`).
