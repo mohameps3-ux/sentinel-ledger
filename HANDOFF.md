@@ -84,10 +84,12 @@ Key files:
 
 Implemented:
 - Daily 2-minute report script.
+- Offline signed-export verifier script for F4.9 acceptance.
 
 Key files:
 - `backend/scripts/opsDailyReport.js`
-- `backend/package.json` (`ops:daily`)
+- `backend/scripts/verifyFreshnessSignedExportOffline.js`
+- `backend/package.json` (`ops:daily`, `ops:verify-export-offline`)
 
 ## 4) Critical Endpoints
 

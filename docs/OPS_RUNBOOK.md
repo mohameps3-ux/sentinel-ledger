@@ -49,6 +49,28 @@
 - Alert config: `FRESHNESS_HISTORY_ALERT_*` controls lookback, minimum points, sustained points, slope threshold, min request volume, and cooldown.
 - Trigger meaning: when `trendAlert.breach.active=true`, quality is not only below target now, it is also getting worse over time.
 
+## F4.9 acceptance — end-to-end proof flow
+
+Use this sequence to formally close F4.8/F4.9 in production:
+
+1) Verification key endpoint is live:
+   - `GET /api/v1/public/freshness-export-verification-key` returns `ok=true` and `algorithm=ed25519`.
+
+2) Produce one signed export (Ops auth required):
+   - `GET /api/v1/ops/data-freshness/history/export/signed?hours=24&endpoint=signalsLatest&limit=5000`
+   - Save JSON to file (for example `signed-export.json`).
+
+3) Public verify endpoint returns PASS:
+   - `POST /api/v1/ops/verify-signed-export` with full signed JSON body.
+   - Expect: `valid=true`, `signatureAlgorithm=ed25519`, and all `*Matches=true`.
+
+4) Offline verify (no ops key):
+   - `cd backend`
+   - `npm run ops:verify-export-offline -- --file "./signed-export.json" --key-url "https://<backend>/api/v1/public/freshness-export-verification-key"`
+   - Expect process exit code `0` and `valid=true`.
+
+If step 4 fails due to missing public key in document, use `--key-url` (script will inject `publicKeyHex` from the public endpoint before verifying).
+
 ## market snapshot warmup
 
 - Scope: `GET /api/v1/ops/market-snapshot-warmup/status` and `POST /api/v1/ops/market-snapshot-warmup/run` (requires `x-ops-key`).
