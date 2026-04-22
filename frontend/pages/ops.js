@@ -127,6 +127,8 @@ export default function OpsPage() {
   const [freshnessHistory, setFreshnessHistory] = useState([]);
   const [sloSnapshot, setSloSnapshot] = useState(null);
   const [historyStatus, setHistoryStatus] = useState(null);
+  const [walletBehaviorStatus, setWalletBehaviorStatus] = useState(null);
+  const [walletBehaviorTop, setWalletBehaviorTop] = useState([]);
   const [loading, setLoading] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
   const [verifyPaste, setVerifyPaste] = useState("");
@@ -150,7 +152,19 @@ export default function OpsPage() {
     if (!hasKey) return toast.error("Set your ops key first.");
     setLoading(true);
     try {
-      const [ticketRes, eventRes, guardRes, perfRes, calibRes, freshRes, histRes, sloRes, histStatusRes] = await Promise.all([
+      const [
+        ticketRes,
+        eventRes,
+        guardRes,
+        perfRes,
+        calibRes,
+        freshRes,
+        histRes,
+        sloRes,
+        histStatusRes,
+        walletBehaviorStatusRes,
+        walletBehaviorTopRes
+      ] = await Promise.all([
         withOpsKey("/api/v1/bots/omni/tickets?limit=50", opsKey),
         withOpsKey("/api/v1/bots/omni/events?limit=100", opsKey),
         withOpsKey("/api/v1/ops/entropy-guard/snapshot", opsKey),
@@ -159,7 +173,9 @@ export default function OpsPage() {
         withOpsKey("/api/v1/ops/data-freshness", opsKey),
         withOpsKey("/api/v1/ops/data-freshness/history?hours=168&endpoint=signalsLatest&limit=1000", opsKey),
         withOpsKey("/api/v1/ops/signals-supabase-slo/snapshot", opsKey),
-        withOpsKey("/api/v1/ops/data-freshness/history/status", opsKey)
+        withOpsKey("/api/v1/ops/data-freshness/history/status", opsKey),
+        withOpsKey("/api/v1/ops/wallet-behavior/status", opsKey),
+        withOpsKey("/api/v1/ops/wallet-behavior/top?limit=25&minResolved=5", opsKey)
       ]);
       setTickets(ticketRes.data || []);
       setEvents(eventRes.data || []);
@@ -170,6 +186,8 @@ export default function OpsPage() {
       setFreshnessHistory(histRes.data?.rows || []);
       setSloSnapshot(sloRes || null);
       setHistoryStatus(histStatusRes.data || null);
+      setWalletBehaviorStatus(walletBehaviorStatusRes.data || null);
+      setWalletBehaviorTop(walletBehaviorTopRes.data || []);
       toast.success("Ops data refreshed.");
     } catch (error) {
       toast.error(`Load failed: ${error.message}`);
@@ -294,6 +312,19 @@ export default function OpsPage() {
     }
   };
 
+  const runWalletBehaviorNow = async () => {
+    if (!hasKey) return toast.error("Set your ops key first.");
+    try {
+      const runRes = await withOpsKey("/api/v1/ops/wallet-behavior/run", opsKey, { method: "POST" });
+      setWalletBehaviorStatus(runRes.data || null);
+      const topRes = await withOpsKey("/api/v1/ops/wallet-behavior/top?limit=25&minResolved=5", opsKey);
+      setWalletBehaviorTop(topRes.data || []);
+      toast.success("Wallet behavior recompute triggered.");
+    } catch (error) {
+      toast.error(`Wallet behavior run failed: ${error.message}`);
+    }
+  };
+
   const guardPressure = Boolean(guard?.alerts?.highIngestionPressure);
   const sustained = Boolean(guard?.alerts?.sustainedDrops);
   const memAlert = Boolean(guard?.alerts?.memoryPressure);
@@ -414,6 +445,18 @@ export default function OpsPage() {
                   label="Profit factor"
                   value={perf?.metrics?.profitFactor != null ? String(perf.metrics.profitFactor) : "—"}
                   hint="Observed outcomes"
+                  tone="neutral"
+                />
+                <Kpi
+                  label="Wallet behavior updated"
+                  value={walletBehaviorStatus?.lastStats?.updated != null ? formatInteger(walletBehaviorStatus.lastStats.updated) : "—"}
+                  hint={walletBehaviorStatus?.lastTickFinishedAt ? `last ${formatDateTime(walletBehaviorStatus.lastTickFinishedAt)}` : "Refresh to load"}
+                  tone="neutral"
+                />
+                <Kpi
+                  label="Wallet style leader"
+                  value={walletBehaviorTop?.[0]?.style_label || "—"}
+                  hint={walletBehaviorTop?.[0]?.wallet_address ? `${String(walletBehaviorTop[0].wallet_address).slice(0, 6)}...` : "No rows yet"}
                   tone="neutral"
                 />
                 <Kpi
@@ -822,6 +865,65 @@ export default function OpsPage() {
                     </div>
                   </>
                 )}
+              </div>
+
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold text-white">Wallet behavior memory (F5)</h2>
+                  <button
+                    type="button"
+                    onClick={runWalletBehaviorNow}
+                    className="h-9 px-3 rounded-lg border border-violet-500/30 bg-violet-500/[0.08] text-xs text-violet-100 hover:bg-violet-500/[0.14] transition"
+                  >
+                    Run now
+                  </button>
+                </div>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <Kpi label="Cron enabled" value={walletBehaviorStatus ? (walletBehaviorStatus.cronEnabled ? "yes" : "no") : "—"} />
+                  <Kpi
+                    label="Updated (last run)"
+                    value={walletBehaviorStatus?.lastStats?.updated != null ? formatInteger(walletBehaviorStatus.lastStats.updated) : "—"}
+                  />
+                  <Kpi
+                    label="Failed (last run)"
+                    value={walletBehaviorStatus?.lastStats?.failed != null ? formatInteger(walletBehaviorStatus.lastStats.failed) : "—"}
+                    tone={walletBehaviorStatus?.lastStats?.failed > 0 ? "warn" : "neutral"}
+                  />
+                  <Kpi
+                    label="Token features written"
+                    value={
+                      walletBehaviorStatus?.lastStats?.tokenFeaturesWritten != null
+                        ? formatInteger(walletBehaviorStatus.lastStats.tokenFeaturesWritten)
+                        : "—"
+                    }
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Last tick: {walletBehaviorStatus?.lastTickFinishedAt ? formatDateTime(walletBehaviorStatus.lastTickFinishedAt) : "—"} ·
+                  interval {formatInteger(walletBehaviorStatus?.tickIntervalMs || 0)} ms · lookback{" "}
+                  {formatInteger(walletBehaviorStatus?.lookbackDays || 0)}d
+                </p>
+                <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                  <div className="text-[11px] text-gray-500 font-semibold mb-3">Top wallets by real win rate</div>
+                  {!walletBehaviorTop.length ? (
+                    <p className="text-sm text-gray-500">No wallet behavior rows loaded.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                      {walletBehaviorTop.slice(0, 20).map((row) => (
+                        <div
+                          key={row.wallet_address}
+                          className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-gray-200"
+                        >
+                          <p className="font-mono break-all text-cyan-200">{row.wallet_address}</p>
+                          <p className="text-gray-400 mt-0.5">
+                            WR {Number(row.win_rate_real || 0).toFixed(1)}% · resolved {formatInteger(row.resolved_signals || 0)} · style{" "}
+                            {row.style_label || "—"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </section>
           )}

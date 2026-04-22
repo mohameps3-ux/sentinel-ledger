@@ -193,6 +193,18 @@ export function LiveTab({
             </p>
           </div>
         ) : null}
+        {sig._api?.walletBehavior ? (
+          <div className="rounded-md border border-violet-500/20 bg-violet-500/[0.06] px-2 py-1.5 space-y-0.5">
+            <p className="text-[9px] text-violet-200 uppercase tracking-wide font-semibold">Smart wallet behavior</p>
+            <p className="text-[10px] text-violet-100/90 font-mono leading-relaxed">
+              style {sig._api.walletBehavior.styleLabel || "—"}
+              {" · "}
+              WR {sig._api.walletBehavior.winRateReal ?? "—"}%
+              {" · "}
+              latency {sig._api.walletBehavior.avgLatencyPostDeployMin ?? "—"}m
+            </p>
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap gap-1 pt-0.5 border-t border-white/[0.04] mt-1">
           {[0.5, 1, 5].map((size) => {
