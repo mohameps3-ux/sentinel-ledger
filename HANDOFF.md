@@ -209,6 +209,17 @@ npm run ops:daily
   - webhook secret,
   - score signing key.
 
+## 9b) Recent Security/Ops Changelog
+
+- `2fa14f0` — `fix(db): harden Railway CLI JSON sync on Windows`
+  - Handles Windows `.cmd` invocation (`shell: true`) and UTF-8 BOM trimming in `syncDatabaseUrlToLocalEnv.js`.
+- `e366bab` — `docs(ops): add DB URL runbook for signal_performance`
+  - Documents DB URL sync flow and root-level `--prefix backend` commands in this handoff.
+- `b246ad9` — `docs(security): document public RLS lockdown runbook`
+  - Adds README guidance for Security Advisor "RLS disabled in public" remediation.
+- `28ea1b9` — `chore(security): add public-schema RLS lockdown script`
+  - Adds `supabase/rls_public_lockdown.sql` (including `donations`) to enforce RLS on public tables.
+
 ## 10) Recommended Next Step (After Data Accumulation)
 
 After collecting enough resolved outcomes (target: 300+; better 500+):
