@@ -134,7 +134,9 @@ create table if not exists signal_performance (
   failure_reason text,
   resolved_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  emission_regime varchar(32),
+  emission_gate jsonb
 );
 
 create table if not exists market_snapshots (
@@ -258,6 +260,7 @@ create index if not exists idx_bot_events_created_at on bot_events(created_at de
 create index if not exists idx_signal_perf_asset_emitted on signal_performance(asset, emitted_at desc);
 create index if not exists idx_signal_perf_status_resolve_after on signal_performance(status, resolve_after asc);
 create index if not exists idx_signal_perf_resolved_at on signal_performance(resolved_at desc);
+create index if not exists idx_signal_perf_emission_regime_emitted on signal_performance(emission_regime, emitted_at desc);
 create index if not exists idx_market_snapshots_updated_at on market_snapshots(updated_at desc);
 create index if not exists idx_ops_freshness_history_endpoint_time on ops_data_freshness_history(endpoint, captured_at desc);
 create index if not exists idx_ops_freshness_history_captured on ops_data_freshness_history(captured_at desc);

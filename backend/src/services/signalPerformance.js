@@ -46,6 +46,24 @@ function normalizeScorePayload(score) {
   };
 }
 
+/** Best-effort columns for regime / gate observability (requires migration 011). */
+function emissionArchiveFromScore(score) {
+  const eg = score?.meta?.emissionGate;
+  if (!eg || typeof eg !== "object") {
+    return { emission_regime: null, emission_gate: null };
+  }
+  const rk = eg.regime && typeof eg.regime === "object" ? String(eg.regime.key || "").trim() : "";
+  const emission_regime = rk ? rk.slice(0, 32) : null;
+  const unifiedScore = Number(eg.unifiedScore);
+  const emission_gate = {
+    unifiedScore: Number.isFinite(unifiedScore) ? Number(unifiedScore.toFixed(4)) : null,
+    components: eg.components && typeof eg.components === "object" ? eg.components : null,
+    regime: eg.regime && typeof eg.regime === "object" ? eg.regime : null,
+    effectiveGate: eg.effectiveGate && typeof eg.effectiveGate === "object" ? eg.effectiveGate : null
+  };
+  return { emission_regime, emission_gate };
+}
+
 /**
  * Records a signal-outcome candidate at emission time. Best effort by design:
  * no throw, no back-pressure into webhook path.
@@ -70,6 +88,7 @@ async function recordSignalEmission(score, extra = {}) {
     entryPriceUsd = null;
   }
 
+  const { emission_regime, emission_gate } = emissionArchiveFromScore(score);
   const row = {
     asset: payload.asset,
     event_id: payload.eventId,
@@ -80,6 +99,8 @@ async function recordSignalEmission(score, extra = {}) {
     signals: payload.signals,
     insights: payload.insights,
     entry_price_usd: entryPriceUsd,
+    emission_regime,
+    emission_gate,
     status: "pending",
     attempts: 0
   };
@@ -245,7 +266,7 @@ async function getSignalPerformanceSummary(options = {}) {
   const { data: rows, error } = await supabase
     .from("signal_performance")
     .select(
-      "asset,emitted_at,resolved_at,confidence,signals,entry_price_usd,outcome_price_usd,outcome_pct,success,status,failure_reason"
+      "asset,emitted_at,resolved_at,confidence,signals,entry_price_usd,outcome_price_usd,outcome_pct,success,status,failure_reason,emission_regime"
     )
     .gte("emitted_at", sinceIso)
     .order("emitted_at", { ascending: true })
@@ -323,6 +344,27 @@ async function getSignalPerformanceSummary(options = {}) {
     .sort((a, b) => b.total - a.total)
     .slice(0, 20);
 
+  const byRegimeMap = new Map();
+  for (const r of resolved) {
+    const raw = r.emission_regime;
+    const reg =
+      raw != null && String(raw).trim() !== "" ? String(raw).trim().slice(0, 32) : "legacy";
+    const out = Number(r.outcome_pct);
+    const cur = byRegimeMap.get(reg) || { regime: reg, total: 0, wins: 0, sumPct: 0 };
+    cur.total += 1;
+    if (out >= SUCCESS_MIN_PCT) cur.wins += 1;
+    cur.sumPct += out;
+    byRegimeMap.set(reg, cur);
+  }
+  const regimeStats = [...byRegimeMap.values()]
+    .map((x) => ({
+      regime: x.regime,
+      total: x.total,
+      winRatePct: x.total ? Math.round((x.wins / x.total) * 10000) / 100 : 0,
+      avgOutcomePct: x.total ? Math.round((x.sumPct / x.total) * 1e4) / 1e4 : 0
+    }))
+    .sort((a, b) => b.total - a.total);
+
   const corr = pearson(
     resolved.map((r) => Number(r.confidence)),
     resolved.map((r) => Number(r.outcome_pct))
@@ -377,7 +419,8 @@ async function getSignalPerformanceSummary(options = {}) {
       confidenceReturnCorrelation: corr
     },
     signals: signalStats,
-    combos: comboStats
+    combos: comboStats,
+    regimes: regimeStats
   };
 }
 

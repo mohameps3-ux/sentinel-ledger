@@ -18,12 +18,18 @@ async function main() {
     );
     process.exit(1);
   }
-  const sqlPath = path.join(__dirname, "..", "..", "supabase", "migrations", "003_signal_performance.sql");
-  const sql = fs.readFileSync(sqlPath, "utf8");
+  const migrationsDir = path.join(__dirname, "..", "..", "supabase", "migrations");
+  const migrationFiles = ["003_signal_performance.sql", "011_signal_performance_emission_regime.sql"];
   const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
   await client.connect();
   try {
-    await client.query(sql);
+    for (const name of migrationFiles) {
+      const sqlPath = path.join(migrationsDir, name);
+      if (!fs.existsSync(sqlPath)) continue;
+      const sql = fs.readFileSync(sqlPath, "utf8");
+      await client.query(sql);
+      console.log(`OK: ${name}`);
+    }
     console.log("OK: signal_performance schema applied.");
   } finally {
     await client.end();

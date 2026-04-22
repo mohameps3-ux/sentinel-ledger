@@ -750,6 +750,30 @@ export default function OpsPage() {
                         </div>
                       )}
                     </div>
+                    <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                      <div className="text-[11px] text-gray-500 font-semibold mb-1">Outcomes by emission regime</div>
+                      <p className="text-[11px] text-gray-600 mb-3">
+                        Resolved rows only. <span className="text-gray-500">legacy</span> = archived before regime
+                        metadata or missing gate meta.
+                      </p>
+                      {!perf.regimes?.length ? (
+                        <p className="text-sm text-gray-500">No regime-stratified resolved rows in this window.</p>
+                      ) : (
+                        <div className="divide-y divide-white/[0.06]">
+                          {perf.regimes.slice(0, 8).map((r) => (
+                            <div
+                              key={r.regime}
+                              className="py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm text-gray-200"
+                            >
+                              <span className="font-mono text-[13px] capitalize">{r.regime}</span>
+                              <span className="text-[12px] text-gray-500 shrink-0">
+                                WR {r.winRatePct}% · AVG {r.avgOutcomePct}% · n={r.total}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
