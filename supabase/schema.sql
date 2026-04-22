@@ -81,6 +81,18 @@ create table if not exists smart_wallet_signals (
   created_at timestamptz not null default now()
 );
 
+alter table if exists smart_wallet_signals
+  add column if not exists entry_price_usd numeric(18,8),
+  add column if not exists price_5m_usd numeric(18,8),
+  add column if not exists price_30m_usd numeric(18,8),
+  add column if not exists price_1h_usd numeric(18,8),
+  add column if not exists price_2h_usd numeric(18,8),
+  add column if not exists price_4h_usd numeric(18,8),
+  add column if not exists result_5m_pct numeric(10,4),
+  add column if not exists result_30m_pct numeric(10,4),
+  add column if not exists result_pct numeric(10,4),
+  add column if not exists result_2h_pct numeric(10,4);
+
 create table if not exists support_tickets (
   id uuid primary key default gen_random_uuid(),
   channel varchar(30) not null default 'webhook',
@@ -170,6 +182,12 @@ create table if not exists wallet_behavior_stats (
   sample_signals int not null default 0,
   resolved_signals int not null default 0,
   win_rate_real numeric(6,2) not null default 0,
+  resolved_signals_5m int not null default 0,
+  resolved_signals_30m int not null default 0,
+  resolved_signals_2h int not null default 0,
+  win_rate_real_5m numeric(6,2) not null default 0,
+  win_rate_real_30m numeric(6,2) not null default 0,
+  win_rate_real_2h numeric(6,2) not null default 0,
   avg_position_size_usd numeric(20,4) not null default 0,
   avg_size_pre_pump_usd numeric(20,4) not null default 0,
   avg_latency_post_deploy_min numeric(20,4),

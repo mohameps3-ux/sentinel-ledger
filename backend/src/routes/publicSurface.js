@@ -318,6 +318,7 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
 
     const wallets = rows.map((r) => r.wallet).filter(Boolean);
     const bestByWallet = new Map();
+    const behaviorByWallet = new Map();
     if (wallets.length) {
       const { data: sigs, error: sErr } = await supabase
         .from("smart_wallet_signals")
@@ -337,10 +338,25 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
           }
         }
       }
+
+      const { data: behaviorRows, error: bErr } = await supabase
+        .from("wallet_behavior_stats")
+        .select(
+          "wallet_address, win_rate_real, win_rate_real_5m, win_rate_real_30m, win_rate_real_2h, resolved_signals, resolved_signals_5m, resolved_signals_30m, resolved_signals_2h, avg_size_pre_pump_usd, avg_latency_post_deploy_min, solo_buy_ratio, group_buy_ratio, anticipatory_buy_ratio, breakout_buy_ratio, style_label, computed_at"
+        )
+        .in("wallet_address", wallets);
+      if (!bErr && Array.isArray(behaviorRows)) {
+        for (const br of behaviorRows) {
+          const key = String(br.wallet_address || "");
+          if (!key) continue;
+          behaviorByWallet.set(key, br);
+        }
+      }
     }
 
     const enriched = rows.map((r) => {
       const bt = bestByWallet.get(r.wallet);
+      const wb = behaviorByWallet.get(r.wallet);
       const avg = Math.max(1, r.avgPositionSize);
       const roiMult = r.pnl30d / avg;
       return {
@@ -348,7 +364,30 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
         roi30dVsAvgSize: Number(roiMult.toFixed(2)),
         bestTradePct: bt ? Number(Number(bt.pct).toFixed(2)) : null,
         bestTradeMint: bt?.token || null,
-        bestTradeAt: bt?.at || null
+        bestTradeAt: bt?.at || null,
+        profile: wb
+          ? {
+              winRateReal: wb.win_rate_real != null ? Number(wb.win_rate_real) : null,
+              winRateReal5m: wb.win_rate_real_5m != null ? Number(wb.win_rate_real_5m) : null,
+              winRateReal30m: wb.win_rate_real_30m != null ? Number(wb.win_rate_real_30m) : null,
+              winRateReal2h: wb.win_rate_real_2h != null ? Number(wb.win_rate_real_2h) : null,
+              resolvedSignals: wb.resolved_signals != null ? Number(wb.resolved_signals) : 0,
+              resolvedSignals5m: wb.resolved_signals_5m != null ? Number(wb.resolved_signals_5m) : 0,
+              resolvedSignals30m: wb.resolved_signals_30m != null ? Number(wb.resolved_signals_30m) : 0,
+              resolvedSignals2h: wb.resolved_signals_2h != null ? Number(wb.resolved_signals_2h) : 0,
+              avgSizePrePumpUsd:
+                wb.avg_size_pre_pump_usd != null ? Number(wb.avg_size_pre_pump_usd) : null,
+              avgLatencyPostDeployMin:
+                wb.avg_latency_post_deploy_min != null ? Number(wb.avg_latency_post_deploy_min) : null,
+              soloBuyRatio: wb.solo_buy_ratio != null ? Number(wb.solo_buy_ratio) : null,
+              groupBuyRatio: wb.group_buy_ratio != null ? Number(wb.group_buy_ratio) : null,
+              anticipatoryBuyRatio:
+                wb.anticipatory_buy_ratio != null ? Number(wb.anticipatory_buy_ratio) : null,
+              breakoutBuyRatio: wb.breakout_buy_ratio != null ? Number(wb.breakout_buy_ratio) : null,
+              styleLabel: wb.style_label || null,
+              computedAt: wb.computed_at || null
+            }
+          : null
       };
     });
 

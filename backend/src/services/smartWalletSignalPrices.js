@@ -32,19 +32,50 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
   const supabase = getSupabase();
   const now = Date.now();
   const iso1h = new Date(now - 65 * 60 * 1000).toISOString();
+  const iso5m = new Date(now - 7 * 60 * 1000).toISOString();
+  const iso30m = new Date(now - 35 * 60 * 1000).toISOString();
+  const iso2h = new Date(now - (2 * 60 * 60 * 1000 + 10 * 60 * 1000)).toISOString();
   const iso4h = new Date(now - (4 * 60 * 60 * 1000 + 10 * 60 * 1000)).toISOString();
 
   const { data: needEntry, error: e1 } = await supabase
     .from("smart_wallet_signals")
-    .select("id, token_address, created_at, entry_price_usd, price_1h_usd, price_4h_usd, result_pct")
+    .select(
+      "id, token_address, created_at, entry_price_usd, price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_5m_pct, result_30m_pct, result_2h_pct, result_pct"
+    )
     .is("entry_price_usd", null)
     .order("created_at", { ascending: false })
     .limit(safeBatch);
   if (e1) throw e1;
 
+  const { data: need5m, error: e5m } = await supabase
+    .from("smart_wallet_signals")
+    .select(
+      "id, token_address, created_at, entry_price_usd, price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_5m_pct, result_30m_pct, result_2h_pct, result_pct"
+    )
+    .not("entry_price_usd", "is", null)
+    .is("price_5m_usd", null)
+    .lte("created_at", iso5m)
+    .order("created_at", { ascending: false })
+    .limit(safeBatch);
+  if (e5m) throw e5m;
+
+  const { data: need30m, error: e30m } = await supabase
+    .from("smart_wallet_signals")
+    .select(
+      "id, token_address, created_at, entry_price_usd, price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_5m_pct, result_30m_pct, result_2h_pct, result_pct"
+    )
+    .not("entry_price_usd", "is", null)
+    .is("price_30m_usd", null)
+    .lte("created_at", iso30m)
+    .order("created_at", { ascending: false })
+    .limit(safeBatch);
+  if (e30m) throw e30m;
+
   const { data: need1h, error: e2 } = await supabase
     .from("smart_wallet_signals")
-    .select("id, token_address, created_at, entry_price_usd, price_1h_usd, price_4h_usd, result_pct")
+    .select(
+      "id, token_address, created_at, entry_price_usd, price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_5m_pct, result_30m_pct, result_2h_pct, result_pct"
+    )
     .not("entry_price_usd", "is", null)
     .is("price_1h_usd", null)
     .lte("created_at", iso1h)
@@ -52,9 +83,23 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
     .limit(safeBatch);
   if (e2) throw e2;
 
+  const { data: need2h, error: e2h } = await supabase
+    .from("smart_wallet_signals")
+    .select(
+      "id, token_address, created_at, entry_price_usd, price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_5m_pct, result_30m_pct, result_2h_pct, result_pct"
+    )
+    .not("entry_price_usd", "is", null)
+    .is("price_2h_usd", null)
+    .lte("created_at", iso2h)
+    .order("created_at", { ascending: false })
+    .limit(safeBatch);
+  if (e2h) throw e2h;
+
   const { data: need4h, error: e3 } = await supabase
     .from("smart_wallet_signals")
-    .select("id, token_address, created_at, entry_price_usd, price_1h_usd, price_4h_usd, result_pct")
+    .select(
+      "id, token_address, created_at, entry_price_usd, price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_5m_pct, result_30m_pct, result_2h_pct, result_pct"
+    )
     .not("entry_price_usd", "is", null)
     .is("price_4h_usd", null)
     .lte("created_at", iso4h)
@@ -63,7 +108,7 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
   if (e3) throw e3;
 
   const byId = new Map();
-  for (const row of [...(needEntry || []), ...(need1h || []), ...(need4h || [])]) {
+  for (const row of [...(needEntry || []), ...(need5m || []), ...(need30m || []), ...(need1h || []), ...(need2h || []), ...(need4h || [])]) {
     if (row?.id) byId.set(row.id, row);
   }
   const rows = [...byId.values()];
@@ -102,18 +147,47 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
     // Never fill entry + 1h snapshot in the same tick (same spot would fake the move).
     if (row.entry_price_usd == null) {
       updates.entry_price_usd = spot;
+    } else if (row.price_5m_usd == null && a >= 7 * 60 * 1000) {
+      updates.price_5m_usd = spot;
+    } else if (row.price_30m_usd == null && a >= 35 * 60 * 1000) {
+      updates.price_30m_usd = spot;
     } else if (row.price_1h_usd == null && a >= 65 * 60 * 1000) {
       updates.price_1h_usd = spot;
+    } else if (row.price_2h_usd == null && a >= 2 * 60 * 60 * 1000 + 10 * 60 * 1000) {
+      updates.price_2h_usd = spot;
     } else if (row.price_4h_usd == null && a >= 4 * 60 * 60 * 1000 + 10 * 60 * 1000) {
       updates.price_4h_usd = spot;
     }
 
     const entry = updates.entry_price_usd != null ? updates.entry_price_usd : Number(row.entry_price_usd);
+    const p5 =
+      updates.price_5m_usd != null ? updates.price_5m_usd : row.price_5m_usd != null ? Number(row.price_5m_usd) : null;
+    const p30 =
+      updates.price_30m_usd != null
+        ? updates.price_30m_usd
+        : row.price_30m_usd != null
+          ? Number(row.price_30m_usd)
+          : null;
     const p1 =
       updates.price_1h_usd != null ? updates.price_1h_usd : row.price_1h_usd != null ? Number(row.price_1h_usd) : null;
+    const p2 =
+      updates.price_2h_usd != null ? updates.price_2h_usd : row.price_2h_usd != null ? Number(row.price_2h_usd) : null;
+
+    if (row.result_5m_pct == null && entry > 0 && p5 != null) {
+      const pct5 = pctFromPrices(entry, p5);
+      if (pct5 != null) updates.result_5m_pct = pct5;
+    }
+    if (row.result_30m_pct == null && entry > 0 && p30 != null) {
+      const pct30 = pctFromPrices(entry, p30);
+      if (pct30 != null) updates.result_30m_pct = pct30;
+    }
     if (row.result_pct == null && entry > 0 && p1 != null) {
       const pct = pctFromPrices(entry, p1);
       if (pct != null) updates.result_pct = pct;
+    }
+    if (row.result_2h_pct == null && entry > 0 && p2 != null) {
+      const pct2h = pctFromPrices(entry, p2);
+      if (pct2h != null) updates.result_2h_pct = pct2h;
     }
 
     if (!Object.keys(updates).length) {

@@ -38,6 +38,28 @@ function avg(values) {
   return xs.reduce((a, b) => a + b, 0) / xs.length;
 }
 
+function winStats(rows, key) {
+  const vals = (rows || []).map((r) => Number(r?.[key])).filter((n) => Number.isFinite(n));
+  const resolved = vals.length;
+  const wins = vals.filter((n) => n > 0).length;
+  return {
+    resolved,
+    wins,
+    winRate: round(100 * pct(wins, resolved), 2)
+  };
+}
+
+function maxKnownOutcome(row) {
+  const keys = ["result_5m_pct", "result_30m_pct", "result_pct", "result_2h_pct"];
+  let best = null;
+  for (const k of keys) {
+    const n = Number(row?.[k]);
+    if (!Number.isFinite(n)) continue;
+    if (best == null || n > best) best = n;
+  }
+  return best;
+}
+
 function classifyStyle({
   groupRatio,
   anticipatoryRatio,
@@ -122,7 +144,7 @@ async function computeWalletBehaviorForWindow({
       .limit(5000),
     supabase
       .from("smart_wallet_signals")
-      .select("token_address,created_at,result_pct")
+      .select("token_address,created_at,result_5m_pct,result_30m_pct,result_pct,result_2h_pct")
       .eq("wallet_address", walletAddress)
       .gte("created_at", sinceIso)
       .order("created_at", { ascending: true })
@@ -143,6 +165,12 @@ async function computeWalletBehaviorForWindow({
         sample_signals: 0,
         resolved_signals: 0,
         win_rate_real: 0,
+        resolved_signals_5m: 0,
+        resolved_signals_30m: 0,
+        resolved_signals_2h: 0,
+        win_rate_real_5m: 0,
+        win_rate_real_30m: 0,
+        win_rate_real_2h: 0,
         avg_position_size_usd: 0,
         avg_size_pre_pump_usd: 0,
         avg_latency_post_deploy_min: null,
@@ -238,7 +266,7 @@ async function computeWalletBehaviorForWindow({
         best = s;
       }
     }
-    const resPct = best?.result_pct != null ? Number(best.result_pct) : null;
+    const resPct = maxKnownOutcome(best);
     const isPrePumpWin = Number.isFinite(resPct) && resPct >= 20;
     if (isPrePumpWin && Number.isFinite(amountUsd) && amountUsd > 0) prePumpAmounts.push(amountUsd);
 
@@ -284,13 +312,16 @@ async function computeWalletBehaviorForWindow({
     }
   }
 
+  const ws1h = winStats(signalRows, "result_pct");
+  const ws5m = winStats(signalRows, "result_5m_pct");
+  const ws30m = winStats(signalRows, "result_30m_pct");
+  const ws2h = winStats(signalRows, "result_2h_pct");
   const resolvedSignals = signalRows
     .map((s) => Number(s.result_pct))
     .filter((n) => Number.isFinite(n));
-  const wins = resolvedSignals.filter((n) => n > 0).length;
   const sampleSignals = signalRows.length;
   const buyCount = buyRows.length;
-  const winRateReal = round(100 * pct(wins, resolvedSignals.length), 2);
+  const winRateReal = ws1h.winRate;
   const avgPositionSizeUsd = round(avg(buyAmountArr) || 0, 4);
   const avgSizePrePumpUsd = round(avg(prePumpAmounts) || 0, 4);
   const avgLatencyPostDeployMin = avg(latencyMinArr);
@@ -303,8 +334,14 @@ async function computeWalletBehaviorForWindow({
     wallet_address: walletAddress,
     lookback_days: Math.max(1, Number(lookbackDays) || 30),
     sample_signals: sampleSignals,
-    resolved_signals: resolvedSignals.length,
+    resolved_signals: ws1h.resolved,
     win_rate_real: winRateReal,
+    resolved_signals_5m: ws5m.resolved,
+    resolved_signals_30m: ws30m.resolved,
+    resolved_signals_2h: ws2h.resolved,
+    win_rate_real_5m: ws5m.winRate,
+    win_rate_real_30m: ws30m.winRate,
+    win_rate_real_2h: ws2h.winRate,
     avg_position_size_usd: avgPositionSizeUsd,
     avg_size_pre_pump_usd: avgSizePrePumpUsd,
     avg_latency_post_deploy_min:

@@ -169,8 +169,27 @@ export default function WalletDetailPage() {
                   <p className="text-emerald-300 font-semibold">{Number(behaviorRow.win_rate_real || 0).toFixed(1)}%</p>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <p className="text-gray-500 text-xs">Win rate real (5m)</p>
+                  <p className="text-emerald-200 font-semibold">{Number(behaviorRow.win_rate_real_5m || 0).toFixed(1)}%</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <p className="text-gray-500 text-xs">Win rate real (30m)</p>
+                  <p className="text-emerald-200 font-semibold">{Number(behaviorRow.win_rate_real_30m || 0).toFixed(1)}%</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <p className="text-gray-500 text-xs">Win rate real (2h)</p>
+                  <p className="text-emerald-200 font-semibold">{Number(behaviorRow.win_rate_real_2h || 0).toFixed(1)}%</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
                   <p className="text-gray-500 text-xs">Resolved</p>
                   <p className="text-white font-semibold">{formatInteger(behaviorRow.resolved_signals || 0)}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <p className="text-gray-500 text-xs">Resolved (5m/30m/2h)</p>
+                  <p className="text-white font-semibold">
+                    {formatInteger(behaviorRow.resolved_signals_5m || 0)}/{formatInteger(behaviorRow.resolved_signals_30m || 0)}/
+                    {formatInteger(behaviorRow.resolved_signals_2h || 0)}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
                   <p className="text-gray-500 text-xs">Avg pre-pump size</p>

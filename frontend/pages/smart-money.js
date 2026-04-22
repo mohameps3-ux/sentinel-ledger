@@ -162,6 +162,7 @@ export default function SmartMoneyPage() {
                     <th className="py-2 pr-2 w-10">#</th>
                     <th className="py-2 pr-3">Wallet</th>
                     <th className="py-2 pr-3">Win rate</th>
+                    <th className="py-2 pr-3">WR real 5m/30m/2h</th>
                     <th className="py-2 pr-3">30d ROI†</th>
                     <th className="py-2 pr-3">30d PnL</th>
                     <th className="py-2 pr-3">Trades</th>
@@ -186,6 +187,23 @@ export default function SmartMoneyPage() {
                           </div>
                         </td>
                         <td className="py-3 pr-3 text-emerald-300 tabular-nums">{w.winRate.toFixed(1)}%</td>
+                        <td className="py-3 pr-3 text-[11px] text-gray-300 leading-tight">
+                          {w.profile ? (
+                            <div className="space-y-0.5">
+                              <div className="font-mono">
+                                5m {Number(w.profile.winRateReal5m || 0).toFixed(1)}% · 30m{" "}
+                                {Number(w.profile.winRateReal30m || 0).toFixed(1)}% · 2h{" "}
+                                {Number(w.profile.winRateReal2h || 0).toFixed(1)}%
+                              </div>
+                              <div className="text-gray-500">
+                                n {w.profile.resolvedSignals5m || 0}/{w.profile.resolvedSignals30m || 0}/
+                                {w.profile.resolvedSignals2h || 0}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-600">pending</span>
+                          )}
+                        </td>
                         <td className="py-3 pr-3 text-cyan-200/90 tabular-nums">{Number(w.roi30dVsAvgSize || 0).toFixed(2)}×</td>
                         <td className="py-3 pr-3 text-emerald-200/90 tabular-nums">+${formatUsdWhole(w.pnl30d)}</td>
                         <td className="py-3 pr-3 tabular-nums text-gray-200">{w.totalTrades ?? "—"}</td>
@@ -223,11 +241,23 @@ export default function SmartMoneyPage() {
                               Why
                             </button>
                           </div>
+                          {w.profile ? (
+                            <p className="text-[10px] text-gray-500 mt-1 max-w-[260px]">
+                              pre-pump ${formatUsdWhole(w.profile.avgSizePrePumpUsd || 0)} · latency{" "}
+                              {w.profile.avgLatencyPostDeployMin != null
+                                ? `${Number(w.profile.avgLatencyPostDeployMin).toFixed(1)}m`
+                                : "—"}{" "}
+                              · solo/grp {Math.round(Number(w.profile.soloBuyRatio || 0) * 100)}%/
+                              {Math.round(Number(w.profile.groupBuyRatio || 0) * 100)}% · anti/brk{" "}
+                              {Math.round(Number(w.profile.anticipatoryBuyRatio || 0) * 100)}%/
+                              {Math.round(Number(w.profile.breakoutBuyRatio || 0) * 100)}%
+                            </p>
+                          ) : null}
                         </td>
                       </tr>
                       {expandedWallet === w.wallet ? (
                         <tr className="border-b border-white/5 bg-white/[0.015]">
-                          <td colSpan={9} className="px-3 py-3">
+                          <td colSpan={10} className="px-3 py-3">
                             <WalletNarrativeCard walletAddress={w.wallet} lang={narrativeLang} />
                           </td>
                         </tr>
@@ -262,6 +292,12 @@ export default function SmartMoneyPage() {
                     <span>Trades {w.totalTrades ?? "—"}</span>
                     <span className="text-gray-500">{w.lastSeen ? formatDateTime(w.lastSeen) : "—"}</span>
                   </div>
+                  {w.profile ? (
+                    <p className="text-[11px] text-gray-400">
+                      WR real: 5m {Number(w.profile.winRateReal5m || 0).toFixed(1)}% · 30m{" "}
+                      {Number(w.profile.winRateReal30m || 0).toFixed(1)}% · 2h {Number(w.profile.winRateReal2h || 0).toFixed(1)}%
+                    </p>
+                  ) : null}
                   <p className="text-emerald-300 text-sm font-mono">+${formatUsdWhole(w.pnl30d)} 30d</p>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
