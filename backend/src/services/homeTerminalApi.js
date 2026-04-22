@@ -13,6 +13,7 @@ const {
   gateDexPairAge,
   poolAgeLabelFromMs
 } = require("./signalFeedQuality");
+const { appendFreshnessEvent, getDataFreshnessSnapshotFromStore } = require("./freshnessHistoryStore");
 
 const CACHE_TTL_SEC = Number(process.env.HOME_TERMINAL_CACHE_TTL_SEC || 180);
 const HOT_CACHE_TTL_SEC = Math.max(30, Number(process.env.HOME_TERMINAL_HOT_CACHE_TTL_SEC || 90));
@@ -175,6 +176,16 @@ function recordFreshness(endpoint, meta = {}) {
     providerUsed: meta?.providerUsed ? String(meta.providerUsed) : null
   });
   trimFreshnessWindow(target, now);
+  // DB-first source of truth: persist every freshness event for 24h rollups
+  // that survive restarts/deploys. In-memory stays as safety fallback only.
+  appendFreshnessEvent({
+    endpoint,
+    capturedAt: now,
+    source: meta?.source,
+    realDataRatio: meta?.realDataRatio,
+    fallbackReason: meta?.fallbackReason,
+    providerUsed: meta?.providerUsed
+  }).catch(() => {});
 }
 
 function summarizeFreshness(events, endpoint) {
@@ -227,7 +238,14 @@ function summarizeFreshness(events, endpoint) {
   };
 }
 
-function getDataFreshnessSnapshot() {
+async function getDataFreshnessSnapshot() {
+  const dbSnapshot = await getDataFreshnessSnapshotFromStore({
+    hours: 24,
+    targetSupabaseRate: SIGNALS_SUPABASE_SLO_TARGET
+  });
+  if (dbSnapshot?.ok && dbSnapshot.data) {
+    return dbSnapshot.data;
+  }
   const now = Date.now();
   trimFreshnessWindow(freshnessState.signalsLatest, now);
   trimFreshnessWindow(freshnessState.tokensHot, now);
@@ -510,18 +528,17 @@ function getSignalsSupabaseSloOpsSnapshot() {
   };
 }
 
-function runSignalsSupabaseSloEvaluation() {
-  const now = Date.now();
-  trimFreshnessWindow(freshnessState.signalsLatest, now);
-  const summary = summarizeFreshness(freshnessState.signalsLatest, "signalsLatest");
+async function runSignalsSupabaseSloEvaluation() {
+  const snapshot = await getDataFreshnessSnapshot();
+  const summary = snapshot?.signalsLatest || summarizeFreshness([], "signalsLatest");
   trackSignalsSupabaseSlo(summary);
 }
 
 function startSignalsSupabaseSloEvaluationLoop() {
   if (signalsSupabaseSloIntervalRef) return;
-  runSignalsSupabaseSloEvaluation();
+  runSignalsSupabaseSloEvaluation().catch(() => {});
   signalsSupabaseSloIntervalRef = setInterval(() => {
-    runSignalsSupabaseSloEvaluation();
+    runSignalsSupabaseSloEvaluation().catch(() => {});
   }, SIGNALS_SUPABASE_SLO_EVAL_MS);
   if (signalsSupabaseSloIntervalRef && typeof signalsSupabaseSloIntervalRef.unref === "function") {
     signalsSupabaseSloIntervalRef.unref();

@@ -16,6 +16,11 @@ const {
   runMarketSnapshotWarmupTick
 } = require("../jobs/marketSnapshotWarmupCron");
 const {
+  getWalletBehaviorCronStatus,
+  runWalletBehaviorTick
+} = require("../jobs/walletBehaviorCron");
+const { getWalletBehaviorTop } = require("../services/walletBehaviorMemory");
+const {
   getSmartWalletSignalBackfillStatus,
   runSmartWalletSignalBackfillTick
 } = require("../jobs/smartWalletSignalBackfillCron");
@@ -94,8 +99,9 @@ router.get("/signals-supabase-slo/snapshot", assertOpsAuth, (_req, res) => {
   return res.json(getSignalsSupabaseSloOpsSnapshot());
 });
 
-router.get("/data-freshness", assertOpsAuth, (_req, res) => {
-  return res.json({ ok: true, data: getDataFreshnessSnapshot() });
+router.get("/data-freshness", assertOpsAuth, async (_req, res) => {
+  const snapshot = await getDataFreshnessSnapshot();
+  return res.json({ ok: true, data: snapshot });
 });
 
 router.get("/data-freshness/history", assertOpsAuth, async (req, res) => {
@@ -179,6 +185,23 @@ router.get("/market-snapshot-warmup/status", assertOpsAuth, (_req, res) => {
 router.post("/market-snapshot-warmup/run", assertOpsAuth, async (_req, res) => {
   await runMarketSnapshotWarmupTick();
   return res.json({ ok: true, data: getMarketSnapshotWarmupStatus() });
+});
+
+router.get("/wallet-behavior/status", assertOpsAuth, (_req, res) => {
+  return res.json({ ok: true, data: getWalletBehaviorCronStatus() });
+});
+
+router.post("/wallet-behavior/run", assertOpsAuth, async (_req, res) => {
+  await runWalletBehaviorTick();
+  return res.json({ ok: true, data: getWalletBehaviorCronStatus() });
+});
+
+router.get("/wallet-behavior/top", assertOpsAuth, async (req, res) => {
+  const limit = Number(req.query.limit || 50);
+  const minResolved = Number(req.query.minResolved || 5);
+  const out = await getWalletBehaviorTop({ limit, minResolved });
+  if (!out.ok) return res.status(503).json({ ok: false, error: out.reason || "wallet_behavior_unavailable" });
+  return res.json({ ok: true, data: out.rows || [] });
 });
 
 router.get("/smart-signal-backfill/status", assertOpsAuth, (_req, res) => {

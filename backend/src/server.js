@@ -49,6 +49,10 @@ const {
   startDataFreshnessHistoryCron,
   getDataFreshnessHistoryCronStatus
 } = require("./jobs/dataFreshnessHistoryCron");
+const {
+  startWalletBehaviorCron,
+  getWalletBehaviorCronStatus
+} = require("./jobs/walletBehaviorCron");
 const publicSurfaceRouter = require("./routes/publicSurface");
 const portfolioRouter = require("./routes/portfolio");
 const signalsRouter = require("./routes/signals");
@@ -220,7 +224,8 @@ app.get("/health", async (_, res) => {
     opsHeartbeat: getOpsHeartbeatCronStatus(),
     marketSnapshotWarmup: getMarketSnapshotWarmupStatus(),
     smartSignalBackfill: getSmartWalletSignalBackfillStatus(),
-    dataFreshnessHistory: getDataFreshnessHistoryCronStatus()
+    dataFreshnessHistory: getDataFreshnessHistoryCronStatus(),
+    walletBehavior: getWalletBehaviorCronStatus()
   };
   if (missingCritical.length) {
     return res.status(503).json(body);
@@ -255,11 +260,11 @@ app.get("/health/ingestion", (_req, res) => {
  * L3 — Sync state. Compares internal state vs chain reality. The frontend LED
  * (LIVE / SYNCING) reads this endpoint.
  */
-app.get("/health/sync", (_req, res) => {
+app.get("/health/sync", async (_req, res) => {
   const snap = getIngestionSnapshot();
   const market = getMarketDataCircuitStatus();
   const providerRates = getMarketDataProviderStats();
-  const freshness = getDataFreshnessSnapshot();
+  const freshness = await getDataFreshnessSnapshot();
   const dexTokenState = market?.providers?.dex_token || market?.dexscreener || {};
   const dexToken429Rate = Number(providerRates?.dex_token?.rate429 || 0);
   const dexTokenOpenMs =
@@ -352,6 +357,7 @@ server.listen(port, () => {
   startMarketSnapshotWarmupCron();
   startSmartWalletSignalBackfillCron();
   startDataFreshnessHistoryCron();
+  startWalletBehaviorCron();
   startSubscriptionExpiryCron();
   console.log(`Sentinel Ledger backend on :${port}`);
 });

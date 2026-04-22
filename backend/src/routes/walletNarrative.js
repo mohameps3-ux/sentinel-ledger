@@ -2,6 +2,10 @@ const express = require("express");
 const rateLimit = require("express-rate-limit");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 const { getWalletNarrative } = require("../services/walletNarrative");
+const {
+  getWalletBehaviorSummary,
+  getWalletBehaviorTokenFeatures
+} = require("../services/walletBehaviorMemory");
 const { getSupabase } = require("../lib/supabase");
 
 const router = express.Router();
@@ -91,6 +95,38 @@ router.get("/:address/narrative", walletNarrativeLimiter, async (req, res) => {
   } catch (error) {
     console.error("wallet narrative route:", error.message);
     return res.status(500).json({ ok: false, error: "wallet_narrative_failed" });
+  }
+});
+
+router.get("/:address/behavior", walletNarrativeLimiter, async (req, res) => {
+  try {
+    const address = String(req.params.address || "").trim();
+    if (!isProbableSolanaPubkey(address)) {
+      return res.status(400).json({ ok: false, error: "invalid_address" });
+    }
+    const out = await getWalletBehaviorSummary(address);
+    if (!out.ok) return res.status(503).json({ ok: false, error: out.reason || "wallet_behavior_unavailable" });
+    if (!out.data) return res.status(404).json({ ok: false, error: "wallet_behavior_not_found" });
+    return res.json({ ok: true, data: out.data });
+  } catch (error) {
+    console.error("wallet behavior route:", error.message);
+    return res.status(500).json({ ok: false, error: "wallet_behavior_failed" });
+  }
+});
+
+router.get("/:address/behavior/tokens", walletNarrativeLimiter, async (req, res) => {
+  try {
+    const address = String(req.params.address || "").trim();
+    if (!isProbableSolanaPubkey(address)) {
+      return res.status(400).json({ ok: false, error: "invalid_address" });
+    }
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit || 100)));
+    const out = await getWalletBehaviorTokenFeatures(address, limit);
+    if (!out.ok) return res.status(503).json({ ok: false, error: out.reason || "wallet_behavior_unavailable" });
+    return res.json({ ok: true, data: out.rows || [] });
+  } catch (error) {
+    console.error("wallet behavior tokens route:", error.message);
+    return res.status(500).json({ ok: false, error: "wallet_behavior_tokens_failed" });
   }
 });
 

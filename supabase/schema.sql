@@ -154,6 +154,50 @@ create table if not exists ops_data_freshness_history (
   slo_met boolean
 );
 
+create table if not exists ops_data_freshness_events (
+  id uuid primary key default gen_random_uuid(),
+  captured_at timestamptz not null default now(),
+  endpoint varchar(32) not null check (endpoint in ('signalsLatest', 'tokensHot')),
+  source varchar(48) not null default 'unknown',
+  real_data_ratio numeric(8,4) not null default 0,
+  fallback_reason varchar(96),
+  provider_used varchar(64)
+);
+
+create table if not exists wallet_behavior_stats (
+  wallet_address varchar(100) primary key,
+  lookback_days int not null default 30,
+  sample_signals int not null default 0,
+  resolved_signals int not null default 0,
+  win_rate_real numeric(6,2) not null default 0,
+  avg_position_size_usd numeric(20,4) not null default 0,
+  avg_size_pre_pump_usd numeric(20,4) not null default 0,
+  avg_latency_post_deploy_min numeric(20,4),
+  solo_buy_ratio numeric(8,4) not null default 0,
+  group_buy_ratio numeric(8,4) not null default 0,
+  anticipatory_buy_ratio numeric(8,4) not null default 0,
+  breakout_buy_ratio numeric(8,4) not null default 0,
+  style_label varchar(48) not null default 'insufficient_sample',
+  computed_at timestamptz not null default now()
+);
+
+create table if not exists wallet_behavior_token_features (
+  id uuid primary key default gen_random_uuid(),
+  wallet_address varchar(100) not null,
+  token_address varchar(100) not null,
+  first_buy_at timestamptz,
+  last_buy_at timestamptz,
+  buys_count int not null default 0,
+  avg_amount_usd numeric(20,4) not null default 0,
+  avg_latency_post_deploy_min numeric(20,4),
+  group_buy_ratio numeric(8,4) not null default 0,
+  anticipatory_ratio numeric(8,4) not null default 0,
+  breakout_ratio numeric(8,4) not null default 0,
+  win_rate_real numeric(6,2) not null default 0,
+  avg_result_pct numeric(10,4),
+  computed_at timestamptz not null default now()
+);
+
 create index if not exists idx_users_wallet on users(wallet_address);
 create index if not exists idx_tokens_address on tokens_analyzed(token_address);
 create index if not exists idx_watchlists_user on watchlists(user_id);
@@ -171,6 +215,12 @@ create index if not exists idx_signal_perf_resolved_at on signal_performance(res
 create index if not exists idx_market_snapshots_updated_at on market_snapshots(updated_at desc);
 create index if not exists idx_ops_freshness_history_endpoint_time on ops_data_freshness_history(endpoint, captured_at desc);
 create index if not exists idx_ops_freshness_history_captured on ops_data_freshness_history(captured_at desc);
+create index if not exists idx_ops_freshness_events_endpoint_time on ops_data_freshness_events(endpoint, captured_at desc);
+create index if not exists idx_ops_freshness_events_captured on ops_data_freshness_events(captured_at desc);
+create index if not exists idx_wallet_behavior_stats_computed on wallet_behavior_stats(computed_at desc);
+create index if not exists idx_wallet_behavior_stats_winrate on wallet_behavior_stats(win_rate_real desc);
+create index if not exists idx_wallet_behavior_token_wallet on wallet_behavior_token_features(wallet_address, computed_at desc);
+create index if not exists idx_wallet_behavior_token_token on wallet_behavior_token_features(token_address, computed_at desc);
 
 -- ---------------------------------------------------------------------------
 -- Stripe, PRO Telegram alerts, worker tables (idempotent). Same SQL as

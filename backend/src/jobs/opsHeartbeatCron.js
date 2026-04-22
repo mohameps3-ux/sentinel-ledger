@@ -37,7 +37,7 @@ async function runOpsHeartbeatTick() {
       lastStats = { ok: false, sent: false, reason: "webhook_not_configured", statusCode: null };
       return;
     }
-    const freshness = getDataFreshnessSnapshot();
+    const freshness = await getDataFreshnessSnapshot();
     const signals = freshness?.signalsLatest || {};
     const topFallback = Object.entries(signals?.fallbackReasonBreakdown24h || {}).sort(
       (a, b) => Number(b[1] || 0) - Number(a[1] || 0)

@@ -208,7 +208,7 @@ async function runDataFreshnessHistoryTick() {
   if (!isEnabled()) return;
   lastTickStartedAt = Date.now();
   try {
-    const snapshot = getDataFreshnessSnapshot();
+    const snapshot = await getDataFreshnessSnapshot();
     const append = await appendFreshnessSnapshotHistory(snapshot);
     if (!append.ok) {
       lastStats = {
