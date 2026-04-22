@@ -227,6 +227,34 @@ async function runSignalOutcomeResolutionOnce(options = {}) {
   return { examined: (rows || []).length, resolved, deferred, failed, error: null };
 }
 
+function computeRegimeOutcomeBlock(regimeRows) {
+  if (!Array.isArray(regimeRows) || regimeRows.length === 0) return null;
+  const wins = regimeRows.filter((r) => Number(r.outcome_pct) >= SUCCESS_MIN_PCT);
+  const losses = regimeRows.filter((r) => Number(r.outcome_pct) < SUCCESS_MIN_PCT);
+  const sumWin = wins.reduce((a, r) => a + Number(r.outcome_pct), 0);
+  const sumLossAbs = losses.reduce((a, r) => a + Math.abs(Number(r.outcome_pct)), 0);
+  const profitFactor = sumLossAbs > 0 ? sumWin / sumLossAbs : wins.length ? 999 : 0;
+  let peak = 0;
+  let equity = 0;
+  let maxDd = 0;
+  for (const r of regimeRows) {
+    equity += Number(r.outcome_pct);
+    if (equity > peak) peak = equity;
+    const dd = peak - equity;
+    if (dd > maxDd) maxDd = dd;
+  }
+  const total = regimeRows.length;
+  const winRate = total ? (wins.length / total) * 100 : 0;
+  const totalRet = regimeRows.reduce((a, r) => a + Number(r.outcome_pct), 0);
+  return {
+    total,
+    winRatePct: Math.round(winRate * 100) / 100,
+    avgOutcomePct: Math.round((totalRet / total) * 1e4) / 1e4,
+    profitFactor: Math.round(profitFactor * 1e4) / 1e4,
+    maxDrawdownPct: Math.round(maxDd * 1e4) / 1e4
+  };
+}
+
 function pearson(xs, ys) {
   if (!Array.isArray(xs) || !Array.isArray(ys)) return null;
   if (xs.length !== ys.length || xs.length < 2) return null;
@@ -344,25 +372,20 @@ async function getSignalPerformanceSummary(options = {}) {
     .sort((a, b) => b.total - a.total)
     .slice(0, 20);
 
-  const byRegimeMap = new Map();
+  const rowsByRegime = new Map();
   for (const r of resolved) {
     const raw = r.emission_regime;
     const reg =
       raw != null && String(raw).trim() !== "" ? String(raw).trim().slice(0, 32) : "legacy";
-    const out = Number(r.outcome_pct);
-    const cur = byRegimeMap.get(reg) || { regime: reg, total: 0, wins: 0, sumPct: 0 };
-    cur.total += 1;
-    if (out >= SUCCESS_MIN_PCT) cur.wins += 1;
-    cur.sumPct += out;
-    byRegimeMap.set(reg, cur);
+    const list = rowsByRegime.get(reg) || [];
+    list.push(r);
+    rowsByRegime.set(reg, list);
   }
-  const regimeStats = [...byRegimeMap.values()]
-    .map((x) => ({
-      regime: x.regime,
-      total: x.total,
-      winRatePct: x.total ? Math.round((x.wins / x.total) * 10000) / 100 : 0,
-      avgOutcomePct: x.total ? Math.round((x.sumPct / x.total) * 1e4) / 1e4 : 0
-    }))
+  const regimeStats = [...rowsByRegime.entries()]
+    .map(([regime, regimeRows]) => {
+      const block = computeRegimeOutcomeBlock(regimeRows);
+      return block ? { regime, ...block } : { regime, total: 0, winRatePct: 0, avgOutcomePct: 0, profitFactor: 0, maxDrawdownPct: 0 };
+    })
     .sort((a, b) => b.total - a.total);
 
   const corr = pearson(

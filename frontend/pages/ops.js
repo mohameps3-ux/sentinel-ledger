@@ -767,7 +767,8 @@ export default function OpsPage() {
                             >
                               <span className="font-mono text-[13px] capitalize">{r.regime}</span>
                               <span className="text-[12px] text-gray-500 shrink-0">
-                                WR {r.winRatePct}% · AVG {r.avgOutcomePct}% · n={r.total}
+                                WR {r.winRatePct}% · PF {r.profitFactor ?? "—"} · DD {r.maxDrawdownPct ?? "—"}% · AVG{" "}
+                                {r.avgOutcomePct}% · n={r.total}
                               </span>
                             </div>
                           ))}
@@ -884,10 +885,38 @@ export default function OpsPage() {
                   <p className="text-xs text-gray-500">
                     Lookback {formatInteger(signalGateTuner?.tuner?.lookbackHours || 0)}h · min resolved{" "}
                     {formatInteger(signalGateTuner?.tuner?.minResolvedRows || 0)}
+                    {" · "}
+                    regime-aware:{" "}
+                    {signalGateTuner?.tuner?.regimeAware == null
+                      ? "—"
+                      : signalGateTuner.tuner.regimeAware
+                        ? "on"
+                        : "off"}{" "}
+                    (min n/regime {formatInteger(signalGateTuner?.tuner?.minPerRegime || 0)})
                   </p>
+                  {signalGateTuner?.tuner?.lastSuggestion?.regimeTuning?.worstQualified ? (
+                    <p className="text-xs text-gray-500 break-all">
+                      Worst bucket (tuner):{" "}
+                      <span className="text-gray-300">
+                        {String(signalGateTuner.tuner.lastSuggestion.regimeTuning.worstQualified.regime || "—")}
+                      </span>
+                      {" · "}
+                      branch:{" "}
+                      {signalGateTuner?.tuner?.lastSuggestion?.suggestion?.evidence?.regimeBranch || "—"}
+                    </p>
+                  ) : signalGateTuner?.tuner?.lastSuggestion?.regimeTuning?.skipReason ? (
+                    <p className="text-xs text-gray-600">
+                      Regime branch skipped: {signalGateTuner.tuner.lastSuggestion.regimeTuning.skipReason}
+                    </p>
+                  ) : null}
                   <p className="text-xs text-gray-400 break-all">
                     Last reason: {signalGateTuner?.tuner?.lastSuggestion?.reason || signalGateTuner?.tuner?.lastError || "—"}
                   </p>
+                  {signalGateTuner?.tuner?.lastApplied?.regimeBranch ? (
+                    <p className="text-xs text-gray-600">
+                      Last applied branch: {signalGateTuner.tuner.lastApplied.regimeBranch}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 

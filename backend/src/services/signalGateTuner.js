@@ -7,6 +7,9 @@ const LOOKBACK_HOURS = Math.max(24, Number(process.env.SIGNAL_GATE_ADAPTIVE_LOOK
 const MAX_ROWS = Math.max(200, Number(process.env.SIGNAL_GATE_ADAPTIVE_MAX_ROWS || 3000));
 const MIN_RESOLVED = Math.max(30, Number(process.env.SIGNAL_GATE_ADAPTIVE_MIN_RESOLVED || 80));
 const ENABLED = String(process.env.SIGNAL_GATE_ADAPTIVE_ENABLED || "false").toLowerCase() === "true";
+const REGIME_AWARE =
+  String(process.env.SIGNAL_GATE_ADAPTIVE_REGIME_AWARE || "false").toLowerCase() === "true";
+const MIN_PER_REGIME = Math.max(5, Number(process.env.SIGNAL_GATE_ADAPTIVE_MIN_PER_REGIME || 20));
 
 const state = {
   lastRunAt: null,
@@ -64,6 +67,119 @@ function suggestFromMetrics(metrics = {}, gate = {}) {
   };
 }
 
+function pickWorstRegime(regimes, minN) {
+  const qualified = (regimes || []).filter(
+    (r) => Number(r.total) >= minN && String(r.regime || "").toLowerCase() !== "legacy"
+  );
+  if (!qualified.length) return null;
+  return [...qualified].sort((a, b) => {
+    const wr = Number(a.winRatePct) - Number(b.winRatePct);
+    if (Math.abs(wr) > 0.0001) return wr;
+    return Number(a.profitFactor || 0) - Number(b.profitFactor || 0);
+  })[0];
+}
+
+function tighterGateOverrides(a, b) {
+  return {
+    minConfidence: Math.max(Number(a.minConfidence), Number(b.minConfidence)),
+    minUnifiedScore: Math.max(Number(a.minUnifiedScore), Number(b.minUnifiedScore)),
+    maxRiskScore: Math.min(Number(a.maxRiskScore), Number(b.maxRiskScore))
+  };
+}
+
+/** When the worst bucket says tighten, that wins over global hold/relax. */
+function mergeGlobalAndRegime(globalSugg, regimeSugg) {
+  if (regimeSugg.mode === "tighten") {
+    if (globalSugg.mode === "tighten") {
+      return {
+        mode: "tighten",
+        overrides: tighterGateOverrides(globalSugg.overrides, regimeSugg.overrides),
+        evidence: { regimeBranch: "both_tighten_merged" }
+      };
+    }
+    return {
+      mode: "tighten",
+      overrides: { ...regimeSugg.overrides },
+      evidence: { regimeBranch: "regime_worst_bucket_tighten" }
+    };
+  }
+  return {
+    ...globalSugg,
+    evidence: { ...(globalSugg.evidence || {}), regimeBranch: "global_metrics" }
+  };
+}
+
+function buildSuggestion(summary, gateSnap) {
+  const regimes = summary.regimes || [];
+  const globalSugg = suggestFromMetrics(summary.metrics || {}, gateSnap);
+  const resolved = Number(summary.resolvedRows || 0);
+
+  const regimeTuning = {
+    aware: REGIME_AWARE,
+    minPerRegime: MIN_PER_REGIME,
+    worstQualified: null,
+    skipReason: null
+  };
+
+  if (!REGIME_AWARE) {
+    regimeTuning.skipReason = "regime_aware_disabled";
+    return {
+      suggestion: {
+        ...globalSugg,
+        evidence: { ...(globalSugg.evidence || {}), regimeBranch: "global_only" }
+      },
+      regimes,
+      regimeTuning
+    };
+  }
+  if (resolved < MIN_RESOLVED) {
+    regimeTuning.skipReason = "below_min_resolved_for_regime_logic";
+    return {
+      suggestion: {
+        ...globalSugg,
+        evidence: { ...(globalSugg.evidence || {}), regimeBranch: "global_only_insufficient_n" }
+      },
+      regimes,
+      regimeTuning
+    };
+  }
+
+  const worst = pickWorstRegime(regimes, MIN_PER_REGIME);
+  if (!worst) {
+    regimeTuning.skipReason = "no_regime_meets_min_per_regime";
+    return {
+      suggestion: {
+        ...globalSugg,
+        evidence: { ...(globalSugg.evidence || {}), regimeBranch: "global_only_no_regime_bucket" }
+      },
+      regimes,
+      regimeTuning
+    };
+  }
+
+  const wm = {
+    winRatePct: worst.winRatePct,
+    profitFactor: worst.profitFactor,
+    maxDrawdownPct: worst.maxDrawdownPct
+  };
+  const regimeSugg = suggestFromMetrics(wm, gateSnap);
+  const merged = mergeGlobalAndRegime(globalSugg, regimeSugg);
+  regimeTuning.worstQualified = { regime: worst.regime, metrics: wm, regimeSuggestionMode: regimeSugg.mode };
+
+  const evidence = {
+    ...globalSugg.evidence,
+    worstRegimeMetrics: wm,
+    regimeSuggestionMode: regimeSugg.mode,
+    ...merged.evidence
+  };
+
+  return {
+    suggestion: { mode: merged.mode, overrides: merged.overrides, evidence },
+    regimes,
+    regimeTuning
+  };
+}
+
 async function runSignalGateTunerOnce() {
   const startedAt = new Date().toISOString();
   try {
@@ -78,15 +194,25 @@ async function runSignalGateTunerOnce() {
     }
     const resolved = Number(summary.resolvedRows || 0);
     const gateSnap = getSignalGateOpsSnapshot();
-    const suggestion = suggestFromMetrics(summary.metrics || {}, gateSnap);
+    const built = buildSuggestion(summary, gateSnap);
+    const suggestion = {
+      mode: built.suggestion.mode,
+      overrides: built.suggestion.overrides,
+      evidence: built.suggestion.evidence || {}
+    };
+
     const out = {
       ok: true,
       ranAt: startedAt,
       adaptiveEnabled: ENABLED,
+      regimeAware: REGIME_AWARE,
       lookbackHours: LOOKBACK_HOURS,
       resolvedRows: resolved,
       minResolvedRows: MIN_RESOLVED,
+      minPerRegime: MIN_PER_REGIME,
       metrics: summary.metrics || {},
+      regimes: built.regimes,
+      regimeTuning: built.regimeTuning,
       suggestion
     };
 
@@ -111,7 +237,7 @@ async function runSignalGateTunerOnce() {
     }
 
     const applied = applySignalGateOverrides(suggestion.overrides, {
-      reason: `adaptive_${suggestion.mode}`
+      reason: `adaptive_${suggestion.mode}_${suggestion.evidence?.regimeBranch || "na"}`
     });
     out.applied = true;
     out.reason = `adaptive_${suggestion.mode}`;
@@ -121,7 +247,8 @@ async function runSignalGateTunerOnce() {
     state.lastApplied = {
       at: startedAt,
       mode: suggestion.mode,
-      overrides: suggestion.overrides
+      overrides: suggestion.overrides,
+      regimeBranch: suggestion.evidence?.regimeBranch
     };
     state.lastError = null;
     return out;
@@ -135,6 +262,8 @@ async function runSignalGateTunerOnce() {
 function getSignalGateTunerStatus() {
   return {
     adaptiveEnabled: ENABLED,
+    regimeAware: REGIME_AWARE,
+    minPerRegime: MIN_PER_REGIME,
     lookbackHours: LOOKBACK_HOURS,
     maxRows: MAX_ROWS,
     minResolvedRows: MIN_RESOLVED,
@@ -149,4 +278,3 @@ module.exports = {
   runSignalGateTunerOnce,
   getSignalGateTunerStatus
 };
-
