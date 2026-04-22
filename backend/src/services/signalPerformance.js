@@ -55,11 +55,24 @@ function emissionArchiveFromScore(score) {
   const rk = eg.regime && typeof eg.regime === "object" ? String(eg.regime.key || "").trim() : "";
   const emission_regime = rk ? rk.slice(0, 32) : null;
   const unifiedScore = Number(eg.unifiedScore);
+  const al = score?.meta?.alphaLayer;
+  const alphaSnapshot =
+    al && typeof al === "object"
+      ? {
+          version: al.version,
+          evProxy: al.evProxy,
+          slippageRisk: al.slippageRisk,
+          calibratedConfidence: al.calibratedConfidence,
+          metaLabel: al.metaLabel,
+          lateClusterScore: al.lateClusterScore
+        }
+      : null;
   const emission_gate = {
     unifiedScore: Number.isFinite(unifiedScore) ? Number(unifiedScore.toFixed(4)) : null,
     components: eg.components && typeof eg.components === "object" ? eg.components : null,
     regime: eg.regime && typeof eg.regime === "object" ? eg.regime : null,
-    effectiveGate: eg.effectiveGate && typeof eg.effectiveGate === "object" ? eg.effectiveGate : null
+    effectiveGate: eg.effectiveGate && typeof eg.effectiveGate === "object" ? eg.effectiveGate : null,
+    alphaLayer: alphaSnapshot
   };
   return { emission_regime, emission_gate };
 }

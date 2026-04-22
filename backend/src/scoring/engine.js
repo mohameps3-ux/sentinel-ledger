@@ -307,6 +307,7 @@ async function evaluate(event, extraCtx = {}) {
       lastEventId: event.id,
       lastEventAt: event.timestamp,
       uniqueWalletsInWindow: assetStats.uniqueWalletsInWindow,
+      eventsInWindow: assetStats.eventsInWindow,
       txLastMin: assetStats.txLastMin,
       baselinePerMin: Number(assetStats.baselinePerMin.toFixed(2)),
       liquidityProvided: ctx.liquidityUsd != null,

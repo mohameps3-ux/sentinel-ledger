@@ -21,6 +21,7 @@ const { evaluate: evaluateScore } = require("../scoring/engine");
 const { recordSignalEmission } = require("../services/signalPerformance");
 const { getMarketData } = require("../services/marketData");
 const { evaluateSignalEmission } = require("../services/signalEmissionGate");
+const { buildAlphaLayer } = require("../services/signalAlphaLayer");
 
 const SENTINEL_SOURCE = "helius_webhook";
 
@@ -289,6 +290,10 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
             })
             .then(({ score, ctx }) => {
               if (!score || !global.io) return;
+              const alphaLayer = buildAlphaLayer(score, ctx);
+              if (alphaLayer) {
+                score.meta = { ...(score.meta || {}), alphaLayer };
+              }
               const gate = evaluateSignalEmission(score, {
                 liquidityUsd: ctx?.liquidityUsd,
                 priceChange24h: ctx?.priceChange24h,
@@ -304,7 +309,8 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
                   unifiedScore: gate.unifiedScore,
                   components: gate.components,
                   regime: gate.regime,
-                  effectiveGate: gate.effectiveGate
+                  effectiveGate: gate.effectiveGate,
+                  alphaLayer: score.meta?.alphaLayer || null
                 }
               };
               // The engine already stamps `timestamp` on the result and caches

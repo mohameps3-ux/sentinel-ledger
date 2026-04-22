@@ -827,6 +827,20 @@ export default function OpsPage() {
                     tone="neutral"
                   />
                 </div>
+                {signalGate?.alpha ? (
+                  <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                    <div className="text-[11px] text-gray-500 font-semibold mb-2">Alpha layer (Fase A.1 / A.2)</div>
+                    <p className="text-xs text-gray-400 leading-relaxed">
+                      Gated on calibrated conf: {signalGate.alpha.useCalibratedConfidence ? "yes" : "no"} · min EV (0=off){" "}
+                      {signalGate.alpha.minEvProxy != null ? String(signalGate.alpha.minEvProxy) : "—"} · max slip (1=off){" "}
+                      {signalGate.alpha.maxSlippageRisk != null ? String(signalGate.alpha.maxSlippageRisk) : "—"} ·
+                      block meta skip: {String(signalGate.alpha.blockMetaLabelSkip || false)} · block caution:{" "}
+                      {String(signalGate.alpha.blockMetaLabelCaution || false)}. EV/slippage/labels in{" "}
+                      <span className="text-gray-500">score.meta.alphaLayer</span> and archived in{" "}
+                      <span className="text-gray-500">emission_gate</span>.
+                    </p>
+                  </div>
+                ) : null}
                 {signalGate?.regime?.byRegime ? (
                   <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                     <div className="text-[11px] text-gray-500 font-semibold mb-3">Emissions by regime</div>

@@ -19,6 +19,15 @@ const BASE_CONFIG = {
 const REGIME_ENABLED =
   String(process.env.SIGNAL_GATE_REGIME_ENABLED || "false").toLowerCase() === "true";
 
+const USE_CALIBRATED_CONFIDENCE =
+  String(process.env.SIGNAL_GATE_USE_CALIBRATED_CONFIDENCE || "false").toLowerCase() === "true";
+const MIN_EV_PROXY = clamp(Number(process.env.SIGNAL_GATE_MIN_EV_PROXY || 0), 0, 1);
+const MAX_SLIPPAGE_RISK = clamp(Number(process.env.SIGNAL_GATE_MAX_SLIPPAGE_RISK || 1), 0, 1);
+const BLOCK_META_LABEL_SKIP =
+  String(process.env.SIGNAL_GATE_META_BLOCK_SKIP || "false").toLowerCase() === "true";
+const BLOCK_META_LABEL_CAUTION =
+  String(process.env.SIGNAL_GATE_META_BLOCK_CAUTION || "false").toLowerCase() === "true";
+
 function regimeClassifierParams() {
   return {
     volatileAbsPct: Math.max(0, Number(process.env.SIGNAL_GATE_REGIME_VOLATILE_ABS_PCT || 12)),
@@ -226,6 +235,39 @@ function applySignalGateOverrides(overrides = {}, meta = {}) {
   };
 }
 
+function effectiveConfidenceForGate(score) {
+  if (!USE_CALIBRATED_CONFIDENCE) return clamp(Number(score?.confidence || 0), 0, 100);
+  const al = score?.meta?.alphaLayer;
+  const cc = al && Number(al.calibratedConfidence);
+  if (Number.isFinite(cc)) return clamp(cc, 0, 100);
+  return clamp(Number(score?.confidence || 0), 0, 100);
+}
+
+function appendAlphaLayerGateReasons(score, reasons) {
+  const al = score?.meta?.alphaLayer;
+  if (!al || typeof al !== "object") return;
+  if (MIN_EV_PROXY > 0) {
+    const ev = Number(al.evProxy);
+    if (!Number.isFinite(ev) || ev < MIN_EV_PROXY) reasons.push("low_ev_proxy");
+  }
+  if (MAX_SLIPPAGE_RISK < 1) {
+    const s = Number(al.slippageRisk);
+    if (!Number.isFinite(s) || s > MAX_SLIPPAGE_RISK) reasons.push("slippage_too_high");
+  }
+  if (BLOCK_META_LABEL_SKIP && al.metaLabel === "skip") reasons.push("meta_label_skip");
+  if (BLOCK_META_LABEL_CAUTION && al.metaLabel === "caution") reasons.push("meta_label_caution");
+}
+
+function alphaGateConfigSnapshot() {
+  return {
+    useCalibratedConfidence: USE_CALIBRATED_CONFIDENCE,
+    minEvProxy: MIN_EV_PROXY,
+    maxSlippageRisk: MAX_SLIPPAGE_RISK,
+    blockMetaLabelSkip: BLOCK_META_LABEL_SKIP,
+    blockMetaLabelCaution: BLOCK_META_LABEL_CAUTION
+  };
+}
+
 function evaluateSignalEmission(score, ctx = {}) {
   const baseMerged = activeConfig();
   const regime = classifyMarketRegime(ctx);
@@ -234,6 +276,7 @@ function evaluateSignalEmission(score, ctx = {}) {
   const nowIso = new Date().toISOString();
   const signals = Array.isArray(score?.signals) ? score.signals.length : 0;
   const confidence = clamp(Number(score?.confidence || 0), 0, 100);
+  const confGate = effectiveConfidenceForGate(score);
   const risk = clamp(Number(score?.scores?.risk || 0), 0, 100);
   const liqUsd = Number(ctx?.liquidityUsd);
   const us = computeUnifiedScore(score, ctx, cfg.minLiquidityUsd);
@@ -241,12 +284,13 @@ function evaluateSignalEmission(score, ctx = {}) {
 
   if (cfg.enabled) {
     if (signals < cfg.minSignalsFired) reasons.push("insufficient_signals");
-    if (confidence < cfg.minConfidence) reasons.push("low_confidence");
+    if (confGate < cfg.minConfidence) reasons.push("low_confidence");
     if (risk > cfg.maxRiskScore) reasons.push("risk_too_high");
     if (cfg.minLiquidityUsd > 0 && (!Number.isFinite(liqUsd) || liqUsd < cfg.minLiquidityUsd)) {
       reasons.push("low_liquidity");
     }
     if (us.unified < cfg.minUnifiedScore) reasons.push("low_unified_score");
+    appendAlphaLayerGateReasons(score, reasons);
   }
 
   const allow = !cfg.enabled || reasons.length === 0;
@@ -256,9 +300,12 @@ function evaluateSignalEmission(score, ctx = {}) {
     allow,
     reasons,
     confidence,
+    confidenceGated: confGate,
     risk,
     liquidityUsd: Number.isFinite(liqUsd) ? liqUsd : null,
     unifiedScore: us.unified,
+    metaLabel: score?.meta?.alphaLayer?.metaLabel || null,
+    evProxy: score?.meta?.alphaLayer?.evProxy ?? null,
     regime: {
       key: regime.key,
       classifierEnabled: REGIME_ENABLED,
@@ -330,6 +377,7 @@ function getSignalGateOpsSnapshot() {
       byRegime: state.byRegime,
       effectivePreview: previewEffectiveByRegime()
     },
+    alpha: alphaGateConfigSnapshot(),
     stats: {
       startedAt: state.startedAt,
       decisions: state.decisions,
