@@ -121,13 +121,12 @@ function buildSuggestion(summary, gateSnap) {
     skipReason: null
   };
 
+  // When off, return the same shape as pre–regime-aware: no evidence.regimeBranch so
+  // applySignalGateOverrides reason stays adaptive_<mode>_na (stable logs / parsers).
   if (!REGIME_AWARE) {
     regimeTuning.skipReason = "regime_aware_disabled";
     return {
-      suggestion: {
-        ...globalSugg,
-        evidence: { ...(globalSugg.evidence || {}), regimeBranch: "global_only" }
-      },
+      suggestion: { ...globalSugg },
       regimes,
       regimeTuning
     };
