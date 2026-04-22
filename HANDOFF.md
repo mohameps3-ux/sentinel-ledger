@@ -145,11 +145,26 @@ See `backend/.env.example` for full list.
 - `npm run ops:daily`
 - `npm run simulate:helius`
 
+### 6b) Internal reminder — DB URL + `signal_performance`
+
+`applySignalPerformanceSchema.js` always loads `backend/.env` (not the shell cwd). Empty `DATABASE_URL=` / `SUPABASE_DATABASE_URL=` lines still load as blank strings — fix with sync or set values manually.
+
+```bash
+# Fill empty DATABASE_URL in backend/.env from the linked Railway service env
+cd backend && railway run npm run db:sync-database-url-from-railway
+
+# Apply migration from monorepo root (uses backend/.env)
+npm run db:ensure-signal-performance --prefix backend
+
+# Same migration against production DB only, without touching local .env
+railway run npm run db:ensure-signal-performance
+```
+
 ## 7) Current Operational Blockers
 
 1. Outcome migration requires DB URL:
-   - `DATABASE_URL` is required to run:
-   - `npm run db:ensure-signal-performance`
+   - `DATABASE_URL` (or `SUPABASE_DATABASE_URL`) must be non-empty in `backend/.env`, or run via `railway run` (see §6b).
+   - From repo root: `npm run db:ensure-signal-performance --prefix backend`
 2. `ops:daily` requires:
    - backend reachable at `BACKEND_URL`,
    - and ops key set.
@@ -168,8 +183,8 @@ git pull origin main
 # - HELIUS_WEBHOOK_SECRET
 # - SENTINEL_SCORE_SIGNING_KEY
 
-# 3) Apply migration
-npm run db:ensure-signal-performance
+# 3) Apply migration (from monorepo root; see §6b if DATABASE_URL is empty locally)
+npm run db:ensure-signal-performance --prefix backend
 
 # 4) Start backend
 npm run dev
