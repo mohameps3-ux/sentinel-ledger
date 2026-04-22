@@ -45,6 +45,8 @@ function topBreakdownEntry(breakdown = {}) {
   return entries[0];
 }
 
+const MIN_HORIZON_SAMPLE = 5;
+
 function Sparkline({ points = [], stroke = "#22d3ee" }) {
   if (!Array.isArray(points) || points.length < 2) {
     return <div className="h-12 rounded-lg border border-white/[0.08] bg-[#0b0f13]/80" />;
@@ -352,6 +354,14 @@ export default function OpsPage() {
     .filter((n) => Number.isFinite(n));
   const trendAlertStatus = historyStatus?.trendAlert?.breach?.active ? "ACTIVE" : "HEALTHY";
   const trendSlope = Number(historyStatus?.trendAlert?.latest?.slopePerHour);
+  const walletBehaviorRows = Array.isArray(walletBehaviorTop) ? walletBehaviorTop : [];
+  const lowSampleRows = walletBehaviorRows.filter((row) => {
+    return (
+      Number(row?.resolved_signals_5m || 0) < MIN_HORIZON_SAMPLE ||
+      Number(row?.resolved_signals_30m || 0) < MIN_HORIZON_SAMPLE ||
+      Number(row?.resolved_signals_2h || 0) < MIN_HORIZON_SAMPLE
+    );
+  });
 
   return (
     <>
@@ -903,6 +913,17 @@ export default function OpsPage() {
                   interval {formatInteger(walletBehaviorStatus?.tickIntervalMs || 0)} ms · lookback{" "}
                   {formatInteger(walletBehaviorStatus?.lookbackDays || 0)}d
                 </p>
+                <div
+                  className={`rounded-lg border px-3 py-2 text-xs ${
+                    lowSampleRows.length > 0
+                      ? "border-amber-500/35 bg-amber-500/10 text-amber-100"
+                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
+                  }`}
+                >
+                  {lowSampleRows.length > 0
+                    ? `Low horizon sample alert: ${formatInteger(lowSampleRows.length)} wallet(s) in top list have n<${MIN_HORIZON_SAMPLE} on 5m/30m/2h.`
+                    : `Horizon sample healthy: all top wallets meet n>=${MIN_HORIZON_SAMPLE} on 5m/30m/2h.`}
+                </div>
                 <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                   <div className="text-[11px] text-gray-500 font-semibold mb-3">Top wallets by real win rate</div>
                   {!walletBehaviorTop.length ? (
@@ -919,6 +940,19 @@ export default function OpsPage() {
                             WR {Number(row.win_rate_real || 0).toFixed(1)}% · resolved {formatInteger(row.resolved_signals || 0)} · style{" "}
                             {row.style_label || "—"}
                           </p>
+                          <p className="text-gray-500 mt-0.5">
+                            5m/30m/2h WR {Number(row.win_rate_real_5m || 0).toFixed(1)}% /{" "}
+                            {Number(row.win_rate_real_30m || 0).toFixed(1)}% / {Number(row.win_rate_real_2h || 0).toFixed(1)}%
+                            {" · "}n {formatInteger(row.resolved_signals_5m || 0)}/{formatInteger(row.resolved_signals_30m || 0)}/
+                            {formatInteger(row.resolved_signals_2h || 0)}
+                          </p>
+                          {(Number(row?.resolved_signals_5m || 0) < MIN_HORIZON_SAMPLE ||
+                            Number(row?.resolved_signals_30m || 0) < MIN_HORIZON_SAMPLE ||
+                            Number(row?.resolved_signals_2h || 0) < MIN_HORIZON_SAMPLE) ? (
+                            <span className="inline-flex mt-1 text-[10px] px-1.5 py-0.5 rounded border border-amber-500/35 bg-amber-500/10 text-amber-200">
+                              Low sample
+                            </span>
+                          ) : null}
                         </div>
                       ))}
                     </div>

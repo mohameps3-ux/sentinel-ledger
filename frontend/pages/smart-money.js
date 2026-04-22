@@ -16,6 +16,17 @@ function walletDecision(winRate) {
   return { label: "IGNORE", tone: "text-red-300 border-red-500/30 bg-red-500/10" };
 }
 
+const MIN_HORIZON_SAMPLE = 5;
+
+function hasLowHorizonSample(profile) {
+  if (!profile) return false;
+  return (
+    Number(profile.resolvedSignals5m || 0) < MIN_HORIZON_SAMPLE ||
+    Number(profile.resolvedSignals30m || 0) < MIN_HORIZON_SAMPLE ||
+    Number(profile.resolvedSignals2h || 0) < MIN_HORIZON_SAMPLE
+  );
+}
+
 export default function SmartMoneyPage() {
   const trending = useTrendingTokens();
   const [chain, setChain] = useState("solana");
@@ -199,6 +210,11 @@ export default function SmartMoneyPage() {
                                 n {w.profile.resolvedSignals5m || 0}/{w.profile.resolvedSignals30m || 0}/
                                 {w.profile.resolvedSignals2h || 0}
                               </div>
+                              {hasLowHorizonSample(w.profile) ? (
+                                <div className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border border-amber-500/35 bg-amber-500/10 text-amber-200">
+                                  Low sample
+                                </div>
+                              ) : null}
                             </div>
                           ) : (
                             <span className="text-gray-600">pending</span>
@@ -293,10 +309,17 @@ export default function SmartMoneyPage() {
                     <span className="text-gray-500">{w.lastSeen ? formatDateTime(w.lastSeen) : "—"}</span>
                   </div>
                   {w.profile ? (
-                    <p className="text-[11px] text-gray-400">
-                      WR real: 5m {Number(w.profile.winRateReal5m || 0).toFixed(1)}% · 30m{" "}
-                      {Number(w.profile.winRateReal30m || 0).toFixed(1)}% · 2h {Number(w.profile.winRateReal2h || 0).toFixed(1)}%
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-[11px] text-gray-400">
+                        WR real: 5m {Number(w.profile.winRateReal5m || 0).toFixed(1)}% · 30m{" "}
+                        {Number(w.profile.winRateReal30m || 0).toFixed(1)}% · 2h {Number(w.profile.winRateReal2h || 0).toFixed(1)}%
+                      </p>
+                      {hasLowHorizonSample(w.profile) ? (
+                        <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border border-amber-500/35 bg-amber-500/10 text-amber-200">
+                          Low sample (n&lt;{MIN_HORIZON_SAMPLE})
+                        </span>
+                      ) : null}
+                    </div>
                   ) : null}
                   <p className="text-emerald-300 text-sm font-mono">+${formatUsdWhole(w.pnl30d)} 30d</p>
                   <div>
