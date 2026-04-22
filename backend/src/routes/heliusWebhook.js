@@ -307,6 +307,18 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
               windowMinutes: conv.windowMinutes
             });
           }
+          if (conv?.redAlert) {
+            global.io.to(tx.tokenAddress).emit("coordination:red-alert", {
+              tokenAddress: tx.tokenAddress,
+              detectedAt: conv.redAlert.detectedAt,
+              severity: conv.redAlert.severity || "RED",
+              score: conv.redAlert.score,
+              wallets: conv.redAlert.wallets,
+              clusterKey: conv.redAlert.clusterKey,
+              latencyFromDeployMin: conv.redAlert.latencyFromDeployMin,
+              reason: conv.redAlert.reason
+            });
+          }
         }
 
         try {

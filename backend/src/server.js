@@ -53,6 +53,10 @@ const {
   startWalletBehaviorCron,
   getWalletBehaviorCronStatus
 } = require("./jobs/walletBehaviorCron");
+const {
+  startWalletCoordinationCron,
+  getWalletCoordinationCronStatus
+} = require("./jobs/walletCoordinationCron");
 const publicSurfaceRouter = require("./routes/publicSurface");
 const portfolioRouter = require("./routes/portfolio");
 const signalsRouter = require("./routes/signals");
@@ -225,7 +229,8 @@ app.get("/health", async (_, res) => {
     marketSnapshotWarmup: getMarketSnapshotWarmupStatus(),
     smartSignalBackfill: getSmartWalletSignalBackfillStatus(),
     dataFreshnessHistory: getDataFreshnessHistoryCronStatus(),
-    walletBehavior: getWalletBehaviorCronStatus()
+    walletBehavior: getWalletBehaviorCronStatus(),
+    walletCoordination: getWalletCoordinationCronStatus()
   };
   if (missingCritical.length) {
     return res.status(503).json(body);
@@ -358,6 +363,7 @@ server.listen(port, () => {
   startSmartWalletSignalBackfillCron();
   startDataFreshnessHistoryCron();
   startWalletBehaviorCron();
+  startWalletCoordinationCron();
   startSubscriptionExpiryCron();
   console.log(`Sentinel Ledger backend on :${port}`);
 });

@@ -1,5 +1,6 @@
 const redis = require("../lib/cache");
 const { getSupabase } = require("../lib/supabase");
+const { detectHistoricalCoordinationAlert } = require("./walletCoordinationService");
 
 const WINDOW_SEC = 10 * 60;
 const MIN_WALLETS = 3;
@@ -119,15 +120,34 @@ async function trackSmartBuyAndDetect(mint, walletAddress, timestampMs, action =
 
   const key = keyForMint(mint);
   const score = Math.floor((Number(timestampMs) || Date.now()) / 1000);
+  let state = null;
   try {
     const raw = await redis.get(key);
     const parsed = raw && typeof raw === "object" ? raw : {};
     parsed[walletAddress] = score;
     await redis.set(key, parsed, { ex: WINDOW_SEC + 120 });
+    state = await getConvergenceState(mint);
   } catch (_) {
     return null;
   }
-  return getConvergenceState(mint);
+  if (!state) return null;
+
+  let redAlert = null;
+  if (state.detected && Array.isArray(state.wallets) && state.wallets.length >= 3) {
+    try {
+      redAlert = await detectHistoricalCoordinationAlert({
+        mint,
+        wallets: state.wallets,
+        detectedAtMs: Number(timestampMs) || Date.now()
+      });
+    } catch (_) {
+      redAlert = null;
+    }
+  }
+  return {
+    ...state,
+    redAlert
+  };
 }
 
 module.exports = {

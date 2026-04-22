@@ -21,6 +21,11 @@ const {
 } = require("../jobs/walletBehaviorCron");
 const { getWalletBehaviorTop } = require("../services/walletBehaviorMemory");
 const {
+  getWalletCoordinationCronStatus,
+  runWalletCoordinationTick
+} = require("../jobs/walletCoordinationCron");
+const { listRecentCoordinationAlerts } = require("../services/walletCoordinationService");
+const {
   getSmartWalletSignalBackfillStatus,
   runSmartWalletSignalBackfillTick
 } = require("../jobs/smartWalletSignalBackfillCron");
@@ -201,6 +206,22 @@ router.get("/wallet-behavior/top", assertOpsAuth, async (req, res) => {
   const minResolved = Number(req.query.minResolved || 5);
   const out = await getWalletBehaviorTop({ limit, minResolved });
   if (!out.ok) return res.status(503).json({ ok: false, error: out.reason || "wallet_behavior_unavailable" });
+  return res.json({ ok: true, data: out.rows || [] });
+});
+
+router.get("/wallet-coordination/status", assertOpsAuth, (_req, res) => {
+  return res.json({ ok: true, data: getWalletCoordinationCronStatus() });
+});
+
+router.post("/wallet-coordination/run", assertOpsAuth, async (_req, res) => {
+  await runWalletCoordinationTick();
+  return res.json({ ok: true, data: getWalletCoordinationCronStatus() });
+});
+
+router.get("/wallet-coordination/alerts", assertOpsAuth, async (req, res) => {
+  const limit = Number(req.query.limit || 50);
+  const out = await listRecentCoordinationAlerts(limit);
+  if (!out.ok) return res.status(503).json({ ok: false, error: out.reason || "coordination_alerts_unavailable" });
   return res.json({ ok: true, data: out.rows || [] });
 });
 

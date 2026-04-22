@@ -216,6 +216,34 @@ create table if not exists wallet_behavior_token_features (
   computed_at timestamptz not null default now()
 );
 
+create table if not exists wallet_coordination_pairs (
+  wallet_a varchar(100) not null,
+  wallet_b varchar(100) not null,
+  co_buy_count_30d int not null default 0,
+  early_co_buy_count_30d int not null default 0,
+  avg_delta_sec numeric(12,3),
+  strength_score numeric(8,4) not null default 0,
+  last_co_buy_at timestamptz,
+  updated_at timestamptz not null default now(),
+  primary key (wallet_a, wallet_b)
+);
+
+create table if not exists wallet_coordination_alerts (
+  id uuid primary key default gen_random_uuid(),
+  mint varchar(100) not null,
+  cluster_key text not null,
+  wallets jsonb not null default '[]'::jsonb,
+  wallet_count int not null default 0,
+  spread_sec int,
+  score numeric(8,4) not null default 0,
+  severity varchar(16) not null default 'RED',
+  latency_from_deploy_min numeric(12,3),
+  reason varchar(128),
+  meta jsonb not null default '{}'::jsonb,
+  detected_at timestamptz not null default now(),
+  acknowledged boolean not null default false
+);
+
 create index if not exists idx_users_wallet on users(wallet_address);
 create index if not exists idx_tokens_address on tokens_analyzed(token_address);
 create index if not exists idx_watchlists_user on watchlists(user_id);
@@ -239,6 +267,10 @@ create index if not exists idx_wallet_behavior_stats_computed on wallet_behavior
 create index if not exists idx_wallet_behavior_stats_winrate on wallet_behavior_stats(win_rate_real desc);
 create index if not exists idx_wallet_behavior_token_wallet on wallet_behavior_token_features(wallet_address, computed_at desc);
 create index if not exists idx_wallet_behavior_token_token on wallet_behavior_token_features(token_address, computed_at desc);
+create index if not exists idx_wallet_coord_pairs_strength on wallet_coordination_pairs(strength_score desc, updated_at desc);
+create index if not exists idx_wallet_coord_pairs_last on wallet_coordination_pairs(last_co_buy_at desc);
+create index if not exists idx_wallet_coord_alerts_detected on wallet_coordination_alerts(detected_at desc);
+create index if not exists idx_wallet_coord_alerts_mint on wallet_coordination_alerts(mint, detected_at desc);
 
 -- ---------------------------------------------------------------------------
 -- Stripe, PRO Telegram alerts, worker tables (idempotent). Same SQL as
