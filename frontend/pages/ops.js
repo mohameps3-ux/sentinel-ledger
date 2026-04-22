@@ -133,6 +133,7 @@ export default function OpsPage() {
   const [walletBehaviorStatus, setWalletBehaviorStatus] = useState(null);
   const [walletBehaviorTop, setWalletBehaviorTop] = useState([]);
   const [signalGate, setSignalGate] = useState(null);
+  const [signalGateTuner, setSignalGateTuner] = useState(null);
   const [walletCoordStatus, setWalletCoordStatus] = useState(null);
   const [walletCoordAlerts, setWalletCoordAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -171,6 +172,7 @@ export default function OpsPage() {
         walletBehaviorStatusRes,
         walletBehaviorTopRes,
         signalGateRes,
+        signalGateTunerRes,
         walletCoordStatusRes,
         walletCoordAlertsRes
       ] = await Promise.all([
@@ -186,6 +188,7 @@ export default function OpsPage() {
         withOpsKey("/api/v1/ops/wallet-behavior/status", opsKey),
         withOpsKey("/api/v1/ops/wallet-behavior/top?limit=25&minResolved=5", opsKey),
         withOpsKey("/api/v1/ops/signal-gate/status", opsKey),
+        withOpsKey("/api/v1/ops/signal-gate/tuner/status", opsKey),
         withOpsKey("/api/v1/ops/wallet-coordination/status", opsKey),
         withOpsKey("/api/v1/ops/wallet-coordination/alerts?limit=50", opsKey)
       ]);
@@ -201,6 +204,7 @@ export default function OpsPage() {
       setWalletBehaviorStatus(walletBehaviorStatusRes.data || null);
       setWalletBehaviorTop(walletBehaviorTopRes.data || []);
       setSignalGate(signalGateRes.data || null);
+      setSignalGateTuner(signalGateTunerRes.data || null);
       setWalletCoordStatus(walletCoordStatusRes.data || null);
       setWalletCoordAlerts(walletCoordAlertsRes.data || []);
       toast.success("Ops data refreshed.");
@@ -350,6 +354,19 @@ export default function OpsPage() {
       toast.success("Wallet coordination recompute triggered.");
     } catch (error) {
       toast.error(`Wallet coordination run failed: ${error.message}`);
+    }
+  };
+
+  const runSignalGateTunerNow = async () => {
+    if (!hasKey) return toast.error("Set your ops key first.");
+    try {
+      const runRes = await withOpsKey("/api/v1/ops/signal-gate/tuner/run", opsKey, { method: "POST" });
+      setSignalGateTuner(runRes.data?.status || null);
+      const gateRes = await withOpsKey("/api/v1/ops/signal-gate/status", opsKey);
+      setSignalGate(gateRes.data || null);
+      toast.success("Signal gate tuner executed.");
+    } catch (error) {
+      toast.error(`Signal gate tuner failed: ${error.message}`);
     }
   };
 
@@ -775,6 +792,35 @@ export default function OpsPage() {
                       ))}
                     </ul>
                   )}
+                </div>
+                <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-[11px] text-gray-500 font-semibold">Adaptive tuner (no extra cost)</div>
+                    <button
+                      type="button"
+                      onClick={runSignalGateTunerNow}
+                      className="h-8 px-3 rounded-lg border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
+                    >
+                      Run tuner now
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Adaptive enabled:{" "}
+                    {signalGateTuner?.tuner?.adaptiveEnabled == null
+                      ? "—"
+                      : signalGateTuner.tuner.adaptiveEnabled
+                        ? "yes"
+                        : "no"}{" "}
+                    · last run{" "}
+                    {signalGateTuner?.tuner?.lastRunAt ? formatDateTime(signalGateTuner.tuner.lastRunAt) : "—"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Lookback {formatInteger(signalGateTuner?.tuner?.lookbackHours || 0)}h · min resolved{" "}
+                    {formatInteger(signalGateTuner?.tuner?.minResolvedRows || 0)}
+                  </p>
+                  <p className="text-xs text-gray-400 break-all">
+                    Last reason: {signalGateTuner?.tuner?.lastSuggestion?.reason || signalGateTuner?.tuner?.lastError || "—"}
+                  </p>
                 </div>
               </div>
 

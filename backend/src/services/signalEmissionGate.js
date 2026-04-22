@@ -6,7 +6,7 @@ function clamp(n, lo, hi) {
   return Math.min(hi, Math.max(lo, v));
 }
 
-const CONFIG = {
+const BASE_CONFIG = {
   enabled: String(process.env.SIGNAL_GATE_ENABLED || "true").toLowerCase() !== "false",
   minConfidence: Math.max(1, Number(process.env.SIGNAL_GATE_MIN_CONFIDENCE || 55)),
   minUnifiedScore: clamp(Number(process.env.SIGNAL_GATE_MIN_UNIFIED_SCORE || 0.58), 0, 1),
@@ -14,6 +14,13 @@ const CONFIG = {
   maxRiskScore: clamp(Number(process.env.SIGNAL_GATE_MAX_RISK_SCORE || 85), 0, 100),
   minSignalsFired: Math.max(0, Number(process.env.SIGNAL_GATE_MIN_SIGNALS_FIRED || 1)),
   historyMax: Math.max(20, Number(process.env.SIGNAL_GATE_HISTORY_MAX || 300))
+};
+
+const dynamic = {
+  overrides: null,
+  lastOverrideAt: null,
+  lastOverrideReason: null,
+  tuningHistory: []
 };
 
 const state = {
@@ -66,7 +73,7 @@ function computeUnifiedScore(score, ctx = {}) {
 
 function pushRecent(entry) {
   state.recent.unshift(entry);
-  if (state.recent.length > CONFIG.historyMax) state.recent.length = CONFIG.historyMax;
+  if (state.recent.length > BASE_CONFIG.historyMax) state.recent.length = BASE_CONFIG.historyMax;
 }
 
 function bumpBlocked(reason) {
@@ -74,7 +81,49 @@ function bumpBlocked(reason) {
   state.blockedByReason[key] = (state.blockedByReason[key] || 0) + 1;
 }
 
+function activeConfig() {
+  if (!dynamic.overrides) return { ...BASE_CONFIG };
+  return {
+    ...BASE_CONFIG,
+    ...dynamic.overrides
+  };
+}
+
+function applySignalGateOverrides(overrides = {}, meta = {}) {
+  const next = {};
+  if (overrides.minConfidence != null) {
+    next.minConfidence = clamp(Number(overrides.minConfidence), 1, 99);
+  }
+  if (overrides.minUnifiedScore != null) {
+    next.minUnifiedScore = clamp(Number(overrides.minUnifiedScore), 0, 1);
+  }
+  if (overrides.minLiquidityUsd != null) {
+    next.minLiquidityUsd = Math.max(0, Number(overrides.minLiquidityUsd));
+  }
+  if (overrides.maxRiskScore != null) {
+    next.maxRiskScore = clamp(Number(overrides.maxRiskScore), 0, 100);
+  }
+  if (overrides.minSignalsFired != null) {
+    next.minSignalsFired = Math.max(0, Number(overrides.minSignalsFired));
+  }
+  dynamic.overrides = Object.keys(next).length ? next : null;
+  dynamic.lastOverrideAt = new Date().toISOString();
+  dynamic.lastOverrideReason = String(meta.reason || "manual_or_tuner");
+  dynamic.tuningHistory.unshift({
+    at: dynamic.lastOverrideAt,
+    reason: dynamic.lastOverrideReason,
+    overrides: dynamic.overrides
+  });
+  if (dynamic.tuningHistory.length > 120) dynamic.tuningHistory.length = 120;
+  return {
+    ok: true,
+    overrides: dynamic.overrides,
+    effectiveConfig: activeConfig()
+  };
+}
+
 function evaluateSignalEmission(score, ctx = {}) {
+  const cfg = activeConfig();
   const nowIso = new Date().toISOString();
   const signals = Array.isArray(score?.signals) ? score.signals.length : 0;
   const confidence = clamp(Number(score?.confidence || 0), 0, 100);
@@ -83,17 +132,17 @@ function evaluateSignalEmission(score, ctx = {}) {
   const us = computeUnifiedScore(score, ctx);
   const reasons = [];
 
-  if (CONFIG.enabled) {
-    if (signals < CONFIG.minSignalsFired) reasons.push("insufficient_signals");
-    if (confidence < CONFIG.minConfidence) reasons.push("low_confidence");
-    if (risk > CONFIG.maxRiskScore) reasons.push("risk_too_high");
-    if (CONFIG.minLiquidityUsd > 0 && (!Number.isFinite(liqUsd) || liqUsd < CONFIG.minLiquidityUsd)) {
+  if (cfg.enabled) {
+    if (signals < cfg.minSignalsFired) reasons.push("insufficient_signals");
+    if (confidence < cfg.minConfidence) reasons.push("low_confidence");
+    if (risk > cfg.maxRiskScore) reasons.push("risk_too_high");
+    if (cfg.minLiquidityUsd > 0 && (!Number.isFinite(liqUsd) || liqUsd < cfg.minLiquidityUsd)) {
       reasons.push("low_liquidity");
     }
-    if (us.unified < CONFIG.minUnifiedScore) reasons.push("low_unified_score");
+    if (us.unified < cfg.minUnifiedScore) reasons.push("low_unified_score");
   }
 
-  const allow = !CONFIG.enabled || reasons.length === 0;
+  const allow = !cfg.enabled || reasons.length === 0;
   const entry = {
     at: nowIso,
     asset: String(score?.asset || ""),
@@ -126,7 +175,15 @@ function getSignalGateOpsSnapshot() {
   const rate = state.decisions > 0 ? state.emitted / state.decisions : 0;
   return {
     config: {
-      ...CONFIG
+      ...activeConfig()
+    },
+    baseConfig: {
+      ...BASE_CONFIG
+    },
+    overrides: dynamic.overrides,
+    overrideMeta: {
+      lastOverrideAt: dynamic.lastOverrideAt,
+      lastOverrideReason: dynamic.lastOverrideReason
     },
     stats: {
       startedAt: state.startedAt,
@@ -137,12 +194,14 @@ function getSignalGateOpsSnapshot() {
       blockedByReason: state.blockedByReason,
       lastDecisionAt: state.lastDecisionAt
     },
-    recent: state.recent.slice(0, 40)
+    recent: state.recent.slice(0, 40),
+    tuningHistory: dynamic.tuningHistory.slice(0, 40)
   };
 }
 
 module.exports = {
   evaluateSignalEmission,
-  getSignalGateOpsSnapshot
+  getSignalGateOpsSnapshot,
+  applySignalGateOverrides
 };
 

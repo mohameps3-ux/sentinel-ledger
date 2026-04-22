@@ -77,6 +77,10 @@ const { getDedupeStats } = require("./ingestion/dedupe");
 const { getMarketDataCircuitStatus, getMarketDataProviderStats } = require("./services/marketData");
 const { getDataFreshnessSnapshot } = require("./services/homeTerminalApi");
 const { getSignalGateOpsSnapshot } = require("./services/signalEmissionGate");
+const {
+  startSignalGateTunerCron,
+  getSignalGateTunerCronStatus
+} = require("./jobs/signalGateTunerCron");
 
 /** Stripe envía `application/json; charset=utf-8`; el matcher por string estricto a veces no aplica raw. */
 function stripeWebhookRawBody() {
@@ -232,7 +236,8 @@ app.get("/health", async (_, res) => {
     dataFreshnessHistory: getDataFreshnessHistoryCronStatus(),
     walletBehavior: getWalletBehaviorCronStatus(),
     walletCoordination: getWalletCoordinationCronStatus(),
-    signalGate: getSignalGateOpsSnapshot()
+    signalGate: getSignalGateOpsSnapshot(),
+    signalGateTuner: getSignalGateTunerCronStatus()
   };
   if (missingCritical.length) {
     return res.status(503).json(body);
@@ -366,6 +371,7 @@ server.listen(port, () => {
   startDataFreshnessHistoryCron();
   startWalletBehaviorCron();
   startWalletCoordinationCron();
+  startSignalGateTunerCron();
   startSubscriptionExpiryCron();
   console.log(`Sentinel Ledger backend on :${port}`);
 });
