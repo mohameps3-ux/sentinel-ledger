@@ -68,7 +68,13 @@ function buildScoringContext(market, tokenAmount) {
   const amt = Number(tokenAmount);
   const amountUsd =
     priceUsd != null && Number.isFinite(amt) && amt > 0 ? amt * priceUsd : null;
-  return { priceUsd, liquidityUsd, amountUsd };
+  const priceChange24h =
+    market && Number.isFinite(Number(market.priceChange24h))
+      ? Number(market.priceChange24h)
+      : null;
+  const volume24h =
+    market && Number.isFinite(Number(market.volume24h)) ? Number(market.volume24h) : null;
+  return { priceUsd, liquidityUsd, amountUsd, priceChange24h, volume24h };
 }
 
 const heliusLimiter = rateLimit({
@@ -283,7 +289,11 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
             })
             .then(({ score, ctx }) => {
               if (!score || !global.io) return;
-              const gate = evaluateSignalEmission(score, { liquidityUsd: ctx?.liquidityUsd });
+              const gate = evaluateSignalEmission(score, {
+                liquidityUsd: ctx?.liquidityUsd,
+                priceChange24h: ctx?.priceChange24h,
+                volume24h: ctx?.volume24h
+              });
               if (!gate.allow) {
                 return;
               }
@@ -292,7 +302,9 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
                 emissionGate: {
                   passed: true,
                   unifiedScore: gate.unifiedScore,
-                  components: gate.components
+                  components: gate.components,
+                  regime: gate.regime,
+                  effectiveGate: gate.effectiveGate
                 }
               };
               // The engine already stamps `timestamp` on the result and caches

@@ -778,6 +778,49 @@ export default function OpsPage() {
                   {signalGate?.stats?.emitRate != null ? `${(Number(signalGate.stats.emitRate) * 100).toFixed(1)}%` : "—"} · last
                   decision {signalGate?.stats?.lastDecisionAt ? formatDateTime(signalGate.stats.lastDecisionAt) : "—"}
                 </p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Kpi
+                    label="Regime gate"
+                    value={signalGate?.regime?.enabled ? "on" : "off"}
+                    hint={
+                      signalGate?.regime?.classifier
+                        ? `volatile ≥${signalGate.regime.classifier.volatileAbsPct}% chg or vol/liq ≥${signalGate.regime.classifier.volatileVolLiqRatio} · trending ≥${signalGate.regime.classifier.trendingAbsPct}%`
+                        : "Uses 24h % change + volume/liquidity from existing market snapshot"
+                    }
+                    tone={signalGate?.regime?.enabled ? "warn" : "neutral"}
+                  />
+                  <Kpi
+                    label="Recent decisions by regime"
+                    value={
+                      signalGate?.regime?.byRegime
+                        ? formatInteger(
+                            Object.values(signalGate.regime.byRegime).reduce((a, r) => a + (r?.decisions || 0), 0)
+                          )
+                        : "—"
+                    }
+                    hint="Calm / trending / volatile / unknown (liquidity missing)"
+                    tone="neutral"
+                  />
+                </div>
+                {signalGate?.regime?.byRegime ? (
+                  <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                    <div className="text-[11px] text-gray-500 font-semibold mb-3">Emissions by regime</div>
+                    <ul className="space-y-1.5 text-sm text-gray-200">
+                      {["calm", "trending", "volatile", "unknown"].map((k) => {
+                        const r = signalGate.regime.byRegime[k] || {};
+                        return (
+                          <li key={k} className="flex flex-wrap justify-between gap-2">
+                            <span className="text-gray-300 capitalize">{k}</span>
+                            <span className="tabular-nums text-gray-500 text-xs">
+                              d={formatInteger(r.decisions || 0)} · ok={formatInteger(r.emitted || 0)} · block=
+                              {formatInteger(r.blocked || 0)}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
                 <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                   <div className="text-[11px] text-gray-500 font-semibold mb-3">Blocked reasons</div>
                   {!signalGateBlockedEntries.length ? (
