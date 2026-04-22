@@ -63,9 +63,13 @@ function execRailwayVariableListJson() {
         encoding: "utf8",
         maxBuffer: 12 * 1024 * 1024,
         stdio: ["ignore", "pipe", "pipe"],
-        cwd: backendRoot
+        cwd: backendRoot,
+        // Windows: global `railway` is usually a `.cmd` shim; CreateProcess cannot exec it without a shell (EINVAL).
+        shell: process.platform === "win32"
       });
-      return JSON.parse(String(out || "").trim());
+      const raw = String(out || "").trim();
+      const jsonText = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
+      return JSON.parse(jsonText);
     } catch (e) {
       lastErr = e;
     }
