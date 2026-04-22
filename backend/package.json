@@ -10,6 +10,7 @@
     "db:ensure-signal-performance": "node scripts/applySignalPerformanceSchema.js",
     "db:sync-database-url-from-railway": "node scripts/syncDatabaseUrlToLocalEnv.js",
     "db:verify-schema": "node scripts/verifySupabaseSchema.js",
+    "db:verify-emission-regime": "node scripts/verifySignalPerformanceEmissionRegimeColumn.js",
     "queue:clean": "node scripts/cleanBullQueues.js",
     "seed:smart-wallets": "node scripts/seedSmartWallets.js",
     "seed:terminal-home": "node scripts/seedTerminalHome.js",
