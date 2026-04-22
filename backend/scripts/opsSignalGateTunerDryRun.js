@@ -1,19 +1,15 @@
 "use strict";
 
 /**
- * GET tuner/status, then POST tuner/run (the real run — not a server-side dry-run API).
- * Gate overrides are applied on the server whenever SIGNAL_GATE_ADAPTIVE_ENABLED=true
- * and the tuner would apply. Keep adaptive disabled to only refresh in-process state
- * and log suggestion without persisting threshold changes.
+ * Default: GET /signal-gate/tuner/preview (read-only, no override writes).
+ * Optional: POST /signal-gate/tuner/run when OPS_TUNER_DRY_USE_POST=1 or --post
+ * (real run — applies if SIGNAL_GATE_ADAPTIVE_ENABLED=true on the server).
  *
- * Env (backend/.env):
- *   OMNI_BOT_OPS_KEY=...
- *   BACKEND_URL=https://your-backend.up.railway.app  (optional if using Railway CLI below)
- *
- * Optional override (wins over everything): OPS_DRY_RUN_BACKEND_URL=https://...
+ * Env: OMNI_BOT_OPS_KEY, then URL precedence: OPS_DRY_RUN_BACKEND_URL →
+ * RAILWAY_PUBLIC_DOMAIN / RAILWAY_STATIC_URL → BACKEND_URL.
  *
  * Run: node scripts/opsSignalGateTunerDryRun.js
- * Run against linked Railway service (injects URL + secrets): railway run npm run ops:signal-gate-tuner-dry-run
+ * Railway: railway run npm run ops:signal-gate-tuner-dry-run
  */
 
 require("dotenv").config({ path: require("path").join(__dirname, "..", ".env") });
@@ -28,10 +24,16 @@ const BASE = String(
   process.env.OPS_DRY_RUN_BACKEND_URL || fromRailwayDomain() || process.env.BACKEND_URL || ""
 ).replace(/\/+$/, "");
 const OPS_KEY = String(process.env.OMNI_BOT_OPS_KEY || "").trim();
+const usePost =
+  String(process.env.OPS_TUNER_DRY_USE_POST || "").trim() === "1" ||
+  String(process.env.OPS_TUNER_DRY_USE_POST || "")
+    .trim()
+    .toLowerCase() === "true" ||
+  process.argv.includes("--post");
 
 if (!BASE || !OPS_KEY) {
   console.error(
-    "Missing OMNI_BOT_OPS_KEY and/or API base URL. Set BACKEND_URL in backend/.env, or run with Railway CLI: railway run npm run ops:signal-gate-tuner-dry-run"
+    "Missing OMNI_BOT_OPS_KEY and/or API base URL. Set BACKEND_URL in backend/.env, or run: railway run npm run ops:signal-gate-tuner-dry-run"
   );
   process.exit(1);
 }
@@ -44,7 +46,10 @@ function summarizeRun(run) {
   return {
     ok: run.ok,
     applied: run.applied,
+    wouldApply: run.wouldApply,
     reason: run.reason,
+    readOnly: run.readOnly,
+    previewAt: run.previewAt,
     adaptiveEnabled: run.adaptiveEnabled,
     regimeAware: run.regimeAware,
     resolvedRows: run.resolvedRows,
@@ -59,6 +64,11 @@ function summarizeRun(run) {
 
 async function main() {
   console.log(`Target: ${BASE}`);
+  if (usePost) {
+    console.log("Mode: status + preview + POST /tuner/run (overrides may apply if adaptive is on).");
+  } else {
+    console.log("Mode: read-only (GET /tuner/preview + status). Set OPS_TUNER_DRY_USE_POST=1 or --post to POST /tuner/run.\n");
+  }
 
   const sRes = await fetch(`${BASE}/api/v1/ops/signal-gate/tuner/status`, { headers });
   const sBody = await sRes.json().catch(() => ({}));
@@ -67,7 +77,7 @@ async function main() {
     process.exit(1);
   }
   const t = sBody.data?.tuner || {};
-  console.log("\n--- status (before) ---\n");
+  console.log("\n--- status ---\n");
   console.log(
     JSON.stringify(
       {
@@ -84,6 +94,25 @@ async function main() {
     )
   );
 
+  const pRes = await fetch(`${BASE}/api/v1/ops/signal-gate/tuner/preview`, { headers });
+  const pBody = await pRes.json().catch(() => ({}));
+  if (!pRes.ok || !pBody.ok) {
+    console.error("GET tuner/preview failed", pRes.status, pBody);
+    process.exit(1);
+  }
+  const prev = pBody.data;
+  console.log("\n--- preview (read-only) ---\n");
+  console.log(JSON.stringify(summarizeRun(prev), null, 2));
+
+  if (!usePost) {
+    if (prev?.wouldApply === true) {
+      console.log(
+        "\nNote: wouldApply=true with adaptive on — a POST /tuner/run would write overrides. This script did not POST."
+      );
+    }
+    return;
+  }
+
   const rRes = await fetch(`${BASE}/api/v1/ops/signal-gate/tuner/run`, { method: "POST", headers });
   const rBody = await rRes.json().catch(() => ({}));
   if (!rRes.ok || !rBody.ok) {
@@ -94,10 +123,10 @@ async function main() {
   const run = rBody.data?.run;
   const tunerAfter = rBody.data?.status?.tuner;
 
-  console.log("\n--- run ---\n");
+  console.log("\n--- run (POST) ---\n");
   console.log(JSON.stringify(summarizeRun(run), null, 2));
 
-  console.log("\n--- status embedded after run ---\n");
+  console.log("\n--- status after run ---\n");
   console.log(
     JSON.stringify(
       {
@@ -113,16 +142,14 @@ async function main() {
 
   if (run?.applied === true) {
     console.warn(
-      "\nWARN: NOT a no-op — gate overrides WERE applied on the server. " +
-        "You POSTed the real /tuner/run. Only use against prod with " +
-        "SIGNAL_GATE_ADAPTIVE_ENABLED=false, or when you intend to change thresholds."
+      "\nWARN: NOT a no-op — gate overrides WERE applied. Use default script mode (no POST) for safe checks."
     );
   } else if (run?.adaptiveEnabled === true) {
     console.log(
-      "\nAdaptive is enabled; this run did not apply (see reason). A future run could apply if metrics/trigger match."
+      "\nAdaptive is enabled; this run did not apply (see reason). A future run could apply if metrics match."
     );
   } else if (run?.applied === false) {
-    console.log("\nNo gate overrides applied (adaptive off or run skipped — see reason).");
+    console.log("\nNo gate overrides applied (adaptive off or run skipped).");
   }
 }
 

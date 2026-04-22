@@ -39,6 +39,7 @@ const {
   runSignalGateTunerTick,
   getSignalGateTunerCronStatus
 } = require("../jobs/signalGateTunerCron");
+const { previewSignalGateTuner } = require("../services/signalGateTuner");
 
 const router = express.Router();
 
@@ -259,6 +260,25 @@ router.get("/signal-gate/status", assertOpsAuth, (_req, res) => {
 
 router.get("/signal-gate/tuner/status", assertOpsAuth, (_req, res) => {
   return res.json({ ok: true, data: getSignalGateTunerCronStatus() });
+});
+
+/**
+ * Read-only: what the adaptive tuner would do. No override writes, no tuner state updates.
+ * Query: lookbackHours, maxRows (optional; if maxRows is set, lookbackHours is required).
+ */
+router.get("/signal-gate/tuner/preview", assertOpsAuth, async (req, res) => {
+  const lh = req.query.lookbackHours;
+  const mr = req.query.maxRows;
+  const lookbackHours = lh != null && String(lh).trim() !== "" ? Number(lh) : undefined;
+  const maxRows = mr != null && String(mr).trim() !== "" ? Number(mr) : undefined;
+  if (maxRows != null && Number.isFinite(maxRows) && (lookbackHours == null || !Number.isFinite(lookbackHours))) {
+    return res.status(400).json({ ok: false, error: "max_rows_requires_lookback_hours" });
+  }
+  const hasWindow =
+    (lookbackHours != null && Number.isFinite(lookbackHours)) || (maxRows != null && Number.isFinite(maxRows));
+  const out = await previewSignalGateTuner(hasWindow ? { lookbackHours, maxRows } : {});
+  if (!out?.ok) return res.status(503).json({ ok: false, error: out?.reason || "preview_failed" });
+  return res.json({ ok: true, data: out });
 });
 
 router.post("/signal-gate/tuner/run", assertOpsAuth, async (_req, res) => {

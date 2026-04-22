@@ -273,7 +273,68 @@ function getSignalGateTunerStatus() {
   };
 }
 
+/**
+ * Same math as a tuner run but no in-memory state updates and no applySignalGateOverrides.
+ * Safe to call from Ops / CI any time.
+ */
+async function previewSignalGateTuner(options = {}) {
+  const lookbackHours =
+    options.lookbackHours != null
+      ? Math.max(1, Math.min(24 * 30, Number(options.lookbackHours)))
+      : LOOKBACK_HOURS;
+  const maxRows =
+    options.maxRows != null
+      ? Math.max(200, Math.min(5000, Number(options.maxRows)))
+      : MAX_ROWS;
+
+  const summary = await getSignalPerformanceSummary({ lookbackHours, maxRows });
+  if (!summary?.ok) {
+    return { ok: false, readOnly: true, reason: summary?.error || "summary_unavailable" };
+  }
+
+  const gateSnap = getSignalGateOpsSnapshot();
+  const built = buildSuggestion(summary, gateSnap);
+  const resolved = Number(summary.resolvedRows || 0);
+  const suggestion = {
+    mode: built.suggestion.mode,
+    overrides: built.suggestion.overrides,
+    evidence: built.suggestion.evidence || {}
+  };
+
+  const out = {
+    ok: true,
+    readOnly: true,
+    previewAt: new Date().toISOString(),
+    wouldApply: false,
+    adaptiveEnabled: ENABLED,
+    regimeAware: REGIME_AWARE,
+    lookbackHours,
+    maxRows,
+    resolvedRows: resolved,
+    minResolvedRows: MIN_RESOLVED,
+    minPerRegime: MIN_PER_REGIME,
+    metrics: summary.metrics || {},
+    regimes: built.regimes,
+    regimeTuning: built.regimeTuning,
+    suggestion
+  };
+
+  if (resolved < MIN_RESOLVED) {
+    out.reason = "insufficient_resolved_sample";
+    return out;
+  }
+  if (!ENABLED) {
+    out.reason = "adaptive_disabled";
+    return out;
+  }
+  out.wouldApply = true;
+  out.reason = `adaptive_${suggestion.mode}_preview`;
+  return out;
+}
+
 module.exports = {
   runSignalGateTunerOnce,
-  getSignalGateTunerStatus
+  getSignalGateTunerStatus,
+  buildSuggestion,
+  previewSignalGateTuner
 };
