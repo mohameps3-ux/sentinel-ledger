@@ -209,6 +209,12 @@ export default function SmartMoneyPage() {
                         <td className="py-3">
                           <div className="flex items-center gap-2">
                             <span className={`text-xs px-2 py-1 rounded border ${w.decision.tone}`}>{w.decision.label}</span>
+                            <Link
+                              href={`/wallet/${w.wallet}?lang=${narrativeLang}#behavior-memory`}
+                              className="text-[11px] px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+                            >
+                              Behavior
+                            </Link>
                             <button
                               type="button"
                               onClick={() => setExpandedWallet((v) => (v === w.wallet ? "" : w.wallet))}
@@ -258,13 +264,21 @@ export default function SmartMoneyPage() {
                   </div>
                   <p className="text-emerald-300 text-sm font-mono">+${formatUsdWhole(w.pnl30d)} 30d</p>
                   <div>
-                    <button
-                      type="button"
-                      onClick={() => setExpandedWallet((v) => (v === w.wallet ? "" : w.wallet))}
-                      className="text-[11px] px-2 py-1 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
-                    >
-                      Why this wallet
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/wallet/${w.wallet}?lang=${narrativeLang}#behavior-memory`}
+                        className="text-[11px] px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+                      >
+                        Behavior
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedWallet((v) => (v === w.wallet ? "" : w.wallet))}
+                        className="text-[11px] px-2 py-1 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+                      >
+                        Why this wallet
+                      </button>
+                    </div>
                   </div>
                   {w.bestTradePct != null ? (
                     <p className="text-[11px] text-gray-400">

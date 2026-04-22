@@ -146,7 +146,7 @@ export default function WalletDetailPage() {
           ) : null}
         </section>
 
-        <section className="glass-card sl-inset space-y-3">
+        <section id="behavior-memory" className="glass-card sl-inset space-y-3">
           <p className="sl-label">Wallet behavior memory (F5)</p>
           {behavior.isLoading ? (
             <div className="inline-flex items-center gap-2 text-sm text-gray-400">
