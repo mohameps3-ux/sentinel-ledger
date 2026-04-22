@@ -41,6 +41,16 @@ Notas:
 - El script limpia DNS local por defecto (`ipconfig /flushdns`).
 - URL canónica frontend: `https://sentinel-ledger-ochre.vercel.app`.
 
+## Mini release checklist (2 min)
+
+Script rápido para validar release hygiene + smoke endpoints:
+
+- `powershell -ExecutionPolicy Bypass -File "scripts/release-check-v1.1.ps1"`
+- Con overrides:  
+  `powershell -ExecutionPolicy Bypass -File "scripts/release-check-v1.1.ps1" -BackendUrl "https://<backend>" -FrontendUrl "https://<frontend>" -OpsKey "<OMNI_BOT_OPS_KEY>"`
+
+El script cubre 5 checks: git hygiene, smoke core (`/health`, `/signals/latest`, `/ops/data-freshness`), recordatorio de seguridad, recordatorio de deploy alignment y plantilla para actualizar `HANDOFF.md`.
+
 ## Deploy (resumen)
 
 - **Vercel (frontend):** en el proyecto, **Root Directory** = `frontend`. Build por defecto usa `npm run vercel-build` (equivale a `npm run build`). Si hace falta override explícito: `next build --webpack`.
