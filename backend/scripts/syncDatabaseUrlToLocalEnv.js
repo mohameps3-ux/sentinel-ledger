@@ -23,6 +23,11 @@ function hasNonEmptyDbUrl(src) {
 
 function parseDbUrlFromRailwayJson(parsed) {
   if (!parsed || typeof parsed !== "object") return null;
+  // Some CLI versions wrap rows as { variables: [ { name, value } ] }.
+  if (parsed.variables && Array.isArray(parsed.variables)) {
+    const inner = parseDbUrlFromRailwayJson(parsed.variables);
+    if (inner) return inner;
+  }
   if (Array.isArray(parsed)) {
     for (const row of parsed) {
       const n = String(row?.name || row?.key || "").trim();
@@ -48,6 +53,8 @@ function execRailwayVariableListJson() {
   if (envName) args.push("-e", envName);
 
   const tryBins = process.platform === "win32" ? ["railway.cmd", "railway.exe", "railway"] : ["railway"];
+  /** Always run Railway from `backend/` so linking works when invoked via `npm --prefix backend`. */
+  const backendRoot = path.join(__dirname, "..");
 
   let lastErr = null;
   for (const bin of tryBins) {
@@ -55,7 +62,8 @@ function execRailwayVariableListJson() {
       const out = execFileSync(bin, args, {
         encoding: "utf8",
         maxBuffer: 12 * 1024 * 1024,
-        stdio: ["ignore", "pipe", "pipe"]
+        stdio: ["ignore", "pipe", "pipe"],
+        cwd: backendRoot
       });
       return JSON.parse(String(out || "").trim());
     } catch (e) {
@@ -101,8 +109,9 @@ function main() {
     console.error(
       "Could not resolve DATABASE_URL.\n" +
         "  • Option A: cd backend && railway run npm run db:sync-database-url-from-railway\n" +
-        "  • Option B: cd backend (linked project) && npm run db:sync-database-url-from-railway\n" +
-        "    (reads `railway variable list --json` — same machine, writes backend/.env)\n" +
+        "  • Option B: from repo root with backend linked to Railway:\n" +
+        "      npm run db:sync-database-url-from-railway --prefix backend\n" +
+        "    (uses `railway variable list --json` with cwd=backend/; same machine, writes backend/.env)\n" +
         "  • Option C: set DATABASE_URL or SUPABASE_DATABASE_URL in backend/.env manually."
     );
     process.exit(1);
