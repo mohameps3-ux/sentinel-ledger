@@ -132,6 +132,7 @@ export default function OpsPage() {
   const [historyStatus, setHistoryStatus] = useState(null);
   const [walletBehaviorStatus, setWalletBehaviorStatus] = useState(null);
   const [walletBehaviorTop, setWalletBehaviorTop] = useState([]);
+  const [signalGate, setSignalGate] = useState(null);
   const [walletCoordStatus, setWalletCoordStatus] = useState(null);
   const [walletCoordAlerts, setWalletCoordAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -169,6 +170,7 @@ export default function OpsPage() {
         histStatusRes,
         walletBehaviorStatusRes,
         walletBehaviorTopRes,
+        signalGateRes,
         walletCoordStatusRes,
         walletCoordAlertsRes
       ] = await Promise.all([
@@ -183,6 +185,7 @@ export default function OpsPage() {
         withOpsKey("/api/v1/ops/data-freshness/history/status", opsKey),
         withOpsKey("/api/v1/ops/wallet-behavior/status", opsKey),
         withOpsKey("/api/v1/ops/wallet-behavior/top?limit=25&minResolved=5", opsKey),
+        withOpsKey("/api/v1/ops/signal-gate/status", opsKey),
         withOpsKey("/api/v1/ops/wallet-coordination/status", opsKey),
         withOpsKey("/api/v1/ops/wallet-coordination/alerts?limit=50", opsKey)
       ]);
@@ -197,6 +200,7 @@ export default function OpsPage() {
       setHistoryStatus(histStatusRes.data || null);
       setWalletBehaviorStatus(walletBehaviorStatusRes.data || null);
       setWalletBehaviorTop(walletBehaviorTopRes.data || []);
+      setSignalGate(signalGateRes.data || null);
       setWalletCoordStatus(walletCoordStatusRes.data || null);
       setWalletCoordAlerts(walletCoordAlertsRes.data || []);
       toast.success("Ops data refreshed.");
@@ -387,6 +391,9 @@ export default function OpsPage() {
   const coordRows = Array.isArray(walletCoordAlerts) ? walletCoordAlerts : [];
   const redCoordRows = coordRows.filter((row) => String(row?.severity || "").toUpperCase() === "RED");
   const highScoreCoordRows = redCoordRows.filter((row) => Number(row?.score || 0) >= MIN_COORD_ALERT_SCORE);
+  const signalGateBlockedEntries = Object.entries(signalGate?.stats?.blockedByReason || {}).sort(
+    (a, b) => Number(b[1] || 0) - Number(a[1] || 0)
+  );
 
   return (
     <>
@@ -728,6 +735,47 @@ export default function OpsPage() {
                     </div>
                   </>
                 )}
+              </div>
+
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
+                <h2 className="text-lg font-semibold text-white">Signal emission gate (Phase A)</h2>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <Kpi label="Gate enabled" value={signalGate?.config ? (signalGate.config.enabled ? "yes" : "no") : "—"} />
+                  <Kpi
+                    label="Decisions"
+                    value={signalGate?.stats?.decisions != null ? formatInteger(signalGate.stats.decisions) : "—"}
+                  />
+                  <Kpi
+                    label="Emitted"
+                    value={signalGate?.stats?.emitted != null ? formatInteger(signalGate.stats.emitted) : "—"}
+                    tone="good"
+                  />
+                  <Kpi
+                    label="Blocked"
+                    value={signalGate?.stats?.blocked != null ? formatInteger(signalGate.stats.blocked) : "—"}
+                    tone={Number(signalGate?.stats?.blocked || 0) > 0 ? "warn" : "neutral"}
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Emit rate:{" "}
+                  {signalGate?.stats?.emitRate != null ? `${(Number(signalGate.stats.emitRate) * 100).toFixed(1)}%` : "—"} · last
+                  decision {signalGate?.stats?.lastDecisionAt ? formatDateTime(signalGate.stats.lastDecisionAt) : "—"}
+                </p>
+                <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                  <div className="text-[11px] text-gray-500 font-semibold mb-3">Blocked reasons</div>
+                  {!signalGateBlockedEntries.length ? (
+                    <p className="text-sm text-gray-500">No blocked reasons recorded yet.</p>
+                  ) : (
+                    <ul className="space-y-1 text-sm text-gray-200">
+                      {signalGateBlockedEntries.slice(0, 8).map(([reason, count]) => (
+                        <li key={reason} className="flex justify-between gap-3">
+                          <span className="text-gray-300 break-all min-w-0">{reason}</span>
+                          <span className="tabular-nums text-gray-500 shrink-0">{formatInteger(count)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
 
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">

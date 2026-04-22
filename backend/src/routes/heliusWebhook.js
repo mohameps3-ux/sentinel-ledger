@@ -20,6 +20,7 @@ const {
 const { evaluate: evaluateScore } = require("../scoring/engine");
 const { recordSignalEmission } = require("../services/signalPerformance");
 const { getMarketData } = require("../services/marketData");
+const { evaluateSignalEmission } = require("../services/signalEmissionGate");
 
 const SENTINEL_SOURCE = "helius_webhook";
 
@@ -278,10 +279,22 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
           getMarketDataMemoized(tx.tokenAddress)
             .then((market) => {
               const ctx = buildScoringContext(market, tx.amount);
-              return evaluateScore(sentinelEvent, ctx);
+              return evaluateScore(sentinelEvent, ctx).then((score) => ({ score, ctx }));
             })
-            .then((score) => {
+            .then(({ score, ctx }) => {
               if (!score || !global.io) return;
+              const gate = evaluateSignalEmission(score, { liquidityUsd: ctx?.liquidityUsd });
+              if (!gate.allow) {
+                return;
+              }
+              score.meta = {
+                ...(score.meta || {}),
+                emissionGate: {
+                  passed: true,
+                  unifiedScore: gate.unifiedScore,
+                  components: gate.components
+                }
+              };
               // The engine already stamps `timestamp` on the result and caches
               // it, so the socket payload and the /scoring/latest cache entry
               // stay byte-identical.

@@ -34,6 +34,7 @@ const {
   runDataFreshnessHistoryTick
 } = require("../jobs/dataFreshnessHistoryCron");
 const { getFreshnessHistory } = require("../services/freshnessHistoryStore");
+const { getSignalGateOpsSnapshot } = require("../services/signalEmissionGate");
 
 const router = express.Router();
 
@@ -246,6 +247,10 @@ router.get("/signal-performance/summary", assertOpsAuth, async (req, res) => {
 
 router.get("/signal-performance/calibration", assertOpsAuth, (_req, res) => {
   return res.json({ ok: true, data: getCalibrationSnapshot() });
+});
+
+router.get("/signal-gate/status", assertOpsAuth, (_req, res) => {
+  return res.json({ ok: true, data: getSignalGateOpsSnapshot() });
 });
 
 router.post("/signal-performance/calibration/run", assertOpsAuth, async (req, res) => {

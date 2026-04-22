@@ -76,6 +76,7 @@ const { getIngestionSnapshot } = require("./ingestion/ingestionState");
 const { getDedupeStats } = require("./ingestion/dedupe");
 const { getMarketDataCircuitStatus, getMarketDataProviderStats } = require("./services/marketData");
 const { getDataFreshnessSnapshot } = require("./services/homeTerminalApi");
+const { getSignalGateOpsSnapshot } = require("./services/signalEmissionGate");
 
 /** Stripe envía `application/json; charset=utf-8`; el matcher por string estricto a veces no aplica raw. */
 function stripeWebhookRawBody() {
@@ -230,7 +231,8 @@ app.get("/health", async (_, res) => {
     smartSignalBackfill: getSmartWalletSignalBackfillStatus(),
     dataFreshnessHistory: getDataFreshnessHistoryCronStatus(),
     walletBehavior: getWalletBehaviorCronStatus(),
-    walletCoordination: getWalletCoordinationCronStatus()
+    walletCoordination: getWalletCoordinationCronStatus(),
+    signalGate: getSignalGateOpsSnapshot()
   };
   if (missingCritical.length) {
     return res.status(503).json(body);
