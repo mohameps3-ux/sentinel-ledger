@@ -25,6 +25,8 @@ Frontend:
 
 Ejecuta `supabase/schema.sql` en el SQL editor del proyecto (incluye tablas base, Stripe `subscriptions` / `stripe_events`, logs, columnas PRO en `users`, y tablas del worker smart-wallet). Si la base ya existía sin esa parte, puedes ejecutar solo el parche idempotente `supabase/payments_and_pro.sql`. **Para un bot o un solo pegado en PRODUCTION:** usa `supabase/apply_production_bundle.sql` (parche + RLS + queries de verificación al final). Con `DATABASE_URL` en `backend/.env`: `cd backend && npm run db:ensure-subscriptions` aplica `payments_and_pro.sql`; `npm run db:verify-schema` comprueba tablas/columnas clave. Opcional por separado: `supabase/rls_service_tables.sql` (también va incluido en el bundle).
 
+Si Supabase Security Advisor marca "RLS disabled in public", aplica `supabase/rls_public_lockdown.sql` para activar RLS en tablas `public` usadas por backend (incluye `tokens_analyzed`, `signal_performance`, `ops_data_freshness_history`, etc.). El backend con `service_role` sigue funcionando; acceso directo anon/auth queda denegado salvo políticas explícitas.
+
 ## Recovery express (produccion)
 
 Si ves errores intermitentes (ej. `Service Unavailable`), usa el script:
