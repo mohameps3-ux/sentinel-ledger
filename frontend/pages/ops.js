@@ -46,6 +46,7 @@ function topBreakdownEntry(breakdown = {}) {
 }
 
 const MIN_HORIZON_SAMPLE = 5;
+const MIN_COORD_ALERT_SCORE = 0.68;
 
 function Sparkline({ points = [], stroke = "#22d3ee" }) {
   if (!Array.isArray(points) || points.length < 2) {
@@ -131,6 +132,8 @@ export default function OpsPage() {
   const [historyStatus, setHistoryStatus] = useState(null);
   const [walletBehaviorStatus, setWalletBehaviorStatus] = useState(null);
   const [walletBehaviorTop, setWalletBehaviorTop] = useState([]);
+  const [walletCoordStatus, setWalletCoordStatus] = useState(null);
+  const [walletCoordAlerts, setWalletCoordAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
   const [verifyPaste, setVerifyPaste] = useState("");
@@ -165,7 +168,9 @@ export default function OpsPage() {
         sloRes,
         histStatusRes,
         walletBehaviorStatusRes,
-        walletBehaviorTopRes
+        walletBehaviorTopRes,
+        walletCoordStatusRes,
+        walletCoordAlertsRes
       ] = await Promise.all([
         withOpsKey("/api/v1/bots/omni/tickets?limit=50", opsKey),
         withOpsKey("/api/v1/bots/omni/events?limit=100", opsKey),
@@ -177,7 +182,9 @@ export default function OpsPage() {
         withOpsKey("/api/v1/ops/signals-supabase-slo/snapshot", opsKey),
         withOpsKey("/api/v1/ops/data-freshness/history/status", opsKey),
         withOpsKey("/api/v1/ops/wallet-behavior/status", opsKey),
-        withOpsKey("/api/v1/ops/wallet-behavior/top?limit=25&minResolved=5", opsKey)
+        withOpsKey("/api/v1/ops/wallet-behavior/top?limit=25&minResolved=5", opsKey),
+        withOpsKey("/api/v1/ops/wallet-coordination/status", opsKey),
+        withOpsKey("/api/v1/ops/wallet-coordination/alerts?limit=50", opsKey)
       ]);
       setTickets(ticketRes.data || []);
       setEvents(eventRes.data || []);
@@ -190,6 +197,8 @@ export default function OpsPage() {
       setHistoryStatus(histStatusRes.data || null);
       setWalletBehaviorStatus(walletBehaviorStatusRes.data || null);
       setWalletBehaviorTop(walletBehaviorTopRes.data || []);
+      setWalletCoordStatus(walletCoordStatusRes.data || null);
+      setWalletCoordAlerts(walletCoordAlertsRes.data || []);
       toast.success("Ops data refreshed.");
     } catch (error) {
       toast.error(`Load failed: ${error.message}`);
@@ -327,6 +336,19 @@ export default function OpsPage() {
     }
   };
 
+  const runWalletCoordinationNow = async () => {
+    if (!hasKey) return toast.error("Set your ops key first.");
+    try {
+      const runRes = await withOpsKey("/api/v1/ops/wallet-coordination/run", opsKey, { method: "POST" });
+      setWalletCoordStatus(runRes.data || null);
+      const alertsRes = await withOpsKey("/api/v1/ops/wallet-coordination/alerts?limit=50", opsKey);
+      setWalletCoordAlerts(alertsRes.data || []);
+      toast.success("Wallet coordination recompute triggered.");
+    } catch (error) {
+      toast.error(`Wallet coordination run failed: ${error.message}`);
+    }
+  };
+
   const guardPressure = Boolean(guard?.alerts?.highIngestionPressure);
   const sustained = Boolean(guard?.alerts?.sustainedDrops);
   const memAlert = Boolean(guard?.alerts?.memoryPressure);
@@ -362,6 +384,9 @@ export default function OpsPage() {
       Number(row?.resolved_signals_2h || 0) < MIN_HORIZON_SAMPLE
     );
   });
+  const coordRows = Array.isArray(walletCoordAlerts) ? walletCoordAlerts : [];
+  const redCoordRows = coordRows.filter((row) => String(row?.severity || "").toUpperCase() === "RED");
+  const highScoreCoordRows = redCoordRows.filter((row) => Number(row?.score || 0) >= MIN_COORD_ALERT_SCORE);
 
   return (
     <>
@@ -969,6 +994,80 @@ export default function OpsPage() {
               aria-labelledby="tab-operations"
               className="space-y-5"
             >
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold text-white">Coordination red alerts (F6)</h2>
+                  <button
+                    type="button"
+                    onClick={runWalletCoordinationNow}
+                    className="h-9 px-3 rounded-lg border border-red-500/35 bg-red-500/[0.12] text-xs text-red-100 hover:bg-red-500/[0.2] transition"
+                  >
+                    Rebuild now
+                  </button>
+                </div>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <Kpi
+                    label="Coord cron enabled"
+                    value={walletCoordStatus ? (walletCoordStatus.cronEnabled ? "yes" : "no") : "—"}
+                  />
+                  <Kpi
+                    label="Pairs updated (last run)"
+                    value={walletCoordStatus?.lastStats?.updatedPairs != null ? formatInteger(walletCoordStatus.lastStats.updatedPairs) : "—"}
+                  />
+                  <Kpi
+                    label="RED alerts (loaded)"
+                    value={formatInteger(redCoordRows.length)}
+                    tone={redCoordRows.length > 0 ? "warn" : "good"}
+                  />
+                  <Kpi
+                    label="High-score alerts"
+                    value={formatInteger(highScoreCoordRows.length)}
+                    hint={`score >= ${MIN_COORD_ALERT_SCORE}`}
+                    tone={highScoreCoordRows.length > 0 ? "bad" : "good"}
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Last tick: {walletCoordStatus?.lastTickFinishedAt ? formatDateTime(walletCoordStatus.lastTickFinishedAt) : "—"} ·
+                  interval {formatInteger(walletCoordStatus?.tickIntervalMs || 0)} ms · lookback{" "}
+                  {formatInteger(walletCoordStatus?.lookbackDays || 0)}d
+                </p>
+                <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                  <div className="text-[11px] text-gray-500 font-semibold mb-3">Recent coordination alerts</div>
+                  {!coordRows.length ? (
+                    <p className="text-sm text-gray-500">No coordination alerts loaded.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                      {coordRows.map((row) => (
+                        <div
+                          key={row.id || `${row.mint}-${row.detected_at}-${row.cluster_key}`}
+                          className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-gray-200"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`inline-flex px-1.5 py-0.5 rounded border text-[10px] font-semibold ${
+                                String(row.severity || "").toUpperCase() === "RED"
+                                  ? "border-red-500/40 bg-red-500/15 text-red-200"
+                                  : "border-amber-500/35 bg-amber-500/12 text-amber-200"
+                              }`}
+                            >
+                              {String(row.severity || "N/A").toUpperCase()}
+                            </span>
+                            <span className="text-gray-400">score {Number(row.score || 0).toFixed(3)}</span>
+                            <span className="text-gray-500">{row.detected_at ? formatDateTime(row.detected_at) : "—"}</span>
+                          </div>
+                          <p className="font-mono break-all text-cyan-200 mt-1">{row.mint || "—"}</p>
+                          <p className="text-gray-400 mt-0.5">
+                            wallets {formatInteger(row.wallet_count || 0)} · spread {formatInteger(row.spread_sec || 0)}s · latency{" "}
+                            {row.latency_from_deploy_min != null ? `${Number(row.latency_from_deploy_min).toFixed(1)}m` : "—"}
+                          </p>
+                          <p className="text-gray-500 mt-0.5 break-all">{row.reason || "—"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5">
                 <h2 className="text-lg font-semibold text-white mb-3">Broadcast</h2>
                 <div className="flex flex-col sm:flex-row gap-2 min-w-0">
