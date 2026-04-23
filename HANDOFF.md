@@ -246,13 +246,35 @@ Minimum to consider the feature **complete in production** (no extra code if you
 | **Railway** (API) | **Redeploy** del servicio Node con el mismo **`main`** / commit que ya tiene backend + cron + rutas; variables alineadas con `backend/.env.example`. |
 | **Supabase** | Aplicar **012** y **013** en el proyecto correcto (`013` = RLS *deny-by-default* en `coordination_outcomes` para claves anon/authenticated vía PostgREST; el backend con **service role** sigue sin bloqueo). |
 
-**Smoke mínimo (sin filtrar secretos)**
+**Smoke producción (todo en una línea, bash / macOS / Linux)**
 
-- Desde máquina confiable, con `backend/.env` que contenga solo **URL pública** y claves ya rotadas según política:
-  - `SMOKE_API_BASE_URL=https://<tu-api>` → `npm run smoke:post-deploy --prefix backend`
-  - Opcional producción estricta: `SMOKE_STRICT_HEALTH=true` (exige `GET /health` === 200).
-- El script **nunca imprime** `OMNI_BOT_OPS_KEY`; si está en `.env`, prueba `GET /api/v1/ops/wallet-coordination/outcomes` con header `x-ops-key` (mismo mecanismo que Ops).
-- **No** pegar la ops key en Slack/discord, CI logs públicos, ni query strings.
+`OMNI_BOT_OPS_KEY` debe estar en `backend/.env` (o en el entorno del runner **sin** imprimirlo en logs). El script **nunca** muestra esa clave.
+
+```bash
+SMOKE_API_BASE_URL="https://<tu-api>.up.railway.app" \
+SMOKE_STRICT_HEALTH=true \
+SMOKE_REQUIRE_HTTPS=true \
+SMOKE_REQUIRE_OPS_KEY=true \
+npm run smoke:post-deploy --prefix backend
+```
+
+**Windows PowerShell (mismo contrato):**
+
+```powershell
+$env:SMOKE_API_BASE_URL="https://<tu-api>.up.railway.app"
+$env:SMOKE_STRICT_HEALTH="true"
+$env:SMOKE_REQUIRE_HTTPS="true"
+$env:SMOKE_REQUIRE_OPS_KEY="true"
+# OMNI_BOT_OPS_KEY en backend\.env (cargado por dotenv) o:
+# $env:OMNI_BOT_OPS_KEY="…"   # solo en sesión local, no commitear
+npm run smoke:post-deploy --prefix backend
+```
+
+- Con `OMNI_BOT_OPS_KEY` presente: llama `GET /api/v1/ops/wallet-coordination/outcomes` y **falla** si `degraded=true` (migraciones **012/013** o Supabase del API incorrecto).
+- `SMOKE_REQUIRE_OPS_KEY=true`: falla si falta la ops key (gate CI/prod).
+- **No** pegar la ops key en Slack, Discord, issues públicos, ni query strings.
+
+**Lo que no puede hacer el agente (ni Cursor) desde el repo:** ejecutar SQL en tu proyecto Supabase, pulsar Redeploy en Railway, ni invocar la API real sin tus credenciales en **tu** entorno; eso lo haces tú o tu CI con los comandos de arriba.
 
 **Desalineación típica**
 

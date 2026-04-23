@@ -4,9 +4,11 @@
  * - Loads backend/.env when present (do not commit .env).
  *
  * Env:
- *   SMOKE_API_BASE_URL  — default http://127.0.0.1:3000
- *   SMOKE_STRICT_HEALTH — if "true", require GET /health === 200 (fails on missing Stripe/Helius in dev)
- *   OMNI_BOT_OPS_KEY    — optional; if set, checks ops outcomes route (header x-ops-key)
+ *   SMOKE_API_BASE_URL   — default http://127.0.0.1:3000 (use https://… for prod)
+ *   SMOKE_STRICT_HEALTH  — if "true", require GET /health === 200 (prod hard gate)
+ *   SMOKE_REQUIRE_HTTPS   — if "true", fail when base URL is http:// and host is not localhost/127.0.0.1/::1
+ *   SMOKE_REQUIRE_OPS_KEY — if "true", fail when OMNI_BOT_OPS_KEY is missing (CI / prod gate)
+ *   OMNI_BOT_OPS_KEY      — required for outcomes check: GET …/wallet-coordination/outcomes; fails if degraded (012/013/Supabase)
  *
  * Usage:
  *   node backend/scripts/smokePostDeployReadiness.js
@@ -22,6 +24,8 @@ const base = String(process.env.SMOKE_API_BASE_URL || process.env.PUBLIC_API_URL
   ""
 );
 const strictHealth = String(process.env.SMOKE_STRICT_HEALTH || "").toLowerCase() === "true";
+const requireHttps = String(process.env.SMOKE_REQUIRE_HTTPS || "").toLowerCase() === "true";
+const requireOpsKey = String(process.env.SMOKE_REQUIRE_OPS_KEY || "").toLowerCase() === "true";
 const opsKey = String(process.env.OMNI_BOT_OPS_KEY || "").trim();
 
 const TIMEOUT_MS = 12_000;
@@ -53,8 +57,29 @@ function warn(msg) {
   console.warn("[smoke] WARN:", msg);
 }
 
+function assertHttpsIfRequired() {
+  let u;
+  try {
+    u = new URL(base);
+  } catch {
+    fail("SMOKE_API_BASE_URL is not a valid URL");
+  }
+  if (!requireHttps) return;
+  const host = (u.hostname || "").toLowerCase();
+  const local = host === "localhost" || host === "127.0.0.1" || host === "::1";
+  if (u.protocol === "http:" && !local) {
+    fail("SMOKE_REQUIRE_HTTPS: use https:// for non-local SMOKE_API_BASE_URL");
+  }
+}
+
 async function main() {
+  assertHttpsIfRequired();
+  if (requireOpsKey && !opsKey) {
+    fail("SMOKE_REQUIRE_OPS_KEY=true but OMNI_BOT_OPS_KEY is empty — set in backend/.env or CI secrets (never commit)");
+  }
   console.log("[smoke] base:", base);
+  if (strictHealth) console.log("[smoke] SMOKE_STRICT_HEALTH=true (GET /health must be 200)");
+  if (requireHttps) console.log("[smoke] SMOKE_REQUIRE_HTTPS=true (non-loopback must use https://)");
 
   const live = await fetchJson(`${base}/health/live`);
   if (live.res.status !== 200) fail(`/health/live status ${live.res.status}`);
@@ -82,13 +107,17 @@ async function main() {
       fail(`/ops/wallet-coordination/outcomes status ${out.res.status}`);
     }
     if (!out.json || out.json.ok !== true) fail("outcomes body.ok !== true");
-    if (out.json.degraded) warn(`outcomes degraded: ${out.json.reason || "unknown"} (e.g. table missing or Supabase error)`);
+    if (out.json.degraded) {
+      fail(
+        `outcomes degraded=true (${out.json.reason || "unknown"}) — check migrations 012/013 on the Supabase project backing this API`
+      );
+    }
     console.log("[smoke] outcomes: ok, rows:", Array.isArray(out.json.data) ? out.json.data.length : "?");
   } else {
-    console.log("[smoke] SKIP ops outcomes (OMNI_BOT_OPS_KEY unset locally — never print keys)");
+    warn("OMNI_BOT_OPS_KEY unset — skipping ops outcomes (use SMOKE_REQUIRE_OPS_KEY=true in CI to enforce)");
   }
 
-  console.log("[smoke] OK: live + health contract; ops checked if key present in env only.");
+  console.log("[smoke] OK: live + health contract; ops outcomes verified when OMNI_BOT_OPS_KEY is set.");
 }
 
 main().catch((e) => fail(e?.message || String(e)));
