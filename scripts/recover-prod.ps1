@@ -79,9 +79,12 @@ if ($Redeploy) {
     throw "Not logged in on Vercel CLI. Run: vercel login"
   }
 
-  Push-Location (Join-Path $PSScriptRoot "..\frontend")
+  # Monorepo: Vercel project must have Root Directory = "frontend" (single segment).
+  # Run CLI from REPO ROOT — never from inside frontend/, or Vercel resolves …\frontend\frontend and fails.
+  $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+  Push-Location $repoRoot
   try {
-    vercel --prod --force --yes
+    vercel deploy --prod --force --yes
   } finally {
     Pop-Location
   }

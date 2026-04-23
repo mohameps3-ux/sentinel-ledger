@@ -23,6 +23,8 @@ Deploy model:
 - Backend: Railway.
 - Frontend: Vercel.
 
+**Vercel monorepo (evitar `frontend\frontend`):** en el proyecto → Settings → General → **Root Directory** = `frontend` (exactamente eso, una vez). Con la CLI, **`vercel deploy --prod --yes` desde la raíz del repo** (no desde `frontend/`). Si el directorio de proyecto en el panel fuera `frontend/frontend`, bórralo y vuelve a escribir `frontend`. `scripts/recover-prod.ps1 -Redeploy` despliega desde la raíz del monorepo para coincidir con esa configuración.
+
 ## 3) What Is Implemented (Current State)
 
 ### Pillar 1: Algorithmic Integrity (Signed Intelligence)
