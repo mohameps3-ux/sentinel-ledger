@@ -1283,7 +1283,7 @@ export default function OpsPage() {
                 <div className="rounded-xl border border-cyan-500/15 bg-[#0b0f13]/80 p-4 mt-4">
                   <div className="text-[11px] text-gray-500 font-semibold mb-1">T+N market outcomes (coordination_outcomes)</div>
                   {walletCoordOutcomesDegraded ? (
-                    <p className="text-xs text-amber-300/90 mb-2">Degraded: table missing or not migrated — apply `012_coordination_outcomes` (see npm run db:ensure-signal-performance).</p>
+                    <p className="text-xs text-amber-300/90 mb-2">Degraded: table missing or not migrated — apply `012_coordination_outcomes` + `013_coordination_outcomes_rls` (or `npm run db:ensure-signal-performance --prefix backend`).</p>
                   ) : null}
                   {!outcomeRows.length ? (
                     <p className="text-sm text-gray-500">No outcome rows yet (or all pending before first resolve tick).</p>

@@ -12,7 +12,7 @@
  *
  * Usage:
  *   node backend/scripts/smokePostDeployReadiness.js
- *   SMOKE_API_BASE_URL=https://api.example.com SMOKE_STRICT_HEALTH=true node backend/scripts/smokePostDeployReadiness.js
+ *   SMOKE_API_BASE_URL=https://… SMOKE_STRICT_HEALTH=true SMOKE_REQUIRE_HTTPS=true SMOKE_REQUIRE_OPS_KEY=true npm run smoke:post-deploy --prefix backend
  */
 "use strict";
 
@@ -80,6 +80,7 @@ async function main() {
   console.log("[smoke] base:", base);
   if (strictHealth) console.log("[smoke] SMOKE_STRICT_HEALTH=true (GET /health must be 200)");
   if (requireHttps) console.log("[smoke] SMOKE_REQUIRE_HTTPS=true (non-loopback must use https://)");
+  if (requireOpsKey) console.log("[smoke] SMOKE_REQUIRE_OPS_KEY=true (OMNI_BOT_OPS_KEY must be set for outcomes check)");
 
   const live = await fetchJson(`${base}/health/live`);
   if (live.res.status !== 200) fail(`/health/live status ${live.res.status}`);
@@ -102,6 +103,9 @@ async function main() {
     });
     if (out.res.status === 401) fail("/ops/wallet-coordination/outcomes unauthorized (wrong x-ops-key?)");
     if (out.res.status === 503 && out.json?.error === "ops_key_not_configured") {
+      if (requireOpsKey) {
+        fail("server reports ops_key_not_configured — set OMNI_BOT_OPS_KEY on the API host (Railway)");
+      }
       warn("server reports ops_key_not_configured (OMNI_BOT_OPS_KEY unset on host)");
     } else if (out.res.status !== 200) {
       fail(`/ops/wallet-coordination/outcomes status ${out.res.status}`);

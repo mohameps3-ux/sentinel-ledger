@@ -70,13 +70,36 @@ if ($signals.Ok) { Write-Host ("[PASS] /api/v1/signals/latest?limit=1 -> " + $si
 }
 
 if ([string]::IsNullOrWhiteSpace($OpsKey)) {
-  Write-Host "[WARN] Ops key not provided; skipping /api/v1/ops/data-freshness check."
+  Write-Host "[WARN] Ops key not provided; skipping /api/v1/ops/data-freshness and /ops/wallet-coordination/outcomes."
   $warns.Add("ops_key_missing")
 } else {
   $ops = Invoke-JsonGet -Url ($BackendUrl.TrimEnd("/") + "/api/v1/ops/data-freshness") -Headers @{ "x-ops-key" = $OpsKey.Trim() }
   if ($ops.Ok) { Write-Host ("[PASS] /api/v1/ops/data-freshness -> " + $ops.StatusCode) } else {
     Write-Host ("[FAIL] /api/v1/ops/data-freshness -> " + $ops.StatusCode + " " + $ops.Error)
     $fails.Add("ops_data_freshness")
+  }
+
+  $coordUrl = ($BackendUrl.TrimEnd("/") + "/api/v1/ops/wallet-coordination/outcomes?limit=3")
+  $coord = Invoke-JsonGet -Url $coordUrl -Headers @{ "x-ops-key" = $OpsKey.Trim() }
+  if (-not $coord.Ok) {
+    Write-Host ("[FAIL] /api/v1/ops/wallet-coordination/outcomes -> " + $coord.StatusCode + " " + $coord.Error)
+    $fails.Add("coordination_outcomes")
+  } else {
+    try {
+      $cj = $coord.Body | ConvertFrom-Json
+      if (-not $cj.ok) {
+        Write-Host "[FAIL] /api/v1/ops/wallet-coordination/outcomes -> body ok=false"
+        $fails.Add("coordination_outcomes_body")
+      } elseif ($cj.degraded) {
+        Write-Host ("[FAIL] /api/v1/ops/wallet-coordination/outcomes -> degraded reason=" + [string]$cj.reason)
+        $fails.Add("coordination_outcomes_degraded")
+      } else {
+        Write-Host ("[PASS] /api/v1/ops/wallet-coordination/outcomes -> " + $coord.StatusCode + " (not degraded)")
+      }
+    } catch {
+      Write-Host "[FAIL] /api/v1/ops/wallet-coordination/outcomes -> invalid JSON"
+      $fails.Add("coordination_outcomes_json")
+    }
   }
 }
 
@@ -99,7 +122,7 @@ Write-Section "5) Handoff update template"
 Write-Host "Paste into HANDOFF.md (example):"
 Write-Host "  - release: <date>"
 Write-Host "  - commits: <hashes>"
-Write-Host "  - smoke: /health=<code>, /signals/latest=<code>, /ops/data-freshness=<code>"
+Write-Host "  - smoke: /health=<code>, /signals/latest=<code>, /ops/data-freshness=<code>, /ops/wallet-coordination/outcomes=<code>"
 Write-Host "  - security: RLS advisor=<status>, secrets_rotated=<yes/no>"
 
 Write-Host ""
