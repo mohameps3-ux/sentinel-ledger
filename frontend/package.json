@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "check:deploy-contract": "node scripts/check-deploy-contract.cjs",
+    "prebuild": "node scripts/check-deploy-contract.cjs",
     "build": "next build --webpack",
     "vercel-build": "npm run build",
     "start": "next start"

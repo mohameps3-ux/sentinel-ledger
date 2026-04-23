@@ -56,7 +56,7 @@ El script cubre 5 checks: git hygiene, smoke core (`/health`, `/signals/latest`,
 
 ## Deploy (resumen)
 
-- **Vercel (frontend):** en el proyecto, **Root Directory** = `frontend` (obligatorio en monorepo). En repo hay `frontend/vercel.json` con `install` + `build`; el build usa `next build --webpack` vía `package.json` → `npm run build`.
+- **Vercel (frontend):** en el proyecto, **Root Directory** = `frontend` (obligatorio en monorepo). En repo hay `frontend/vercel.json` con `install` + `build`; el build usa `next build --webpack` vía `package.json` → `npm run build`. Antes del build se ejecuta `scripts/check-deploy-contract.cjs` (vía `prebuild`): exige `vercel.json`, `data-sl-nav="slim"`, `data-sentinel-build` y `NEXT_PUBLIC_GIT_SHA` en `next.config` + `Navbar` — si falta un archivo nuevo o se borra un marcador, **el build falla** en local y en CI.
 - **Railway (backend):** conectar repo `mohameps3-ux/sentinel-ledger`, **Root Directory** = `backend`, rama `main`. Variables mínimas según `backend/.env.example`.
 - **RPC / Helius 429:** define `SOLANA_RPC_URL` o `SOLANA_RPC_URLS` (coma) con un RPC dedicado; el backend prueba esas URLs antes que Helius y el cluster público, con reintentos en rate limit.
 - **Señales / precios:** cron `SIGNAL_PRICE_*` en el backend enriquece `smart_wallet_signals` desde DexScreener. Estado en `GET /health` → `signalPrices`.
