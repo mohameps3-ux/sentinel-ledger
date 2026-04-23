@@ -12,6 +12,33 @@ const MIN_PAIR_CO = Math.max(2, Number(process.env.COORD_MIN_PAIR_COBUY || 3));
 const MIN_PAIR_STRENGTH = Math.max(0.1, Number(process.env.COORD_MIN_PAIR_STRENGTH || 0.55));
 const ALERT_MIN_CLUSTER_SCORE = Math.max(0.1, Number(process.env.COORD_ALERT_MIN_CLUSTER_SCORE || 0.68));
 const ALERT_MIN_WALLETS = Math.max(3, Number(process.env.COORD_ALERT_MIN_WALLETS || 3));
+const COORD_RED_PREPARE_ENABLED = String(process.env.COORD_RED_PREPARE_ENABLED || "true").toLowerCase() === "true";
+const COORD_RED_PREPARE_MIN_SCORE = Math.max(
+  0.1,
+  Math.min(ALERT_MIN_CLUSTER_SCORE - 0.01, Number(process.env.COORD_RED_PREPARE_MIN_SCORE || 0.55))
+);
+const COORD_PREPARE_TTL_SEC = Math.max(120, Number(process.env.COORD_PREPARE_TTL_SEC || 600));
+const COORD_PREPARE_EMIT_DEDUPE_SEC = Math.max(30, Number(process.env.COORD_PREPARE_EMIT_DEDUPE_SEC || 90));
+const REDIS_PREPARE_KEY = (mint) => `coord:red:prepare:${mint}`;
+const REDIS_PREPARE_EMIT = (mint) => `coord:red:prepare-emit:${mint}`;
+
+/** Join prior cluster alerts to signal_performance: resolved, outcome ≥ min, emitted on/after alert time. */
+const COORD_RECURRENCE_VERIFIED_PUMPS =
+  String(process.env.COORD_RECURRENCE_VERIFIED_PUMPS || "true").toLowerCase() === "true";
+const COORD_RECURRENCE_PUMP_MIN_OUTCOME_PCT = Math.max(
+  0,
+  Number(
+    process.env.COORD_RECURRENCE_PUMP_MIN_OUTCOME_PCT || process.env.SIGNAL_PERF_SUCCESS_MIN_PCT || 1.0
+  )
+);
+const IN_CLAUSE_MINTS_CHUNK = 80;
+
+/** T+N market resolution: same min return as coordinationOutcomes (see COORD_OUTCOME_PUMP_MIN_PCT). */
+const COORD_OUTCOME_PUMP_MIN_PCT = Math.max(0, Number(process.env.COORD_OUTCOME_PUMP_MIN_PCT || process.env.SIGNAL_PERF_SUCCESS_MIN_PCT || 1.0));
+const COORD_RECURRENCE_PREFER_MARKET_OUTCOMES =
+  String(process.env.COORD_RECURRENCE_PREFER_MARKET_OUTCOMES || "true").toLowerCase() === "true";
+const COORD_RECURRENCE_SIGNAL_PERF_FALLBACK =
+  String(process.env.COORD_RECURRENCE_SIGNAL_PERF_FALLBACK || "true").toLowerCase() === "true";
 
 function safeSupabase() {
   try {
@@ -109,6 +136,195 @@ function clusterKey(wallets) {
     .join(",");
 }
 
+function coordinationLeadSec(detectedAtMs, windowMinSec) {
+  const detSec = (Number(detectedAtMs) || Date.now()) / 1000;
+  if (windowMinSec == null || !Number.isFinite(Number(windowMinSec))) return null;
+  return Math.max(0, Math.round(detSec - Number(windowMinSec)));
+}
+
+function emptyRecurrenceResult() {
+  return {
+    priorClusterAlerts: 0,
+    uniqueMintsPrior: 0,
+    meanPriorScore: null,
+    meanCoordinationLeadSecPrior: null,
+    priorClusterAlertsWithVerifiedPumps: 0,
+    uniqueMintsWithVerifiedPumps: 0,
+    meanSignalOutcomePctPriorVerified: null,
+    meanCoordinationLeadSecPriorVerified: null
+  };
+}
+
+/**
+ * "Reincidencia" base: prior alerts for this cluster_key.
+ * Optional: cross `signal_performance` (resolved, outcome >= min) with emitted_at >= that alert
+ * to approximate "mints where post-alert follow-through (scored) showed a real pump", not just alert count.
+ */
+async function fetchSignalPerfResolvedForMints(supabase, uniqueMints, minOutcomePct) {
+  const all = [];
+  for (let i = 0; i < uniqueMints.length; i += IN_CLAUSE_MINTS_CHUNK) {
+    const chunk = uniqueMints.slice(i, i + IN_CLAUSE_MINTS_CHUNK);
+    const { data, error } = await supabase
+      .from("signal_performance")
+      .select("asset, emitted_at, outcome_pct")
+      .in("asset", chunk)
+      .eq("status", "resolved")
+      .not("outcome_pct", "is", null)
+      .gte("outcome_pct", minOutcomePct);
+    if (error) return null;
+    if (Array.isArray(data)) all.push(...data);
+  }
+  return all;
+}
+
+async function fetchCoordinationOutcomesByAlertIds(supabase, alertIds) {
+  if (!alertIds || !alertIds.length) return [];
+  const all = [];
+  for (let i = 0; i < alertIds.length; i += IN_CLAUSE_MINTS_CHUNK) {
+    const chunk = alertIds.slice(i, i + IN_CLAUSE_MINTS_CHUNK);
+    const { data, error } = await supabase
+      .from("coordination_outcomes")
+      .select("alert_id, status, outcome_pct, success")
+      .in("alert_id", chunk);
+    if (error) return null;
+    if (Array.isArray(data)) all.push(...data);
+  }
+  return all;
+}
+
+/**
+ * prior alert rows: (1) coordination_outcomes resolved @ T+N vs T0 (preferred),
+ * (2) legacy: signal_performance match when no outcome row.
+ */
+async function getClusterRecurrenceStats(clusterKey, beforeMs) {
+  const supabase = safeSupabase();
+  if (!supabase || !clusterKey) {
+    return emptyRecurrenceResult();
+  }
+  const before = new Date(Number(beforeMs) || Date.now()).toISOString();
+  const { data, error } = await supabase
+    .from("wallet_coordination_alerts")
+    .select("id, mint, score, detected_at, meta")
+    .eq("cluster_key", clusterKey)
+    .lt("detected_at", before)
+    .order("detected_at", { ascending: false })
+    .limit(500);
+  if (error || !Array.isArray(data) || !data.length) {
+    return emptyRecurrenceResult();
+  }
+  const mints = new Set(data.map((r) => r.mint).filter(Boolean));
+  const mean = data.reduce((a, r) => a + Number(r.score || 0), 0) / data.length;
+  const leads = data
+    .map((r) => {
+      const m = r.meta && typeof r.meta === "object" ? r.meta : {};
+      return m.coordinationLeadSec != null ? Number(m.coordinationLeadSec) : null;
+    })
+    .filter((n) => n != null && Number.isFinite(n));
+  const leadMean =
+    leads.length > 0
+      ? Number((leads.reduce((a, b) => a + b, 0) / leads.length).toFixed(1))
+      : null;
+
+  let priorClusterAlertsWithVerifiedPumps = 0;
+  let uniqueMintsWithVerifiedPumps = 0;
+  let meanSignalOutcomePctPriorVerified = null;
+  let meanCoordinationLeadSecPriorVerified = null;
+
+  if (COORD_RECURRENCE_VERIFIED_PUMPS && mints.size > 0) {
+    const byId = new Map();
+    const alertIds = data.map((r) => r.id).filter(Boolean);
+    if (alertIds.length && COORD_RECURRENCE_PREFER_MARKET_OUTCOMES) {
+      const oc = await fetchCoordinationOutcomesByAlertIds(supabase, alertIds);
+      if (oc) for (const r of oc) byId.set(String(r.alert_id), r);
+    }
+    const okMints = new Set();
+    const outcomeSamples = [];
+    const leadVerified = [];
+
+    function addVerifiedFromRow(row, outPct) {
+      priorClusterAlertsWithVerifiedPumps += 1;
+      const ms = String(row.mint || "");
+      if (ms) okMints.add(ms);
+      if (outPct != null) outcomeSamples.push(outPct);
+      const meta = row.meta && typeof row.meta === "object" ? row.meta : {};
+      if (meta.coordinationLeadSec != null && Number.isFinite(Number(meta.coordinationLeadSec))) {
+        leadVerified.push(Number(meta.coordinationLeadSec));
+      }
+    }
+
+    for (const row of data) {
+      const oc = row.id ? byId.get(String(row.id)) : null;
+      if (
+        oc &&
+        oc.status === "resolved" &&
+        Number.isFinite(Number(oc.outcome_pct)) &&
+        Number(oc.outcome_pct) >= COORD_OUTCOME_PUMP_MIN_PCT
+      ) {
+        addVerifiedFromRow(row, Number(oc.outcome_pct));
+      }
+    }
+
+    const needSignal =
+      COORD_RECURRENCE_SIGNAL_PERF_FALLBACK
+        ? data.filter((row) => row.id && !byId.has(String(row.id)))
+        : [];
+    if (needSignal.length) {
+      const needMints = [...new Set(needSignal.map((r) => String(r.mint || "")).filter(Boolean))];
+      const perf = await fetchSignalPerfResolvedForMints(
+        supabase,
+        needMints,
+        COORD_RECURRENCE_PUMP_MIN_OUTCOME_PCT
+      );
+      if (perf) {
+        for (const row of needSignal) {
+          const mintStr = String(row.mint || "");
+          const tAlert = Date.parse(String(row.detected_at || ""));
+          if (!mintStr || !Number.isFinite(tAlert)) continue;
+          const cands = perf.filter(
+            (p) => String(p.asset) === mintStr && Date.parse(String(p.emitted_at || 0)) >= tAlert
+          );
+          if (!cands.length) continue;
+          const best = Math.max(...cands.map((c) => Number(c.outcome_pct) || 0));
+          if (!Number.isFinite(best) || best < COORD_RECURRENCE_PUMP_MIN_OUTCOME_PCT) continue;
+          addVerifiedFromRow(row, best);
+        }
+      }
+    }
+
+    uniqueMintsWithVerifiedPumps = okMints.size;
+    meanSignalOutcomePctPriorVerified = outcomeSamples.length
+      ? Number((outcomeSamples.reduce((a, b) => a + b, 0) / outcomeSamples.length).toFixed(2))
+      : null;
+    meanCoordinationLeadSecPriorVerified = leadVerified.length
+      ? Number((leadVerified.reduce((a, b) => a + b, 0) / leadVerified.length).toFixed(1))
+      : null;
+  }
+
+  return {
+    priorClusterAlerts: data.length,
+    uniqueMintsPrior: mints.size,
+    meanPriorScore: Number(mean.toFixed(4)),
+    meanCoordinationLeadSecPrior: leadMean,
+    priorClusterAlertsWithVerifiedPumps,
+    uniqueMintsWithVerifiedPumps,
+    meanSignalOutcomePctPriorVerified,
+    meanCoordinationLeadSecPriorVerified
+  };
+}
+
+function findBestClusterTriple(inputWallets, pairMap) {
+  const combos = combinations3(inputWallets);
+  let best = null;
+  for (const c of combos) {
+    const s = scoreClusterFromPairMap(c, pairMap);
+    if (!s) continue;
+    if (!best || s.clusterScore > best.clusterScore) {
+      best = { wallets: c, ...s };
+    }
+  }
+  return best;
+}
+
 async function persistCoordinationAlert(alert) {
   const supabase = safeSupabase();
   if (!supabase || !alert?.mint || !alert?.clusterKey) return { ok: false, reason: "unconfigured_or_invalid" };
@@ -135,43 +351,51 @@ async function persistCoordinationAlert(alert) {
     meta: alert.meta || {}
   };
 
-  const { error } = await supabase.from("wallet_coordination_alerts").insert(payload);
+  const { data: inserted, error } = await supabase
+    .from("wallet_coordination_alerts")
+    .insert(payload)
+    .select("id")
+    .single();
   if (error) return { ok: false, reason: error.message || "insert_failed" };
-  return { ok: true };
+  const alertId = inserted?.id;
+  if (alertId) {
+    const { recordCoordinationOutcomeForAlert } = require("./coordinationOutcomes");
+    const lead = payload.meta && payload.meta.coordinationLeadSec;
+    recordCoordinationOutcomeForAlert({
+      alertId,
+      mint: payload.mint,
+      clusterKey: payload.cluster_key,
+      detectedAtIso: payload.detected_at,
+      coordinationLeadSec: lead
+    }).catch(() => {});
+  }
+  return { ok: true, id: alertId };
 }
 
-async function detectHistoricalCoordinationAlert({ mint, wallets, detectedAtMs }) {
-  const inputWallets = Array.from(new Set((wallets || []).map((w) => String(w || "")).filter(Boolean))).slice(0, 9);
-  if (!mint || inputWallets.length < ALERT_MIN_WALLETS) return null;
-
-  const pairMap = await getHistoricalPairMap();
-  if (!pairMap || Object.keys(pairMap).length === 0) return null;
-
-  const combos = combinations3(inputWallets);
-  let best = null;
-  for (const c of combos) {
-    const s = scoreClusterFromPairMap(c, pairMap);
-    if (!s) continue;
-    if (!best || s.clusterScore > best.clusterScore) {
-      best = { wallets: c, ...s };
-    }
-  }
-  if (!best || best.clusterScore < ALERT_MIN_CLUSTER_SCORE) return null;
+async function buildRedConfirmPayload({ mint, best, detectedAtMs, windowMinSec, windowMaxSec }) {
+  const detMs = Number(detectedAtMs) || Date.now();
+  const ck = clusterKey(best.wallets);
+  const rec = await getClusterRecurrenceStats(ck, detMs);
+  const leadSec = coordinationLeadSec(detMs, windowMinSec);
+  const spreadClustSec =
+    windowMinSec != null && windowMaxSec != null && Number.isFinite(windowMinSec) && Number.isFinite(windowMaxSec)
+      ? Math.max(0, Math.round(Number(windowMaxSec) - Number(windowMinSec)))
+      : null;
 
   let latencyFromDeployMin = null;
   try {
     const md = await getMarketData(mint);
     const pairCreatedAt = Number(md?.pairCreatedAt || 0);
     if (Number.isFinite(pairCreatedAt) && pairCreatedAt > 0) {
-      const dm = ((Number(detectedAtMs) || Date.now()) - pairCreatedAt) / 60000;
+      const dm = (detMs - pairCreatedAt) / 60000;
       if (Number.isFinite(dm) && dm >= 0) latencyFromDeployMin = Number(dm.toFixed(2));
     }
   } catch (_) {}
 
   const isEarly = latencyFromDeployMin != null ? latencyFromDeployMin <= EARLY_DEPLOY_MIN : null;
-  const alert = {
+  return {
     mint: String(mint),
-    clusterKey: clusterKey(best.wallets),
+    clusterKey: ck,
     wallets: best.wallets,
     spreadSec: 600,
     score: best.clusterScore,
@@ -181,17 +405,154 @@ async function detectHistoricalCoordinationAlert({ mint, wallets, detectedAtMs }
       isEarly === true
         ? "historical_cluster_retriggered_early_post_deploy"
         : "historical_cluster_retriggered",
-    detectedAt: new Date(Number(detectedAtMs) || Date.now()).toISOString(),
+    detectedAt: new Date(detMs).toISOString(),
+    redSignal: "RED_CONFIRM",
     meta: {
       avgStrength: best.avgStrength,
       avgCoBuyCount: best.avgCo,
       avgEarlyRatio: best.avgEarlyRatio,
-      earlyDeployThresholdMin: EARLY_DEPLOY_MIN
+      earlyDeployThresholdMin: EARLY_DEPLOY_MIN,
+      redSignal: "RED_CONFIRM",
+      priorClusterAlerts: rec.priorClusterAlerts,
+      uniqueMintsWithPriorClusterAlerts: rec.uniqueMintsPrior,
+      meanScorePriorClusterAlerts: rec.meanPriorScore,
+      meanCoordinationLeadSecPrior: rec.meanCoordinationLeadSecPrior,
+      priorClusterAlertsWithVerifiedPumps: rec.priorClusterAlertsWithVerifiedPumps,
+      uniqueMintsWithVerifiedPumps: rec.uniqueMintsWithVerifiedPumps,
+      meanSignalOutcomePctPriorVerified: rec.meanSignalOutcomePctPriorVerified,
+      meanCoordinationLeadSecPriorVerified: rec.meanCoordinationLeadSecPriorVerified,
+      pumpMinOutcomePctThreshold: COORD_RECURRENCE_VERIFIED_PUMPS
+        ? COORD_RECURRENCE_PUMP_MIN_OUTCOME_PCT
+        : null,
+      pumpMinMarketOutcomePct: COORD_OUTCOME_PUMP_MIN_PCT,
+      coordinationLeadSec: leadSec,
+      clusterWindowSpreadSec: spreadClustSec
     }
   };
-  const persisted = await persistCoordinationAlert(alert);
-  if (!persisted.ok) return null;
-  return alert;
+}
+
+/**
+ * @returns {{ confirm: object|null, prepare: object|null }}
+ * RED_CONFIRM → Supabase; RED_PREPARE → Redis + optional socket; RED_ABORT handled in checkRedPrepareAbort.
+ */
+async function processRedCoordinationPhases({ mint, wallets, detectedAtMs, windowMinSec, windowMaxSec }) {
+  const inputWallets = Array.from(new Set((wallets || []).map((w) => String(w || "")).filter(Boolean))).slice(0, 9);
+  if (!mint || inputWallets.length < ALERT_MIN_WALLETS) return { confirm: null, prepare: null };
+
+  const pairMap = await getHistoricalPairMap();
+  if (!pairMap || Object.keys(pairMap).length === 0) return { confirm: null, prepare: null };
+
+  const best = findBestClusterTriple(inputWallets, pairMap);
+  if (!best) {
+    try {
+      await redis.del(REDIS_PREPARE_KEY(mint));
+    } catch (_) {}
+    return { confirm: null, prepare: null };
+  }
+
+  const detMs = Number(detectedAtMs) || Date.now();
+  const ck = clusterKey(best.wallets);
+
+  if (best.clusterScore < COORD_RED_PREPARE_MIN_SCORE) {
+    try {
+      await redis.del(REDIS_PREPARE_KEY(mint));
+    } catch (_) {}
+    return { confirm: null, prepare: null };
+  }
+
+  if (best.clusterScore >= ALERT_MIN_CLUSTER_SCORE) {
+    const alert = await buildRedConfirmPayload({ mint, best, detectedAtMs: detMs, windowMinSec, windowMaxSec });
+    const persisted = await persistCoordinationAlert(alert);
+    if (!persisted.ok) {
+      return { confirm: null, prepare: null };
+    }
+    try {
+      await redis.del(REDIS_PREPARE_KEY(mint));
+    } catch (_) {}
+    return { confirm: alert, prepare: null };
+  }
+
+  if (
+    COORD_RED_PREPARE_ENABLED &&
+    COORD_RED_PREPARE_MIN_SCORE < ALERT_MIN_CLUSTER_SCORE &&
+    best.clusterScore >= COORD_RED_PREPARE_MIN_SCORE
+  ) {
+    const rec = await getClusterRecurrenceStats(ck, detMs);
+    const leadSec = coordinationLeadSec(detMs, windowMinSec);
+    const prepare = {
+      mint: String(mint),
+      clusterKey: ck,
+      wallets: best.wallets,
+      score: best.clusterScore,
+      redSignal: "RED_PREPARE",
+      severity: "ORANGE",
+      detectedAt: new Date(detMs).toISOString(),
+      reason: "cluster_score_below_confirm_threshold",
+      meta: {
+        avgStrength: best.avgStrength,
+        priorClusterAlerts: rec.priorClusterAlerts,
+        meanScorePriorClusterAlerts: rec.meanPriorScore,
+        meanCoordinationLeadSecPrior: rec.meanCoordinationLeadSecPrior,
+        priorClusterAlertsWithVerifiedPumps: rec.priorClusterAlertsWithVerifiedPumps,
+        uniqueMintsWithVerifiedPumps: rec.uniqueMintsWithVerifiedPumps,
+        meanSignalOutcomePctPriorVerified: rec.meanSignalOutcomePctPriorVerified,
+        meanCoordinationLeadSecPriorVerified: rec.meanCoordinationLeadSecPriorVerified,
+        pumpMinOutcomePctThreshold: COORD_RECURRENCE_VERIFIED_PUMPS
+          ? COORD_RECURRENCE_PUMP_MIN_OUTCOME_PCT
+          : null,
+        pumpMinMarketOutcomePct: COORD_OUTCOME_PUMP_MIN_PCT,
+        coordinationLeadSec: leadSec,
+        confirmMinScore: ALERT_MIN_CLUSTER_SCORE,
+        prepareMinScore: COORD_RED_PREPARE_MIN_SCORE
+      }
+    };
+    try {
+      await redis.set(REDIS_PREPARE_KEY(mint), { clusterKey: ck, score: best.clusterScore, atMs: detMs }, {
+        ex: COORD_PREPARE_TTL_SEC
+      });
+    } catch (_) {}
+    let emitPrepare = true;
+    try {
+      const setRes = await redis.set(REDIS_PREPARE_EMIT(mint), String(detMs), { nx: true, ex: COORD_PREPARE_EMIT_DEDUPE_SEC });
+      emitPrepare = setRes != null;
+    } catch (_) {}
+    return { confirm: null, prepare: emitPrepare ? prepare : null };
+  }
+
+  return { confirm: null, prepare: null };
+}
+
+async function checkRedPrepareAbort(mint, state) {
+  if (state && state.detected && Array.isArray(state.wallets) && state.wallets.length >= ALERT_MIN_WALLETS) {
+    return null;
+  }
+  let raw;
+  try {
+    raw = await redis.get(REDIS_PREPARE_KEY(mint));
+  } catch (_) {
+    return null;
+  }
+  if (!raw || typeof raw !== "object" || !raw.clusterKey) return null;
+  const ck = String(raw.clusterKey);
+  try {
+    await redis.del(REDIS_PREPARE_KEY(mint));
+  } catch (_) {}
+  return {
+    mint: String(mint),
+    clusterKey: ck,
+    redSignal: "RED_ABORT",
+    severity: "DIM",
+    reason: "prepare_state_cluster_no_longer_confirmed",
+    detectedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * @deprecated Prefer processRedCoordinationPhases — returns only RED_CONFIRM payload or null.
+ */
+async function detectHistoricalCoordinationAlert({ mint, wallets, detectedAtMs, windowMinSec, windowMaxSec } = {}) {
+  const { confirm } = await processRedCoordinationPhases({ mint, wallets, detectedAtMs, windowMinSec, windowMaxSec });
+  return confirm;
 }
 
 async function listRecentCoordinationAlerts(limit = 50) {
@@ -342,6 +703,8 @@ async function rebuildCoordinationPairs({
 
 module.exports = {
   detectHistoricalCoordinationAlert,
+  processRedCoordinationPhases,
+  checkRedPrepareAbort,
   listRecentCoordinationAlerts,
   rebuildCoordinationPairs
 };

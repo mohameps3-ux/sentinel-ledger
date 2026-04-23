@@ -80,6 +80,8 @@ Key files:
 - `supabase/migrations/003_signal_performance.sql`
 - `supabase/schema.sql`
 
+**Coordination T+N (market outcomes for RED alerts):** `coordination_outcomes` + cron, recurrence stats prefer this table with `signal_performance` fallback; see **§8b** for production closure. Key files: `backend/src/services/coordinationOutcomes.js`, `backend/src/jobs/coordinationOutcomeCron.js`, `walletCoordinationService.js`, `supabase/migrations/010_*.sql`, `012_coordination_outcomes.sql`.
+
 ### Ops Automation
 
 Implemented:
@@ -112,6 +114,7 @@ Ops (requires `x-ops-key`):
 - `GET /api/v1/ops/signal-performance/summary`
 - `GET /api/v1/ops/signal-performance/calibration`
 - `POST /api/v1/ops/signal-performance/calibration/run`
+- `GET /api/v1/ops/wallet-coordination/outcomes` (recent T+N `coordination_outcomes` rows)
 
 ## 5) Required Environment Variables
 
@@ -119,7 +122,7 @@ Ops (requires `x-ops-key`):
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `DATABASE_URL` (or `SUPABASE_DATABASE_URL`)
+- `DATABASE_URL` (or `SUPABASE_DATABASE_URL`) — **required** to run SQL migration scripts locally/CI; **not** required for API runtime if the app only uses the Supabase HTTP client (most deployments). Set it in Railway anyway if you run `db:ensure-signal-performance` from that environment.
 - `OMNI_BOT_OPS_KEY` (or `OPS_KEY` / `SENTINEL_OPS_KEY` for script fallback)
 - `HELIUS_WEBHOOK_SECRET`
 - `SENTINEL_SCORE_SIGNING_KEY`
@@ -137,6 +140,7 @@ Ops (requires `x-ops-key`):
 - `MARKETDATA_*`
 - `SIGNAL_PERF_*`
 - `SIGNAL_CALIBRATOR_*`
+- `COORD_OUTCOME_*`, `COORD_RECURRENCE_*` (coordination market outcomes + verified recurrence)
 
 See `backend/.env.example` for full list.
 
@@ -147,9 +151,9 @@ See `backend/.env.example` for full list.
 - `npm run ops:daily`
 - `npm run simulate:helius`
 
-### 6b) Internal reminder — DB URL + `signal_performance`
+### 6b) Internal reminder — DB URL + migrations (`signal_performance`, coordination)
 
-`applySignalPerformanceSchema.js` always loads `backend/.env` (not the shell cwd). Empty `DATABASE_URL=` / `SUPABASE_DATABASE_URL=` lines still load as blank strings — fix with sync or set values manually.
+`applySignalPerformanceSchema.js` always loads `backend/.env` (not the shell cwd). It applies, in order: `003_signal_performance.sql`, `011_signal_performance_emission_regime.sql`, `010_wallet_coordination_alerting.sql`, `012_coordination_outcomes.sql` (012 needs 010 for the FK to `wallet_coordination_alerts`). Empty `DATABASE_URL=` / `SUPABASE_DATABASE_URL=` lines still load as blank strings — fix with sync or set values manually.
 
 ```bash
 # Fill empty DATABASE_URL in backend/.env from the linked Railway service env
@@ -161,6 +165,8 @@ npm run db:ensure-signal-performance --prefix backend
 # Same migration against production DB only, without touching local .env
 railway run npm run db:ensure-signal-performance
 ```
+
+In the Supabase SQL editor, verify `wallet_coordination_alerts` and `coordination_outcomes` exist and that `coordination_outcomes.alert_id` references `wallet_coordination_alerts(id)`.
 
 ## 7) Current Operational Blockers
 
@@ -198,6 +204,39 @@ curl http://localhost:3000/health/sync
 # 6) Daily report
 npm run ops:daily
 ```
+
+## 8b) Production closure: `coordination_outcomes` (wallet coordination T+N)
+
+Minimum to consider the feature **complete in production** (no extra code if you accept legacy behaviour):
+
+### 1) Database (project that backs the live API)
+
+- Run migrations **once** on that Supabase project: `npm run db:ensure-signal-performance --prefix backend` (or `node backend/scripts/applySignalPerformanceSchema.js` with `DATABASE_URL` / `SUPABASE_DATABASE_URL` set), **or** apply by hand in order: **003 → 011 → 010 → 012**.
+- In SQL editor, confirm `wallet_coordination_alerts` and `coordination_outcomes` exist and the FK from 012 to alerts is valid (no error on join).
+
+### 2) Environment (Railway / hosting)
+
+- `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (API runtime).
+- Optional: `DATABASE_URL` or `SUPABASE_DATABASE_URL` only for scripts and one-off migrations (not strictly required for API process if you never run migrations from that container).
+- Tune production from `backend/.env.example`: `COORD_OUTCOME_*` (horizon, pump %, cron, batch, attempts), `COORD_RECURRENCE_*`, and related coordination vars.
+
+### 3) Operational behaviour (after deploy)
+
+- `GET /health` → `coordinationOutcomes`: cron enabled, `lastStats` / last tick reasonable; ensure `COORD_OUTCOME_CRON_ENABLED` / `COORD_OUTCOME_ENABLED` are not accidentally `false` in prod.
+- Logs: resolver should move `pending` rows to `resolved` or `failed` (entry vs outcome price via same `getMarketData` path as `signal_performance`).
+
+### 4) Product consistency (optional)
+
+- **No backfill by default:** alerts **before** migration have no `coordination_outcomes` row; “verified” recurrence for those still uses `signal_performance` fallback (by design). For full historical T+N market rows, you would need a **one-off backfill** script (not shipped) — or accept legacy behaviour.
+- **UI:** strong coordination + verified copy lives on the **token page** via `coordination:red-signal` socket. **War home / Live** shows the same signal when the user focuses a desk mint (`?t=...`): banner + chip on the matching live card, with a link to the full token view.
+- **Ops:** `GET /api/v1/ops/wallet-coordination/outcomes` lists recent `coordination_outcomes` (wired in the Ops console next to F6 alerts).
+
+### 5) Quality gate
+
+- Staging: at least one **RED_CONFIRM**, then wait **T+N** (`COORD_OUTCOME_HORIZON_MIN`) or force a resolution batch and confirm `outcome_pct` in `coordination_outcomes`.
+- **Process:** document whether migrations run on first deploy, in CI, or manually so **012** is never skipped on a new environment.
+
+**Tolerant behaviour if 012 is missing:** the app does not hard-fail; “verified” recurrence falls back to `signal_performance` when there is no outcome row (or if the table is missing / join returns nothing).
 
 ## 9) Safety + Security Notes
 

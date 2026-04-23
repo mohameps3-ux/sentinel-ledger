@@ -25,6 +25,7 @@ const {
   runWalletCoordinationTick
 } = require("../jobs/walletCoordinationCron");
 const { listRecentCoordinationAlerts } = require("../services/walletCoordinationService");
+const { listRecentCoordinationOutcomes } = require("../services/coordinationOutcomes");
 const {
   getSmartWalletSignalBackfillStatus,
   runSmartWalletSignalBackfillTick
@@ -229,6 +230,18 @@ router.get("/wallet-coordination/alerts", assertOpsAuth, async (req, res) => {
   const out = await listRecentCoordinationAlerts(limit);
   if (!out.ok) return res.status(503).json({ ok: false, error: out.reason || "coordination_alerts_unavailable" });
   return res.json({ ok: true, data: out.rows || [] });
+});
+
+/** RED alert → T+N market outcomes (coordination_outcomes). */
+router.get("/wallet-coordination/outcomes", assertOpsAuth, async (req, res) => {
+  const limit = Number(req.query.limit || 50);
+  const out = await listRecentCoordinationOutcomes({ limit });
+  return res.json({
+    ok: true,
+    data: out?.rows || [],
+    degraded: Boolean(out?.degraded),
+    reason: out?.reason || null
+  });
 });
 
 router.get("/smart-signal-backfill/status", assertOpsAuth, (_req, res) => {

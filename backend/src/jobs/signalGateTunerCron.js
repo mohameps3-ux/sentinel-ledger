@@ -7,32 +7,37 @@ const TICK_MS = Number.isFinite(TICK_MS_RAW) && TICK_MS_RAW >= 60_000 ? TICK_MS_
 const CRON_ENABLED =
   String(process.env.SIGNAL_GATE_ADAPTIVE_CRON_ENABLED || "true").toLowerCase() !== "false";
 
+function isSignalGateTunerCronEnabled() {
+  return CRON_ENABLED;
+}
+
 let intervalRef = null;
 
 async function runSignalGateTunerTick() {
   return runSignalGateTunerOnce();
 }
 
-function startSignalGateTunerCron() {
+function startSignalGateTunerCron(options = {}) {
+  const { skipInitialTick = false } = options;
   if (intervalRef) return;
-  if (!CRON_ENABLED) {
+  if (!isSignalGateTunerCronEnabled()) {
     console.log("Signal gate tuner cron disabled via SIGNAL_GATE_ADAPTIVE_CRON_ENABLED=false");
     return;
   }
-  runSignalGateTunerTick().catch((e) =>
-    console.warn("[signal-gate-tuner] bootstrap_failed:", e?.message || e)
-  );
-  intervalRef = setInterval(() => {
+  if (!skipInitialTick) {
     runSignalGateTunerTick().catch((e) =>
-      console.warn("[signal-gate-tuner] tick_failed:", e?.message || e)
+      console.warn("[signal-gate-tuner] bootstrap_failed:", e?.message || e)
     );
+  }
+  intervalRef = setInterval(() => {
+    runSignalGateTunerTick().catch((e) => console.warn("[signal-gate-tuner] tick_failed:", e?.message || e));
   }, TICK_MS);
   if (intervalRef && typeof intervalRef.unref === "function") intervalRef.unref();
 }
 
 function getSignalGateTunerCronStatus() {
   return {
-    cronEnabled: CRON_ENABLED,
+    cronEnabled: isSignalGateTunerCronEnabled(),
     tickIntervalMs: TICK_MS,
     tuner: getSignalGateTunerStatus()
   };
@@ -41,6 +46,7 @@ function getSignalGateTunerCronStatus() {
 module.exports = {
   startSignalGateTunerCron,
   runSignalGateTunerTick,
-  getSignalGateTunerCronStatus
+  getSignalGateTunerCronStatus,
+  isSignalGateTunerCronEnabled
 };
 

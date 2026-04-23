@@ -2,7 +2,6 @@ const redis = require("../lib/cache");
 const { getMarketData, getMarketDataCircuitStatus } = require("./marketData");
 const { pctFromPrices } = require("./smartWalletSignalPrices");
 const { fetchTrendingList } = require("./trendingList");
-const { detectNarrativeTags } = require("./narrativeTags");
 const { getActiveSignalWeightMap } = require("./signalCalibrator");
 const {
   combinedPerformanceWeight,
@@ -1095,25 +1094,23 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
     const ia = iaByMint.get(mint);
     const sentinelScore =
       ia != null && Number.isFinite(ia) ? Math.min(100, Math.max(flowScore, Math.round(ia))) : flowScore;
-    const decision = decisionFromScore(sentinelScore, "balanced");
-    const { entryWindow, entryWindowMinutesLeft } = { entryWindow: "OPEN", entryWindowMinutesLeft: 5 };
     return {
       ...t,
       token: t.symbol || "TOKEN",
       tokenAddress: mint,
       sentinelScore,
-      decision,
-      entryWindow,
-      entryWindowMinutesLeft,
+      decision: "MERCADO",
+      entryWindow: null,
+      entryWindowMinutesLeft: null,
       clusterHeat: clusterHeatFromScore(sentinelScore),
-      evidenceChips: evidenceChipsFor(sentinelScore).map((s) => s.split(" ")[0]),
+      evidenceChips: [],
       quickBuy: {
         "0.5Sol": jupiterSwapUrl(mint, 0.5),
         "1Sol": jupiterSwapUrl(mint, 1),
         "5Sol": jupiterSwapUrl(mint, 5)
       },
       iaScore: ia != null ? Math.round(ia) : null,
-      narrativeTags: detectNarrativeTags({ name: t.name, symbol: t.symbol }),
+      narrativeTags: [],
       degraded: Boolean(t?.degraded)
     };
   });

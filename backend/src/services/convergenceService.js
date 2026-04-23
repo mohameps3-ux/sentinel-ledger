@@ -1,6 +1,6 @@
 const redis = require("../lib/cache");
 const { getSupabase } = require("../lib/supabase");
-const { detectHistoricalCoordinationAlert } = require("./walletCoordinationService");
+const { processRedCoordinationPhases, checkRedPrepareAbort } = require("./walletCoordinationService");
 
 const WINDOW_SEC = 10 * 60;
 const MIN_WALLETS = 3;
@@ -89,25 +89,30 @@ async function recordSmartWalletSignal(mint, walletAddress, timestampMs, action 
 }
 
 async function getConvergenceState(mint) {
-  if (!mint) return { detected: false, wallets: [], threshold: MIN_WALLETS, windowMinutes: 10 };
+  if (!mint) {
+    return { detected: false, wallets: [], threshold: MIN_WALLETS, windowMinutes: 10, windowMinSec: null, windowMaxSec: null };
+  }
   const key = keyForMint(mint);
   try {
     const raw = await redis.get(key);
     const nowSec = Math.floor(Date.now() / 1000);
     const minSec = nowSec - WINDOW_SEC;
     const parsed = raw && typeof raw === "object" ? raw : {};
-    const wallets = Object.entries(parsed || {})
-      .filter(([, ts]) => Number(ts) >= minSec)
-      .map(([wallet]) => wallet)
-      .slice(0, 12);
+    const inWindow = Object.entries(parsed || {}).filter(([, ts]) => Number(ts) >= minSec);
+    const wallets = inWindow.map(([w]) => w).slice(0, 12);
+    const tsVals = inWindow.map(([, t]) => Number(t)).filter((n) => Number.isFinite(n));
+    const windowMinSec = tsVals.length ? Math.min(...tsVals) : null;
+    const windowMaxSec = tsVals.length ? Math.max(...tsVals) : null;
     return {
       detected: wallets.length >= MIN_WALLETS,
       wallets,
       threshold: MIN_WALLETS,
-      windowMinutes: 10
+      windowMinutes: 10,
+      windowMinSec,
+      windowMaxSec
     };
   } catch {
-    return { detected: false, wallets: [], threshold: MIN_WALLETS, windowMinutes: 10 };
+    return { detected: false, wallets: [], threshold: MIN_WALLETS, windowMinutes: 10, windowMinSec: null, windowMaxSec: null };
   }
 }
 
@@ -133,20 +138,35 @@ async function trackSmartBuyAndDetect(mint, walletAddress, timestampMs, action =
   if (!state) return null;
 
   let redAlert = null;
+  let redPrepare = null;
+  let redAbort = null;
   if (state.detected && Array.isArray(state.wallets) && state.wallets.length >= 3) {
     try {
-      redAlert = await detectHistoricalCoordinationAlert({
+      const { confirm, prepare } = await processRedCoordinationPhases({
         mint,
         wallets: state.wallets,
-        detectedAtMs: Number(timestampMs) || Date.now()
+        detectedAtMs: Number(timestampMs) || Date.now(),
+        windowMinSec: state.windowMinSec,
+        windowMaxSec: state.windowMaxSec
       });
+      redAlert = confirm;
+      redPrepare = prepare;
     } catch (_) {
       redAlert = null;
+      redPrepare = null;
+    }
+  } else {
+    try {
+      redAbort = await checkRedPrepareAbort(mint, state);
+    } catch (_) {
+      redAbort = null;
     }
   }
   return {
     ...state,
-    redAlert
+    redAlert,
+    redPrepare,
+    redAbort
   };
 }
 

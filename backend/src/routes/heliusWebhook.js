@@ -338,8 +338,32 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
               windowMinutes: conv.windowMinutes
             });
           }
+          if (conv?.redPrepare) {
+            global.io.to(tx.tokenAddress).emit("coordination:red-signal", {
+              redSignal: "RED_PREPARE",
+              tokenAddress: tx.tokenAddress,
+              detectedAt: conv.redPrepare.detectedAt,
+              severity: conv.redPrepare.severity || "ORANGE",
+              score: conv.redPrepare.score,
+              wallets: conv.redPrepare.wallets,
+              clusterKey: conv.redPrepare.clusterKey,
+              reason: conv.redPrepare.reason,
+              meta: conv.redPrepare.meta || {}
+            });
+          }
+          if (conv?.redAbort) {
+            global.io.to(tx.tokenAddress).emit("coordination:red-signal", {
+              redSignal: "RED_ABORT",
+              tokenAddress: tx.tokenAddress,
+              clusterKey: conv.redAbort.clusterKey,
+              severity: conv.redAbort.severity || "DIM",
+              reason: conv.redAbort.reason,
+              detectedAt: conv.redAbort.detectedAt
+            });
+          }
           if (conv?.redAlert) {
-            global.io.to(tx.tokenAddress).emit("coordination:red-alert", {
+            const confirmPayload = {
+              redSignal: "RED_CONFIRM",
               tokenAddress: tx.tokenAddress,
               detectedAt: conv.redAlert.detectedAt,
               severity: conv.redAlert.severity || "RED",
@@ -347,8 +371,11 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
               wallets: conv.redAlert.wallets,
               clusterKey: conv.redAlert.clusterKey,
               latencyFromDeployMin: conv.redAlert.latencyFromDeployMin,
-              reason: conv.redAlert.reason
-            });
+              reason: conv.redAlert.reason,
+              meta: conv.redAlert.meta || {}
+            };
+            global.io.to(tx.tokenAddress).emit("coordination:red-signal", confirmPayload);
+            global.io.to(tx.tokenAddress).emit("coordination:red-alert", confirmPayload);
           }
         }
 

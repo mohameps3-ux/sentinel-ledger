@@ -52,19 +52,20 @@ function getSignalCalibratorCronStatus() {
   };
 }
 
-function startSignalCalibratorCron() {
+function startSignalCalibratorCron(options = {}) {
+  const { skipInitialTick = false } = options;
   if (intervalRef) return;
   if (!isEnabled()) {
     console.log("Signal calibrator cron disabled via SIGNAL_CALIBRATOR_ENABLED=false");
     return;
   }
-  runSignalCalibratorTick().catch((e) =>
-    console.warn("[CALIBRATOR] bootstrap_failed:", e?.message || e)
-  );
-  intervalRef = setInterval(() => {
+  if (!skipInitialTick) {
     runSignalCalibratorTick().catch((e) =>
-      console.warn("[CALIBRATOR] tick_failed:", e?.message || e)
+      console.warn("[CALIBRATOR] bootstrap_failed:", e?.message || e)
     );
+  }
+  intervalRef = setInterval(() => {
+    runSignalCalibratorTick().catch((e) => console.warn("[CALIBRATOR] tick_failed:", e?.message || e));
   }, TICK_MS);
   if (intervalRef && typeof intervalRef.unref === "function") intervalRef.unref();
 }

@@ -30,8 +30,15 @@ const {
   getSignalOutcomeCronStatus
 } = require("./jobs/signalOutcomeCron");
 const {
+  startCoordinationOutcomeCron,
+  getCoordinationOutcomeCronStatus,
+  isCoordinationResolutionActive
+} = require("./jobs/coordinationOutcomeCron");
+const { runCoordinationOutcomeResolutionOnce } = require("./services/coordinationOutcomes");
+const {
   startSignalCalibratorCron,
-  getSignalCalibratorCronStatus
+  getSignalCalibratorCronStatus,
+  runSignalCalibratorTick
 } = require("./jobs/signalCalibratorCron");
 const {
   startOpsHeartbeatCron,
@@ -79,7 +86,9 @@ const { getDataFreshnessSnapshot } = require("./services/homeTerminalApi");
 const { getSignalGateOpsSnapshot } = require("./services/signalEmissionGate");
 const {
   startSignalGateTunerCron,
-  getSignalGateTunerCronStatus
+  getSignalGateTunerCronStatus,
+  runSignalGateTunerTick,
+  isSignalGateTunerCronEnabled
 } = require("./jobs/signalGateTunerCron");
 
 /** Stripe envía `application/json; charset=utf-8`; el matcher por string estricto a veces no aplica raw. */
@@ -229,6 +238,7 @@ app.get("/health", async (_, res) => {
     proAlerts: getProAlertCronStatus(),
     signalPrices: getSignalPriceCronStatus(),
     signalOutcomes: getSignalOutcomeCronStatus(),
+    coordinationOutcomes: getCoordinationOutcomeCronStatus(),
     signalCalibrator: getSignalCalibratorCronStatus(),
     opsHeartbeat: getOpsHeartbeatCronStatus(),
     marketSnapshotWarmup: getMarketSnapshotWarmupStatus(),
@@ -351,8 +361,26 @@ io.on("connection", (socket) => {
   });
 });
 
-const port = process.env.PORT || 3000;
-server.listen(port, () => {
+const port = Number(process.env.PORT) || 3000;
+
+/**
+ * Hidrata calibración + adaptive gate desde DB, arranca crons y workers, y abre el puerto al final
+ * (sin aceptar tráfico mientras el estado no está al menos calentado de forma best-effort).
+ */
+async function bootstrap() {
+  console.log("[bootstrap] Hydrating signal calibrator + signal gate + coordination outcomes (best-effort)...");
+  const gateRun = isSignalGateTunerCronEnabled() ? runSignalGateTunerTick() : Promise.resolve(null);
+  const coordOutRun = isCoordinationResolutionActive() ? runCoordinationOutcomeResolutionOnce() : Promise.resolve(null);
+  const hydration = await Promise.allSettled([runSignalCalibratorTick(), gateRun, coordOutRun]);
+  for (const [i, r] of hydration.entries()) {
+    if (r.status === "rejected") {
+      console.warn(`[bootstrap] hydration[${i}] failed:`, r.reason?.message || r.reason);
+    }
+  }
+  const tunerWarmed =
+    isSignalGateTunerCronEnabled() && hydration[1] && hydration[1].status === "fulfilled";
+  const coordOutWarmed = isCoordinationResolutionActive() && hydration[2] && hydration[2].status === "fulfilled";
+
   if (isWorkersEnabled()) {
     startDeployerWorker();
     startSmartWalletWorker();
@@ -364,14 +392,30 @@ server.listen(port, () => {
   startProAlertCron();
   startSmartWalletSignalPriceCron();
   startSignalOutcomeCron();
-  startSignalCalibratorCron();
+  startCoordinationOutcomeCron({ skipInitialTick: Boolean(coordOutWarmed) });
+  startSignalCalibratorCron({ skipInitialTick: true });
   startOpsHeartbeatCron();
   startMarketSnapshotWarmupCron();
   startSmartWalletSignalBackfillCron();
   startDataFreshnessHistoryCron();
   startWalletBehaviorCron();
   startWalletCoordinationCron();
-  startSignalGateTunerCron();
+  startSignalGateTunerCron({ skipInitialTick: tunerWarmed });
   startSubscriptionExpiryCron();
-  console.log(`Sentinel Ledger backend on :${port}`);
+  return new Promise((resolve, reject) => {
+    server.listen(port, () => {
+      console.log(
+        `[bootstrap] Sentinel Ledger backend listening on :${port} (signal path warmed: calibrator=ok, gateTuner=${
+          tunerWarmed ? "ok" : "deferred"
+        }, coordinationOutcomes=${coordOutWarmed ? "ok" : isCoordinationResolutionActive() ? "deferred" : "off"})`
+      );
+      resolve();
+    });
+    server.once("error", reject);
+  });
+}
+
+bootstrap().catch((e) => {
+  console.error("[bootstrap] fatal:", e);
+  process.exit(1);
 });

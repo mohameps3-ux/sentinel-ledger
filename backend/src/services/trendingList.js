@@ -5,63 +5,41 @@ const STRICT_MIN_VOLUME_24H = 25000;
 const RELAXED_MIN_LIQUIDITY = 2000;
 const RELAXED_MIN_VOLUME_24H = 5000;
 
-function deriveTrendingGrade(market) {
+function fmtUsdCompact(n) {
+  const x = Number(n || 0);
+  if (!Number.isFinite(x) || x < 0) return "$0";
+  if (x >= 1e9) return `$${(x / 1e9).toFixed(2)}B`;
+  if (x >= 1e6) return `$${(x / 1e6).toFixed(2)}M`;
+  if (x >= 1e3) return `$${(x / 1e3).toFixed(1)}k`;
+  return `$${Math.round(x)}`;
+}
+
+/** Letter grades / narrative flow labels removed — only provider-reported numbers. */
+function deriveProviderBadge(market) {
+  const p = String(market?._provider || "").toLowerCase();
+  if (p.includes("bird")) return "BE";
+  if (p.includes("dex") || p.includes("screen")) return "DEX";
+  return "MKT";
+}
+
+function deriveFlowFacts(market) {
+  const liq = Number(market?.liquidity || 0);
+  return `Liq ${fmtUsdCompact(liq)}`;
+}
+
+function deriveWhyFacts(market) {
   const liq = Number(market?.liquidity || 0);
   const vol = Number(market?.volume24h || 0);
   const chg = Number(market?.priceChange24h || 0);
-  if (liq >= 500000 && vol >= 1000000 && chg >= 5) return "A+";
-  if (liq >= 200000 && vol >= 500000 && chg >= 0) return "A";
-  if (liq >= 50000 && vol >= 100000) return "B";
-  if (liq >= 10000) return "C";
-  return "D";
-}
-
-function deriveFlowLabel(market) {
-  const chg = Number(market?.priceChange24h || 0);
-  const vol = Number(market?.volume24h || 0);
-  if (chg >= 8 && vol >= 500000) return "Smart inflow";
-  if (chg >= 0) return "Buy pressure";
-  if (chg <= -8) return "Heavy sell pressure";
-  return "Mixed flow";
-}
-
-function deriveAlphaSpeedMinutes(market) {
-  const liq = Number(market?.liquidity || 0);
-  const vol = Number(market?.volume24h || 0);
-  if (liq <= 0 || vol <= 0) return null;
-  const turnover = vol / Math.max(liq, 1);
-  if (turnover >= 8) return 4;
-  if (turnover >= 4) return 7;
-  if (turnover >= 2) return 12;
-  if (turnover >= 1) return 18;
-  return 25;
-}
-
-function deriveWhyTrade(market) {
-  const reasons = [];
-  const liq = Number(market?.liquidity || 0);
-  const vol = Number(market?.volume24h || 0);
-  const chg = Number(market?.priceChange24h || 0);
-  const speed = deriveAlphaSpeedMinutes(market);
-
-  if (chg >= 12) reasons.push("Breakout momentum: strong upside in last 24h.");
-  else if (chg >= 5) reasons.push("Positive trend: consistent buy-side pressure.");
-  else if (chg <= -20) reasons.push("Capitulation bounce setup: deep pullback with active tape.");
-
-  if (liq >= 150000) reasons.push("Liquidity depth supports entries with lower slippage.");
-  else if (liq >= 50000) reasons.push("Tradable liquidity with manageable execution risk.");
-  else if (liq >= 15000) reasons.push("Early liquidity band: higher upside with tighter risk control.");
-
-  if (vol >= 1000000) reasons.push("High participation: volume confirms market attention.");
-  else if (vol >= 250000) reasons.push("Volume expansion signals accelerating interest.");
-
-  if (speed !== null) reasons.push(`Alpha speed: detected in ~${speed}m from flow/liquidity profile.`);
-
-  return reasons.slice(0, 3);
+  const prov = String(market?._provider || "proveedor");
+  return [
+    `Δ 24h: ${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%`,
+    `Vol 24h: ${fmtUsdCompact(vol)} · Liq: ${fmtUsdCompact(liq)}`,
+    `Fuente métricas: ${prov}`
+  ];
 }
 
 function normalizeTrendingEntry(mint, market) {
-  const alphaSpeedMins = deriveAlphaSpeedMinutes(market);
   return {
     mint,
     symbol: market.symbol,
@@ -72,10 +50,10 @@ function normalizeTrendingEntry(mint, market) {
     providerUsed: market?._provider || "unknown",
     attempts: Number(market?._attempts || 1),
     circuitState: market?._circuitState || "UNKNOWN",
-    grade: deriveTrendingGrade(market),
-    flowLabel: deriveFlowLabel(market),
-    alphaSpeedMins,
-    whyTrade: deriveWhyTrade(market)
+    grade: deriveProviderBadge(market),
+    flowLabel: deriveFlowFacts(market),
+    alphaSpeedMins: null,
+    whyTrade: deriveWhyFacts(market)
   };
 }
 
