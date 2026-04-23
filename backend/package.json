@@ -11,6 +11,7 @@
     "db:sync-database-url-from-railway": "node scripts/syncDatabaseUrlToLocalEnv.js",
     "db:verify-schema": "node scripts/verifySupabaseSchema.js",
     "verify:smart-wallets-top": "node scripts/verifySmartWalletsTop.js",
+    "smoke:post-deploy": "node scripts/smokePostDeployReadiness.js",
     "db:verify-emission-regime": "node scripts/verifySignalPerformanceEmissionRegimeColumn.js",
     "queue:clean": "node scripts/cleanBullQueues.js",
     "seed:smart-wallets": "node scripts/seedSmartWallets.js",

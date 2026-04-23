@@ -211,7 +211,7 @@ Minimum to consider the feature **complete in production** (no extra code if you
 
 ### 1) Database (project that backs the live API)
 
-- Run migrations **once** on that Supabase project: `npm run db:ensure-signal-performance --prefix backend` (or `node backend/scripts/applySignalPerformanceSchema.js` with `DATABASE_URL` / `SUPABASE_DATABASE_URL` set), **or** apply by hand in order: **003 → 011 → 010 → 012**.
+- Run migrations **once** on that Supabase project: `npm run db:ensure-signal-performance --prefix backend` (or `node backend/scripts/applySignalPerformanceSchema.js` with `DATABASE_URL` / `SUPABASE_DATABASE_URL` set), **or** apply by hand in order: **003 → 011 → 010 → 012 → 013** (`013` enables RLS on `coordination_outcomes`; service role bypasses).
 - In SQL editor, confirm `wallet_coordination_alerts` and `coordination_outcomes` exist and the FK from 012 to alerts is valid (no error on join).
 
 ### 2) Environment (Railway / hosting)
@@ -237,6 +237,27 @@ Minimum to consider the feature **complete in production** (no extra code if you
 - **Process:** document whether migrations run on first deploy, in CI, or manually so **012** is never skipped on a new environment.
 
 **Tolerant behaviour if 012 is missing:** the app does not hard-fail; “verified” recurrence falls back to `signal_performance` when there is no outcome row (or if the table is missing / join returns nothing).
+
+## 8c) Production alignment (Vercel + Railway + Supabase) — security-first
+
+| Sitio | Acción |
+|--------|--------|
+| **Vercel** | Último deploy desde **`main` (HEAD)**, estado **Ready**, sin errores de build. **Root Directory = `frontend`**. El build usa el árbol completo del commit (incluye UI `84df31a` y todo lo posterior en `main`). |
+| **Railway** (API) | **Redeploy** del servicio Node con el mismo **`main`** / commit que ya tiene backend + cron + rutas; variables alineadas con `backend/.env.example`. |
+| **Supabase** | Aplicar **012** y **013** en el proyecto correcto (`013` = RLS *deny-by-default* en `coordination_outcomes` para claves anon/authenticated vía PostgREST; el backend con **service role** sigue sin bloqueo). |
+
+**Smoke mínimo (sin filtrar secretos)**
+
+- Desde máquina confiable, con `backend/.env` que contenga solo **URL pública** y claves ya rotadas según política:
+  - `SMOKE_API_BASE_URL=https://<tu-api>` → `npm run smoke:post-deploy --prefix backend`
+  - Opcional producción estricta: `SMOKE_STRICT_HEALTH=true` (exige `GET /health` === 200).
+- El script **nunca imprime** `OMNI_BOT_OPS_KEY`; si está en `.env`, prueba `GET /api/v1/ops/wallet-coordination/outcomes` con header `x-ops-key` (mismo mecanismo que Ops).
+- **No** pegar la ops key en Slack/discord, CI logs públicos, ni query strings.
+
+**Desalineación típica**
+
+- Front **Ready** en Vercel pero API viejo en Railway → datos incoherentes; redeploy API.
+- Migración **012/013** no aplicada en el proyecto Supabase que usa el API → outcomes degradados o tabla ausente; revisar logs y `GET /health` (`coordinationOutcomes` en cuerpo).
 
 ## 9) Safety + Security Notes
 
