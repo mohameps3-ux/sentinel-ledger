@@ -198,7 +198,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const interpretedSignals = useRankingSnapshot(interpretedSignalsRaw, rankingFlushMs);
 
   const liveSignalPool = useMemo(() => {
-    const minCards = 12;
+    const minCards = liveExpanded ? 50 : UI_CONFIG.GRID_COMPACT_CARDS;
     const byMint = new Map();
     interpretedSignals.forEach((sig) => {
       if (!sig?.mint || !isProbableSolanaMint(sig.mint)) return;
@@ -223,7 +223,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     return out.sort(
       (a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0)
     );
-  }, [interpretedSignals, visibleTrending]);
+  }, [interpretedSignals, visibleTrending, liveExpanded]);
 
   const liveSignalsForGrid = useMemo(
     () =>
@@ -243,7 +243,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   );
 
   const heatTokenPool = useMemo(() => {
-    const minCards = 12;
+    const minCards = heatExpanded ? 50 : UI_CONFIG.GRID_COMPACT_CARDS;
     const out = [];
     const seen = new Set();
 
@@ -275,7 +275,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     return out
       .slice()
       .sort((a, b) => computeSignalStrength(b) - computeSignalStrength(a));
-  }, [interpretedSignals, visibleTrending]);
+  }, [interpretedSignals, visibleTrending, heatExpanded]);
 
   const heatTokensForGrid = useMemo(
     () =>
@@ -551,7 +551,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         />
 
         </div>
-        <div className="sl-container py-4 sm:py-8 md:py-12 max-w-full">
+        <div className="sl-container py-2 sm:py-4 md:py-6 max-w-full">
         <WarHomeIntro
           strategyMode={strategyMode}
           onStrategyModeChange={setStrategyMode}
@@ -562,7 +562,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         <WarHomeUtilityRail />
         </div>
 
-        <div className="sl-container max-w-full pb-6 sm:pb-10">
+        <div className="sl-container max-w-full pb-3 sm:pb-5">
         <WarHomeCombatPanels
           bestRecentDisplay={bestRecentDisplay}
           outcomesSummary={outcomesSummary}

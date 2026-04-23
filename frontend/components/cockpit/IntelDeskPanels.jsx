@@ -171,21 +171,21 @@ export const DeskQuickScan = memo(function DeskQuickScan({ currentMint }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-2">
-      <p className="text-[11px] text-gray-500 leading-relaxed">
+      <p className="text-[10px] sm:text-[11px] text-gray-500 leading-snug sm:leading-relaxed truncate sm:whitespace-normal" title="Paste a Solana mint to pin the desk (shallow ?t=).">
         Paste a Solana mint to pin the desk (shallow <span className="font-mono text-gray-400">?t=</span>).
       </p>
       <input
         value={raw}
         onChange={(e) => setRaw(e.target.value)}
         placeholder="Token mint…"
-        className="w-full rounded-md border border-white/12 bg-black/30 px-2.5 py-2 text-xs font-mono text-gray-100 placeholder:text-gray-600"
+        className="w-full rounded-md border border-white/12 bg-black/30 px-2 py-1.5 sm:px-2.5 sm:py-2 text-[11px] sm:text-xs font-mono text-gray-100 placeholder:text-gray-600"
         spellCheck={false}
       />
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="submit"
           disabled={!canGo}
-          className={`text-xs px-3 py-1.5 rounded-lg border font-semibold ${
+          className={`text-[11px] sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg border font-semibold ${
             canGo
               ? "border-cyan-500/40 bg-cyan-500/15 text-cyan-100 hover:bg-cyan-500/25"
               : "border-white/10 text-gray-600 cursor-not-allowed"

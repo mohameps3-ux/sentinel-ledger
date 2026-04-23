@@ -30,6 +30,17 @@ const nextConfig = {
         permanent: true
       }
     ];
+  },
+  /**
+   * In `next dev --webpack`, a persistent Webpack cache can make it look like
+   * layout edits “don’t apply” until `.next` is wiped. Disabling the cache in
+   * dev only trades a bit of compile speed for reliable HMR.
+   */
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.cache = false;
+    }
+    return config;
   }
 };
 

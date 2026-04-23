@@ -33,7 +33,7 @@ function mustInclude(rel, substr, desc) {
 mustExist("vercel.json");
 mustInclude("next.config.js", "NEXT_PUBLIC_GIT_SHA", "inject NEXT_PUBLIC_GIT_SHA for production stamp");
 mustInclude("components/layout/Navbar.jsx", 'data-sl-nav="slim"', "set data-sl-nav=\"slim\" on <nav> for bundle verification");
-mustInclude("components/layout/Navbar.jsx", 'data-sl-ui="home-compact"', "set data-sl-ui revision on <nav> (DevTools: stale bundle if missing)");
+mustInclude("components/layout/Navbar.jsx", 'data-sl-ui="home-compact-v2"', "set data-sl-ui revision on <nav> (DevTools: stale bundle if missing)");
 mustInclude("components/layout/Navbar.jsx", "data-sentinel-build", "set data-sentinel-build on <nav>");
 mustInclude("components/layout/Navbar.jsx", "NEXT_PUBLIC_GIT_SHA", "pass NEXT_PUBLIC_GIT_SHA to the build stamp");
 

@@ -131,18 +131,18 @@ export function actionTone(signalStrength) {
   return "text-red-300 bg-red-500/10 border-red-500/30";
 }
 
-/** Decision pill for feed: explicit green / amber / red glow (second visual focus after score). */
+/** Decision pill for feed — compact, same visual weight as adjacent coord / multi chips. */
 export function feedDecisionPillClass(action, score) {
   const pulse = action === "ENTER NOW" && score > 90;
   if (action === "ENTER NOW") {
-    return `text-sm sm:text-base px-4 py-2.5 rounded-xl border-2 font-black tracking-tight text-emerald-50 border-emerald-400/65 bg-emerald-500/20 shadow-[0_0_36px_rgba(52,211,153,0.55)] ring-2 ring-emerald-400/45 ${
+    return `text-[8px] leading-tight px-1 py-0.5 rounded border font-bold tracking-tight text-emerald-200 border-emerald-500/40 bg-emerald-500/15 ${
       pulse ? "animate-pulse" : ""
     }`;
   }
   if (action === "PREPARE") {
-    return "text-sm sm:text-base px-4 py-2.5 rounded-xl border-2 font-black tracking-tight text-amber-50 border-amber-400/60 bg-amber-500/18 shadow-[0_0_30px_rgba(251,191,36,0.42)] ring-2 ring-amber-400/40";
+    return "text-[8px] leading-tight px-1 py-0.5 rounded border font-bold tracking-tight text-amber-200 border-amber-500/40 bg-amber-500/12";
   }
-  return "text-sm sm:text-base px-4 py-2.5 rounded-xl border-2 font-black tracking-tight text-red-50 border-red-400/60 bg-red-500/18 shadow-[0_0_28px_rgba(248,113,113,0.4)] ring-2 ring-red-400/40";
+  return "text-[8px] leading-tight px-1 py-0.5 rounded border font-bold tracking-tight text-red-200 border-red-500/40 bg-red-500/12";
 }
 
 export function whyNowBulletLines(sig) {

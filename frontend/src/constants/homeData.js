@@ -137,7 +137,7 @@ export const UI_CONFIG = Object.freeze({
   TRENDING_REFETCH_WAR_MS: 5000,
   TRENDING_REFETCH_NORMAL_MS: 25000,
   GRID_EXPANDED_MAX_CARDS: 56,
-  GRID_COMPACT_CARDS: 12,
+  GRID_COMPACT_CARDS: 15,
   /** Keep ≤ backend `SIGNAL_FEED_MAX_CARDS` (default 64) for expanded feed. */
   SIGNAL_API_LIMIT_EXPANDED: 56,
   SIGNAL_API_LIMIT_COMPACT: 24,
@@ -145,6 +145,12 @@ export const UI_CONFIG = Object.freeze({
   TRENDING_API_LIMIT_COMPACT: 24,
   /** Use Virtuoso when visible live cards exceed this count. */
   VIRTUOSO_ROW_THRESHOLD: 50,
-  /** Cards per row in the Virtuoso path (2-col responsive band). */
-  VIRTUOSO_COLUMNS: 2
+  /** Cards per Virtuoso row; keep equal to max column count in `LIVE_HOT_GRID_CLASS`. */
+  VIRTUOSO_COLUMNS: 5,
+  /**
+   * LIVE + HOT card grids: more, smaller cards per row on wide viewports.
+   * Must stay in sync with `VIRTUOSO` row chunking.
+   */
+  LIVE_HOT_GRID_CLASS:
+    "grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5"
 });

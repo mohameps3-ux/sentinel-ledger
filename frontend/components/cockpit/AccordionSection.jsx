@@ -29,9 +29,9 @@ export function AccordionSection({ title, summaryTone = "neutral", defaultOpen =
         aria-expanded={open}
         aria-controls={panelId}
         onClick={toggle}
-        className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left transition-colors ${toneClass}`}
+        className={`w-full flex items-center justify-between gap-2 px-2.5 sm:px-3 py-2 sm:py-2.5 text-left transition-colors ${toneClass}`}
       >
-        <span className="text-[11px] font-semibold uppercase tracking-wide leading-snug">{title}</span>
+        <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide leading-snug">{title}</span>
         <ChevronDown
           size={16}
           className={`shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
@@ -43,7 +43,7 @@ export function AccordionSection({ title, summaryTone = "neutral", defaultOpen =
           id={panelId}
           role="region"
           aria-labelledby={btnId}
-          className="border-t border-white/[0.06] px-3 py-3 text-[12px] text-gray-300 max-h-[min(52vh,28rem)] overflow-y-auto"
+          className="border-t border-white/[0.06] px-2.5 sm:px-3 py-2.5 sm:py-3 text-[11px] sm:text-[12px] text-gray-300 max-h-[min(52vh,28rem)] overflow-y-auto"
         >
           {children}
         </div>

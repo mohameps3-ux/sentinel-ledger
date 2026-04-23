@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { Info, Sparkles } from "lucide-react";
 import { Virtuoso } from "react-virtuoso";
@@ -45,6 +45,16 @@ export function LiveTab({
   deskCoordination = null,
   onSelectMint
 }) {
+  const [stalkerUnread, setStalkerUnread] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const refresh = () => setStalkerUnread(Number(localStorage.getItem("walletStalkerUnread") || 0));
+    refresh();
+    window.addEventListener("wallet-stalker-update", refresh);
+    return () => window.removeEventListener("wallet-stalker-update", refresh);
+  }, []);
+
   function renderLiveGridItem(sig, idx) {
     const sec = entryCountdownByMint[sig.mint] || 0;
     const win = sig._api
@@ -79,7 +89,7 @@ export function LiveTab({
           e.preventDefault();
           onSelectMint(sig.mint);
         }}
-        baseClassName={`rounded-md border border-white/10 bg-white/[0.02] p-2 space-y-1.5 transition-all duration-300 hover:border-emerald-500/20 hover:shadow-[0_0_12px_rgba(16,185,129,0.08)] ${
+        baseClassName={`sl-glow-live rounded-md border border-white/10 bg-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:-translate-y-[1px] hover:border-emerald-400/45 hover:shadow-[0_0_18px_rgba(16,185,129,0.22)] ${
           hot ? "ring-1 ring-emerald-500/35" : ""
         } ${sig.mint && isProbableSolanaMint(sig.mint) ? "cursor-pointer" : ""} ${
           selectedMint && sig.mint === selectedMint ? "ring-2 ring-cyan-500/40" : ""
@@ -92,24 +102,27 @@ export function LiveTab({
               <RankBadge rank={rankInfo.rank} />
               <RankDeltaChip delta={rankInfo.delta} isNew={rankInfo.isNew} />
             </div>
-            <p className="text-sm font-bold text-white tracking-tight truncate leading-tight">${sig.symbol}</p>
-            <p className="text-[9px] text-cyan-200/85 font-mono mt-0.5">{sig.smartWallets} w · live</p>
+            <p className="text-xs font-bold text-white tracking-tight truncate leading-tight">${sig.symbol}</p>
+            <p className="text-[8px] text-cyan-200/85 font-mono mt-0.5 leading-tight">{sig.smartWallets} w · live</p>
           </div>
-          <span className={`shrink-0 text-[9px] px-1 py-0.5 rounded border ${confidenceTone(sig.signalStrength)}`}>
+          <span
+            className={`shrink-0 text-[7px] max-w-[4.25rem] text-right leading-tight px-0.5 py-0.5 rounded border line-clamp-2 ${confidenceTone(sig.signalStrength)}`}
+            title={confidenceLabel(sig.signalStrength)}
+          >
             {confidenceLabel(sig.signalStrength)}
           </span>
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <div className="flex items-baseline justify-between gap-2">
-            <p className="text-[8px] uppercase tracking-[0.15em] text-gray-500 font-semibold">Score</p>
-            <span className="text-[9px] text-gray-500 font-mono">/ 100</span>
+            <p className="text-[7px] uppercase tracking-[0.12em] text-gray-500 font-semibold">Score</p>
+            <span className="text-[7px] text-gray-500 font-mono">/ 100</span>
           </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-black tabular-nums font-mono text-white leading-none tracking-tight">
+          <div className="flex items-baseline gap-1">
+            <span className="text-lg font-black tabular-nums font-mono text-white leading-none tracking-tight">
               {sig.signalStrength}
             </span>
-            <div className="flex-1 h-1 rounded-full bg-gray-900 overflow-hidden ring-1 ring-white/8 mb-0.5 min-w-0">
+            <div className="flex-1 h-0.5 sm:h-1 rounded-full bg-gray-900 overflow-hidden ring-1 ring-white/8 mb-0.5 min-w-0">
               <div
                 className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(sig.signalStrength)}`}
                 style={{ width: `${sig.signalStrength}%` }}
@@ -118,8 +131,8 @@ export function LiveTab({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1">
-          <span className={`inline-flex items-center justify-center text-[10px] ${feedDecisionPillClass(action, sig.signalStrength)}`}>
+        <div className="flex flex-wrap items-center gap-0.5">
+          <span className={`inline-flex items-center justify-center ${feedDecisionPillClass(action, sig.signalStrength)}`}>
             {action === "ENTER NOW" ? "🟢 " : action === "PREPARE" ? "🟡 " : "🔴 "}
             {action}
           </span>
@@ -135,9 +148,9 @@ export function LiveTab({
           ) : null}
         </div>
 
-        <div className="rounded border border-white/8 bg-black/30 px-2 py-1.5">
-          <p className="text-[8px] text-gray-500 uppercase tracking-wide font-semibold">Why now</p>
-          <ul className="text-[10px] text-gray-200 mt-0.5 space-y-0 leading-tight">
+        <div className="rounded border border-white/8 bg-black/30 px-1.5 py-1">
+          <p className="text-[7px] text-gray-500 uppercase tracking-wide font-semibold">Why now</p>
+          <ul className="text-[8px] text-gray-200 mt-0.5 space-y-0 leading-snug">
             {whyLines.slice(0, 3).map((line, li) => (
               <li key={li} className="flex gap-1">
                 <span className="text-emerald-500/80 shrink-0">•</span>
@@ -258,20 +271,29 @@ export function LiveTab({
               onClick={onToggleLiveExpanded}
               className="text-base sm:text-lg font-semibold text-white mt-0.5 text-left hover:text-emerald-200 transition-colors leading-tight"
             >
-              Live Smart Money {liveExpanded ? "[-]" : "[+]"}
+              Live Smart Money {liveExpanded ? "[-]" : "[+]"} {liveExpanded ? "(50+)" : ""}
             </button>
             <p className="text-[10px] text-gray-500 mt-0.5">
               {liveSignalsForGrid.length} vis · {liveSignalPool.length} tracked
             </p>
           </div>
           <div className="flex flex-col items-start md:items-end gap-1">
-            <button
-              type="button"
-              onClick={onToggleLiveExpanded}
-              className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border border-cyan-500/35 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
-            >
-              {liveExpanded ? "Compact" : "Expand feed"}
-            </button>
+            <div className="flex flex-wrap items-center gap-1">
+              <Link
+                href="/wallet-stalker"
+                className="sl-glow-info w-[5cm] max-w-[62vw] h-7 px-2 rounded-md border border-cyan-500/30 bg-cyan-500/[0.08] text-cyan-100 no-underline inline-flex items-center justify-between gap-1"
+              >
+                <span className="text-[10px] uppercase tracking-wide truncate">Wallet activity</span>
+                <span className="text-[10px] font-mono shrink-0">{stalkerUnread > 0 ? `+${stalkerUnread}` : "0"}</span>
+              </Link>
+              <button
+                type="button"
+                onClick={onToggleLiveExpanded}
+                className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border border-cyan-500/35 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+              >
+                {liveExpanded ? "Compact" : "Expand feed (50+)"}
+              </button>
+            </div>
             <span
               className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border inline-flex items-center gap-1 ${
                 signalsFeedIsError
@@ -315,10 +337,10 @@ export function LiveTab({
           <Virtuoso
             style={{ height: "min(72dvh, 920px)" }}
             totalCount={liveVirtuosoRows.length}
-            defaultItemHeight={360}
+            defaultItemHeight={260}
             increaseViewportBy={{ bottom: 400, top: 100 }}
             itemContent={(rowIndex) => (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pb-2">
+              <div className={`${UI_CONFIG.LIVE_HOT_GRID_CLASS} pb-1.5`}>
                 {liveVirtuosoRows[rowIndex].map((sig, j) => {
                   const idx = rowIndex * UI_CONFIG.VIRTUOSO_COLUMNS + j;
                   return <Fragment key={`${sig.mint}-${idx}`}>{renderLiveGridItem(sig, idx)}</Fragment>;
@@ -328,7 +350,7 @@ export function LiveTab({
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2">
+        <div className={UI_CONFIG.LIVE_HOT_GRID_CLASS}>
           {liveSignalsForGrid.map((sig, idx) => (
             <Fragment key={`${sig.mint}-${idx}`}>{renderLiveGridItem(sig, idx)}</Fragment>
           ))}

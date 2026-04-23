@@ -91,9 +91,9 @@ export function NluCommandBar() {
 
   return (
     <>
-      <section className="sl-section !pt-2 !pb-2">
-        <div className="glass-card sl-inset border border-cyan-500/25 bg-cyan-500/[0.04]">
-          <div className="flex items-center justify-between gap-3 mb-3">
+      <section className="sl-section !pt-0 !pb-0">
+        <div className="glass-card sl-glow-info sl-inset border border-cyan-500/25 bg-cyan-500/[0.04] !p-1.5 sm:!p-2">
+          <div className="flex items-center justify-between gap-2 mb-1">
             <div className="inline-flex items-center gap-2">
               <Sparkles size={14} className="text-cyan-300" />
               <p className="sl-label text-cyan-200">Sentinel NLU command bar</p>
@@ -108,29 +108,29 @@ export function NluCommandBar() {
               e.preventDefault();
               submit(query);
             }}
-            className="flex gap-2"
+            className="flex gap-1"
           >
             <div className="relative flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500" />
               <input
                 ref={inlineInputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Ask Sentinel anything..."
-                className="sl-input w-full h-10 pl-9 pr-3"
+                className="sl-input w-full h-7 pl-6.5 pr-2 text-[11px]"
               />
             </div>
             <button
               type="submit"
-              className="btn-pro h-10 px-4 inline-flex items-center justify-center"
+              className="btn-pro h-7 px-2.5 text-[11px] inline-flex items-center justify-center"
               disabled={isLoading}
             >
               {isLoading ? <Loader2 size={14} className="animate-spin" /> : "Run"}
             </button>
           </form>
-          <div className="mt-2 text-[11px] text-gray-500">Try: {examples.join(" · ")}</div>
+          <div className="mt-0.5 text-[9px] text-gray-500 truncate">Try: {examples.join(" · ")}</div>
           {result ? (
-            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 whitespace-pre-line text-sm text-gray-200 leading-relaxed">
+            <div className="mt-1.5 rounded-lg border border-white/10 bg-white/[0.03] p-2 whitespace-pre-line text-xs text-gray-200 leading-snug">
               {formatResult(result)}
             </div>
           ) : null}

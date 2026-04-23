@@ -48,13 +48,13 @@ export function TokenDesk({ mint }) {
 
   if (!mint) {
     return (
-      <div className="flex h-full min-h-[12rem] flex-col items-center justify-center gap-3 px-4 py-8 text-center">
-        <p className="text-sm font-semibold text-gray-300">Select a token</p>
-        <p className="text-xs text-gray-500 max-w-xs leading-relaxed">
+      <div className="flex h-full min-h-[8.25rem] sm:min-h-[12rem] flex-col items-center justify-center gap-2 px-3 sm:px-4 py-4 sm:py-8 text-center">
+        <p className="text-[12px] sm:text-sm font-semibold text-gray-300">Select a token</p>
+        <p className="text-[11px] sm:text-xs text-gray-500 max-w-xs leading-snug sm:leading-relaxed">
           Click a card in the feed to pin it here via the URL, or paste a mint below.
         </p>
-        <div className="w-full max-w-sm text-left">
-          <AccordionSection title="Quick scan" summaryTone="neutral" defaultOpen>
+        <div className="w-full max-w-xs sm:max-w-sm text-left">
+          <AccordionSection title="Quick scan" summaryTone="neutral" defaultOpen={false}>
             <DeskQuickScan currentMint={null} />
           </AccordionSection>
         </div>

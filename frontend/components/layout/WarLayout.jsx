@@ -11,7 +11,7 @@ export function WarLayout({ header, feed, desk }) {
 
   return (
     <div
-      className="relative flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-cyan-500/25 bg-[#080d14] shadow-[0_0_0_1px_rgba(34,211,238,0.12),0_12px_48px_rgba(0,0,0,0.45)] ring-1 ring-cyan-500/15 sm:mx-0.5"
+      className="relative flex w-full min-w-0 flex-col overflow-visible lg:overflow-hidden rounded-2xl border border-cyan-500/25 bg-[#080d14] shadow-[0_0_0_1px_rgba(34,211,238,0.12),0_12px_48px_rgba(0,0,0,0.45)] ring-1 ring-cyan-500/15 sm:mx-0.5"
       style={{ height: bandHeight, maxHeight: bandHeight }}
       data-home-war-layout="1"
     >
@@ -22,12 +22,12 @@ export function WarLayout({ header, feed, desk }) {
       <div className="shrink-0 border-b border-cyan-950/50 bg-[#050a10]/95 px-3 py-2 sm:px-4">{header}</div>
 
       {/* Feed = casi todo el ancho; desk = rail estrecho a la derecha */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(12.5rem,15rem)]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-visible lg:overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(12.5rem,15rem)]">
         {/* Mobile / tablet: desk first so Intel + ?t= is visible without scrolling past the whole feed */}
-        <div className="order-2 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border-slate-800/80 lg:order-1 lg:border-r">
+        <div className="order-2 min-h-0 min-w-0 overflow-visible lg:overflow-y-auto overflow-x-hidden border-slate-800/80 lg:order-1 lg:border-r">
           {feed}
         </div>
-        <div className="order-1 min-h-0 min-w-0 max-h-[42dvh] overflow-y-auto overflow-x-hidden border-b border-slate-800/80 lg:order-2 lg:max-h-none lg:border-b-0 lg:border-t-0">
+        <div className="order-1 min-h-0 min-w-0 max-h-none overflow-visible lg:max-h-[42dvh] lg:overflow-y-auto overflow-x-hidden border-b border-slate-800/80 lg:order-2 lg:max-h-none lg:border-b-0 lg:border-t-0">
           {desk}
         </div>
       </div>

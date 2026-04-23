@@ -7,19 +7,29 @@ import toast from "react-hot-toast";
 import { getPublicApiUrl } from "../../lib/publicRuntime";
 
 const walletMultiButtonClass =
-  "!bg-gradient-to-r !from-[#6c5ce7] !to-[#00cec9] hover:!opacity-95 !rounded-lg !h-8 !text-[10px] sm:!text-[11px] !min-w-0 !max-w-full !justify-center !truncate !px-2 !leading-tight !font-semibold";
+  "!bg-gradient-to-r !from-[#6c5ce7] !to-[#00cec9] hover:!opacity-95 !rounded-md !h-7 !min-h-0 !text-[9px] !min-w-0 !max-w-[5.25rem] !justify-center !truncate !px-1.5 !py-0 !leading-tight !font-semibold";
 
 export function WalletButton() {
   const { publicKey, signMessage, connected, disconnect } = useWallet();
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const authInFlightRef = useRef(false);
+  const wrapRef = useRef(null);
   /** WalletMultiButton SSR output ≠ client (wallets / extensions); render only after mount. */
   const [walletUiReady, setWalletUiReady] = useState(false);
 
   useEffect(() => {
     setWalletUiReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
 
   useEffect(() => {
     if (!connected || !publicKey) return;
@@ -123,7 +133,7 @@ export function WalletButton() {
   };
 
   return (
-    <div className="relative z-[70] flex items-center justify-end gap-1 min-w-0 w-auto max-w-[min(8.25rem,36vw)] sm:max-w-[9.25rem] md:max-w-[10rem] shrink-0">
+    <div ref={wrapRef} className="relative z-[200] flex items-center justify-end gap-0.5 min-w-0 shrink-0">
       {walletUiReady ? (
         <WalletMultiButton className={walletMultiButtonClass} />
       ) : (
@@ -137,25 +147,30 @@ export function WalletButton() {
         </button>
       )}
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`hidden lg:flex items-center gap-1.5 h-8 px-2 rounded-lg border text-[10px] transition max-w-[7.5rem] truncate ${
+        className={`hidden sm:inline-flex items-center gap-0.5 h-7 pl-1 pr-1 rounded-md border text-[9px] transition max-w-[4.75rem] sm:max-w-[5.5rem] truncate ${
           connected
             ? "bg-[#13171A] border-emerald-600/30 text-emerald-300"
             : "bg-[#13171A] soft-divider text-gray-400"
         }`}
+        aria-expanded={open}
+        aria-haspopup="true"
+        title="Cuenta y desconectar"
       >
-        <ShieldCheck size={12} className="shrink-0" />
-        <span className="truncate">{shortWallet}</span>
-        <ChevronDown size={12} className={`shrink-0 transition ${open ? "rotate-180" : ""}`} />
+        <ShieldCheck size={11} className="shrink-0" />
+        <span className="truncate min-w-0">{shortWallet}</span>
+        <ChevronDown size={11} className={`shrink-0 transition ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && connected && (
-        <div className="absolute right-0 top-10 z-[200] w-44 rounded-lg border soft-divider bg-[#13171A] p-1.5 shadow-xl">
+        <div className="absolute right-0 top-[calc(100%+4px)] z-[500] w-40 rounded-lg border border-white/10 bg-[#0d1014] p-1 shadow-2xl">
           <button
+            type="button"
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-200 hover:bg-white/5 transition"
+            className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs text-gray-200 hover:bg-white/5 transition"
           >
-            <LogOut size={14} />
+            <LogOut size={13} />
             Disconnect
           </button>
         </div>

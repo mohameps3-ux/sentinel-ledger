@@ -33,6 +33,9 @@ const queryClient = new QueryClient();
 export default function App({ Component, pageProps }) {
   const router = useRouter();
   const isHome = router.pathname === "/";
+  const showDevUiBadge = process.env.NODE_ENV !== "production";
+  const devUiStamp = "home-compact-v2";
+  const buildStamp = process.env.NEXT_PUBLIC_GIT_SHA || "local";
   const endpoint = useMemo(() => getPublicSolanaRpcUrl(), []);
   const wallets = useMemo(() => createSolanaWalletAdapters(), []);
 
@@ -178,6 +181,11 @@ export default function App({ Component, pageProps }) {
                   <FinancialDisclaimer />
                 </div>
               </footer>
+              {showDevUiBadge ? (
+                <div className="fixed left-2 bottom-2 z-[260] pointer-events-none select-none text-[10px] leading-tight px-2 py-1 rounded-md border border-cyan-500/35 bg-[#0a0f14]/90 text-cyan-200 font-mono shadow-[0_0_14px_rgba(34,211,238,0.18)]">
+                  DEV · UI {devUiStamp} · BUILD {buildStamp}
+                </div>
+              ) : null}
               <Toaster
                 position="bottom-center"
                 containerStyle={{

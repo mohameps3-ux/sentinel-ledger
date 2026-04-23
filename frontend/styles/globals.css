@@ -39,6 +39,15 @@
   --sl-safe-gap: 8px;
 }
 
+@media (max-width: 640px) {
+  :root {
+    --sl-card-pad: 14px;
+    --sl-gap: 12px;
+    --sl-section: 24px;
+    --sl-page-x: 12px;
+  }
+}
+
 @media (min-width: 640px) {
   :root {
     --sl-nav-h: 52px;
@@ -326,6 +335,46 @@ a {
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  /* Shared "alive" border behavior for cards/boxes */
+  .glass-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(56, 189, 248, 0.42);
+    box-shadow:
+      0 16px 44px rgb(0 0 0 / 0.52),
+      0 0 0 1px rgba(56, 189, 248, 0.18),
+      0 0 18px rgba(56, 189, 248, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+}
+
+/* Contextual glow variants (home): live / heat / info */
+.sl-glow-live,
+.sl-glow-heat,
+.sl-glow-info {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sl-glow-live:hover {
+    transform: translateY(-1px);
+    border-color: rgba(16, 185, 129, 0.5) !important;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.2), 0 0 0 1px rgba(16, 185, 129, 0.18);
+  }
+
+  .sl-glow-heat:hover {
+    transform: translateY(-1px);
+    border-color: rgba(251, 146, 60, 0.52) !important;
+    box-shadow: 0 0 16px rgba(251, 146, 60, 0.22), 0 0 0 1px rgba(251, 146, 60, 0.18);
+  }
+
+  .sl-glow-info:hover {
+    transform: translateY(-1px);
+    border-color: rgba(34, 211, 238, 0.5) !important;
+    box-shadow: 0 0 16px rgba(34, 211, 238, 0.2), 0 0 0 1px rgba(34, 211, 238, 0.16);
+  }
+}
+
 /* Home / marketing hero panels */
 .sl-home-hero {
   position: relative;
@@ -420,6 +469,21 @@ a {
   animation: glow 0.3s ease-out;
 }
 
+@keyframes slPanelEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sl-panel-enter {
+  animation: slPanelEnter 0.18s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -450,6 +514,10 @@ a {
     animation: none;
     opacity: 1;
   }
+
+  .sl-panel-enter {
+    animation: none;
+  }
 }
 
 .sl-wayfinding-link:active {
@@ -462,6 +530,14 @@ a {
 
 .safe-bottom-offset {
   bottom: calc(1rem + var(--safe-bottom));
+}
+
+/* Mobile scroll fix: avoid nested/locked viewport band in WarLayout. */
+@media (max-width: 1023px) {
+  [data-home-war-layout="1"] {
+    height: auto !important;
+    max-height: none !important;
+  }
 }
 
 .soft-divider {

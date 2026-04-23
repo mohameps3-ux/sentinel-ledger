@@ -19,6 +19,7 @@ import {
   suggestedAction
 } from "@/lib/signalUtils";
 import { redFlagsForSignal } from "@/lib/redFlags";
+import { UI_CONFIG } from "@/constants/homeData";
 import { RankBadge, RankDeltaChip } from "./RankIndicators";
 
 function cockpitCardClickTargetIsInteractive(e) {
@@ -46,7 +47,7 @@ export function HotTab({
 }) {
   return (
     <section className="sl-section">
-      <div className="glass-card p-3 sm:p-3.5">
+      <div className="glass-card sl-glow-heat p-3 sm:p-3.5">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div className="flex items-start gap-2.5 min-w-0">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500/25 to-amber-600/15 border border-orange-500/25 flex items-center justify-center shrink-0">
@@ -59,7 +60,7 @@ export function HotTab({
                 onClick={onToggleHeatExpanded}
                 className="text-base sm:text-lg font-semibold text-white mt-0.5 text-left hover:text-orange-200 transition-colors leading-tight"
               >
-                Heat rank {heatExpanded ? "[-]" : "[+]"}
+                Heat rank {heatExpanded ? "[-]" : "[+]"} {heatExpanded ? "(50+)" : ""}
               </button>
               <p className="text-xs text-gray-500 mt-1 max-w-xl leading-snug">Score, ventana, chips, swap en un vistazo.</p>
               <p className="text-[10px] text-gray-500 mt-0.5">
@@ -73,7 +74,7 @@ export function HotTab({
               onClick={onToggleHeatExpanded}
               className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border border-orange-500/35 bg-orange-500/10 text-orange-200 hover:bg-orange-500/20"
             >
-              {heatExpanded ? "Compact" : "Expand"}
+              {heatExpanded ? "Compact" : "Expand (50+)"}
             </button>
             <span
               className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border inline-flex items-center gap-1 ${
@@ -102,7 +103,7 @@ export function HotTab({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2">
+        <div className={UI_CONFIG.LIVE_HOT_GRID_CLASS}>
           {heatTokensForGrid.map((token, idx) => {
             const signalStrength = computeSignalStrength(token);
             const action = suggestedAction(signalStrength, strategyMode, "token");
@@ -125,8 +126,10 @@ export function HotTab({
                   e.preventDefault();
                   onSelectMint(token.mint);
                 }}
-                baseClassName={`glass-card p-2 rounded-lg flex flex-col gap-1.5 transition-transform duration-200 ${
-                  token?.mint ? "hover:scale-[1.01] hover:shadow-[0_0_10px_rgba(139,92,246,0.4)]" : "opacity-75"
+                baseClassName={`glass-card sl-glow-heat p-1.5 sm:p-2 rounded-lg flex flex-col gap-1 touch-manipulation transition-all duration-200 ${
+                  token?.mint
+                    ? "hover:-translate-y-[1px] hover:border-violet-400/45 hover:shadow-[0_0_16px_rgba(139,92,246,0.32)]"
+                    : "opacity-75"
                 } ${token?.mint && isProbableSolanaMint(token.mint) ? "cursor-pointer" : ""} ${
                   selectedMint && token?.mint === selectedMint ? "ring-2 ring-cyan-500/40" : ""
                 }`}
@@ -140,7 +143,7 @@ export function HotTab({
                         <RankDeltaChip delta={trendingRank.delta} isNew={trendingRank.isNew} />
                       </div>
                     ) : null}
-                    <p className="text-sm font-bold text-white tracking-tight truncate leading-tight">{token?.symbol || "Loading"}</p>
+                    <p className="text-xs font-bold text-white tracking-tight truncate leading-tight">{token?.symbol || "Loading"}</p>
                     <p className="text-[9px] text-gray-500 font-mono truncate">
                       {token?.mint ? `${token.mint.slice(0, 4)}…${token.mint.slice(-4)}` : "…"}
                     </p>
@@ -163,16 +166,18 @@ export function HotTab({
                   </div>
                 ) : null}
 
-                <div className="rounded border border-white/[0.08] bg-white/[0.02] px-2 py-1.5 space-y-1">
+                <div className="rounded border border-white/[0.08] bg-white/[0.02] px-1.5 py-1 space-y-0.5">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-[8px] uppercase tracking-wider text-gray-500">Score</span>
-                    <span className="text-emerald-300 font-bold font-mono tabular-nums text-[11px]">{signalStrength}/100</span>
+                    <span className="text-[7px] uppercase tracking-wider text-gray-500">Score</span>
+                    <span className="text-emerald-300 font-bold font-mono tabular-nums text-[10px]">{signalStrength}/100</span>
                   </div>
-                  <div className="h-1 rounded-full bg-gray-900 overflow-hidden">
+                  <div className="h-0.5 sm:h-1 rounded-full bg-gray-900 overflow-hidden">
                     <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-400" style={{ width: `${signalStrength}%` }} />
                   </div>
                   <div className="flex flex-wrap items-center gap-0.5">
-                    <span className={`text-[9px] px-1 py-0.5 rounded border ${actionTone(signalStrength)} ${signalStrength > 90 ? "animate-pulse" : ""}`}>
+                    <span
+                      className={`text-[8px] font-bold px-1 py-0.5 rounded border ${actionTone(signalStrength)} ${signalStrength > 90 ? "animate-pulse" : ""}`}
+                    >
                       {action}
                     </span>
                     <span className={`text-[9px] px-1 py-0.5 rounded border ${confidenceTone(signalStrength)}`}>
