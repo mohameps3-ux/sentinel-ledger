@@ -4,15 +4,6 @@ const STRICT_MIN_LIQUIDITY = 15000;
 const STRICT_MIN_VOLUME_24H = 25000;
 const RELAXED_MIN_LIQUIDITY = 2000;
 const RELAXED_MIN_VOLUME_24H = 5000;
-const CURATED_SOLANA_MINTS = [
-  // Core large-liquidity references used as deterministic backup pool.
-  "So11111111111111111111111111111111111111112", // SOL
-  "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", // BONK
-  "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", // WIF
-  "JUPyiwrYJFksjQVdKWvHJHGzS76nqbwsjZBM74fATFc", // JUP
-  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
-  "Es9vMFrzaCERmJfrF4H2i6rPz9vywgq6Z9erjRzCQXD" // USDT
-];
 
 function deriveTrendingGrade(market) {
   const liq = Number(market?.liquidity || 0);
@@ -158,21 +149,6 @@ async function fetchTrendingList(limit = 6) {
     for (const token of relaxed) {
       out.push(token);
       if (out.length >= cap) break;
-    }
-  }
-
-  if (out.length < cap) {
-    for (const mint of CURATED_SOLANA_MINTS) {
-      if (out.length >= cap) break;
-      if (out.some((t) => t.mint === mint)) continue;
-      try {
-        const market = await getMarketData(mint);
-        if (!market || !market.symbol) continue;
-        const normalized = normalizeTrendingEntry(mint, market);
-        out.push(normalized);
-      } catch {
-        // Best-effort fallback pool; ignore single mint failures.
-      }
     }
   }
 

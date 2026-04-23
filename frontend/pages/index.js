@@ -92,11 +92,12 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     refetchMs: isWarMode ? UI_CONFIG.TRENDING_REFETCH_WAR_MS : UI_CONFIG.TRENDING_REFETCH_NORMAL_MS
   });
   const trending = useMemo(() => {
+    if (trendingQuery.isError) return [];
     const rows = Array.isArray(trendingQuery.data?.data) ? trendingQuery.data.data : [];
     const meta = trendingQuery.data?.meta || {};
     if (isFallbackSource(meta)) return [];
     return rows;
-  }, [trendingQuery.data, isFallbackSource]);
+  }, [trendingQuery.data, trendingQuery.isError, isFallbackSource]);
   const trendingMeta = trendingQuery.data?.meta || {};
   const updateVisibleTrending = useCallback((nextTrending) => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -143,7 +144,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const topWalletLabelAddrs = useMemo(() => rankedWallets.map((w) => w.address).filter(Boolean), [rankedWallets]);
   const { labelFor: topWalletLabel, titleFor: topWalletTitle } = useWalletLabels(topWalletLabelAddrs);
   const interpretedSignalsRaw = useMemo(() => {
-    const raw = apiFeedCards
+    const fromSignals = apiFeedCards
       .map((c) => {
         const sym = String(c.token || "TOKEN").replace(/^\$/, "").trim() || "TOKEN";
         const mint = c.tokenAddress && isProbableSolanaMint(c.tokenAddress) ? c.tokenAddress : null;
@@ -169,10 +170,58 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         };
       })
       .filter(Boolean);
+    const fromHotReal = visibleTrending
+      .map((t) => {
+        const mint = t?.mint && isProbableSolanaMint(t.mint) ? t.mint : null;
+        const score = Number(t?.sentinelScore);
+        if (!mint || !Number.isFinite(score)) return null;
+        const symbol = String(t?.symbol || t?.token || "TOKEN");
+        return {
+          symbol,
+          mint,
+          token: {
+            symbol,
+            mint,
+            liquidity: Number(t?.liquidity || 0),
+            volume24h: Number(t?.volume24h || 0),
+            change: Number(t?.change || 0),
+            whyTrade: Array.isArray(t?.whyTrade) ? t.whyTrade : []
+          },
+          signalStrength: Math.max(1, Math.min(100, Math.round(score))),
+          smartWallets: Number.isFinite(Number(t?.smartWallets)) ? Math.max(0, Math.round(Number(t.smartWallets))) : 0,
+          context: "Market flow live",
+          clusterScore: Math.min(99, Math.max(1, Math.round(score - 6))),
+          momentum: Number(t?.volume24h || 0),
+          _api: {
+            token: symbol.startsWith("$") ? symbol : `$${symbol}`,
+            tokenAddress: mint,
+            smartWallets: Number.isFinite(Number(t?.smartWallets)) ? Math.max(0, Math.round(Number(t.smartWallets))) : 0,
+            sentinelScore: Math.max(1, Math.min(100, Math.round(score))),
+            decision: t?.decision || null,
+            whyNow: Array.isArray(t?.whyTrade) ? t.whyTrade : [],
+            redFlags: [],
+            entryWindow: t?.entryWindow || "OPEN",
+            entryWindowMinutesLeft: Number.isFinite(Number(t?.entryWindowMinutesLeft))
+              ? Number(t.entryWindowMinutesLeft)
+              : 0,
+            timeAdvantage: null,
+            signalDecay: null,
+            poolAgeLabel: null,
+            confluence: Boolean(t?.confluence),
+            evidenceChips: Array.isArray(t?.evidenceChips) ? t.evidenceChips : [],
+            contextHistory: "Market flow live",
+            createdAt: new Date().toISOString(),
+            volume24h: Number(t?.volume24h || 0),
+            change24h: Number(t?.change || 0)
+          }
+        };
+      })
+      .filter(Boolean);
+    const raw = fromSignals.length ? fromSignals : fromHotReal;
     return raw
       .slice()
       .sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
-  }, [apiFeedCards]);
+  }, [apiFeedCards, visibleTrending]);
 
   const rankingFlushMs = isWarMode ? UI_CONFIG.RANKING_FLUSH_WAR_MS : UI_CONFIG.RANKING_FLUSH_NORMAL_MS;
   const interpretedSignals = useRankingSnapshot(interpretedSignalsRaw, rankingFlushMs);

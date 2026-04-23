@@ -21,9 +21,6 @@ function safeSupabase() {
 router.get("/hot", publicTerminalLimiter, async (req, res) => {
   try {
     const supabase = safeSupabase();
-    if (!supabase) {
-      return res.status(503).json({ ok: false, error: "supabase_unconfigured", data: [] });
-    }
     const lim = Math.min(24, Math.max(1, Number(req.query.limit) || 12));
     const body = await getHotTokensCached(lim, supabase);
     const narrative = String(req.query.narrative || "").trim().toUpperCase();
