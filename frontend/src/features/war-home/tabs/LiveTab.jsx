@@ -20,6 +20,7 @@ import { WatchedCardShell } from "../../../../components/home/WatchedCardShell";
 import { buildJupiterSwapUrl } from "../../../../lib/jupiterSwap";
 import { isProbableSolanaMint } from "../../../../lib/solanaMint";
 import { RankBadge, RankDeltaChip } from "./RankIndicators";
+import { AnimatedNumber } from "../../../../components/ui/AnimatedNumber";
 
 function cockpitCardClickTargetIsInteractive(e) {
   const el = e?.target;
@@ -41,6 +42,8 @@ export function LiveTab({
   strategyMode,
   signalCursor,
   signalsRankDeltas,
+  tickerByMint = {},
+  quotesPricesFetching = false,
   selectedMint,
   /** Latest coordination:red-signal for the desk mint (?t=); null when no token focused. */
   deskCoordination = null,
@@ -89,6 +92,11 @@ export function LiveTab({
       selectedMint && sig.mint === selectedMint && deskCoordination?.redSignal ? deskCoordination.redSignal : null;
     const whyLines = whyNowBulletLines(sig);
     const rankInfo = signalsRankDeltas.get(sig.mint) || { rank: idx + 1, delta: 0, isNew: false };
+    const tick = sig.mint ? tickerByMint[sig.mint] : null;
+    const px = Number(tick?.price ?? sig.token?.price);
+    const chg = Number(tick?.priceChange24h ?? sig.token?.change);
+    const hasPx = Number.isFinite(px) && px > 0;
+    const hasChg = Number.isFinite(chg);
     return (
       <WatchedCardShell
         mint={sig.mint}
@@ -139,6 +147,26 @@ export function LiveTab({
                 ? `${sig.signalStrength}/100 · heat`
                 : `${sig.smartWallets} w · live`}
             </p>
+            {hasPx || hasChg ? (
+              <div
+                className={`mt-0.5 flex items-baseline justify-between gap-2 text-[10px] font-mono leading-tight ${
+                  quotesPricesFetching ? "opacity-90" : ""
+                }`}
+              >
+                <span className="text-white/95 tabular-nums truncate min-w-0">
+                  {hasPx ? (
+                    <AnimatedNumber value={px} prefix="$" decimalPlaces={px < 0.01 ? 8 : 6} />
+                  ) : (
+                    <span className="text-gray-500">—</span>
+                  )}
+                </span>
+                {hasChg ? (
+                  <span className={`shrink-0 tabular-nums ${chg >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                    <AnimatedNumber value={chg} decimalPlaces={2} prefix={chg >= 0 ? "+" : ""} suffix="%" />
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </div>
           <span
             className={`shrink-0 text-[7px] max-w-[4.25rem] text-right leading-tight px-0.5 py-0.5 rounded border line-clamp-2 ${confidenceTone(sig.signalStrength)}`}

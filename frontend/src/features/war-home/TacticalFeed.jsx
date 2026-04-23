@@ -20,6 +20,8 @@ export default function TacticalFeed({
   strategyMode,
   signalCursor,
   signalsRankDeltas,
+  tickerByMint,
+  quotesPricesFetching,
   selectedMint,
   deskCoordination = null,
   onSelectMint,
@@ -54,6 +56,8 @@ export default function TacticalFeed({
           strategyMode={strategyMode}
           signalCursor={signalCursor}
           signalsRankDeltas={signalsRankDeltas}
+          tickerByMint={tickerByMint}
+          quotesPricesFetching={quotesPricesFetching}
           selectedMint={selectedMint}
           deskCoordination={deskCoordination}
           onSelectMint={onSelectMint}

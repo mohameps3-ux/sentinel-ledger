@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
 import { useSignalsFeed } from "../hooks/useSignalsFeed";
+import { useDecisionFeedQuotes } from "../hooks/useDecisionFeedQuotes";
 import { useRankingSnapshot } from "../hooks/useRankingSnapshot";
 import { useRankDeltas } from "../hooks/useRankDeltas";
 import { getPublicApiUrl } from "../lib/publicRuntime";
@@ -54,6 +55,10 @@ function mapHotTrendToLiveFill(t) {
     token: {
       symbol: sym,
       mint,
+      price: (() => {
+        const p = Number(t.price);
+        return Number.isFinite(p) && p > 0 ? p : undefined;
+      })(),
       liquidity: Number(t.liquidity || 0),
       volume24h: Number(t.volume24h || 0),
       change: Number(t.change ?? t.change24h ?? 0),
@@ -207,6 +212,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         const mint = c.tokenAddress && isProbableSolanaMint(c.tokenAddress) ? c.tokenAddress : null;
         const score = Number(c.sentinelScore);
         if (!mint || !Number.isFinite(score)) return null;
+        const spotPx = Number(c.spotPriceUsd);
+        const spotChg = Number(c.spotChange24h);
         return {
           symbol: sym,
           mint,
@@ -214,9 +221,10 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           token: {
             symbol: sym,
             mint: c.tokenAddress,
+            price: Number.isFinite(spotPx) && spotPx > 0 ? spotPx : undefined,
             liquidity: liquidityFromApiRedFlags(c.redFlags),
             volume24h: Number(c.volume24h || 0),
-            change: Number(c.change24h || 0),
+            change: Number.isFinite(spotChg) ? spotChg : Number(c.change24h || 0),
             whyTrade: Array.isArray(c.whyNow) ? c.whyNow : []
           },
           signalStrength: Math.max(1, Math.min(100, Math.round(score))),
@@ -275,6 +283,25 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         : [],
     [liveSignalsForGrid]
   );
+
+  const liveMintsForQuotes = useMemo(
+    () => liveSignalsForGrid.map((s) => s.mint).filter((m) => m && isProbableSolanaMint(m)),
+    [liveSignalsForGrid]
+  );
+  const quotesQuery = useDecisionFeedQuotes(liveMintsForQuotes, {
+    isWarMode,
+    enabled: tacticalTab === "live"
+  });
+  const tickerByMint = useMemo(() => {
+    const rows = quotesQuery.data?.data;
+    const o = {};
+    if (Array.isArray(rows)) {
+      for (const r of rows) {
+        if (r?.mint) o[r.mint] = r;
+      }
+    }
+    return o;
+  }, [quotesQuery.data]);
 
   const heatTokenPool = useMemo(() => {
     const out = [];
@@ -579,6 +606,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           strategyMode={strategyMode}
           signalCursor={signalCursor}
           signalsRankDeltas={signalsRankDeltas}
+          tickerByMint={tickerByMint}
+          quotesPricesFetching={quotesQuery.isFetching}
           selectedMint={selectedMint}
           deskCoordination={deskCoordination}
           onSelectMint={(mint) => router.push(`/?t=${encodeURIComponent(mint)}`, undefined, { shallow: true })}

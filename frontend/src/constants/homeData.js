@@ -14,6 +14,9 @@ export const UI_CONFIG = Object.freeze({
   RANKING_FLUSH_NORMAL_MS: 8000,
   SIGNAL_FEED_REFETCH_WAR_MS: 4000,
   SIGNAL_FEED_REFETCH_NORMAL_MS: 8000,
+  /** Batched GET /tokens/quotes for LIVE card spot prices; keep ≥9s to stay under public terminal rate limits. */
+  DECISION_FEED_QUOTES_WAR_MS: 9000,
+  DECISION_FEED_QUOTES_NORMAL_MS: 12000,
   TRENDING_REFETCH_WAR_MS: 4000,
   TRENDING_REFETCH_NORMAL_MS: 7000,
   GRID_EXPANDED_MAX_CARDS: 56,

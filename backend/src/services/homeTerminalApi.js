@@ -751,11 +751,15 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
         ? `Last tracked move on this mint → ${pct >= 0 ? "+" : ""}${Number(pct).toFixed(1)}% (price worker est.)`
         : `Wallet hit rate in window: ${Math.min(walletCount, 6)}/6 last signals clustered`;
 
+    const spotPx = Number(md?.price);
+    const spotChg = Number(md?.priceChange24h);
     out.push({
       token: symbol.startsWith("$") ? symbol : `$${symbol}`,
       tokenAddress: mint,
       smartWallets: walletCount,
       sentinelScore,
+      spotPriceUsd: Number.isFinite(spotPx) && spotPx > 0 ? spotPx : null,
+      spotChange24h: Number.isFinite(spotChg) ? spotChg : null,
       degraded: !md?.symbol,
       providerUsed: md?._provider || null,
       decision,
