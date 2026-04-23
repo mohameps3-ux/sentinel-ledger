@@ -55,7 +55,7 @@ export default function TokenPage() {
   const address = normalizeAddress(router.query);
   const query = useTokenData(address);
   const proStatus = useProStatus();
-  const { transactions, isConnected, connectionState, convergence: liveConvergence } = useWebSocket(
+  const { transactions, isConnected, connectionState, convergence: liveConvergence, coordination } = useWebSocket(
     address || undefined
   );
   const [hasToken, setHasToken] = useState(false);
@@ -204,6 +204,8 @@ export default function TokenPage() {
 
   const { market, analysis, private: privateData } = token;
   const convergence = liveConvergence?.detected ? liveConvergence : token?.convergence;
+  const redSig = coordination?.redSignal;
+  const coordMeta = coordination?.meta;
   const isWatchlisted = privateData?.isWatchlist || false;
   const note = privateData?.notes || "";
   const hasProAccess = proStatus.data?.data?.hasProAccess === true;
@@ -249,6 +251,71 @@ export default function TokenPage() {
               </span>
             ))}
           </div>
+        </div>
+      ) : null}
+      {redSig ? (
+        <div
+          className={`glass-card border px-4 py-3 ${
+            redSig === "RED_CONFIRM"
+              ? "border-red-500/45 bg-red-500/10"
+              : redSig === "RED_PREPARE"
+                ? "border-amber-500/40 bg-amber-500/10"
+                : "border-slate-500/40 bg-slate-500/5"
+          }`}
+        >
+          <p className="text-xs uppercase tracking-wider font-semibold text-gray-200">
+            Wallet coordination — {redSig.replace(/_/g, " ")}
+          </p>
+          {coordMeta && typeof coordMeta === "object" && (
+            <p className="text-[12px] text-gray-300 mt-2 leading-relaxed">
+              {coordMeta.priorClusterAlerts != null ? (
+                <>
+                  Prior same-cluster signals (other mints): {coordMeta.priorClusterAlerts}
+                  {coordMeta.uniqueMintsWithPriorClusterAlerts != null
+                    ? ` across ${coordMeta.uniqueMintsWithPriorClusterAlerts} distinct mints`
+                    : ""}
+                  .
+                </>
+              ) : null}{" "}
+              {coordMeta.meanCoordinationLeadSecPrior != null
+                ? `Mean lead (prior): ~${coordMeta.meanCoordinationLeadSecPrior}s. `
+                : null}
+              {coordMeta.coordinationLeadSec != null
+                ? `This window lead: ${coordMeta.coordinationLeadSec}s. `
+                : null}
+              {coordMeta.meanScorePriorClusterAlerts != null
+                ? `Prior mean cluster score: ${coordMeta.meanScorePriorClusterAlerts}.`
+                : null}
+            </p>
+          )}
+          {coordMeta && typeof coordMeta === "object" &&
+            (coordMeta.priorClusterAlertsWithVerifiedPumps != null ||
+              coordMeta.meanSignalOutcomePctPriorVerified != null) && (
+            <p className="text-[12px] text-cyan-200/90 mt-2 leading-relaxed border-t border-white/10 pt-2">
+              {coordMeta.priorClusterAlertsWithVerifiedPumps != null
+                ? `With verified follow-through (T+N market vs entry at alert, min ≥${
+                    coordMeta.pumpMinMarketOutcomePct != null
+                      ? coordMeta.pumpMinMarketOutcomePct
+                      : coordMeta.pumpMinOutcomePctThreshold != null
+                        ? coordMeta.pumpMinOutcomePctThreshold
+                        : "…"
+                  }%; legacy rows use signal_performance if no market row): ${coordMeta.priorClusterAlertsWithVerifiedPumps} of prior cluster alerts${
+                    coordMeta.uniqueMintsWithVerifiedPumps != null
+                      ? `, ${coordMeta.uniqueMintsWithVerifiedPumps} distinct mints`
+                      : ""
+                  }. `
+                : ""}
+              {coordMeta.meanSignalOutcomePctPriorVerified != null
+                ? `Mean resolved outcome% on those: ${coordMeta.meanSignalOutcomePctPriorVerified}%. `
+                : null}
+              {coordMeta.meanCoordinationLeadSecPriorVerified != null
+                ? `Mean lead when outcome verified: ~${coordMeta.meanCoordinationLeadSecPriorVerified}s.`
+                : null}
+            </p>
+          )}
+          {redSig === "RED_ABORT" && (
+            <p className="text-[12px] text-slate-300 mt-1">Cluster no longer met prepare criteria — stand down or reassess.</p>
+          )}
         </div>
       ) : null}
       <div className="flex flex-wrap justify-between items-start gap-3">

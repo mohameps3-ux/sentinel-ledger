@@ -12,7 +12,11 @@ function formatDateShort(iso) {
   return d.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-export function HealthBar() {
+/**
+ * @param {object} [props]
+ * @param {boolean} [props.onlyBadge] — plan status only (no links / portal); for compact header
+ */
+export function HealthBar({ onlyBadge = false }) {
   const { loading, plan, status, expiresAt, isLifetime, hasProAccess } = useUserStatus();
   const token = useClientAuthToken();
   const [portalLoading, setPortalLoading] = useState(false);
@@ -60,11 +64,23 @@ export function HealthBar() {
     }
   };
 
+  const badgeClass = "text-[10px] sm:text-[11px] px-2 py-0.5 sm:py-1 rounded-full border";
+
   if (loading) {
+    if (onlyBadge) {
+      return <span className={`${badgeClass} border-white/10 bg-white/5 text-gray-500`}>…</span>;
+    }
     return <div className="text-[11px] text-gray-500">Checking plan…</div>;
   }
 
   if (label === "lifetime") {
+    if (onlyBadge) {
+      return (
+        <span className={`${badgeClass} border-cyan-500/30 bg-cyan-500/10 text-cyan-200`}>
+          Lifetime PRO
+        </span>
+      );
+    }
     return (
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
         <span className="px-2 py-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-200">
@@ -83,6 +99,13 @@ export function HealthBar() {
   }
 
   if (label === "expired") {
+    if (onlyBadge) {
+      return (
+        <span className={`${badgeClass} border-amber-500/30 bg-amber-500/10 text-amber-200`}>
+          PRO expired
+        </span>
+      );
+    }
     return (
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
         <span className="px-2 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-200">
@@ -96,6 +119,17 @@ export function HealthBar() {
   }
 
   if (label === "paid") {
+    if (onlyBadge) {
+      return (
+        <span
+          className={`${badgeClass} border-emerald-500/30 bg-emerald-500/10 text-emerald-300 max-w-[9rem] sm:max-w-none truncate inline-block align-middle`}
+          title={expiresAt ? `Until ${formatDateShort(expiresAt)}` : "Active"}
+        >
+          {String(plan || "pro").toUpperCase()}
+          {expiresAt ? ` · ${formatDateShort(expiresAt)}` : ""}
+        </span>
+      );
+    }
     return (
       <div className="flex flex-wrap items-center gap-2 text-[11px] max-w-[min(100%,20rem)]">
         <span className="px-2 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 shrink-0">
@@ -117,6 +151,10 @@ export function HealthBar() {
         </Link>
       </div>
     );
+  }
+
+  if (onlyBadge) {
+    return <span className={`${badgeClass} border-white/10 bg-white/5 text-gray-300`}>Free</span>;
   }
 
   return (

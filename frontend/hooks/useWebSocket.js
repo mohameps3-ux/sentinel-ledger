@@ -36,6 +36,8 @@ export function useWebSocket(tokenAddress) {
     detectedAt: null,
     windowMinutes: 10
   });
+  /** Latest cluster coordination signal: RED_PREPARE | RED_CONFIRM | RED_ABORT (Fase B). */
+  const [coordination, setCoordination] = useState(null);
 
   const clearMockTimers = useCallback(() => {
     if (mockStartRef.current) {
@@ -49,6 +51,17 @@ export function useWebSocket(tokenAddress) {
   }, []);
 
   const pushTransaction = useCallback((tx, fromMock = false) => {
+    if (!fromMock) {
+      if (mockStartRef.current) {
+        clearTimeout(mockStartRef.current);
+        mockStartRef.current = null;
+      }
+      if (mockIntervalRef.current) {
+        clearInterval(mockIntervalRef.current);
+        mockIntervalRef.current = null;
+      }
+    }
+
     const sig = tx?.signature || "";
     const key = sig
       ? `${sig}:${tx?.wallet}:${tx?.amount}:${tx?.type}`
@@ -69,7 +82,13 @@ export function useWebSocket(tokenAddress) {
       isMock: !!fromMock || !!tx?.isMock,
       shouldNotify
     };
-    setTransactions((prev) => [nextTx, ...prev].slice(0, 50));
+    setTransactions((prev) => {
+      if (!fromMock) {
+        const withoutMock = prev.filter((t) => !t.isMock);
+        return [nextTx, ...withoutMock].slice(0, 50);
+      }
+      return [nextTx, ...prev].slice(0, 50);
+    });
   }, []);
 
   useEffect(() => {
@@ -83,6 +102,7 @@ export function useWebSocket(tokenAddress) {
     setIsConnected(false);
     setTransactions([]);
     setConvergence({ detected: false, wallets: [], detectedAt: null, windowMinutes: 10 });
+    setCoordination(null);
     dedupeRef.current = new Set();
     txCountRef.current = 0;
     clearMockTimers();
@@ -119,12 +139,20 @@ export function useWebSocket(tokenAddress) {
         windowMinutes: Number(evt.windowMinutes || 10)
       });
     };
-
+    const handleRedSignal = (payload) => {
+      if (!payload) return;
+      setCoordination((prev) => ({
+        ...payload,
+        receivedAt: new Date().toISOString(),
+        _seq: (prev?._seq || 0) + 1
+      }));
+    };
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("reconnect_attempt", onReconnectAttempt);
     socket.on("transaction", handleTx);
     socket.on("convergence", handleConvergence);
+    socket.on("coordination:red-signal", handleRedSignal);
 
     socket.emit("join-token", tokenAddress);
     mockStartRef.current = setTimeout(() => {
@@ -141,10 +169,11 @@ export function useWebSocket(tokenAddress) {
       socket.off("reconnect_attempt", onReconnectAttempt);
       socket.off("transaction", handleTx);
       socket.off("convergence", handleConvergence);
+      socket.off("coordination:red-signal", handleRedSignal);
       clearMockTimers();
     };
   }, [tokenAddress, pushTransaction, clearMockTimers]);
 
-  return { transactions, isConnected, connectionState, convergence };
+  return { transactions, isConnected, connectionState, convergence, coordination };
 }
 

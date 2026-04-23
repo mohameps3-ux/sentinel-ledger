@@ -63,7 +63,7 @@ export function LiveTensionBar() {
   return (
     <div
       className="fixed left-0 right-0 z-40 border-b border-emerald-500/25 bg-[#040508]/95 backdrop-blur-md shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
-      style={{ top: "var(--sl-nav-h)" }}
+      style={{ top: "var(--sl-nav-actual, var(--sl-nav-h))" }}
       role="status"
       aria-live="polite"
     >

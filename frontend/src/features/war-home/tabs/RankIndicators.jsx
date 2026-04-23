@@ -4,7 +4,7 @@
 export function RankBadge({ rank }) {
   if (!Number.isFinite(rank) || rank < 1) return null;
   const base =
-    "shrink-0 inline-flex items-center justify-center font-mono tabular-nums text-[10px] leading-none font-bold rounded-md border px-1.5 py-0.5";
+    "shrink-0 inline-flex items-center justify-center font-mono tabular-nums text-[9px] leading-none font-bold rounded border px-1 py-0.5";
   const tone =
     rank === 1
       ? "bg-yellow-500/15 text-yellow-200 border-yellow-500/40 shadow-[0_0_10px_rgba(234,179,8,0.25)]"

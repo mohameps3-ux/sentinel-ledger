@@ -136,6 +136,8 @@ export default function OpsPage() {
   const [signalGateTuner, setSignalGateTuner] = useState(null);
   const [walletCoordStatus, setWalletCoordStatus] = useState(null);
   const [walletCoordAlerts, setWalletCoordAlerts] = useState([]);
+  const [walletCoordOutcomes, setWalletCoordOutcomes] = useState([]);
+  const [walletCoordOutcomesDegraded, setWalletCoordOutcomesDegraded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
   const [verifyPaste, setVerifyPaste] = useState("");
@@ -174,7 +176,8 @@ export default function OpsPage() {
         signalGateRes,
         signalGateTunerRes,
         walletCoordStatusRes,
-        walletCoordAlertsRes
+        walletCoordAlertsRes,
+        walletCoordOutcomesRes
       ] = await Promise.all([
         withOpsKey("/api/v1/bots/omni/tickets?limit=50", opsKey),
         withOpsKey("/api/v1/bots/omni/events?limit=100", opsKey),
@@ -190,7 +193,8 @@ export default function OpsPage() {
         withOpsKey("/api/v1/ops/signal-gate/status", opsKey),
         withOpsKey("/api/v1/ops/signal-gate/tuner/status", opsKey),
         withOpsKey("/api/v1/ops/wallet-coordination/status", opsKey),
-        withOpsKey("/api/v1/ops/wallet-coordination/alerts?limit=50", opsKey)
+        withOpsKey("/api/v1/ops/wallet-coordination/alerts?limit=50", opsKey),
+        withOpsKey("/api/v1/ops/wallet-coordination/outcomes?limit=40", opsKey)
       ]);
       setTickets(ticketRes.data || []);
       setEvents(eventRes.data || []);
@@ -207,6 +211,8 @@ export default function OpsPage() {
       setSignalGateTuner(signalGateTunerRes.data || null);
       setWalletCoordStatus(walletCoordStatusRes.data || null);
       setWalletCoordAlerts(walletCoordAlertsRes.data || []);
+      setWalletCoordOutcomes(walletCoordOutcomesRes.data || []);
+      setWalletCoordOutcomesDegraded(Boolean(walletCoordOutcomesRes.degraded));
       toast.success("Ops data refreshed.");
     } catch (error) {
       toast.error(`Load failed: ${error.message}`);
@@ -351,6 +357,9 @@ export default function OpsPage() {
       setWalletCoordStatus(runRes.data || null);
       const alertsRes = await withOpsKey("/api/v1/ops/wallet-coordination/alerts?limit=50", opsKey);
       setWalletCoordAlerts(alertsRes.data || []);
+      const outRes = await withOpsKey("/api/v1/ops/wallet-coordination/outcomes?limit=40", opsKey);
+      setWalletCoordOutcomes(outRes.data || []);
+      setWalletCoordOutcomesDegraded(Boolean(outRes.degraded));
       toast.success("Wallet coordination recompute triggered.");
     } catch (error) {
       toast.error(`Wallet coordination run failed: ${error.message}`);
@@ -406,6 +415,7 @@ export default function OpsPage() {
     );
   });
   const coordRows = Array.isArray(walletCoordAlerts) ? walletCoordAlerts : [];
+  const outcomeRows = Array.isArray(walletCoordOutcomes) ? walletCoordOutcomes : [];
   const redCoordRows = coordRows.filter((row) => String(row?.severity || "").toUpperCase() === "RED");
   const highScoreCoordRows = redCoordRows.filter((row) => Number(row?.score || 0) >= MIN_COORD_ALERT_SCORE);
   const signalGateBlockedEntries = Object.entries(signalGate?.stats?.blockedByReason || {}).sort(
@@ -1265,6 +1275,49 @@ export default function OpsPage() {
                             {row.latency_from_deploy_min != null ? `${Number(row.latency_from_deploy_min).toFixed(1)}m` : "—"}
                           </p>
                           <p className="text-gray-500 mt-0.5 break-all">{row.reason || "—"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-xl border border-cyan-500/15 bg-[#0b0f13]/80 p-4 mt-4">
+                  <div className="text-[11px] text-gray-500 font-semibold mb-1">T+N market outcomes (coordination_outcomes)</div>
+                  {walletCoordOutcomesDegraded ? (
+                    <p className="text-xs text-amber-300/90 mb-2">Degraded: table missing or not migrated — apply `012_coordination_outcomes` (see npm run db:ensure-signal-performance).</p>
+                  ) : null}
+                  {!outcomeRows.length ? (
+                    <p className="text-sm text-gray-500">No outcome rows yet (or all pending before first resolve tick).</p>
+                  ) : (
+                    <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1 text-xs">
+                      {outcomeRows.map((o) => (
+                        <div
+                          key={o.id || o.alert_id}
+                          className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-gray-200"
+                        >
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <span
+                              className={`inline-flex px-1.5 py-0.5 rounded border text-[10px] font-semibold ${
+                                o.status === "resolved"
+                                  ? o.success
+                                    ? "border-emerald-500/40 bg-emerald-500/12 text-emerald-200"
+                                    : "border-amber-500/35 text-amber-200"
+                                  : o.status === "failed"
+                                    ? "border-red-500/40 text-red-200"
+                                    : "border-cyan-500/30 text-cyan-200"
+                              }`}
+                            >
+                              {String(o.status || "—")}
+                            </span>
+                            <span className="text-gray-400">T+N {o.horizon_min != null ? `${o.horizon_min}m` : "—"}</span>
+                            {o.outcome_pct != null && Number.isFinite(Number(o.outcome_pct)) ? (
+                              <span className="text-emerald-200/90">Δ {Number(o.outcome_pct).toFixed(2)}%</span>
+                            ) : null}
+                            <span className="text-gray-500">
+                              {o.resolved_at ? formatDateTime(o.resolved_at) : o.resolve_after ? `due ${formatDateTime(o.resolve_after)}` : "—"}
+                            </span>
+                          </div>
+                          <p className="font-mono break-all text-cyan-200/90 mt-1 text-[11px]">{o.mint || "—"}</p>
+                          {o.failure_reason ? <p className="text-red-300/80 mt-0.5">fail: {o.failure_reason}</p> : null}
                         </div>
                       ))}
                     </div>

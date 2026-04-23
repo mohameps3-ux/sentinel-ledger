@@ -95,7 +95,7 @@ export default function App({ Component, pageProps }) {
               <main
                 style={{
                   paddingTop:
-                    "calc(var(--sl-nav-h) + var(--sl-bar-h) + var(--sl-safe-gap))"
+                    "calc(var(--sl-nav-actual, var(--sl-nav-h)) + var(--sl-bar-h) + var(--sl-safe-gap))"
                 }}
                 className="pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0"
               >

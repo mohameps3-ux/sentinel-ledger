@@ -1,12 +1,15 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import Link from "next/link";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
 import { useSmartWalletsLeaderboard } from "../hooks/useSmartWalletsLeaderboard";
 import { useSmartMoneyActivity } from "../hooks/useSmartMoneyActivity";
 import { useWalletLabels } from "../hooks/useWalletLabels";
+import { useWalletFavorites } from "../hooks/useWalletFavorites";
 import { formatUsdWhole, formatDateTime } from "../lib/formatStable";
 import { PageHead } from "../components/seo/PageHead";
-import { Loader2, Radio, SlidersHorizontal } from "lucide-react";
+import { SmartWalletDetailPanel } from "../components/smart-money/SmartWalletDetailPanel";
+import { Loader2, Radio, SlidersHorizontal, Star } from "lucide-react";
 import { WalletNarrativeCard } from "../components/WalletNarrativeCard";
 
 function walletDecision(winRate) {
@@ -27,20 +30,71 @@ function hasLowHorizonSample(profile) {
   );
 }
 
+function parseLimitFromQuery(raw) {
+  const s = Array.isArray(raw) ? raw[0] : raw;
+  if (s == null || s === "") return 50;
+  const n = Number(s);
+  if (!Number.isFinite(n)) return 50;
+  return Math.min(100, Math.max(1, Math.round(n)));
+}
+
+/** e.target a veces es nodo de texto; #text no tiene .closest (rompía el expand). */
+function eventTargetInInteractive(t) {
+  if (!t) return false;
+  const el = t.nodeType === 1 ? t : t.parentElement;
+  if (!el || typeof el.closest !== "function") return false;
+  return Boolean(el.closest("a, button, [data-no-row-expand]"));
+}
+
 export default function SmartMoneyPage() {
+  const router = useRouter();
   const trending = useTrendingTokens();
   const [chain, setChain] = useState("solana");
   const [minWinRate, setMinWinRate] = useState(0);
   const [minTrades, setMinTrades] = useState(0);
   const [expandedWallet, setExpandedWallet] = useState("");
   const [narrativeLang, setNarrativeLang] = useState("es");
+  /** Evita error de hidratación: SSG/SSR y la primera capa de cliente usan el mismo límite/filtro; la query real se aplica al montar. */
+  const [urlHydrated, setUrlHydrated] = useState(false);
+  useEffect(() => {
+    setUrlHydrated(true);
+  }, []);
+
+  const limit = useMemo(() => {
+    if (!urlHydrated) return 50;
+    if (!router.isReady) return 50;
+    return parseLimitFromQuery(router.query.limit);
+  }, [urlHydrated, router.isReady, router.query.limit]);
+
+  const soloFavorites = useMemo(() => {
+    if (!urlHydrated) return false;
+    if (!router.isReady) return false;
+    const f = router.query.favorites;
+    const s = Array.isArray(f) ? f[0] : f;
+    return s === "1" || s === "true";
+  }, [urlHydrated, router.isReady, router.query.favorites]);
+
+  const pushQuery = useCallback(
+    (patch) => {
+      if (!router.isReady) return;
+      const next = { ...router.query, ...patch };
+      Object.keys(next).forEach((k) => {
+        if (next[k] === undefined || next[k] === "") delete next[k];
+      });
+      router.push({ pathname: "/smart-money", query: next }, undefined, { shallow: true });
+    },
+    [router]
+  );
 
   const { data, isLoading, isError, error, refetch } = useSmartWalletsLeaderboard({
     chain,
     minWinRate,
-    minTrades
+    minTrades,
+    limit
   });
   const activity = useSmartMoneyActivity(48);
+  const { isFavorite, toggle: toggleFavorite, count: favCount, favorites: favList } = useWalletFavorites();
+  const favKey = favList.join(",");
 
   const rows = Array.isArray(data?.rows) ? data.rows : [];
   const meta = data?.meta || {};
@@ -57,6 +111,23 @@ export default function SmartMoneyPage() {
     }));
   }, [rows]);
 
+  const displayedRanked = useMemo(() => {
+    const list = soloFavorites ? ranked.filter((w) => isFavorite(w.wallet)) : ranked;
+    return list.map((w, i) => {
+      const globalRank = w.rank;
+      return {
+        ...w,
+        rank: i + 1,
+        globalRank
+      };
+    });
+  }, [ranked, soloFavorites, isFavorite, favKey]);
+
+  const onToggleExpand = useCallback((wallet) => {
+    if (!wallet) return;
+    setExpandedWallet((v) => (v === wallet ? "" : wallet));
+  }, []);
+
   return (
     <>
       <PageHead
@@ -66,15 +137,39 @@ export default function SmartMoneyPage() {
       <div className="sl-container py-10 space-y-6 pb-24">
         <section className="sl-home-hero sl-inset sm:p-7 ring-1 ring-white/[0.06]">
           <p className="sl-label text-emerald-400/90">Smart Money</p>
-          <h1 className="sl-h1 text-white mt-2 tracking-tight">Top 20 smart wallets</h1>
+          <h1 className="sl-h1 text-white mt-2 tracking-tight">
+            {soloFavorites
+              ? `Favoritos en el top ${limit}${
+                  displayedRanked.length > 0 ? ` · ${displayedRanked.length}` : ""
+                }`
+              : `Top ${limit} smart wallets`}
+          </h1>
           <p className="sl-body sl-muted mt-2">
-            Ranked by win rate with 30d PnL, estimated return versus average position size, and best resolved signal
-            move when <span className="mono text-gray-400">result_pct</span> is populated. Source:{" "}
-            <span className="font-mono text-gray-400">{meta.source || "—"}</span>
-            {meta.count != null ? ` · ${meta.count} rows` : ""}.
+            {soloFavorites ? (
+              <span>
+                Sólo aparecen carteras <strong className="text-gray-300">favoritas que caen dentro de este top {limit}</strong>.
+                Si añadiste estrellas a wallets fuera de la ventana, súbela el límite (URL{" "}
+                <span className="font-mono text-gray-500">?limit=100</span>) o quita el filtro.
+              </span>
+            ) : (
+              <span>
+                Ranked by win rate with 30d PnL, estimated return versus average position size, and best resolved signal
+                move when <span className="mono text-gray-400">result_pct</span> is populated. Source:{" "}
+                <span className="font-mono text-gray-400">{meta.source || "—"}</span>
+                {meta.count != null
+                  ? ` · ${meta.count} rows` + (meta.limit != null ? ` (límite API ${meta.limit})` : "")
+                  : ""}
+                .
+              </span>
+            )}{" "}
+            Toca o haz clic en fila o carta para el panel. Estrella = favorito local.{" "}
+            <span className="text-gray-500">URL: </span>
+            <code className="text-[11px] text-gray-500">/smart-money?limit=10–100</code>{" "}
+            <code className="text-[11px] text-gray-500">&amp;favorites=1</code>.
           </p>
           <p className="text-xs text-gray-500 mt-3">
-            Trending feed: {trending.isError ? "degraded" : "connected"} ·{" "}
+            Trending feed: {trending.isError ? "degraded" : "connected"} · Favoritos locales:{" "}
+            {favCount > 0 ? <span className="text-amber-200/90 font-mono">{favCount}</span> : "0"} ·{" "}
             <button type="button" onClick={() => refetch()} className="text-cyan-400 hover:underline">
               Refresh leaderboard
             </button>
@@ -86,7 +181,26 @@ export default function SmartMoneyPage() {
             <SlidersHorizontal size={16} className="text-gray-500" />
             <span className="sl-label text-gray-400">Filters</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <label className="space-y-1.5 text-xs text-gray-400">
+              <span className="uppercase tracking-wide">Límite API (URL ?limit=)</span>
+              <select
+                className="sl-input w-full h-10 px-3"
+                value={String(limit)}
+                onChange={(e) => {
+                  const v = parseLimitFromQuery(e.target.value);
+                  pushQuery({ limit: v === 50 ? undefined : String(v) });
+                }}
+                disabled={!router.isReady}
+              >
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+                <option value="50">50 (default)</option>
+                <option value="75">75</option>
+                <option value="100">100</option>
+              </select>
+            </label>
             <label className="space-y-1.5 text-xs text-gray-400">
               <span className="uppercase tracking-wide">Chain</span>
               <select
@@ -132,10 +246,23 @@ export default function SmartMoneyPage() {
                 <option value="en">English</option>
               </select>
             </label>
+            <label className="flex items-end gap-2 pb-1.5 h-full cursor-pointer text-xs text-gray-300">
+              <input
+                type="checkbox"
+                className="rounded border-white/20 h-4 w-4"
+                checked={soloFavorites}
+                onChange={(e) => {
+                  if (e.target.checked) pushQuery({ favorites: "1" });
+                  else pushQuery({ favorites: undefined });
+                }}
+                disabled={!router.isReady}
+              />
+              <span className="select-none">Sólo favoritos (en este top)</span>
+            </label>
           </div>
           <p className="text-[11px] text-gray-600">
             ROI column is <span className="text-gray-400">30d PnL ÷ avg position size</span> — a coarse multiple, not
-            leverage-adjusted APR.
+            leverage-adjusted APR. El límite queda en la barra de direcciones; comparte el enlace.
           </p>
         </section>
 
@@ -164,12 +291,32 @@ export default function SmartMoneyPage() {
           </section>
         ) : null}
 
-        {!isLoading && !isError && ranked.length > 0 ? (
+        {!isLoading && !isError && ranked.length > 0 && displayedRanked.length === 0 && soloFavorites ? (
+          <section className="glass-card sl-inset text-center py-12 space-y-3 border border-amber-500/20">
+            <p className="text-gray-200">Ningún favorito entra en el top {limit} ahora.</p>
+            <p className="text-sm text-gray-500 max-w-lg mx-auto">
+              Sube <span className="text-gray-400">limit</span> a 100, desmarca “Sólo favoritos”, o marca estrella en
+              filas de esta tabla y vuelve a activar el filtro.
+            </p>
+            <button
+              type="button"
+              className="text-cyan-400 text-sm hover:underline"
+              onClick={() => pushQuery({ favorites: undefined })}
+            >
+              Quitar filtro de favoritos
+            </button>
+          </section>
+        ) : null}
+
+        {!isLoading && !isError && displayedRanked.length > 0 ? (
           <>
             <section className="glass-card sl-inset overflow-x-auto hidden xl:block">
-              <table className="w-full min-w-[1100px] text-sm">
+              <table className="w-full min-w-[1200px] text-sm">
                 <thead>
                   <tr className="text-left text-gray-500 border-b border-white/10">
+                    <th className="py-2 pr-1 w-8 text-center" title="Favorito (local)">
+                      ★
+                    </th>
                     <th className="py-2 pr-2 w-10">#</th>
                     <th className="py-2 pr-3">Wallet</th>
                     <th className="py-2 pr-3">Win rate</th>
@@ -179,18 +326,72 @@ export default function SmartMoneyPage() {
                     <th className="py-2 pr-3">Trades</th>
                     <th className="py-2 pr-3">Best trade</th>
                     <th className="py-2 pr-3">Last seen</th>
-                    <th className="py-2">Call</th>
+                    <th className="py-2 min-w-[160px]">Call</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {ranked.map((w) => (
+                  {displayedRanked.map((w) => (
                     <Fragment key={w.wallet}>
-                      <tr className="border-b border-white/5 hover:bg-white/[0.02] group">
-                        <td className="py-3 pr-2 text-gray-500 mono text-xs">{w.rank}</td>
+                      <tr
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={expandedWallet === w.wallet}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onToggleExpand(w.wallet);
+                          }
+                        }}
+                        onClick={(e) => {
+                          if (eventTargetInInteractive(e.target)) return;
+                          onToggleExpand(w.wallet);
+                        }}
+                        className="border-b border-white/5 hover:bg-white/[0.03] group cursor-pointer"
+                      >
+                        <td className="py-3 pr-1 text-center align-top">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(w.wallet);
+                            }}
+                            className="inline-flex p-1 rounded-md hover:bg-amber-500/15 text-gray-500 hover:text-amber-200 transition"
+                            title={isFavorite(w.wallet) ? "Quitar de favoritos" : "Añadir a favoritos (solo en este dispositivo)"}
+                            aria-pressed={isFavorite(w.wallet)}
+                            aria-label="Favorito"
+                          >
+                            <Star
+                              size={16}
+                              className={
+                                isFavorite(w.wallet) ? "fill-amber-400/90 text-amber-200" : "text-gray-500"
+                              }
+                              strokeWidth={isFavorite(w.wallet) ? 0 : 2}
+                            />
+                          </button>
+                        </td>
+                        <td className="py-3 pr-2 text-gray-500 mono text-xs align-top">
+                          {soloFavorites ? (
+                            <div>
+                              <span className="text-gray-200">#{w.rank}</span>
+                              <div
+                                className="text-[10px] text-gray-600"
+                                title={`Puesto en el top ${limit} (ranking completo de la API)`}
+                              >
+                                global {w.globalRank}
+                              </div>
+                            </div>
+                          ) : (
+                            w.rank
+                          )}
+                        </td>
                         <td className="py-3 pr-3">
                           <div className="min-w-0">
                             <div className="text-gray-100 font-medium truncate" title={titleFor(w.wallet)}>
-                              <Link className="hover:text-cyan-300" href={`/wallet/${w.wallet}?lang=${narrativeLang}`}>
+                              <Link
+                                className="hover:text-cyan-300"
+                                href={`/wallet/${w.wallet}?lang=${narrativeLang}`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 {labelFor(w.wallet)}
                               </Link>
                             </div>
@@ -231,7 +432,11 @@ export default function SmartMoneyPage() {
                           )}
                           {w.bestTradeMint ? (
                             <div className="text-[10px] text-gray-600 mono truncate max-w-[200px] mt-0.5">
-                              <Link className="hover:text-cyan-300" href={`/token/${w.bestTradeMint}`}>
+                              <Link
+                                className="hover:text-cyan-300"
+                                href={`/token/${w.bestTradeMint}`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 mint…{w.bestTradeMint.slice(-4)}
                               </Link>
                             </div>
@@ -241,7 +446,7 @@ export default function SmartMoneyPage() {
                           {w.lastSeen ? formatDateTime(w.lastSeen) : "—"}
                         </td>
                         <td className="py-3">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
                             <span className={`text-xs px-2 py-1 rounded border ${w.decision.tone}`}>{w.decision.label}</span>
                             <Link
                               href={`/wallet/${w.wallet}?lang=${narrativeLang}#behavior-memory`}
@@ -251,10 +456,10 @@ export default function SmartMoneyPage() {
                             </Link>
                             <button
                               type="button"
-                              onClick={() => setExpandedWallet((v) => (v === w.wallet ? "" : w.wallet))}
+                              onClick={() => onToggleExpand(w.wallet)}
                               className="text-[11px] px-2 py-1 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
                             >
-                              Why
+                              {expandedWallet === w.wallet ? "Cerrar panel" : "Abrir panel"}
                             </button>
                           </div>
                           {w.profile ? (
@@ -272,9 +477,19 @@ export default function SmartMoneyPage() {
                         </td>
                       </tr>
                       {expandedWallet === w.wallet ? (
-                        <tr className="border-b border-white/5 bg-white/[0.015]">
-                          <td colSpan={10} className="px-3 py-3">
-                            <WalletNarrativeCard walletAddress={w.wallet} lang={narrativeLang} />
+                        <tr className="border-b border-white/5 bg-white/[0.02]">
+                          <td colSpan={11} className="px-3 py-4">
+                            <p className="text-xs text-violet-200/80 font-semibold mb-3">Detalle completo</p>
+                            <SmartWalletDetailPanel
+                              row={w}
+                              labelFor={labelFor}
+                              titleFor={titleFor}
+                              narrativeLang={narrativeLang}
+                            />
+                            <div className="mt-4 border-t border-white/10 pt-4">
+                              <p className="text-xs text-violet-200/80 font-semibold mb-2">Narrativa asistida</p>
+                              <WalletNarrativeCard walletAddress={w.wallet} lang={narrativeLang} />
+                            </div>
                           </td>
                         </tr>
                       ) : null}
@@ -285,22 +500,62 @@ export default function SmartMoneyPage() {
             </section>
 
             <section className="grid grid-cols-1 gap-3 xl:hidden">
-              {ranked.map((w) => (
+              {displayedRanked.map((w) => (
                 <article
                   key={w.wallet}
-                  className="glass-card p-4 rounded-2xl border border-white/10 space-y-2 hover:border-emerald-500/25 transition"
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={expandedWallet === w.wallet}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onToggleExpand(w.wallet);
+                    }
+                  }}
+                  onClick={(e) => {
+                    if (eventTargetInInteractive(e.target)) return;
+                    onToggleExpand(w.wallet);
+                  }}
+                  className="glass-card p-4 rounded-2xl border border-white/10 space-y-2 hover:border-emerald-500/25 transition cursor-pointer"
                 >
                   <div className="flex justify-between gap-2 items-start">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-white font-semibold truncate" title={titleFor(w.wallet)}>
-                        #{w.rank} ·{" "}
-                        <Link className="hover:text-cyan-300" href={`/wallet/${w.wallet}?lang=${narrativeLang}`}>
+                        #{w.rank}
+                        {soloFavorites ? (
+                          <span className="text-gray-500 font-normal text-xs ml-1">(global {w.globalRank})</span>
+                        ) : null}{" "}
+                        ·{" "}
+                        <Link
+                          className="hover:text-cyan-300"
+                          href={`/wallet/${w.wallet}?lang=${narrativeLang}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {labelFor(w.wallet)}
                         </Link>
                       </p>
                       <p className="font-mono text-[11px] text-gray-500 truncate">{w.wallet}</p>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded border shrink-0 ${w.decision.tone}`}>{w.decision.label}</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(w.wallet);
+                        }}
+                        className="inline-flex p-1.5 rounded-lg hover:bg-amber-500/15 text-gray-500 hover:text-amber-200"
+                        title={isFavorite(w.wallet) ? "Quitar de favoritos" : "Favorito (local)"}
+                        aria-pressed={isFavorite(w.wallet)}
+                        aria-label="Favorito"
+                      >
+                        <Star
+                          size={18}
+                          className={isFavorite(w.wallet) ? "fill-amber-400/90 text-amber-200" : "text-gray-500"}
+                          strokeWidth={isFavorite(w.wallet) ? 0 : 2}
+                        />
+                      </button>
+                      <span className={`text-xs px-2 py-1 rounded border ${w.decision.tone}`}>{w.decision.label}</span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs text-gray-300">
                     <span>Win {w.winRate.toFixed(1)}%</span>
@@ -322,7 +577,7 @@ export default function SmartMoneyPage() {
                     </div>
                   ) : null}
                   <p className="text-emerald-300 text-sm font-mono">+${formatUsdWhole(w.pnl30d)} 30d</p>
-                  <div>
+                  <div onClick={(e) => e.stopPropagation()}>
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
                         href={`/wallet/${w.wallet}?lang=${narrativeLang}#behavior-memory`}
@@ -332,10 +587,10 @@ export default function SmartMoneyPage() {
                       </Link>
                       <button
                         type="button"
-                        onClick={() => setExpandedWallet((v) => (v === w.wallet ? "" : w.wallet))}
+                        onClick={() => onToggleExpand(w.wallet)}
                         className="text-[11px] px-2 py-1 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
                       >
-                        Why this wallet
+                        {expandedWallet === w.wallet ? "Cerrar panel" : "Abrir panel completo"}
                       </button>
                     </div>
                   </div>
@@ -346,7 +601,11 @@ export default function SmartMoneyPage() {
                         <>
                           {" "}
                           on{" "}
-                          <Link href={`/token/${w.bestTradeMint}`} className="text-cyan-300 hover:underline mono">
+                          <Link
+                            href={`/token/${w.bestTradeMint}`}
+                            className="text-cyan-300 hover:underline mono"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             …{w.bestTradeMint.slice(-4)}
                           </Link>
                         </>
@@ -354,7 +613,19 @@ export default function SmartMoneyPage() {
                     </p>
                   ) : null}
                   {expandedWallet === w.wallet ? (
-                    <WalletNarrativeCard walletAddress={w.wallet} lang={narrativeLang} />
+                    <div className="pt-2 space-y-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
+                      <p className="text-xs text-violet-200/80 font-semibold">Detalle completo</p>
+                      <SmartWalletDetailPanel
+                        row={w}
+                        labelFor={labelFor}
+                        titleFor={titleFor}
+                        narrativeLang={narrativeLang}
+                      />
+                      <div className="border-t border-white/10 pt-3">
+                        <p className="text-xs text-violet-200/80 font-semibold mb-2">Narrativa asistida</p>
+                        <WalletNarrativeCard walletAddress={w.wallet} lang={narrativeLang} />
+                      </div>
+                    </div>
                   ) : null}
                 </article>
               ))}

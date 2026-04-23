@@ -6,7 +6,7 @@
  * feed and desk columns; this component does not own any product logic.
  */
 export function WarLayout({ header, feed, desk }) {
-  const chromeOffset = "var(--sl-nav-h) + var(--sl-bar-h) + var(--sl-safe-gap)";
+  const chromeOffset = "var(--sl-nav-actual, var(--sl-nav-h)) + var(--sl-bar-h) + var(--sl-safe-gap)";
   const bandHeight = `calc(100dvh - (${chromeOffset}))`;
 
   return (

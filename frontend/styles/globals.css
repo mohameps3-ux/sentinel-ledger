@@ -33,6 +33,7 @@
                         first pixel of content.
      <main> then uses: padding-top: calc(var(--sl-nav-h) + var(--sl-bar-h) + var(--sl-safe-gap))
      No per-page ternaries, no magic pixel grid to keep in sync. */
+  /* Fallback when JS has not measured the real <nav> height yet (see Navbar.jsx --sl-nav-actual). */
   --sl-nav-h: 48px;
   --sl-bar-h: 0px;
   --sl-safe-gap: 8px;
@@ -275,7 +276,20 @@ body {
 .sl-input:focus {
   outline: none;
   border-color: rgba(129, 140, 248, 0.65);
-  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.18);
+  box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.14);
+}
+
+/* Compact home search — more terminal-like density */
+.sl-input-dense {
+  min-height: 2.25rem; /* 36px */
+  padding: 0 0.5rem 0 0.625rem;
+  font-size: 12px;
+  line-height: 1.25;
+  border-radius: 10px;
+}
+.sl-input-dense::placeholder {
+  color: #6b7280;
+  font-size: 11.5px;
 }
 
 .sl-nested {
@@ -338,10 +352,15 @@ a {
 
 .sl-scan-hero {
   position: relative;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(160deg, rgba(108, 92, 231, 0.1) 0%, rgba(19, 23, 26, 0.95) 45%, rgba(14, 19, 24, 0.98) 100%);
-  box-shadow: 0 16px 48px rgb(0 0 0 / 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(
+    160deg,
+    rgba(108, 92, 231, 0.07) 0%,
+    rgba(19, 23, 26, 0.96) 50%,
+    rgba(12, 16, 20, 0.99) 100%
+  );
+  box-shadow: 0 10px 32px rgb(0 0 0 / 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .sl-footer-grid {

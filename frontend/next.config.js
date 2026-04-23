@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  /** Baked at build; inspect `<nav data-sentinel-build="…">` in DevTools to confirm the live deploy. */
+  env: {
+    NEXT_PUBLIC_GIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "local"
+  },
   /**
    * Installed PWA (manifest display: standalone) often reuses a cached document
    * shell; home is dynamic but HTML can still look “stuck” on old JS. Force

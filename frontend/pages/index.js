@@ -35,6 +35,7 @@ import {
   tokenFromSignal
 } from "@/lib/signalUtils";
 import { useWarMode } from "../contexts/WarModeContext";
+import { useWebSocket } from "../hooks/useWebSocket";
 
 /** Mint selected in cockpit desk via `?t=` (shallow routing on `/`). */
 function deskMintFromQuery(query) {
@@ -62,12 +63,7 @@ export async function getServerSideProps() {
 }
 
 export default function Home({ initialTrending = [], initialTrendingMeta = {} }) {
-  const [address, setAddress] = useState("");
-  const [error, setError] = useState("");
-  const [isScanning, setIsScanning] = useState(false);
   const [alerts, setAlerts] = useState([]);
-  const [recentSearches, setRecentSearches] = useState([]);
-  const [liveSignalsDetected, setLiveSignalsDetected] = useState(37);
   const [signalCursor, setSignalCursor] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [strategyMode, setStrategyMode] = useState("balanced");
@@ -81,19 +77,15 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const [bestRecentFromApi, setBestRecentFromApi] = useState(null);
   const [topWalletsApi, setTopWalletsApi] = useState([]);
   const [apiFeedCards, setApiFeedCards] = useState([]);
-  const [nextSignalEtaSec, setNextSignalEtaSec] = useState(30);
-  const [monitoringWallets, setMonitoringWallets] = useState(27);
-  const [clusterScanCount, setClusterScanCount] = useState(11);
-  const [wsBump, setWsBump] = useState(0);
   const [entryCountdownByMint, setEntryCountdownByMint] = useState({});
   const [liveExpanded, setLiveExpanded] = useState(false);
   const [heatExpanded, setHeatExpanded] = useState(false);
   const debounceTimerRef = useRef(null);
   const skipTacticalTabPersistRef = useRef(true);
-  const onWsSignal = useCallback(() => setWsBump((n) => n + 1), []);
-  useLiveFeedSocket({ onSignal: onWsSignal });
+  useLiveFeedSocket({ onSignal: useCallback(() => {}, []) });
   const router = useRouter();
   const selectedMint = useMemo(() => deskMintFromQuery(router.query), [router.query]);
+  const { coordination: deskCoordination } = useWebSocket(selectedMint);
   const { isWarMode } = useWarMode();
   const trendingQuery = useTrendingTokens(initialTrending, initialTrendingMeta, "", {
     limit: heatExpanded ? UI_CONFIG.TRENDING_API_LIMIT_EXPANDED : UI_CONFIG.TRENDING_API_LIMIT_COMPACT,
@@ -166,6 +158,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         const liq = liquidityFromApiRedFlags(c.redFlags);
         const mint =
           c.tokenAddress && isProbableSolanaMint(c.tokenAddress) ? c.tokenAddress : null;
+        const apiSw = Number(c.smartWallets);
+        const smartWallets =
+          Number.isFinite(apiSw) && apiSw > 0 ? Math.min(99, Math.max(2, Math.round(apiSw))) : Math.min(9, Math.max(2, 2 + (idx % 5)));
         return {
           symbol: sym,
           mint,
@@ -178,7 +173,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             whyTrade: Array.isArray(c.whyNow) ? c.whyNow : []
           },
           signalStrength: Number(c.sentinelScore) || 70,
-          smartWallets: Math.min(9, Math.max(2, 2 + (idx % 5))),
+          smartWallets,
           context: c.contextHistory || "Live signal cluster",
           clusterScore: Math.min(99, Math.max(45, Number(c.sentinelScore) - 6)),
           momentum: 0,
@@ -304,14 +299,11 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     try {
       const saved = JSON.parse(localStorage.getItem("sentinel-alerts") || "[]");
       setAlerts(saved.slice(-5).reverse());
-      const recents = JSON.parse(localStorage.getItem("sentinel-recents") || "[]");
-      setRecentSearches(recents.slice(0, 5));
       setIsLoggedIn(Boolean(localStorage.getItem("token")));
       const tab = localStorage.getItem(TACTICAL_TAB_LS_KEY);
       if (tab === "live" || tab === "hot" || tab === "history") setTacticalTab(tab);
     } catch (_) {
       setAlerts([]);
-      setRecentSearches([]);
       setIsLoggedIn(false);
     }
   }, []);
@@ -335,21 +327,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setLiveSignalsDetected((prev) => Math.max(12, prev + (Math.random() > 0.5 ? 1 : -1)));
       setSignalCursor((prev) => prev + 1);
     }, 9000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNextSignalEtaSec((prev) => {
-        if (prev <= 1) return Math.floor(25 + Math.random() * 35);
-        return prev - 1;
-      });
-      setMonitoringWallets((prev) => Math.max(18, Math.min(44, prev + (Math.random() > 0.55 ? 1 : -1))));
-      setClusterScanCount((prev) => Math.max(6, Math.min(22, prev + (Math.random() > 0.55 ? 1 : -1))));
-    }, 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -432,7 +411,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${getPublicApiUrl()}/api/v1/smart-wallets/top?limit=12`)
+    fetch(`${getPublicApiUrl()}/api/v1/smart-wallets/top?limit=50`)
       .then((r) => r.json())
       .then((j) => {
         const list = Array.isArray(j?.data) ? j.data : Array.isArray(j?.rows) ? j.rows : [];
@@ -514,33 +493,13 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   }, [tacticalTab]);
 
   const marketMood = useMemo(() => {
-    if (!visibleTrending.length) return { label: "Loading", className: "text-gray-300" };
+    if (!visibleTrending.length) return { label: "—", className: "text-gray-400" };
     const avg =
       visibleTrending.reduce((acc, t) => acc + Number(t.change || 0), 0) / visibleTrending.length;
-    if (avg > 5) return { label: "Bullish", className: "text-emerald-300" };
-    if (avg > 0) return { label: "Neutral+", className: "text-amber-300" };
-    return { label: "Risk-off", className: "text-red-300" };
+    if (avg > 5) return { label: "Favorable", className: "text-emerald-300" };
+    if (avg > 0) return { label: "Templado", className: "text-amber-300" };
+    return { label: "A la defensiva", className: "text-red-300" };
   }, [visibleTrending]);
-
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (isScanning) return;
-    const value = address.trim();
-    if (value.length >= 32) {
-      setError("");
-      setIsScanning(true);
-      try {
-        const recents = JSON.parse(localStorage.getItem("sentinel-recents") || "[]");
-        const next = [value, ...recents.filter((item) => item !== value)].slice(0, 5);
-        localStorage.setItem("sentinel-recents", JSON.stringify(next));
-      } catch (_) {}
-      await new Promise((resolve) => setTimeout(resolve, 450));
-      router.push(`/token/${value}`);
-      return;
-    }
-    setIsScanning(false);
-    setError("Paste a valid Solana mint (32–44 characters).");
-  };
 
   return (
     <>
@@ -555,8 +514,11 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             <HomeOnboarding />
             <WelcomeBanner />
             <div className="w-full max-w-[100vw] overflow-x-clip">
-        <div className="px-2 sm:px-3 pt-1 pb-2 border-b border-cyan-500/20 bg-[#050a0f]/80">
-
+        <div className="px-2 sm:px-3 pt-1 pb-0 border-b border-cyan-500/20 bg-[#050a0f]/80">
+        <p className="px-1 pt-1 pb-2 text-center text-[12px] sm:text-[13px] sm:text-left text-gray-300 leading-snug">
+          <span className="text-cyan-400/90">Paso 1</span> — Mira <span className="text-white/95 font-medium">LIVE</span>, <span className="text-white/95 font-medium">HOT</span> o <span className="text-white/95 font-medium">HISTORY</span> arriba.{" "}
+          <span className="text-gray-500">Buscador y wallet fijos. En pantalla ancha, «Más»; en móvil, el menú ☰.</span>
+        </p>
         <TacticalFeed
           tacticalTab={tacticalTab}
           onTabChange={setTacticalTab}
@@ -574,6 +536,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           signalCursor={signalCursor}
           signalsRankDeltas={signalsRankDeltas}
           selectedMint={selectedMint}
+          deskCoordination={deskCoordination}
           onSelectMint={(mint) => router.push(`/?t=${encodeURIComponent(mint)}`, undefined, { shallow: true })}
           heatExpanded={heatExpanded}
           onToggleHeatExpanded={() => setHeatExpanded((v) => !v)}
@@ -588,13 +551,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         />
 
         </div>
-      <div className="sl-container py-4 sm:py-8 md:py-12 max-w-full mx-4 sm:mx-auto">
+        <div className="sl-container py-4 sm:py-8 md:py-12 max-w-full">
         <WarHomeIntro
-          nextSignalEtaSec={nextSignalEtaSec}
-          monitoringWallets={monitoringWallets}
-          clusterScanCount={clusterScanCount}
-          liveSignalsDetected={liveSignalsDetected}
-          wsBump={wsBump}
           strategyMode={strategyMode}
           onStrategyModeChange={setStrategyMode}
           soundEnabled={soundEnabled}
@@ -602,21 +560,14 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         />
 
         <WarHomeUtilityRail />
-
         </div>
 
-
+        <div className="sl-container max-w-full pb-6 sm:pb-10">
         <WarHomeCombatPanels
-          handleSearch={handleSearch}
-          address={address}
-          onAddressChange={(e) => setAddress(e.target.value)}
-          isScanning={isScanning}
-          error={error}
-          recentSearches={recentSearches}
-          onOpenRecentMint={(mint) => router.push(`/token/${encodeURIComponent(mint)}`)}
           bestRecentDisplay={bestRecentDisplay}
           outcomesSummary={outcomesSummary}
           rankedWallets={rankedWallets}
+          topWalletsFromApi={topWalletsApi.length > 0}
           topWalletTitle={topWalletTitle}
           topWalletLabel={topWalletLabel}
           strategyMode={strategyMode}
@@ -625,6 +576,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           marketMood={marketMood}
           alerts={alerts}
         />
+        </div>
       </div>
           </>
         }

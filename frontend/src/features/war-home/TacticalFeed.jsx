@@ -20,6 +20,7 @@ export default function TacticalFeed({
   signalCursor,
   signalsRankDeltas,
   selectedMint,
+  deskCoordination = null,
   onSelectMint,
   heatExpanded,
   onToggleHeatExpanded,
@@ -52,6 +53,7 @@ export default function TacticalFeed({
           signalCursor={signalCursor}
           signalsRankDeltas={signalsRankDeltas}
           selectedMint={selectedMint}
+          deskCoordination={deskCoordination}
           onSelectMint={onSelectMint}
         />
       }
