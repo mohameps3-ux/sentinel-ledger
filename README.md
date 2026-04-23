@@ -15,12 +15,16 @@ Backend:
 3. `npm install`
 4. `npm run dev`
 
-Frontend:
+Frontend (orden recomendado si la UI o el nav “no cuadran” con el repo):
 
-1. `cd frontend` → `npm install`
-2. Desarrollo: `npm run dev`, o producción local: `npm run build` y luego `npm run start`
-3. Tras cambios de UI: **recarga dura** (p. ej. Ctrl+Shift+R) para no servir un bundle antiguo desde caché, **o** vuelve a **desplegar en Vercel** con el commit que quieras probar
-4. **Cómo saber que el JS es el correcto:** en DevTools, en el `<nav>`, el atributo `data-sl-nav="slim"` **confirma el bundle adecuado** (header compacto). En producción, `data-sentinel-build` toma el SHA del commit que Vercel construyó (`VERCEL_GIT_COMMIT_SHA`, a veces el string completo de 40 caracteres en el atributo). Comprueba que coincida con el commit del **Deployment** en el dashboard. *Ejemplo de cierre (doc + contrato alineados en `main`):* el short SHA `9f38d66` — si tu deploy es posterior, el valor debería ser el del commit desplegado, no forzosamente éste.
+1. **Para** `next dev` si sigue en marcha.
+2. En `frontend/`: `npm run dev:fresh` (borra `.next` y arranca; equivalente: `npm run clean:next` y luego `npm run dev`).
+3. Abre `http://localhost:3000` (o el puerto que muestre la consola).
+4. **Ctrl+Shift+R** o **ventana de incógnito** (evita caché del documento/JS en PWA o devtools).
+5. **Inspecciona el `<nav>`:** deben existir `data-sl-nav="slim"`, `data-sl-ui="home-compact"` y `data-sentinel-build` (en local puede ser `local` si no hay `VERCEL_GIT_COMMIT_SHA`). Si falta alguno, el bundle servido no es el del árbol actual o hay caché: repite 1–4.
+6. **Producción (Vercel):** hace falta `commit` + `push` y que el deploy termine; el dominio no lee tu disco. El SHA en `data-sentinel-build` debe alinear con el deployment. *Ejemplo de short SHA de referencia en `main` (doc alineada):* `9f38d66` — los deploys posteriores tendrán otro valor.
+
+*Si tras `dev:fresh` el `<nav>` ya lleva `data-sl-ui="home-compact"` pero la UI no es la esperada (p. ej. vuelve la fila de enlaces con scroll en lugar de solo barra compacta), abre un issue o describe qué ves para afinar.*
 
 ## Supabase
 
