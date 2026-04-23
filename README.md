@@ -20,7 +20,7 @@ Frontend:
 1. `cd frontend` → `npm install`
 2. Desarrollo: `npm run dev`, o producción local: `npm run build` y luego `npm run start`
 3. Tras cambios de UI: **recarga dura** (p. ej. Ctrl+Shift+R) para no servir un bundle antiguo desde caché, **o** vuelve a **desplegar en Vercel** con el commit que quieras probar
-4. **Cómo saber que el JS es el correcto:** en DevTools, en el `<nav>`, el atributo `data-sl-nav="slim"` **confirma el bundle adecuado** (header compacto). En producción, además, `data-sentinel-build` debe alinear el SHA con el deploy de Vercel; si no, caché vieja o deploy desactualizado.
+4. **Cómo saber que el JS es el correcto:** en DevTools, en el `<nav>`, el atributo `data-sl-nav="slim"` **confirma el bundle adecuado** (header compacto). En producción, `data-sentinel-build` toma el SHA del commit que Vercel construyó (`VERCEL_GIT_COMMIT_SHA`, a veces el string completo de 40 caracteres en el atributo). Comprueba que coincida con el commit del **Deployment** en el dashboard. *Ejemplo de cierre (doc + contrato alineados en `main`):* el short SHA `9f38d66` — si tu deploy es posterior, el valor debería ser el del commit desplegado, no forzosamente éste.
 
 ## Supabase
 
