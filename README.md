@@ -15,16 +15,16 @@ Backend:
 3. `npm install`
 4. `npm run dev`
 
-Frontend (orden recomendado si la UI o el nav “no cuadran” con el repo):
+Frontend (si el nav o la home no coinciden con el repo):
 
-1. **Para** `next dev` si sigue en marcha.
-2. En `frontend/`: `npm run dev:fresh` (borra `.next` y arranca; equivalente: `npm run clean:next` y luego `npm run dev`).
-3. Abre `http://localhost:3000` (o el puerto que muestre la consola).
-4. **Ctrl+Shift+R** o **ventana de incógnito** (evita caché del documento/JS en PWA o devtools).
-5. **Inspecciona el `<nav>`:** deben existir `data-sl-nav="slim"`, `data-sl-ui="home-compact"` y `data-sentinel-build` (en local puede ser `local` si no hay `VERCEL_GIT_COMMIT_SHA`). Si falta alguno, el bundle servido no es el del árbol actual o hay caché: repite 1–4.
-6. **Producción (Vercel):** hace falta `commit` + `push` y que el deploy termine; el dominio no lee tu disco. El SHA en `data-sentinel-build` debe alinear con el deployment. *Ejemplo de short SHA de referencia en `main` (doc alineada):* `9f38d66` — los deploys posteriores tendrán otro valor.
+1. **Parar** el `next dev` anterior (**Ctrl+C** en esa terminal). No hace falta tener dos `next dev` a la vez.
+2. En `frontend/`: `npm run dev:fresh` (o `clean:next` y luego `dev`).
+3. **Recarga dura** (Ctrl+Shift+R) o **ventana de incógnito**.
+4. **URL:** usa la que imprima el propio Next en consola (p. ej. `http://localhost:3000` o `http://localhost:3001`). Si en realidad otra app está en `:3000` o el terminal indica **otro puerto**, la UI no coincidirá con lo que crees: abre **exactamente** la base `Local:` / `Network:` del log.
+5. **Inspecciona el `<nav>`:** si ves `data-sl-ui="home-compact-v2"`, el bundle **sí** es el actual, junto con `data-sl-nav="slim"` y `data-sentinel-build` (en local a veces `local`). Si sigue el **valor antiguo** u otro sufijo, no estás en ese proceso o en ese **puerto**.
+6. **Producción (Vercel):** hacen falta `commit`, `push` y que el **deploy** termine; en el cloud no se leen los cambios solo de tu PC. El SHA en `data-sentinel-build` debe alinearse con el deployment. *Short SHA de ejemplo en doc (histórico):* `9f38d66` — un deploy reciente tendrá el suyo.
 
-*Si tras `dev:fresh` el `<nav>` ya lleva `data-sl-ui="home-compact"` pero la UI no es la esperada (p. ej. vuelve la fila de enlaces con scroll en lugar de solo barra compacta), abre un issue o describe qué ves para afinar.*
+*Si con `data-sl-ui="home-compact-v2"` en el `<nav>` la UI aún no cuadra, di qué ves (p. ej. fila con scroll, solo logo) y se afina.*
 
 ## Supabase
 
