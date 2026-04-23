@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Flame, TrendingUp, Waves } from "lucide-react";
+import { BarChart3, ChevronsDown, ChevronsUp, Flame, TrendingUp, Waves } from "lucide-react";
 import { formatUsdWhole } from "../../../../lib/formatStable";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
 import { WatchedCardShell } from "../../../../components/home/WatchedCardShell";
@@ -51,27 +51,32 @@ export function HotTab({
             </div>
             <div>
               <p className="text-[9px] uppercase tracking-widest text-gray-500 font-semibold">Hot Tokens</p>
-              <button
-                type="button"
-                onClick={onToggleHeatExpanded}
-                className="text-base sm:text-lg font-semibold text-white mt-0.5 text-left hover:text-orange-200 transition-colors leading-tight"
-              >
-                Heat rank {heatExpanded ? "[-]" : "[+]"} {heatExpanded ? "(50+)" : ""}
-              </button>
-              <p className="text-xs text-gray-500 mt-1 max-w-xl leading-snug">Score, ventana, chips, swap en un vistazo.</p>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2.5">
+                <h2 className="text-base sm:text-lg font-semibold text-white tracking-tight leading-tight">Heat</h2>
+                <button
+                  type="button"
+                  onClick={onToggleHeatExpanded}
+                  aria-expanded={heatExpanded}
+                  aria-label={heatExpanded ? "Contraer cuadrícula" : "Ampliar cuadrícula"}
+                  title={heatExpanded ? "Contraer" : "Ampliar feed"}
+                  className="group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-gradient-to-b from-orange-500/[0.12] to-white/[0.02] text-orange-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all hover:border-orange-400/50 hover:from-orange-500/22 hover:to-amber-950/30 hover:text-orange-50 hover:shadow-[0_0_22px_rgba(251,146,60,0.2)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0806]"
+                >
+                  {heatExpanded ? (
+                    <ChevronsUp className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
+                  ) : (
+                    <ChevronsDown className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1 max-w-xl leading-snug">
+                Ranking en vivo por score del API: mejor token arriba. Métricas reales, swap y ficha en un clic.
+              </p>
               <p className="text-[10px] text-gray-500 mt-0.5">
                 {heatTokensForGrid.length} vis · {heatTokenPool.length} ranked
               </p>
             </div>
           </div>
           <div className="flex flex-col items-start md:items-end gap-1">
-            <button
-              type="button"
-              onClick={onToggleHeatExpanded}
-              className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border border-orange-500/35 bg-orange-500/10 text-orange-200 hover:bg-orange-500/20"
-            >
-              {heatExpanded ? "Compact" : "Expand (50+)"}
-            </button>
             <span
               className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border inline-flex items-center gap-1 ${
                 feedStatus === "SNAPSHOT"
@@ -93,7 +98,7 @@ export function HotTab({
               {feedLabel}
             </span>
             <span className="text-[10px] text-gray-500">
-              {feedAgeSec === null ? "fresh" : `${feedAgeSec}s ago`} · {isWarMode ? "5s" : "25s"} · min liq $
+              {feedAgeSec === null ? "recién" : `hace ${feedAgeSec}s`} · {isWarMode ? "cada 5s" : "cada 25s"} · liq min $
               {formatUsdWhole(trendingMinLiquidityUsd || 15000)}
             </span>
           </div>
@@ -104,7 +109,10 @@ export function HotTab({
             const signalStrength = Number.isFinite(Number(token?.sentinelScore))
               ? Math.max(1, Math.min(100, Math.round(Number(token.sentinelScore))))
               : computeSignalStrength(token);
-            const action = token?.decision || suggestedAction(signalStrength, strategyMode, "token");
+            const action =
+              token?.decision === "MERCADO"
+                ? "Solo mercado"
+                : token?.decision || suggestedAction(signalStrength, strategyMode, "token");
             const confluence = Boolean(token?.confluence);
             const timeAdvantage = token?.timeAdvantage || null;
             const entryWindowLabel = token?.entryWindow || null;

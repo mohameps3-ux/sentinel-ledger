@@ -32,6 +32,63 @@ import {
 import { useWarMode } from "../contexts/WarModeContext";
 import { useWebSocket } from "../hooks/useWebSocket";
 
+/**
+ * HOT row → LIVE card (same shell as DB signals). Rank uses API `sentinelScore` when set.
+ */
+function mapHotTrendToLiveFill(t) {
+  const mint =
+    (t?.mint && isProbableSolanaMint(String(t.mint)) && String(t.mint)) ||
+    (t?.tokenAddress && isProbableSolanaMint(String(t.tokenAddress)) && String(t.tokenAddress)) ||
+    null;
+  if (!mint) return null;
+  const rawScore = Number(t.sentinelScore);
+  const score = Number.isFinite(rawScore) && rawScore > 0 ? Math.round(rawScore) : computeSignalStrength(t);
+  if (!Number.isFinite(score)) return null;
+  const sym = String(t.symbol || t.token || "TOKEN").replace(/^\$/, "").trim() || "TOKEN";
+  const sw = Number(t.smartWallets);
+  const smartWallets = Number.isFinite(sw) ? Math.max(0, Math.round(sw)) : 0;
+  return {
+    symbol: sym,
+    mint,
+    _liveSource: "hot_fill",
+    token: {
+      symbol: sym,
+      mint,
+      liquidity: Number(t.liquidity || 0),
+      volume24h: Number(t.volume24h || 0),
+      change: Number(t.change ?? t.change24h ?? 0),
+      whyTrade: Array.isArray(t.whyTrade) ? t.whyTrade : []
+    },
+    signalStrength: Math.max(1, Math.min(100, score)),
+    smartWallets,
+    context: "Heat (mercado), debajo de señales DB",
+    clusterScore: Math.min(99, Math.max(1, Math.round(score - 6))),
+    momentum: Number(t.volume24h || 0),
+    _api: {
+      token: sym.startsWith("$") ? sym : `$${sym}`,
+      tokenAddress: mint,
+      smartWallets,
+      sentinelScore: Math.max(1, Math.min(100, score)),
+      decision: t.decision || "MERCADO",
+      whyNow: Array.isArray(t.whyTrade) ? t.whyTrade : [],
+      redFlags: Array.isArray(t.redFlags) ? t.redFlags : [],
+      entryWindow: t.entryWindow ?? null,
+      entryWindowMinutesLeft: t.entryWindowMinutesLeft ?? null,
+      timeAdvantage: t.timeAdvantage ?? null,
+      signalDecay: t.signalDecay ?? null,
+      poolAgeLabel: t.poolAgeLabel ?? null,
+      confluence: Boolean(t.confluence),
+      evidenceChips: Array.isArray(t.evidenceChips) && t.evidenceChips.length
+        ? t.evidenceChips
+        : [String(t.grade || "HEAT").slice(0, 6)],
+      contextHistory: "Heat (mercado), debajo de señales DB",
+      createdAt: t.createdAt || new Date().toISOString(),
+      volume24h: Number(t.volume24h || 0),
+      change24h: Number(t.change ?? t.change24h ?? 0)
+    }
+  };
+}
+
 /** Mint selected in cockpit desk via `?t=` (shallow routing on `/`). */
 function deskMintFromQuery(query) {
   const raw = query?.t;
@@ -153,6 +210,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
         return {
           symbol: sym,
           mint,
+          _liveSource: "signal",
           token: {
             symbol: sym,
             mint: c.tokenAddress,
@@ -169,72 +227,36 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           _api: c
         };
       })
-      .filter(Boolean);
-    const fromHotReal = visibleTrending
-      .map((t) => {
-        const mint = t?.mint && isProbableSolanaMint(t.mint) ? t.mint : null;
-        const score = Number(t?.sentinelScore);
-        if (!mint || !Number.isFinite(score)) return null;
-        const symbol = String(t?.symbol || t?.token || "TOKEN");
-        return {
-          symbol,
-          mint,
-          token: {
-            symbol,
-            mint,
-            liquidity: Number(t?.liquidity || 0),
-            volume24h: Number(t?.volume24h || 0),
-            change: Number(t?.change || 0),
-            whyTrade: Array.isArray(t?.whyTrade) ? t.whyTrade : []
-          },
-          signalStrength: Math.max(1, Math.min(100, Math.round(score))),
-          smartWallets: Number.isFinite(Number(t?.smartWallets)) ? Math.max(0, Math.round(Number(t.smartWallets))) : 0,
-          context: "Market flow live",
-          clusterScore: Math.min(99, Math.max(1, Math.round(score - 6))),
-          momentum: Number(t?.volume24h || 0),
-          _api: {
-            token: symbol.startsWith("$") ? symbol : `$${symbol}`,
-            tokenAddress: mint,
-            smartWallets: Number.isFinite(Number(t?.smartWallets)) ? Math.max(0, Math.round(Number(t.smartWallets))) : 0,
-            sentinelScore: Math.max(1, Math.min(100, Math.round(score))),
-            decision: t?.decision || null,
-            whyNow: Array.isArray(t?.whyTrade) ? t.whyTrade : [],
-            redFlags: [],
-            entryWindow: t?.entryWindow || "OPEN",
-            entryWindowMinutesLeft: Number.isFinite(Number(t?.entryWindowMinutesLeft))
-              ? Number(t.entryWindowMinutesLeft)
-              : 0,
-            timeAdvantage: null,
-            signalDecay: null,
-            poolAgeLabel: null,
-            confluence: Boolean(t?.confluence),
-            evidenceChips: Array.isArray(t?.evidenceChips) ? t.evidenceChips : [],
-            contextHistory: "Market flow live",
-            createdAt: new Date().toISOString(),
-            volume24h: Number(t?.volume24h || 0),
-            change24h: Number(t?.change || 0)
-          }
-        };
-      })
-      .filter(Boolean);
-    const raw = fromSignals.length ? fromSignals : fromHotReal;
-    return raw
-      .slice()
+      .filter(Boolean)
       .sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
+
+    const signalMints = new Set(fromSignals.map((s) => s.mint));
+    const fromHot = visibleTrending
+      .map((row) => mapHotTrendToLiveFill(row))
+      .filter(Boolean)
+      .filter((h) => !signalMints.has(h.mint))
+      .sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
+
+    return [...fromSignals, ...fromHot];
   }, [apiFeedCards, visibleTrending]);
 
   const rankingFlushMs = isWarMode ? UI_CONFIG.RANKING_FLUSH_WAR_MS : UI_CONFIG.RANKING_FLUSH_NORMAL_MS;
   const interpretedSignals = useRankingSnapshot(interpretedSignalsRaw, rankingFlushMs);
 
   const liveSignalPool = useMemo(() => {
-    const byMint = new Map();
-    interpretedSignals.forEach((sig) => {
-      if (!sig?.mint || !isProbableSolanaMint(sig.mint)) return;
-      if (!byMint.has(sig.mint)) byMint.set(sig.mint, sig);
-    });
-    return Array.from(byMint.values()).sort(
-      (a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0)
-    );
+    const seen = new Set();
+    const signals = [];
+    const hotFill = [];
+    for (const sig of interpretedSignals) {
+      if (!sig?.mint || !isProbableSolanaMint(sig.mint)) continue;
+      if (seen.has(sig.mint)) continue;
+      seen.add(sig.mint);
+      if (sig._liveSource === "hot_fill") hotFill.push(sig);
+      else signals.push(sig);
+    }
+    signals.sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
+    hotFill.sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
+    return [...signals, ...hotFill];
   }, [interpretedSignals]);
 
   const liveSignalsForGrid = useMemo(
@@ -267,9 +289,11 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
 
     visibleTrending.forEach((t) => tryAdd(t));
 
-    return out
-      .slice()
-      .sort((a, b) => computeSignalStrength(b) - computeSignalStrength(a));
+    return out.slice().sort((a, b) => {
+      const sa = Number.isFinite(Number(a.sentinelScore)) ? Number(a.sentinelScore) : computeSignalStrength(a);
+      const sb = Number.isFinite(Number(b.sentinelScore)) ? Number(b.sentinelScore) : computeSignalStrength(b);
+      return sb - sa;
+    });
   }, [visibleTrending]);
 
   const heatTokensForGrid = useMemo(
@@ -474,11 +498,12 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     refetchMs: isWarMode ? UI_CONFIG.SIGNAL_FEED_REFETCH_WAR_MS : UI_CONFIG.SIGNAL_FEED_REFETCH_NORMAL_MS
   });
   useEffect(() => {
+    if (signalsFeedQuery.isError) return;
     const data = signalsFeedQuery.data?.data;
     const meta = signalsFeedQuery.data?.meta || {};
     if (Array.isArray(data) && data.length && !isFallbackSource(meta)) setApiFeedCards(data);
     else setApiFeedCards([]);
-  }, [signalsFeedQuery.data, isFallbackSource]);
+  }, [signalsFeedQuery.data, signalsFeedQuery.isError, isFallbackSource]);
   const signalsAgeSec = signalsFeedQuery.dataUpdatedAt
     ? Math.max(0, Math.floor((Date.now() - signalsFeedQuery.dataUpdatedAt) / 1000))
     : null;
@@ -546,6 +571,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           liveSignalsForGrid={liveSignalsForGrid}
           liveSignalPool={liveSignalPool}
           signalsFeedIsError={signalsFeedQuery.isError}
+          signalsFeedIsLoading={signalsFeedQuery.isPending || signalsFeedQuery.isFetching}
           signalsAgeSec={signalsAgeSec}
           isWarMode={isWarMode}
           liveVirtuosoRows={liveVirtuosoRows}

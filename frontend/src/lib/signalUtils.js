@@ -79,6 +79,8 @@ export function chunkArray(items, size) {
 // ——— Visual / decision helpers ———
 
 export function gradeClass(grade) {
+  if (grade === "BE" || grade === "DEX" || grade === "MKT")
+    return "bg-slate-500/15 text-slate-200 border-slate-500/30 font-mono tracking-tight";
   if (grade === "A+" || grade === "A") return "bg-emerald-500/15 text-emerald-300 border-emerald-500/25";
   if (grade === "B" || grade === "C") return "bg-amber-500/15 text-amber-200 border-amber-500/25";
   return "bg-red-500/15 text-red-300 border-red-500/25";
@@ -133,6 +135,9 @@ export function actionTone(signalStrength) {
 
 /** Decision pill for feed — compact, same visual weight as adjacent coord / multi chips. */
 export function feedDecisionPillClass(action, score) {
+  if (action === "Solo mercado") {
+    return "text-[8px] leading-tight px-1 py-0.5 rounded border font-semibold tracking-tight text-amber-100/95 border-amber-500/35 bg-amber-500/12";
+  }
   const pulse = action === "ENTER NOW" && score > 90;
   if (action === "ENTER NOW") {
     return `text-[8px] leading-tight px-1 py-0.5 rounded border font-bold tracking-tight text-emerald-200 border-emerald-500/40 bg-emerald-500/15 ${
