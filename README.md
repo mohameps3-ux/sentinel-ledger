@@ -17,12 +17,10 @@ Backend:
 
 Frontend:
 
-1. `cd frontend`
-2. `npm install`
-3. `npm run dev` (o `npm run build` y luego `npm run start`)
-4. Tras cambios de UI, **recarga dura** (Ctrl+Shift+R) para no quedarte con un bundle viejo en caché.
-
-**Comprobar que estás viendo el header correcto:** en DevTools, el `<nav>` debe llevar `data-sl-nav="slim"` (bundle del nav compacto) y, en producción, `data-sentinel-build` con el SHA del despliegue. Si no coinciden, vuelve a desplegar en Vercel con el commit adecuado o limpia caché.
+1. `cd frontend` → `npm install`
+2. Desarrollo: `npm run dev`, o producción local: `npm run build` y luego `npm run start`
+3. Tras cambios de UI: **recarga dura** (p. ej. Ctrl+Shift+R) para no servir un bundle antiguo desde caché, **o** vuelve a **desplegar en Vercel** con el commit que quieras probar
+4. **Cómo saber que el JS es el correcto:** en DevTools, en el `<nav>`, el atributo `data-sl-nav="slim"` **confirma el bundle adecuado** (header compacto). En producción, además, `data-sentinel-build` debe alinear el SHA con el deploy de Vercel; si no, caché vieja o deploy desactualizado.
 
 ## Supabase
 
