@@ -56,7 +56,9 @@ export function LiveTab({
   }, []);
 
   function renderLiveGridItem(sig, idx) {
-    const sec = entryCountdownByMint[sig.mint] || 0;
+    const sec = sig._api
+      ? Math.max(0, Math.round(Number(sig._api.entryWindowMinutesLeft || 0) * 60))
+      : entryCountdownByMint[sig.mint] || 0;
     const win = sig._api
       ? {
           label: sig._api.entryWindow || "OPEN",

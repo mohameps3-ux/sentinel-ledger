@@ -7,13 +7,10 @@ import { buildJupiterSwapUrl } from "../../../../lib/jupiterSwap";
 import { isProbableSolanaMint } from "../../../../lib/solanaMint";
 import { AnimatedNumber } from "../../../../components/ui/AnimatedNumber";
 import {
-  actionTone,
   clusterHeatEmoji,
   computeSignalStrength,
   confidenceLabel,
   confidenceTone,
-  entryWindowFromCountdown,
-  evidenceChipsEmoji,
   gradeClass,
   heatClass,
   suggestedAction
@@ -40,7 +37,6 @@ export function HotTab({
   isWarMode,
   trendingMinLiquidityUsd,
   strategyMode,
-  entryCountdownByMint,
   trendingRankDeltas,
   selectedMint,
   onSelectMint
@@ -105,13 +101,16 @@ export function HotTab({
 
         <div className={UI_CONFIG.LIVE_HOT_GRID_CLASS}>
           {heatTokensForGrid.map((token, idx) => {
-            const signalStrength = computeSignalStrength(token);
-            const action = suggestedAction(signalStrength, strategyMode, "token");
-            const confluence = signalStrength >= 85 && Number(token?.change || 0) > 5;
-            const timeAdvantage = Math.max(52, Math.min(97, 100 - Math.round(signalStrength / 2)));
-            const tokenWindow = entryWindowFromCountdown(entryCountdownByMint[token?.mint] || 0);
+            const signalStrength = Number.isFinite(Number(token?.sentinelScore))
+              ? Math.max(1, Math.min(100, Math.round(Number(token.sentinelScore))))
+              : computeSignalStrength(token);
+            const action = token?.decision || suggestedAction(signalStrength, strategyMode, "token");
+            const confluence = Boolean(token?.confluence);
+            const timeAdvantage = token?.timeAdvantage || null;
+            const entryWindowLabel = token?.entryWindow || null;
+            const entryWindowMinutesLeft = Number(token?.entryWindowMinutesLeft);
             const changeNum = Number(token?.change || 0);
-            const redFlags = redFlagsForSignal({ signalStrength, token: token || {} });
+            const redFlags = Array.isArray(token?.redFlags) ? token.redFlags : redFlagsForSignal({ signalStrength, token: token || {} });
             const trendingRank = trendingRankDeltas.get(token?.mint) || { rank: idx + 1, delta: 0, isNew: false };
 
             return (
@@ -176,7 +175,13 @@ export function HotTab({
                   </div>
                   <div className="flex flex-wrap items-center gap-0.5">
                     <span
-                      className={`text-[8px] font-bold px-1 py-0.5 rounded border ${actionTone(signalStrength)} ${signalStrength > 90 ? "animate-pulse" : ""}`}
+                      className={`text-[8px] font-bold px-1 py-0.5 rounded border ${
+                        signalStrength >= 85
+                          ? "text-emerald-300 bg-emerald-500/10 border-emerald-500/30"
+                          : signalStrength >= 65
+                            ? "text-amber-200 bg-amber-500/10 border-amber-500/30"
+                            : "text-red-300 bg-red-500/10 border-red-500/30"
+                      } ${signalStrength > 90 ? "animate-pulse" : ""}`}
                     >
                       {action}
                     </span>
@@ -209,7 +214,7 @@ export function HotTab({
                   </div>
                   <div className="flex items-center gap-1 rounded bg-white/[0.03] border border-white/[0.06] px-1.5 py-1">
                     <Waves size={11} className="text-purple-300 shrink-0" />
-                    <span className="text-gray-200 truncate">{token?.flowLabel || "flow…"}</span>
+                    <span className="text-gray-200 truncate">{token?.flowLabel || "—"}</span>
                   </div>
                 </div>
 
@@ -226,15 +231,24 @@ export function HotTab({
                   </div>
                 </div>
 
-                <p className="text-[9px] text-gray-500 truncate">
-                  ~{timeAdvantage}% early · <span className={tokenWindow.tone}>{tokenWindow.label}</span>
-                </p>
+                {timeAdvantage || entryWindowLabel ? (
+                  <p className="text-[9px] text-gray-500 truncate">
+                    {timeAdvantage ? `${timeAdvantage}` : ""}
+                    {timeAdvantage && entryWindowLabel ? " · " : ""}
+                    {entryWindowLabel ? (
+                      <>
+                        <span className="text-slate-300">{entryWindowLabel}</span>
+                        {Number.isFinite(entryWindowMinutesLeft) ? ` (${Math.max(0, Math.round(entryWindowMinutesLeft))}m)` : ""}
+                      </>
+                    ) : null}
+                  </p>
+                ) : null}
 
                 {redFlags.length ? <p className="text-[9px] text-red-200/95 truncate leading-tight">⚠ {redFlags.join(" · ")}</p> : null}
 
                 <div className="flex flex-wrap gap-0.5">
-                  {evidenceChipsEmoji(signalStrength, token || {})
-                    .slice(0, 4)
+                  {(Array.isArray(token?.evidenceChips) ? token.evidenceChips : [])
+                    .slice(0, 5)
                     .map((chip) => (
                       <span key={chip} className="text-[9px] px-1 py-0.5 rounded border border-white/10 bg-white/[0.02] text-gray-300">
                         {chip}

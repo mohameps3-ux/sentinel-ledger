@@ -20,19 +20,14 @@ import WarHomeIntro from "@/features/war-home/WarHomeIntro";
 import WarHomeUtilityRail from "@/features/war-home/WarHomeUtilityRail";
 import TacticalFeed from "@/features/war-home/TacticalFeed";
 import {
-  FALLBACK_TRENDING,
-  RECENT_SIGNAL_OUTCOMES,
   TACTICAL_TAB_LS_KEY,
-  TOP_SMART_WALLETS,
   UI_CONFIG
 } from "@/constants/homeData";
 import {
   chunkArray,
   computeSignalStrength,
-  initialCountdownSec,
   liquidityFromApiRedFlags,
-  signalFromToken,
-  tokenFromSignal
+  initialCountdownSec
 } from "@/lib/signalUtils";
 import { useWarMode } from "../contexts/WarModeContext";
 import { useWebSocket } from "../hooks/useWebSocket";
@@ -87,11 +82,21 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const selectedMint = useMemo(() => deskMintFromQuery(router.query), [router.query]);
   const { coordination: deskCoordination } = useWebSocket(selectedMint);
   const { isWarMode } = useWarMode();
+  const isFallbackSource = useCallback((meta) => {
+    const src = String(meta?.source || "").toLowerCase();
+    if (!src) return true;
+    return src.includes("fallback") || src.includes("static") || src.includes("route_fallback");
+  }, []);
   const trendingQuery = useTrendingTokens(initialTrending, initialTrendingMeta, "", {
     limit: heatExpanded ? UI_CONFIG.TRENDING_API_LIMIT_EXPANDED : UI_CONFIG.TRENDING_API_LIMIT_COMPACT,
     refetchMs: isWarMode ? UI_CONFIG.TRENDING_REFETCH_WAR_MS : UI_CONFIG.TRENDING_REFETCH_NORMAL_MS
   });
-  const trending = trendingQuery.data?.data || (trendingQuery.isError ? FALLBACK_TRENDING : []);
+  const trending = useMemo(() => {
+    const rows = Array.isArray(trendingQuery.data?.data) ? trendingQuery.data.data : [];
+    const meta = trendingQuery.data?.meta || {};
+    if (isFallbackSource(meta)) return [];
+    return rows;
+  }, [trendingQuery.data, isFallbackSource]);
   const trendingMeta = trendingQuery.data?.meta || {};
   const updateVisibleTrending = useCallback((nextTrending) => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -112,7 +117,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const feedIsLive = feedStatus === "LIVE";
   const feedLabel = feedStatus;
   const rankedWallets = useMemo(() => {
-    const source = topWalletsApi.length ? topWalletsApi : TOP_SMART_WALLETS;
+    const source = topWalletsApi.length ? topWalletsApi : [];
     return source
       .slice()
       .map((wallet) => ({
@@ -125,105 +130,63 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   }, [topWalletsApi]);
 
   const bestRecentDisplay = useMemo(() => {
-    if (bestRecentFromApi?.token) {
-      const conf = bestRecentFromApi.confidence != null ? Number(bestRecentFromApi.confidence) : null;
-      return {
-        headline: `${bestRecentFromApi.token.slice(0, 6)}…${bestRecentFromApi.token.slice(-4)}`,
-        outcomePct: Number(bestRecentFromApi.outcomePct),
-        horizon: "~1h est.",
-        signal: conf != null && Number.isFinite(conf) ? Math.round(Math.min(100, Math.max(1, conf))) : 78,
-        mint: bestRecentFromApi.token
-      };
-    }
+    if (!bestRecentFromApi?.token) return null;
+    const conf = bestRecentFromApi.confidence != null ? Number(bestRecentFromApi.confidence) : null;
     return {
-      headline: `$${RECENT_SIGNAL_OUTCOMES[0]?.symbol}`,
-      outcomePct: RECENT_SIGNAL_OUTCOMES[0]?.outcomePct,
-      horizon: RECENT_SIGNAL_OUTCOMES[0]?.horizon,
-      signal: RECENT_SIGNAL_OUTCOMES[0]?.signal,
-      mint: FALLBACK_TRENDING[1]?.mint || "So11111111111111111111111111111111111111112"
+      headline: `${bestRecentFromApi.token.slice(0, 6)}…${bestRecentFromApi.token.slice(-4)}`,
+      outcomePct: Number(bestRecentFromApi.outcomePct),
+      horizon: "~1h est.",
+      signal: conf != null && Number.isFinite(conf) ? Math.round(Math.min(100, Math.max(1, conf))) : 78,
+      mint: bestRecentFromApi.token
     };
   }, [bestRecentFromApi]);
   const topWalletLabelAddrs = useMemo(() => rankedWallets.map((w) => w.address).filter(Boolean), [rankedWallets]);
   const { labelFor: topWalletLabel, titleFor: topWalletTitle } = useWalletLabels(topWalletLabelAddrs);
   const interpretedSignalsRaw = useMemo(() => {
-    // Build the raw list from either the live API payload or the trending
-    // fallback, then sort deterministically by Sentinel score descending so
-    // the "best" cards physically rise to the top as scores drift over time.
-    // This is what makes the grid feel like a live ranking rather than a
-    // static list.
-    let raw;
-    if (apiFeedCards.length) {
-      raw = apiFeedCards.map((c, idx) => {
+    const raw = apiFeedCards
+      .map((c) => {
         const sym = String(c.token || "TOKEN").replace(/^\$/, "").trim() || "TOKEN";
-        const liq = liquidityFromApiRedFlags(c.redFlags);
-        const mint =
-          c.tokenAddress && isProbableSolanaMint(c.tokenAddress) ? c.tokenAddress : null;
-        const apiSw = Number(c.smartWallets);
-        const smartWallets =
-          Number.isFinite(apiSw) && apiSw > 0 ? Math.min(99, Math.max(2, Math.round(apiSw))) : Math.min(9, Math.max(2, 2 + (idx % 5)));
+        const mint = c.tokenAddress && isProbableSolanaMint(c.tokenAddress) ? c.tokenAddress : null;
+        const score = Number(c.sentinelScore);
+        if (!mint || !Number.isFinite(score)) return null;
         return {
           symbol: sym,
           mint,
           token: {
             symbol: sym,
             mint: c.tokenAddress,
-            liquidity: liq,
-            volume24h: 900000,
-            change: c.decision === "ENTER NOW" ? 9 : c.decision === "PREPARE" ? 3 : -1,
+            liquidity: liquidityFromApiRedFlags(c.redFlags),
+            volume24h: Number(c.volume24h || 0),
+            change: Number(c.change24h || 0),
             whyTrade: Array.isArray(c.whyNow) ? c.whyNow : []
           },
-          signalStrength: Number(c.sentinelScore) || 70,
-          smartWallets,
-          context: c.contextHistory || "Live signal cluster",
-          clusterScore: Math.min(99, Math.max(45, Number(c.sentinelScore) - 6)),
-          momentum: 0,
+          signalStrength: Math.max(1, Math.min(100, Math.round(score))),
+          smartWallets: Number.isFinite(Number(c.smartWallets)) ? Math.max(0, Math.round(Number(c.smartWallets))) : 0,
+          context: c.contextHistory || "",
+          clusterScore: Math.min(99, Math.max(1, Math.round(score - 6))),
+          momentum: Number(c.volume24h || 0),
           _api: c
         };
-      });
-    } else {
-      raw = (visibleTrending.length ? visibleTrending : FALLBACK_TRENDING)
-        .slice(0, 24)
-        .map((token, idx) => signalFromToken(token, idx));
-    }
-    raw = raw.filter((row) => row.mint && isProbableSolanaMint(row.mint));
-    if (!raw.length) {
-      raw = FALLBACK_TRENDING.map((token, idx) => signalFromToken(token, idx)).filter((row) => row.mint);
-    }
+      })
+      .filter(Boolean);
     return raw
       .slice()
       .sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
-  }, [apiFeedCards, visibleTrending]);
+  }, [apiFeedCards]);
 
   const rankingFlushMs = isWarMode ? UI_CONFIG.RANKING_FLUSH_WAR_MS : UI_CONFIG.RANKING_FLUSH_NORMAL_MS;
   const interpretedSignals = useRankingSnapshot(interpretedSignalsRaw, rankingFlushMs);
 
   const liveSignalPool = useMemo(() => {
-    const minCards = liveExpanded ? 50 : UI_CONFIG.GRID_COMPACT_CARDS;
     const byMint = new Map();
     interpretedSignals.forEach((sig) => {
       if (!sig?.mint || !isProbableSolanaMint(sig.mint)) return;
       if (!byMint.has(sig.mint)) byMint.set(sig.mint, sig);
     });
-    (visibleTrending.length ? visibleTrending : FALLBACK_TRENDING).forEach((token, idx) => {
-      const built = signalFromToken(token, idx);
-      if (built.mint && !byMint.has(built.mint)) byMint.set(built.mint, built);
-    });
-    const out = Array.from(byMint.values()).sort(
+    return Array.from(byMint.values()).sort(
       (a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0)
     );
-    if (out.length >= minCards) return out;
-    const seed = visibleTrending.length ? visibleTrending : FALLBACK_TRENDING;
-    let cursor = 0;
-    while (out.length < minCards && seed.length) {
-      const built = signalFromToken(seed[cursor % seed.length], out.length);
-      if (built.mint) out.push(built);
-      cursor += 1;
-      if (cursor > seed.length * 40) break;
-    }
-    return out.sort(
-      (a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0)
-    );
-  }, [interpretedSignals, visibleTrending, liveExpanded]);
+  }, [interpretedSignals]);
 
   const liveSignalsForGrid = useMemo(
     () =>
@@ -243,7 +206,6 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   );
 
   const heatTokenPool = useMemo(() => {
-    const minCards = heatExpanded ? 50 : UI_CONFIG.GRID_COMPACT_CARDS;
     const out = [];
     const seen = new Set();
 
@@ -254,28 +216,12 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       out.push(t);
     };
 
-    (visibleTrending.length ? visibleTrending : []).forEach((t) => tryAdd(t));
-    interpretedSignals.forEach((sig, idx) => tryAdd(tokenFromSignal(sig, idx)));
-
-    let fi = 0;
-    while (out.length < minCards && FALLBACK_TRENDING.length) {
-      tryAdd(FALLBACK_TRENDING[fi % FALLBACK_TRENDING.length]);
-      fi += 1;
-      if (fi > FALLBACK_TRENDING.length * 24) break;
-    }
-
-    let dup = 0;
-    while (out.length < minCards && FALLBACK_TRENDING.length) {
-      const src = FALLBACK_TRENDING[dup % FALLBACK_TRENDING.length];
-      if (src?.mint && isProbableSolanaMint(src.mint)) out.push({ ...src });
-      dup += 1;
-      if (dup > 96) break;
-    }
+    visibleTrending.forEach((t) => tryAdd(t));
 
     return out
       .slice()
       .sort((a, b) => computeSignalStrength(b) - computeSignalStrength(a));
-  }, [interpretedSignals, visibleTrending, heatExpanded]);
+  }, [visibleTrending]);
 
   const heatTokensForGrid = useMemo(
     () =>
@@ -297,15 +243,37 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const saved = JSON.parse(localStorage.getItem("sentinel-alerts") || "[]");
-      setAlerts(saved.slice(-5).reverse());
       setIsLoggedIn(Boolean(localStorage.getItem("token")));
       const tab = localStorage.getItem(TACTICAL_TAB_LS_KEY);
       if (tab === "live" || tab === "hot" || tab === "history") setTacticalTab(tab);
     } catch (_) {
-      setAlerts([]);
       setIsLoggedIn(false);
     }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${getPublicApiUrl()}/api/v1/public/smart-money-activity?limit=12`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled) return;
+        const rows = Array.isArray(j?.rows) ? j.rows : [];
+        setAlerts(
+          rows
+            .filter((r) => r?.token)
+            .map((r) => ({
+              tokenAddress: r.token,
+              alertType: `${String(r.side || "activity")} · conf ${Math.round(Number(r.confidence || 0))}%`,
+              createdAt: r.createdAt || null
+            }))
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setAlerts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -458,9 +426,10 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   });
   useEffect(() => {
     const data = signalsFeedQuery.data?.data;
-    if (Array.isArray(data) && data.length) setApiFeedCards(data);
-    else if (signalsFeedQuery.isError) setApiFeedCards([]);
-  }, [signalsFeedQuery.data, signalsFeedQuery.isError]);
+    const meta = signalsFeedQuery.data?.meta || {};
+    if (Array.isArray(data) && data.length && !isFallbackSource(meta)) setApiFeedCards(data);
+    else setApiFeedCards([]);
+  }, [signalsFeedQuery.data, isFallbackSource]);
   const signalsAgeSec = signalsFeedQuery.dataUpdatedAt
     ? Math.max(0, Math.floor((Date.now() - signalsFeedQuery.dataUpdatedAt) / 1000))
     : null;

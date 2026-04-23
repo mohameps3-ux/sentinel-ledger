@@ -39,20 +39,26 @@ export default function WarHomeCombatPanels({
       <section className="sl-section grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="glass-card sl-inset border border-orange-500/20">
           <p className="text-[11px] text-orange-200/80 font-medium">Último resultado resaltado</p>
-          <h2 className="text-base sm:text-lg font-semibold text-white mt-1">
-            {bestRecentDisplay.headline}{" "}
-            <span className="text-emerald-300">
-              {Number(bestRecentDisplay.outcomePct) >= 0 ? "+" : ""}
-              {bestRecentDisplay.outcomePct}%
-            </span>{" "}
-            <span className="text-gray-500 text-sm">({bestRecentDisplay.horizon})</span>
-          </h2>
-          <p className="text-sm text-gray-400 mt-2">
-            Puntuación ~{bestRecentDisplay.signal} ·{" "}
-            <Link href={`/token/${bestRecentDisplay.mint}`} className="text-cyan-300/90 hover:underline">
-              Abrir ficha
-            </Link>
-          </p>
+          {bestRecentDisplay ? (
+            <>
+              <h2 className="text-base sm:text-lg font-semibold text-white mt-1">
+                {bestRecentDisplay.headline}{" "}
+                <span className="text-emerald-300">
+                  {Number(bestRecentDisplay.outcomePct) >= 0 ? "+" : ""}
+                  {bestRecentDisplay.outcomePct}%
+                </span>{" "}
+                <span className="text-gray-500 text-sm">({bestRecentDisplay.horizon})</span>
+              </h2>
+              <p className="text-sm text-gray-400 mt-2">
+                Puntuación ~{bestRecentDisplay.signal} ·{" "}
+                <Link href={`/token/${bestRecentDisplay.mint}`} className="text-cyan-300/90 hover:underline">
+                  Abrir ficha
+                </Link>
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-gray-500 mt-2">Sin resultados cerrados recientes para mostrar.</p>
+          )}
         </div>
         <div className="glass-card sl-inset">
           <p className="text-[11px] text-gray-500 font-medium">Últimos 7 días (señales cerradas)</p>
@@ -98,9 +104,9 @@ export default function WarHomeCombatPanels({
                     ? "px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-200/90"
                     : "px-2 py-0.5 rounded border border-amber-500/25 text-amber-200/80"
                 }
-                title={topWalletsFromApi ? "Datos de servidor" : "Ejemplo hasta que haya API"}
+                title={topWalletsFromApi ? "Datos de servidor" : "Sin datos en API"}
               >
-                {topWalletsFromApi ? "Datos en vivo" : "Vista de ejemplo"}
+                {topWalletsFromApi ? "Datos en vivo" : "Sin datos"}
               </span>
             </div>
           </div>
@@ -301,22 +307,16 @@ export default function WarHomeCombatPanels({
         </div>
       </section>
 
-      {isLoggedIn ? (
-        <section className="sl-section">
-          <div className="glass-card sl-inset">
-            <h2 className="text-base font-semibold text-white mb-1">Tu contexto (demo)</h2>
-            <p className="text-sm text-gray-400">A veces entraste tarde en señales parecidas. Esta aún se considera a tiempo: revisa riesgo antes de entrar.</p>
-            <p className="text-sm text-emerald-300/90 mt-2">Sugerencia: valorar entrada</p>
-          </div>
-        </section>
-      ) : (
-        <section className="sl-section">
-          <div className="glass-card sl-inset">
-            <h2 className="text-base font-semibold text-white mb-1">Tu historial</h2>
-            <p className="text-sm text-gray-500">Conecta cartera (próximamente) para ver pautas de timing según tu actividad.</p>
-          </div>
-        </section>
-      )}
+      <section className="sl-section">
+        <div className="glass-card sl-inset">
+          <h2 className="text-base font-semibold text-white mb-1">Tu estado</h2>
+          {isLoggedIn ? (
+            <p className="text-sm text-gray-400">Sesión activa. Las recomendaciones personalizadas aparecerán cuando el endpoint de perfil esté habilitado.</p>
+          ) : (
+            <p className="text-sm text-gray-500">Conecta cartera para habilitar contexto personal cuando esté disponible en API.</p>
+          )}
+        </div>
+      </section>
 
       <section className="sl-section">
         <div className="glass-card sl-inset border border-amber-500/20 bg-amber-500/[0.04]">
@@ -355,7 +355,7 @@ export default function WarHomeCombatPanels({
       <section className="sl-section">
         <div className="glass-card sl-inset">
           <h2 className="text-base font-semibold text-white">Alertas recientes</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Guardadas en este dispositivo si conectas cartera.</p>
+          <p className="text-sm text-gray-500 mt-0.5">Actividad real de smart wallets desde API pública.</p>
           {!alerts.length ? (
             <p className="text-sm text-gray-600 text-center py-6">Aún no hay alertas</p>
           ) : (
