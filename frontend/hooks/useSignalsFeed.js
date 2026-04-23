@@ -17,7 +17,7 @@ import { getPublicApiUrl } from "../lib/publicRuntime";
  *  - Keeps the previous payload visible during a refetch
  *    (`placeholderData: keepPreviousData`), so the grid never flashes empty.
  *  - Retries once on transient failures, then falls through silently so the
- *    home page can use its mock/trending fallback without UI breakage.
+ *    home page can show an explicit empty/degraded state without UI breakage.
  *
  * No new dependencies, no schema or backend changes — this is a pure client
  * upgrade layered on top of the existing REST surface.

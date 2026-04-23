@@ -18,7 +18,11 @@ const { appendFreshnessEvent, getDataFreshnessSnapshotFromStore } = require("./f
 const CACHE_TTL_SEC = Number(process.env.HOME_TERMINAL_CACHE_TTL_SEC || 180);
 const HOT_CACHE_TTL_SEC = Math.max(30, Number(process.env.HOME_TERMINAL_HOT_CACHE_TTL_SEC || 90));
 const LATEST_SIGNALS_CACHE_TTL_SEC = Math.max(30, Number(process.env.HOME_TERMINAL_LATEST_CACHE_TTL_SEC || 90));
-const FORCE_STATIC_SIGNALS_FALLBACK = String(process.env.HOME_TERMINAL_FORCE_STATIC_FALLBACK || "").toLowerCase() === "true";
+/** War home expanded grid (56) + headroom. Lower in prod if `getMarketData` pressure matters (each card may fetch market once per cache miss). */
+const SIGNAL_FEED_MAX_CARDS = Math.min(100, Math.max(16, Number(process.env.SIGNAL_FEED_MAX_CARDS || 64)));
+function capSignalsLatestLimit(n) {
+  return Math.min(SIGNAL_FEED_MAX_CARDS, Math.max(1, Number(n) || 10));
+}
 const SIGNALS_STATIC_FALLBACK_ALERT_AFTER_MS = Math.max(
   1_000,
   Math.floor(Number(process.env.SIGNALS_LATEST_STATIC_ALERT_AFTER_MINUTES || 10) * 60_000)
@@ -46,18 +50,6 @@ const SIGNALS_SUPABASE_SLO_EVAL_MS = Math.max(
   Math.floor(Number(process.env.SIGNALS_SUPABASE_SLO_EVAL_MS || 30_000))
 );
 const OPS_ALERT_WEBHOOK_URL = String(process.env.OPS_ALERT_WEBHOOK_URL || "").trim();
-const STATIC_SIGNAL_FALLBACK = [
-  { token: "$BONK", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", score: 88 },
-  { token: "$WIF", mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", score: 84 },
-  { token: "$JUP", mint: "JUPyiwrYJFksjQVdKWvHJHGzS76nqbwsjZBM74fATFc", score: 80 },
-  { token: "$SOL", mint: "So11111111111111111111111111111111111111112", score: 78 }
-];
-const STATIC_HOT_FALLBACK = [
-  { symbol: "BONK", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", price: 0.00002, change: 0, volume24h: 0, liquidity: 0 },
-  { symbol: "WIF", mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", price: 0.0, change: 0, volume24h: 0, liquidity: 0 },
-  { symbol: "JUP", mint: "JUPyiwrYJFksjQVdKWvHJHGzS76nqbwsjZBM74fATFc", price: 0.0, change: 0, volume24h: 0, liquidity: 0 },
-  { symbol: "SOL", mint: "So11111111111111111111111111111111111111112", price: 0.0, change: 0, volume24h: 0, liquidity: 0 }
-];
 const latestSignalsFallbackState = {
   activeSinceMs: null,
   lastStaticSeenMs: null,
@@ -210,7 +202,7 @@ function summarizeFreshness(events, endpoint) {
   const providerCounts = new Map();
   for (const ev of events) {
     realSum += Number(ev.realDataRatio || 0);
-    if (ev.source === "static_fallback" || ev.source === "static_hot_fallback") staticCount += 1;
+    if (ev.source === "degraded_empty") staticCount += 1;
     if (ev.source === "supabase") supabaseCount += 1;
     sourceCounts.set(ev.source, (sourceCounts.get(ev.source) || 0) + 1);
     if (ev.fallbackReason) fallbackCounts.set(ev.fallbackReason, (fallbackCounts.get(ev.fallbackReason) || 0) + 1);
@@ -259,7 +251,7 @@ async function getDataFreshnessSnapshot() {
 function computeRealDataRatio(source, count, limit) {
   const n = Math.max(0, Number(count) || 0);
   const lim = Math.max(1, Number(limit) || 1);
-  if (source === "static_fallback" || source === "static_hot_fallback") return 0;
+  if (source === "degraded_empty") return 0;
   return Math.min(1, Number((n / lim).toFixed(3)));
 }
 
@@ -283,38 +275,13 @@ function enrichSignalsMeta(payload, { limit, fallbackReason = null }) {
 }
 
 function emergencyHotPayload(limit, reason = "upstream_unavailable") {
-  const lim = Math.min(24, Math.max(1, Number(limit) || 10));
-  const data = STATIC_HOT_FALLBACK.slice(0, lim).map((t) => {
-    const sentinelScore = computeHotSentinel(t);
-    return {
-      ...t,
-      token: t.symbol,
-      tokenAddress: t.mint,
-      grade: "D",
-      flowLabel: "Degraded upstream",
-      alphaSpeedMins: null,
-      whyTrade: ["Emergency fallback: upstream market feed temporarily unavailable."],
-      sentinelScore,
-      decision: decisionFromScore(sentinelScore, "balanced"),
-      entryWindow: "OPEN",
-      entryWindowMinutesLeft: 5,
-      clusterHeat: clusterHeatFromScore(sentinelScore),
-      evidenceChips: evidenceChipsFor(sentinelScore).map((s) => s.split(" ")[0]),
-      quickBuy: {
-        "0.5Sol": jupiterSwapUrl(t.mint, 0.5),
-        "1Sol": jupiterSwapUrl(t.mint, 1),
-        "5Sol": jupiterSwapUrl(t.mint, 5)
-      },
-      narrativeTags: [],
-      degraded: true
-    };
-  });
+  const data = [];
   return {
     ok: true,
     data,
     meta: {
-      source: "static_hot_fallback",
-      providerUsed: "static_hot_fallback",
+      source: "degraded_empty",
+      providerUsed: "none",
       attempts: 1,
       circuitState: null,
       degraded: true,
@@ -339,33 +306,6 @@ function evidenceChipsFor(score) {
   if (score >= 80) chips.push("🔥 Cluster");
   else chips.push("💧 Flow");
   return chips.slice(0, 5);
-}
-
-function buildStaticFallbackCards(limit, strategy, contextMessage) {
-  return STATIC_SIGNAL_FALLBACK.slice(0, Math.max(1, Number(limit) || 10)).map((row) => {
-    const score = Number(row.score || 75);
-    return {
-      token: row.token,
-      tokenAddress: row.mint,
-      sentinelScore: score,
-      decision: decisionFromScore(score, strategy),
-      whyNow: whyNowLines({
-        walletCount: 2,
-        entryWindowMinutesLeft: 5,
-        sentinelScore: score,
-        symbol: row.token
-      }),
-      redFlags: [],
-      entryWindow: "OPEN",
-      entryWindowMinutesLeft: 5,
-      timeAdvantage: `You are earlier than ${Math.min(97, 52 + Math.round(score / 2))}% of traders`,
-      signalDecay: "Confidence -3%/min",
-      confluence: score >= 88,
-      evidenceChips: evidenceChipsFor(score),
-      contextHistory: `${contextMessage} ${row.token}`,
-      createdAt: new Date().toISOString()
-    };
-  });
 }
 
 function topBreakdownEntry(obj = {}) {
@@ -552,11 +492,11 @@ function trackLatestSignalsSource(meta = {}) {
   latestSignalsFallbackState.lastSource = source;
   latestSignalsFallbackState.lastCount = count;
 
-  if (source === "static_fallback") {
+  if (source === "degraded_empty") {
     latestSignalsFallbackState.lastStaticSeenMs = now;
     if (!latestSignalsFallbackState.activeSinceMs) {
       latestSignalsFallbackState.activeSinceMs = now;
-      console.warn("[OPS_ALERT] signals/latest switched to static_fallback");
+      console.warn("[OPS_ALERT] signals/latest switched to degraded_empty");
       return;
     }
     const durationMs = now - latestSignalsFallbackState.activeSinceMs;
@@ -576,7 +516,7 @@ function trackLatestSignalsSource(meta = {}) {
     latestSignalsFallbackState.lastRecoveryAtMs = now;
     latestSignalsFallbackState.activeSinceMs = null;
     console.warn(
-      `[OPS_ALERT] signals/latest recovered from static_fallback after ${Math.round(
+      `[OPS_ALERT] signals/latest recovered from degraded_empty after ${Math.round(
         latestSignalsFallbackState.lastIncidentDurationMs / 1000
       )}s`
     );
@@ -592,7 +532,7 @@ function getLatestSignalsFallbackOpsSnapshot() {
   const now = Date.now();
   const activeForMs = latestSignalsFallbackState.activeSinceMs ? now - latestSignalsFallbackState.activeSinceMs : 0;
   return {
-    status: latestSignalsFallbackState.activeSinceMs ? "static_fallback_active" : "healthy",
+    status: latestSignalsFallbackState.activeSinceMs ? "degraded_empty_active" : "healthy",
     config: {
       alertAfterMs: SIGNALS_STATIC_FALLBACK_ALERT_AFTER_MS,
       alertCooldownMs: SIGNALS_STATIC_FALLBACK_ALERT_COOLDOWN_MS
@@ -723,7 +663,7 @@ async function fetchLatestSignalRowsSupabase(supabase, since, limitRows) {
 }
 
 async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanced" } = {}) {
-  const lim = Math.min(50, Math.max(1, Number(limit) || 10));
+  const lim = capSignalsLatestLimit(limit);
   const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
   const { rows: raw, sourceTable } = await fetchLatestSignalRowsSupabase(supabase, since, 400);
   const anomalyAbsPct = Number(process.env.SIGNAL_FEED_EXCLUDE_ABS_OUTCOME_PCT || 0);
@@ -815,6 +755,7 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
     out.push({
       token: symbol.startsWith("$") ? symbol : `$${symbol}`,
       tokenAddress: mint,
+      smartWallets: walletCount,
       sentinelScore,
       degraded: !md?.symbol,
       providerUsed: md?._provider || null,
@@ -868,76 +809,21 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
   };
 }
 
-function buildSignalCardFromHotToken(row, strategy) {
-  const sentinelScore = Number(row?.sentinelScore || 0);
-  const mint = String(row?.tokenAddress || row?.mint || "");
-  const symbol = String(row?.token || row?.symbol || mint.slice(0, 4) || "TOKEN");
-  const decision = row?.decision || decisionFromScore(sentinelScore, strategy);
-  const whyNow = Array.isArray(row?.whyTrade) && row.whyTrade.length
-    ? row.whyTrade.slice(0, 3)
-    : whyNowLines({
-        walletCount: 2,
-        entryWindowMinutesLeft: Number(row?.entryWindowMinutesLeft || 5),
-        sentinelScore,
-        symbol
-      });
-  return {
-    token: symbol.startsWith("$") ? symbol : `$${symbol}`,
-    tokenAddress: mint,
-    sentinelScore,
-    degraded: Boolean(row?.degraded),
-    providerUsed: row?.providerUsed || null,
-    decision,
-    whyNow,
-    redFlags: Array.isArray(row?.redFlags) ? row.redFlags : [],
-    entryWindow: String(row?.entryWindow || "OPEN"),
-    entryWindowMinutesLeft: Number(row?.entryWindowMinutesLeft || 5),
-    timeAdvantage: `You are earlier than ${Math.min(97, 52 + Math.round(sentinelScore / 2))}% of traders`,
-    signalDecay: "Confidence -3%/min",
-    confluence: Boolean(row?.confluence || sentinelScore >= 88),
-    evidenceChips: Array.isArray(row?.evidenceChips) ? row.evidenceChips : evidenceChipsFor(sentinelScore),
-    contextHistory: `Market-derived setup for ${symbol} (no wallet-row data yet)`,
-    createdAt: new Date().toISOString()
-  };
-}
-
-async function buildLatestSignalsFallback({ limit = 10, strategy = "balanced", supabase = null, forceStatic = false } = {}) {
-  if (forceStatic) {
-    const hardFallbackForced = buildStaticFallbackCards(limit, strategy, "Static fallback card for (forced fallback simulation):");
-    return {
-      ok: true,
-      data: hardFallbackForced,
-      meta: { source: "static_fallback", count: hardFallbackForced.length, strategy, forced: true }
-    };
-  }
-
-  const hot = await buildHotTokens({ limit: Math.min(24, Math.max(6, Number(limit) || 10)), supabase });
-  const rows = Array.isArray(hot?.data) ? hot.data : [];
-  const data = rows.slice(0, limit).map((row) => buildSignalCardFromHotToken(row, strategy));
-  if (data.length > 0) {
-    const providerUsed = hot?.meta?.providerUsed || hot?.meta?.source || "provider_fallback";
-    return {
-      ok: true,
-      data,
-      meta: {
-        source: "provider_fallback",
-        count: data.length,
-        strategy,
-        providerUsed,
-        attempts: Number(hot?.meta?.attempts || 1),
-        circuitState: hot?.meta?.circuitState || null
-      }
-    };
-  }
-  const hardFallback = buildStaticFallbackCards(
-    limit,
-    strategy,
-    "Static fallback card for (upstream feed temporarily unavailable):"
-  );
+async function buildLatestSignalsFallback({ limit = 10 } = {}) {
+  const lim = capSignalsLatestLimit(limit);
   return {
     ok: true,
-    data: hardFallback,
-    meta: { source: "static_fallback", count: hardFallback.length, strategy }
+    data: [],
+    meta: {
+      source: "degraded_empty",
+      count: 0,
+      providerUsed: "none",
+      attempts: 1,
+      circuitState: null,
+      fallbackReason: "no_real_signal_data",
+      endpoint: "signals/latest",
+      limit: lim
+    }
   };
 }
 
@@ -1035,44 +921,134 @@ async function buildOutcomesProof(supabase, { hours = 168, recentN = 10 } = {}) 
   return flat;
 }
 
+const SMART_WALLETS_TOP_SIGNAL_MIN = Math.min(100, Math.max(1, Number(process.env.SMART_WALLETS_TOP_SIGNAL_MIN || 2)));
+const SIGNAL_AGG_LOOKBACK_LIMIT = 8000;
+
+/**
+ * Ranks wallets from recent resolved `smart_wallet_signals` when `smart_wallets` has no rows
+ * (common before the cron has populated the leaderboard table).
+ */
+async function buildSmartWalletsTopFromSignals(supabase, { limit }) {
+  const { data, error } = await supabase
+    .from("smart_wallet_signals")
+    .select("wallet_address, result_pct, created_at")
+    .not("result_pct", "is", null)
+    .not("wallet_address", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(SIGNAL_AGG_LOOKBACK_LIMIT);
+  if (error) {
+    console.warn("[homeTerminalApi] buildSmartWalletsTopFromSignals query failed", error.message);
+    return [];
+  }
+  const by = new Map();
+  for (const s of data || []) {
+    const addr = String(s.wallet_address || "").trim();
+    if (addr.length < 32) continue;
+    const p = Number(s.result_pct);
+    if (!Number.isFinite(p)) continue;
+    if (!by.has(addr)) {
+      by.set(addr, { wins: 0, total: 0, sum: 0, best: p, lastAt: s.created_at || null });
+    }
+    const u = by.get(addr);
+    u.total += 1;
+    u.sum += p;
+    if (p > 0) u.wins += 1;
+    if (p > u.best) u.best = p;
+  }
+  const out = [];
+  for (const [addr, u] of by) {
+    if (u.total < SMART_WALLETS_TOP_SIGNAL_MIN) continue;
+    const wr = (u.wins / u.total) * 100;
+    const early = Math.round(Math.min(99, Math.max(40, wr * 0.92)));
+    const clusterV = Math.round(Math.min(99, Math.max(40, wr * 0.88)));
+    const consistencyV = Math.round(Math.min(99, Math.max(40, wr * 0.95)));
+    const smartScore = Math.min(100, Math.max(35, Math.round(
+      wr * 0.4 + early * 0.3 + clusterV * 0.2 + consistencyV * 0.1
+    )));
+    const pnl30d = Math.round(Math.max(0, u.sum) * 12 + u.wins * 180);
+    const lastBigWin = `${u.total} resolved · best ${u.best > 0 ? u.best.toFixed(1) : "—"}% · WR ${wr.toFixed(1)}%`;
+    out.push({
+      wallet: addr.length > 12 ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : addr,
+      walletAddress: addr,
+      address: addr,
+      walletLabel: walletTierLabel(wr),
+      winRate: Math.round(wr * 10) / 10,
+      earlyEntry: early,
+      cluster: clusterV,
+      consistency: consistencyV,
+      decision: walletDecisionFromSmartScore(smartScore),
+      pnl30d,
+      lastBigWin,
+      smartScore,
+      signalStrength: smartScore,
+      recentHits: u.total,
+      tooltip: lastBigWin,
+      lastSeen: u.lastAt
+    });
+  }
+  out.sort((a, b) => b.smartScore - a.smartScore || b.recentHits - a.recentHits);
+  return out.slice(0, limit);
+}
+
 async function buildSmartWalletsTop(supabase, { limit = 20 } = {}) {
   const lim = Math.min(50, Math.max(1, Number(limit) || 20));
-  const { data, error } = await supabase.from("smart_wallets").select("*").limit(200);
-  if (error) throw error;
-  const rows = (data || [])
-    .map((r) => {
-      const smartScore = computedSmartScore(r);
-      const wr = Number(r.win_rate || 0);
-      const addr = String(r.wallet_address || "");
-      const early = Number.isFinite(Number(r.early_entry_score)) ? Math.round(Number(r.early_entry_score)) : Math.round(wr * 0.92);
-      const cluster = Number.isFinite(Number(r.cluster_score)) ? Math.round(Number(r.cluster_score)) : Math.round(wr * 0.88);
-      const consistency = Number.isFinite(Number(r.consistency_score))
-        ? Math.round(Number(r.consistency_score))
-        : Math.round(wr * 0.95);
-      const lastBigWin = `Win rate leader · ${wr.toFixed(1)}% tracked`;
-      return {
-        wallet: addr.length > 12 ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : addr,
-        walletAddress: addr,
-        address: addr,
-        walletLabel: walletTierLabel(wr),
-        winRate: Math.round(wr * 10) / 10,
-        earlyEntry: Math.min(99, Math.max(40, early)),
-        cluster: Math.min(99, Math.max(40, cluster)),
-        consistency: Math.min(99, Math.max(40, consistency)),
-        decision: walletDecisionFromSmartScore(smartScore),
-        pnl30d: Math.round(Number(r.pnl_30d || 0) * 100) / 100,
-        lastBigWin,
-        smartScore,
-        signalStrength: smartScore,
-        recentHits: Number(r.recent_hits || 0),
-        tooltip: lastBigWin,
-        lastSeen: r.last_seen || null
-      };
-    })
-    .sort((a, b) => b.smartScore - a.smartScore)
-    .slice(0, lim);
+  const { data, error } = await supabase
+    .from("smart_wallets")
+    .select("*")
+    .order("win_rate", { ascending: false })
+    .limit(200);
+  if (!error && (data || []).length) {
+    const rows = (data || [])
+      .map((r) => {
+        const smartScore = computedSmartScore(r);
+        const wr = Number(r.win_rate || 0);
+        const addr = String(r.wallet_address || "");
+        const early = Number.isFinite(Number(r.early_entry_score)) ? Math.round(Number(r.early_entry_score)) : Math.round(wr * 0.92);
+        const cluster = Number.isFinite(Number(r.cluster_score)) ? Math.round(Number(r.cluster_score)) : Math.round(wr * 0.88);
+        const consistency = Number.isFinite(Number(r.consistency_score))
+          ? Math.round(Number(r.consistency_score))
+          : Math.round(wr * 0.95);
+        const lastBigWin = `Win rate leader · ${wr.toFixed(1)}% tracked`;
+        return {
+          wallet: addr.length > 12 ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : addr,
+          walletAddress: addr,
+          address: addr,
+          walletLabel: walletTierLabel(wr),
+          winRate: Math.round(wr * 10) / 10,
+          earlyEntry: Math.min(99, Math.max(40, early)),
+          cluster: Math.min(99, Math.max(40, cluster)),
+          consistency: Math.min(99, Math.max(40, consistency)),
+          decision: walletDecisionFromSmartScore(smartScore),
+          pnl30d: Math.round(Number(r.pnl_30d || 0) * 100) / 100,
+          lastBigWin,
+          smartScore,
+          signalStrength: smartScore,
+          recentHits: Number(r.recent_hits || 0),
+          tooltip: lastBigWin,
+          lastSeen: r.last_seen || null
+        };
+      })
+      .sort((a, b) => b.smartScore - a.smartScore)
+      .slice(0, lim);
+    return { ok: true, data: rows, rows, meta: { source: "supabase:smart_wallets", count: rows.length } };
+  }
 
-  return { ok: true, data: rows, rows, meta: { source: "supabase", count: rows.length } };
+  if (error) {
+    console.warn("[homeTerminalApi] buildSmartWalletsTop smart_wallets", error.message, "→ signal aggregates");
+  }
+  const fromSignals = await buildSmartWalletsTopFromSignals(supabase, { limit: lim });
+  if (fromSignals.length) {
+    return {
+      ok: true,
+      data: fromSignals,
+      rows: fromSignals,
+      meta: { source: "supabase:signal_aggregates", count: fromSignals.length }
+    };
+  }
+  if (error) {
+    throw error;
+  }
+  return { ok: true, data: [], rows: [], meta: { source: "empty", count: 0 } };
 }
 
 function computeHotSentinel(token) {
@@ -1161,24 +1137,11 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
 }
 
 async function getLatestSignalsFeedCached(supabase, limit, strategy) {
-  if (FORCE_STATIC_SIGNALS_FALLBACK) {
-    const key = `terminal:signals:latest:forced-static:v1:${limit}:${strategy}`;
-    const { payload, cache } = await withCache(key, () =>
-      buildLatestSignalsFallback({ limit, strategy, supabase: null, forceStatic: true }),
-      LATEST_SIGNALS_CACHE_TTL_SEC
-    );
-    const out = withLatestSignalsSourceTracking(
-      enrichSignalsMeta({ ...payload, meta: { ...(payload.meta || {}), cache } }, { limit, fallbackReason: "forced_static" })
-    );
-    recordFreshness("signalsLatest", out?.meta || {});
-    return out;
-  }
-
   if (!supabase) {
     const key = `terminal:signals:latest:fallback:v2:${limit}:${strategy}`;
     const { payload, cache } = await withCache(
       key,
-      () => buildLatestSignalsFallback({ limit, strategy, supabase: null }),
+      () => buildLatestSignalsFallback({ limit }),
       LATEST_SIGNALS_CACHE_TTL_SEC
     );
     const out = withLatestSignalsSourceTracking(
@@ -1199,8 +1162,8 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
     payload = out.payload;
     cache = out.cache;
   } catch (_) {
-    const fb = await buildLatestSignalsFallback({ limit, strategy, supabase });
-    const fallbackReason = fb?.meta?.source === "static_fallback" ? "supabase_query_failed_and_upstream_unavailable" : "supabase_query_failed";
+    const fb = await buildLatestSignalsFallback({ limit });
+    const fallbackReason = "supabase_query_failed";
     const out = withLatestSignalsSourceTracking(
       enrichSignalsMeta({ ...fb, meta: { ...(fb.meta || {}), cache: "miss+fallback" } }, { limit, fallbackReason })
     );
@@ -1215,8 +1178,8 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
     recordFreshness("signalsLatest", out?.meta || {});
     return out;
   }
-  const fb = await buildLatestSignalsFallback({ limit, strategy, supabase });
-  const fallbackReason = fb?.meta?.source === "static_fallback" ? "supabase_empty_and_upstream_unavailable" : "supabase_empty";
+  const fb = await buildLatestSignalsFallback({ limit });
+  const fallbackReason = "supabase_empty";
   const out = withLatestSignalsSourceTracking(
     enrichSignalsMeta({ ...fb, meta: { ...(fb.meta || {}), cache: `${cache}+fallback` } }, { limit, fallbackReason })
   );
@@ -1247,7 +1210,7 @@ async function getOutcomesProofCached(supabase, hours, recentN) {
 
 async function getSmartWalletsTopCached(supabase, limit) {
   if (!supabase) return { ok: true, data: [], rows: [], meta: { source: "unconfigured", cache: "bypass" } };
-  const key = `terminal:smartwallets:top:v2:${limit}`;
+  const key = `terminal:smartwallets:top:v3:${limit}`;
   const { payload, cache } = await withCache(key, () => buildSmartWalletsTop(supabase, { limit }));
   return { ...payload, meta: { ...(payload.meta || {}), cache } };
 }
@@ -1264,6 +1227,8 @@ startSignalsSupabaseSloEvaluationLoop();
 
 module.exports = {
   CACHE_TTL_SEC,
+  SIGNAL_FEED_MAX_CARDS,
+  capSignalsLatestLimit,
   buildLatestSignalsFeed,
   buildOutcomesProof,
   buildSmartWalletsTop,

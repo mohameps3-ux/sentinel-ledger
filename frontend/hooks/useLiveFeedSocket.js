@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 /**
  * WebSocket-ready hook: connects to NEXT_PUBLIC_WS_URL when socket.io is available.
- * Backend may not emit `sentinel:signal` yet — UI stays mock-driven until then.
+ * Backend may not emit `sentinel:signal` yet — UI stays unchanged until real events arrive.
  */
 export function useLiveFeedSocket({ onSignal } = {}) {
   const onSignalRef = useRef(onSignal);

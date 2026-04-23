@@ -4,32 +4,13 @@ import { getPublicWsUrl } from "../lib/publicRuntime";
 import { isProbableSolanaPubkey } from "../lib/solanaAddress";
 
 let socket = null;
-let mockCounter = 0;
-
-function buildMockTransaction(tokenAddress) {
-  const typeRoll = Math.random();
-  const type = typeRoll > 0.66 ? "buy" : typeRoll > 0.33 ? "swap" : "sell";
-  mockCounter += 1;
-  const walletSeed = Math.random().toString(36).slice(2, 8);
-  return {
-    signature: `mock-${tokenAddress}-${Date.now()}-${mockCounter}`,
-    wallet: `SIM${walletSeed.toUpperCase()}${String(mockCounter).padStart(4, "0")}`,
-    amount: Number((Math.random() * 8000 + 100).toFixed(2)),
-    type,
-    timestamp: new Date().toISOString(),
-    isMock: true
-  };
-}
 
 export function useWebSocket(tokenAddress) {
   const [transactions, setTransactions] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionState, setConnectionState] = useState("disconnected");
   const dedupeRef = useRef(new Set());
-  const mockStartRef = useRef(null);
-  const mockIntervalRef = useRef(null);
   const lastNotifiedRef = useRef(0);
-  const txCountRef = useRef(0);
   const [convergence, setConvergence] = useState({
     detected: false,
     wallets: [],
@@ -39,29 +20,7 @@ export function useWebSocket(tokenAddress) {
   /** Latest cluster coordination signal: RED_PREPARE | RED_CONFIRM | RED_ABORT (Fase B). */
   const [coordination, setCoordination] = useState(null);
 
-  const clearMockTimers = useCallback(() => {
-    if (mockStartRef.current) {
-      clearTimeout(mockStartRef.current);
-      mockStartRef.current = null;
-    }
-    if (mockIntervalRef.current) {
-      clearInterval(mockIntervalRef.current);
-      mockIntervalRef.current = null;
-    }
-  }, []);
-
-  const pushTransaction = useCallback((tx, fromMock = false) => {
-    if (!fromMock) {
-      if (mockStartRef.current) {
-        clearTimeout(mockStartRef.current);
-        mockStartRef.current = null;
-      }
-      if (mockIntervalRef.current) {
-        clearInterval(mockIntervalRef.current);
-        mockIntervalRef.current = null;
-      }
-    }
-
+  const pushTransaction = useCallback((tx) => {
     const sig = tx?.signature || "";
     const key = sig
       ? `${sig}:${tx?.wallet}:${tx?.amount}:${tx?.type}`
@@ -75,20 +34,13 @@ export function useWebSocket(tokenAddress) {
     const now = Date.now();
     const shouldNotify = now - lastNotifiedRef.current >= 100;
     if (shouldNotify) lastNotifiedRef.current = now;
-    txCountRef.current += 1;
 
     const nextTx = {
       ...tx,
-      isMock: !!fromMock || !!tx?.isMock,
+      isMock: false,
       shouldNotify
     };
-    setTransactions((prev) => {
-      if (!fromMock) {
-        const withoutMock = prev.filter((t) => !t.isMock);
-        return [nextTx, ...withoutMock].slice(0, 50);
-      }
-      return [nextTx, ...prev].slice(0, 50);
-    });
+    setTransactions((prev) => [nextTx, ...prev].slice(0, 50));
   }, []);
 
   useEffect(() => {
@@ -104,8 +56,6 @@ export function useWebSocket(tokenAddress) {
     setConvergence({ detected: false, wallets: [], detectedAt: null, windowMinutes: 10 });
     setCoordination(null);
     dedupeRef.current = new Set();
-    txCountRef.current = 0;
-    clearMockTimers();
 
     if (!socket) {
       socket = io(getPublicWsUrl(), {
@@ -155,12 +105,6 @@ export function useWebSocket(tokenAddress) {
     socket.on("coordination:red-signal", handleRedSignal);
 
     socket.emit("join-token", tokenAddress);
-    mockStartRef.current = setTimeout(() => {
-      if (txCountRef.current > 0) return;
-      mockIntervalRef.current = setInterval(() => {
-        pushTransaction(buildMockTransaction(tokenAddress), true);
-      }, 5000);
-    }, 10000);
 
     return () => {
       socket.emit("leave-token", tokenAddress);
@@ -170,9 +114,8 @@ export function useWebSocket(tokenAddress) {
       socket.off("transaction", handleTx);
       socket.off("convergence", handleConvergence);
       socket.off("coordination:red-signal", handleRedSignal);
-      clearMockTimers();
     };
-  }, [tokenAddress, pushTransaction, clearMockTimers]);
+  }, [tokenAddress, pushTransaction]);
 
   return { transactions, isConnected, connectionState, convergence, coordination };
 }
