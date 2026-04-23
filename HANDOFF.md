@@ -82,7 +82,7 @@ Key files:
 - `supabase/migrations/003_signal_performance.sql`
 - `supabase/schema.sql`
 
-**Coordination T+N (market outcomes for RED alerts):** `coordination_outcomes` + cron, recurrence stats prefer this table with `signal_performance` fallback; see **§8b** for production closure. Key files: `backend/src/services/coordinationOutcomes.js`, `backend/src/jobs/coordinationOutcomeCron.js`, `walletCoordinationService.js`, `supabase/migrations/010_*.sql`, `012_coordination_outcomes.sql`.
+**Coordination T+N (market outcomes for RED alerts):** `coordination_outcomes` + cron, recurrence stats prefer this table with `signal_performance` fallback; see **§8b** for production closure. Key files: `backend/src/services/coordinationOutcomes.js`, `backend/src/jobs/coordinationOutcomeCron.js`, `walletCoordinationService.js`, `supabase/migrations/010_*.sql`, `012_coordination_outcomes.sql`, `013_coordination_outcomes_rls.sql`, `014_wallet_behavior_and_coordination_rls.sql` (RLS Security Advisor for `wallet_behavior_stats` / `wallet_coordination_pairs`).
 
 ### Ops Automation
 
@@ -166,6 +166,10 @@ npm run db:ensure-signal-performance --prefix backend
 
 # Same migration against production DB only, without touching local .env
 railway run npm run db:ensure-signal-performance
+
+# RLS / schema read-only: fails if 013/014 not applied (when tables exist)
+npm run db:verify-schema --prefix backend
+# or: railway run npm run db:verify-schema
 ```
 
 In the Supabase SQL editor, verify `wallet_coordination_alerts` and `coordination_outcomes` exist and that `coordination_outcomes.alert_id` references `wallet_coordination_alerts(id)`.
@@ -298,6 +302,7 @@ npm run smoke:post-deploy --prefix backend
 
 ## 9b) Recent Security/Ops Changelog
 
+- **Repo (RLS 014 closure):** `apply_production_bundle.sql` enables RLS on `wallet_behavior_stats` + `wallet_coordination_pairs`; `npm run db:verify-schema` asserts RLS on those tables and `coordination_outcomes` when they exist; `applySignalPerformanceSchema.js` fails fast if any listed migration file is missing (no silent skip).
 - `2fa14f0` — `fix(db): harden Railway CLI JSON sync on Windows`
   - Handles Windows `.cmd` invocation (`shell: true`) and UTF-8 BOM trimming in `syncDatabaseUrlToLocalEnv.js`.
 - `e366bab` — `docs(ops): add DB URL runbook for signal_performance`
