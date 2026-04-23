@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
+    "dev:fresh": "node scripts/kill-next-ports.cjs && node scripts/clean-next.cjs && next dev --webpack",
+    "clean:next": "node scripts/clean-next.cjs",
     "check:deploy-contract": "node scripts/check-deploy-contract.cjs",
     "prebuild": "node scripts/check-deploy-contract.cjs",
     "build": "next build --webpack",
