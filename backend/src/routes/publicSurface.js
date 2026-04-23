@@ -38,13 +38,7 @@ function statusFromPct(pct) {
 router.get("/stats", async (_req, res) => {
   const supabase = safeSupabase();
   if (!supabase) {
-    return res.json({
-      ok: true,
-      signalsToday: 0,
-      topWalletPct30d: null,
-      avgEntryWindowMins: 4,
-      source: "unconfigured"
-    });
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured" });
   }
   try {
     const start = new Date();
@@ -70,14 +64,7 @@ router.get("/stats", async (_req, res) => {
       source: "supabase"
     });
   } catch (e) {
-    return res.json({
-      ok: true,
-      signalsToday: 0,
-      topWalletPct30d: null,
-      avgEntryWindowMins: 4,
-      source: "error",
-      error: e.message
-    });
+    return res.status(500).json({ ok: false, error: e.message || "public_stats_failed" });
   }
 });
 
@@ -101,7 +88,7 @@ router.get("/track-record", async (req, res) => {
   const filter = String(req.query.filter || "all").toLowerCase();
   const supabase = safeSupabase();
   if (!supabase) {
-    return res.json({ ok: true, rows: [], winRate7d: null, count7d: 0, meta: { source: "unconfigured" } });
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured", rows: [] });
   }
   try {
     let since = null;
@@ -183,7 +170,7 @@ router.get("/track-record", async (req, res) => {
 router.get("/signals-24h", async (_req, res) => {
   const supabase = safeSupabase();
   if (!supabase) {
-    return res.json({ ok: true, rows: [] });
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured", rows: [] });
   }
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   try {
@@ -227,10 +214,7 @@ router.get("/wallet-labels", async (req, res) => {
   const supabase = safeSupabase();
   const out = {};
   if (!supabase) {
-    addresses.forEach((a) => {
-      out[a] = { label: `${a.slice(0, 4)}…${a.slice(-4)}`, tooltip: a };
-    });
-    return res.json({ ok: true, labels: out });
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured", labels: {} });
   }
 
   try {
@@ -272,10 +256,7 @@ router.get("/wallet-labels", async (req, res) => {
 
     return res.json({ ok: true, labels: out });
   } catch (e) {
-    addresses.forEach((a) => {
-      out[a] = { label: `${a.slice(0, 4)}…${a.slice(-4)}`, tooltip: a };
-    });
-    return res.json({ ok: true, labels: out, error: e.message });
+    return res.status(500).json({ ok: false, error: e.message || "wallet_labels_failed", labels: {} });
   }
 });
 
@@ -283,14 +264,15 @@ router.get("/wallet-labels", async (req, res) => {
 router.get("/smart-wallets-leaderboard", async (req, res) => {
   const supabase = safeSupabase();
   if (!supabase) {
-    return res.json({ ok: true, rows: [], meta: { source: "unconfigured" } });
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured", rows: [] });
   }
   try {
     const minWr = Math.min(100, Math.max(0, Number(req.query.minWinRate || 0)));
     const minTrades = Math.min(100000, Math.max(0, Number(req.query.minTrades || 0)));
     const chain = String(req.query.chain || "solana").toLowerCase();
+    const pageLimit = Math.min(100, Math.max(1, Number(req.query.limit ?? 50)));
 
-    let q = supabase.from("smart_wallets").select("*").order("win_rate", { ascending: false }).limit(120);
+    let q = supabase.from("smart_wallets").select("*").order("win_rate", { ascending: false }).limit(240);
     if (minWr > 0) q = q.gte("win_rate", minWr);
     const { data, error } = await q;
     if (error) throw error;
@@ -303,7 +285,11 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       recentHits: Number(w.recent_hits || 0),
       totalTrades: Number(w.total_trades || 0),
       lastSeen: w.last_seen,
-      smartScore: w.smart_score != null ? Number(w.smart_score) : null
+      smartScore: w.smart_score != null ? Number(w.smart_score) : null,
+      earlyEntryScore: w.early_entry_score != null ? Number(w.early_entry_score) : null,
+      clusterScore: w.cluster_score != null ? Number(w.cluster_score) : null,
+      consistencyScore: w.consistency_score != null ? Number(w.consistency_score) : null,
+      smartWalletRowUpdatedAt: w.updated_at || null
     }));
 
     if (minTrades > 0) {
@@ -314,7 +300,7 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       rows = [];
     }
 
-    rows = rows.slice(0, 20);
+    rows = rows.slice(0, pageLimit);
 
     const wallets = rows.map((r) => r.wallet).filter(Boolean);
     const bestByWallet = new Map();
@@ -397,6 +383,7 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       meta: {
         source: "supabase",
         count: enriched.length,
+        limit: pageLimit,
         chain: chain === "all" ? "all" : "solana",
         filters: { minWinRate: minWr, minTrades }
       }
@@ -410,7 +397,7 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
 router.get("/smart-money-activity", async (req, res) => {
   const supabase = safeSupabase();
   if (!supabase) {
-    return res.json({ ok: true, rows: [], meta: { source: "unconfigured" } });
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured", rows: [] });
   }
   const limit = Math.min(100, Math.max(1, Number(req.query.limit || 48)));
   try {

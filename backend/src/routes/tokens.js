@@ -20,8 +20,12 @@ function safeSupabase() {
  */
 router.get("/hot", publicTerminalLimiter, async (req, res) => {
   try {
+    const supabase = safeSupabase();
+    if (!supabase) {
+      return res.status(503).json({ ok: false, error: "supabase_unconfigured", data: [] });
+    }
     const lim = Math.min(24, Math.max(1, Number(req.query.limit) || 12));
-    const body = await getHotTokensCached(lim, safeSupabase());
+    const body = await getHotTokensCached(lim, supabase);
     const narrative = String(req.query.narrative || "").trim().toUpperCase();
     const filteredData =
       narrative.length > 0
@@ -36,15 +40,11 @@ router.get("/hot", publicTerminalLimiter, async (req, res) => {
     });
   } catch (e) {
     console.error("tokens/hot:", e.message);
-    return res.json({
-      ok: true,
+    return res.status(500).json({
+      ok: false,
+      error: e.message || "tokens_hot_failed",
       data: [],
-      meta: {
-        source: "route_fallback",
-        degraded: true,
-        fallbackReason: "route_exception",
-        count: 0
-      }
+      meta: { source: "strict_real_error", degraded: true, count: 0 }
     });
   }
 });

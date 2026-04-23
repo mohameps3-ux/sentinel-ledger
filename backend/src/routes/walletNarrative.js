@@ -34,7 +34,7 @@ router.get("/:address/summary", walletNarrativeLimiter, async (req, res) => {
     }
     const supabase = safeSupabase();
     if (!supabase) {
-      return res.json({ ok: true, data: null, meta: { source: "unconfigured" } });
+      return res.status(503).json({ ok: false, error: "supabase_unconfigured" });
     }
 
     const { data: walletRow, error } = await supabase

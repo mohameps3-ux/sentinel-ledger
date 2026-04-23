@@ -1138,17 +1138,7 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
 
 async function getLatestSignalsFeedCached(supabase, limit, strategy) {
   if (!supabase) {
-    const key = `terminal:signals:latest:fallback:v2:${limit}:${strategy}`;
-    const { payload, cache } = await withCache(
-      key,
-      () => buildLatestSignalsFallback({ limit }),
-      LATEST_SIGNALS_CACHE_TTL_SEC
-    );
-    const out = withLatestSignalsSourceTracking(
-      enrichSignalsMeta({ ...payload, meta: { ...(payload.meta || {}), cache } }, { limit, fallbackReason: "supabase_unconfigured" })
-    );
-    recordFreshness("signalsLatest", out?.meta || {});
-    return out;
+    throw new Error("supabase_unconfigured");
   }
   const key = `terminal:signals:latest:v6:${limit}:${strategy}`;
   let payload;
@@ -1161,27 +1151,29 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
     );
     payload = out.payload;
     cache = out.cache;
-  } catch (_) {
-    const fb = await buildLatestSignalsFallback({ limit });
-    const fallbackReason = "supabase_query_failed";
-    const out = withLatestSignalsSourceTracking(
-      enrichSignalsMeta({ ...fb, meta: { ...(fb.meta || {}), cache: "miss+fallback" } }, { limit, fallbackReason })
-    );
-    recordFreshness("signalsLatest", out?.meta || {});
-    return out;
+  } catch (error) {
+    throw new Error(error?.message || "supabase_query_failed");
   }
   const hasRows = Array.isArray(payload?.data) && payload.data.length > 0;
-  if (hasRows) {
-    const out = withLatestSignalsSourceTracking(
-      enrichSignalsMeta({ ...payload, meta: { ...(payload.meta || {}), cache } }, { limit, fallbackReason: null })
-    );
-    recordFreshness("signalsLatest", out?.meta || {});
-    return out;
-  }
-  const fb = await buildLatestSignalsFallback({ limit });
-  const fallbackReason = "supabase_empty";
   const out = withLatestSignalsSourceTracking(
-    enrichSignalsMeta({ ...fb, meta: { ...(fb.meta || {}), cache: `${cache}+fallback` } }, { limit, fallbackReason })
+    enrichSignalsMeta(
+      {
+        ...(hasRows
+          ? payload
+          : {
+              ok: true,
+              data: [],
+              meta: {
+                source: "supabase",
+                count: 0,
+                strategy,
+                providerUsed: "supabase"
+              }
+            }),
+        meta: { ...((hasRows ? payload.meta : { source: "supabase", count: 0, strategy, providerUsed: "supabase" }) || {}), cache }
+      },
+      { limit, fallbackReason: null }
+    )
   );
   recordFreshness("signalsLatest", out?.meta || {});
   return out;
@@ -1189,19 +1181,7 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
 
 async function getOutcomesProofCached(supabase, hours, recentN) {
   if (!supabase) {
-    return {
-      ok: true,
-      wins: 0,
-      losses: 0,
-      avgWin: null,
-      avgLoss: null,
-      netReturn: null,
-      recentOutcomes: [],
-      summary: null,
-      bestRecent: null,
-      recent: [],
-      meta: { source: "unconfigured", cache: "bypass" }
-    };
+    throw new Error("supabase_unconfigured");
   }
   const key = `terminal:signals:outcomes:v2:${hours}:${recentN}`;
   const { payload, cache } = await withCache(key, () => buildOutcomesProof(supabase, { hours, recentN }));
@@ -1209,7 +1189,7 @@ async function getOutcomesProofCached(supabase, hours, recentN) {
 }
 
 async function getSmartWalletsTopCached(supabase, limit) {
-  if (!supabase) return { ok: true, data: [], rows: [], meta: { source: "unconfigured", cache: "bypass" } };
+  if (!supabase) throw new Error("supabase_unconfigured");
   const key = `terminal:smartwallets:top:v3:${limit}`;
   const { payload, cache } = await withCache(key, () => buildSmartWalletsTop(supabase, { limit }));
   return { ...payload, meta: { ...(payload.meta || {}), cache } };

@@ -3,7 +3,8 @@ const { getSupabase } = require("../lib/supabase");
 const publicTerminalLimiter = require("../middleware/publicTerminalLimiter");
 const {
   getLatestSignalsFeedCached,
-  getOutcomesProofCached
+  getOutcomesProofCached,
+  capSignalsLatestLimit
 } = require("../services/homeTerminalApi");
 const { pctFromPrices } = require("../services/smartWalletSignalPrices");
 
@@ -47,16 +48,8 @@ router.get("/outcomes", async (req, res) => {
     const body = await getOutcomesProofCached(supabase, hours, recentN);
     return res.json(body);
   } catch (e) {
-    return res.status(500).json({
-      ok: false,
-      error: e.message,
-      wins: 0,
-      losses: 0,
-      avgWin: null,
-      avgLoss: null,
-      netReturn: null,
-      recentOutcomes: []
-    });
+    const code = /unconfigured/i.test(String(e?.message || "")) ? 503 : 500;
+    return res.status(code).json({ ok: false, error: e?.message || "signals_outcomes_failed" });
   }
 });
 
@@ -66,14 +59,14 @@ router.get("/outcomes", async (req, res) => {
  * Query: limit (default 10), strategy=balanced|conservative|aggressive
  */
 router.get("/latest", async (req, res) => {
-  const lim = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
+  const lim = capSignalsLatestLimit(Number(req.query.limit) || 10);
   const strategy = ["conservative", "aggressive", "balanced"].includes(String(req.query.strategy))
     ? String(req.query.strategy)
     : "balanced";
   const tokenFilter = String(req.query.token || "").trim().toUpperCase();
   const supabase = safeSupabase();
   try {
-    const body = await getLatestSignalsFeedCached(supabase, tokenFilter ? 50 : lim, strategy);
+    const body = await getLatestSignalsFeedCached(supabase, tokenFilter ? capSignalsLatestLimit(50) : lim, strategy);
     let payload = body;
     if (tokenFilter) {
       const filtered = (Array.isArray(body?.data) ? body.data : []).filter((row) => {
@@ -92,20 +85,12 @@ router.get("/latest", async (req, res) => {
     }
     return res.json(payload);
   } catch (e) {
-    return res.json({
-      ok: true,
+    const code = /unconfigured/i.test(String(e?.message || "")) ? 503 : 500;
+    return res.status(code).json({
+      ok: false,
+      error: e?.message || "signals_latest_failed",
       data: [],
-      meta: {
-        source: "route_fallback",
-        degraded: true,
-        fallbackReason: "route_exception",
-        count: 0,
-        upstreamStatus: null,
-        realDataRatio: 0,
-        providerUsed: "route_fallback",
-        attempts: 1,
-        circuitState: null
-      }
+      meta: { source: "strict_real_error", degraded: true, count: 0 }
     });
   }
 });
@@ -117,7 +102,7 @@ router.get("/history", async (req, res) => {
   const lim = Math.min(80, Math.max(1, Number(req.query.limit) || 30));
   const supabase = safeSupabase();
   if (!supabase) {
-    return res.json({ ok: true, rows: [], meta: { source: "unconfigured" } });
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured", rows: [] });
   }
   try {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -151,7 +136,7 @@ router.get("/history", async (req, res) => {
 
 router.get("/graveyard", async (req, res) => {
   const supabase = safeSupabase();
-  if (!supabase) return res.json({ ok: true, rows: [], meta: { source: "unconfigured" } });
+  if (!supabase) return res.status(503).json({ ok: false, error: "supabase_unconfigured", rows: [] });
   try {
     const from = req.query.from ? new Date(String(req.query.from)).toISOString() : null;
     const to = req.query.to ? new Date(String(req.query.to)).toISOString() : null;
