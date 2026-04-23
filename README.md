@@ -19,7 +19,10 @@ Frontend:
 
 1. `cd frontend`
 2. `npm install`
-3. `npm run dev`
+3. `npm run dev` (o `npm run build` y luego `npm run start`)
+4. Tras cambios de UI, **recarga dura** (Ctrl+Shift+R) para no quedarte con un bundle viejo en caché.
+
+**Comprobar que estás viendo el header correcto:** en DevTools, el `<nav>` debe llevar `data-sl-nav="slim"` (bundle del nav compacto) y, en producción, `data-sentinel-build` con el SHA del despliegue. Si no coinciden, vuelve a desplegar en Vercel con el commit adecuado o limpia caché.
 
 ## Supabase
 
