@@ -1,0 +1,21 @@
+---
+description: Regresiones peligrosas en War Home / feed Live (parpadeo, RLS a nivel de UI)
+globs: frontend/pages/index.js,frontend/src/features/war-home/**,frontend/src/constants/homeData.js,frontend/hooks/useRankingSnapshot.js
+alwaysApply: false
+---
+
+# War Home / Live: estabilidad (no reintroducir)
+
+Antes de mergear cambios en estos archivos, revisa el **PR** y el checklist en `.github/pull_request_template.md` (sección *War Home / feed Live*).
+
+**No volver a meter (causó parpadeo o remounts masivos):**
+
+1. **`useRankingSnapshot`** en el **merge** de señales en `index.js` (`interpretedSignalsRaw` / salida a grid). Ese hook agrupa estados y vaciaba/rellenaba de golpe → parpadeo de **toda** la parrilla. El comentario `// No useRankingSnapshot here` en `index.js` **no** es opcional: si alguien lo quita, el riesgo vuelve. El hook puede seguir existiendo en `hooks/` para otros usos; **prohibido** conectarlo al merge del Live.
+
+2. **`visibleTrending` retrasado** frente a `trending` **solo** para rellenar el Live. El hot-fill del merge debe basarse en el **mismo** `trending` que alimenta `useLastGoodArray` / hot (ver comentario junto a `TRENDING_STABLE_KEY`). Otra cola retrasada desincroniza y vuelve el efecto de “entra/sale” o flash.
+
+3. **Un solo umbral** para conmutar Grid vs **Virtuoso** (p. ej. 50) **sin banda de histéresis**. Debe mantenerse el patrón `liveN > 50` / `liveN < 42` (o equivalente documentado) para no alternar en el borde y remontar **todas** las cards. `UI_CONFIG.VIRTUOSO_ROW_THRESHOLD` y columnas: mantener alineado con el grid (ver `homeData.js`).
+
+**Código de verdad:** `node scripts/check-home-live-invariants.cjs` (se ejecuta en `prebuild`). Si un cambio de diseño requiere relajar comprobaciones, **actualizar el script y la documentación** a la vez, no desactivar a solas.
+
+**Entorno (fuera de este criterio):** API, Supabase, `degraded` o listas vacías son operativas; no son el bug de React descrito arriba.

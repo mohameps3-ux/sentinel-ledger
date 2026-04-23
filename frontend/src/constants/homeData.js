@@ -7,7 +7,8 @@ export const TACTICAL_TAB_LS_KEY = "sentinel.cockpit.tacticalTab";
 
 /**
  * Cockpit timing & layout knobs (single source of truth for Phase 4+ polish).
- * Keep aligned with `useRankingSnapshot`, React Query intervals, and Virtuoso.
+ * Keep RANKING_FLUSH_* aligned with any ranking UI debounce, React Query intervals, and Virtuoso row chunking
+ * in `index.js` / Live — **not** the index merge (that path must not use the ranking-snapshot hook; see `check-home-live-invariants.cjs`).
  */
 export const UI_CONFIG = Object.freeze({
   RANKING_FLUSH_WAR_MS: 5000,
