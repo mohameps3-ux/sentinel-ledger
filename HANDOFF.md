@@ -155,7 +155,7 @@ See `backend/.env.example` for full list.
 
 ### 6b) Internal reminder — DB URL + migrations (`signal_performance`, coordination)
 
-`applySignalPerformanceSchema.js` always loads `backend/.env` (not the shell cwd). It applies, in order: `003_signal_performance.sql`, `011_signal_performance_emission_regime.sql`, `010_wallet_coordination_alerting.sql`, `012_coordination_outcomes.sql` (012 needs 010 for the FK to `wallet_coordination_alerts`). Empty `DATABASE_URL=` / `SUPABASE_DATABASE_URL=` lines still load as blank strings — fix with sync or set values manually.
+`applySignalPerformanceSchema.js` always loads `backend/.env` (not the shell cwd). It applies, in order: `003_signal_performance.sql`, `011_signal_performance_emission_regime.sql`, `010_wallet_coordination_alerting.sql`, `012_coordination_outcomes.sql` (012 needs 010 for the FK to `wallet_coordination_alerts`), `013_coordination_outcomes_rls.sql`, `014_wallet_behavior_and_coordination_rls.sql` (RLS on `wallet_behavior_stats` and `wallet_coordination_pairs`; Security Advisor). Empty `DATABASE_URL=` / `SUPABASE_DATABASE_URL=` lines still load as blank strings — fix with sync or set values manually.
 
 ```bash
 # Fill empty DATABASE_URL in backend/.env from the linked Railway service env
@@ -213,7 +213,8 @@ Minimum to consider the feature **complete in production** (no extra code if you
 
 ### 1) Database (project that backs the live API)
 
-- Run migrations **once** on that Supabase project: `npm run db:ensure-signal-performance --prefix backend` (or `node backend/scripts/applySignalPerformanceSchema.js` with `DATABASE_URL` / `SUPABASE_DATABASE_URL` set), **or** apply by hand in order: **003 → 011 → 010 → 012 → 013** (`013` enables RLS on `coordination_outcomes`; service role bypasses).
+- Run migrations **once** on that Supabase project: `npm run db:ensure-signal-performance --prefix backend` (or `node backend/scripts/applySignalPerformanceSchema.js` with `DATABASE_URL` / `SUPABASE_DATABASE_URL` set), **or** apply by hand in order: **003 → 011 → 010 → 012 → 013 → 014** (`013` = RLS `coordination_outcomes`; `014` = RLS `wallet_behavior_stats` + `wallet_coordination_pairs`; service role bypasses). **CLI alternativa:** `supabase db push` si usas el flujo Supabase CLI con estas migraciones versionadas.
+- Tras **014**, revisa **Security Advisor** en Supabase: el aviso de tablas públicas sin RLS debería desaparecer tras un refresco (si aún ves hallazgos, vuelve a ejecutar el advisor).
 - In SQL editor, confirm `wallet_coordination_alerts` and `coordination_outcomes` exist and the FK from 012 to alerts is valid (no error on join).
 
 ### 2) Environment (Railway / hosting)
@@ -246,7 +247,7 @@ Minimum to consider the feature **complete in production** (no extra code if you
 |--------|--------|
 | **Vercel** | Último deploy desde **`main` (HEAD)**, estado **Ready**, sin errores de build. **Root Directory = `frontend`**. El build usa el árbol completo del commit (incluye UI `84df31a` y todo lo posterior en `main`). |
 | **Railway** (API) | **Redeploy** del servicio Node con el mismo **`main`** / commit que ya tiene backend + cron + rutas; variables alineadas con `backend/.env.example`. |
-| **Supabase** | Aplicar **012** y **013** en el proyecto correcto (`013` = RLS *deny-by-default* en `coordination_outcomes` para claves anon/authenticated vía PostgREST; el backend con **service role** sigue sin bloqueo). |
+| **Supabase** | Aplicar **012**, **013** y **014** en el proyecto correcto (`014` = `014_wallet_behavior_and_coordination_rls.sql`: RLS en `wallet_behavior_stats` y `wallet_coordination_pairs`). Sin CLI: SQL Editor → pegar el archivo **014** y ejecutar. Luego **Security Advisor** (puede tardar un refresco). |
 
 **Smoke producción (todo en una línea, bash / macOS / Linux)**
 
@@ -281,7 +282,7 @@ npm run smoke:post-deploy --prefix backend
 **Desalineación típica**
 
 - Front **Ready** en Vercel pero API viejo en Railway → datos incoherentes; redeploy API.
-- Migración **012/013** no aplicada en el proyecto Supabase que usa el API → outcomes degradados o tabla ausente; revisar logs y `GET /health` (`coordinationOutcomes` en cuerpo).
+- Migración **012/013** no aplicada en el proyecto Supabase que usa el API → outcomes degradados o tabla ausente; revisar logs y `GET /health` (`coordinationOutcomes` en cuerpo). **014** ausente → avisos de RLS en Security Advisor (no suele romper el API con service role).
 
 ## 9) Safety + Security Notes
 

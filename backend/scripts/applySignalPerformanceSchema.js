@@ -1,12 +1,12 @@
 /**
- * One-shot Postgres migrations (003, 011, 010, 012, 013). Safe to re-run (IF NOT EXISTS / idempotent patterns).
+ * One-shot Postgres migrations (003, 011, 010, 012, 013, 014). Safe to re-run (IF NOT EXISTS / idempotent patterns).
  *
  * Runbook
  * - Set at least DATABASE_URL or SUPABASE_DATABASE_URL in backend/.env (or Railway/Supabase panel).
  *   This URI is for running this script only; API runtime uses SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY.
  * - Once: from repo root: `node backend/scripts/applySignalPerformanceSchema.js`
  *   or: `npm run db:ensure-signal-performance` with cwd backend (see package.json).
- * - Order: 003 → 011 → 010 → 012 (coordination_outcomes) → 013 (RLS deny-by-default on coordination_outcomes).
+ * - Order: 003 → 011 → 010 → 012 (coordination_outcomes) → 013 (RLS coordination_outcomes) → 014 (RLS wallet_behavior_stats, wallet_coordination_pairs; Security Advisor).
  * - Optional tunables: see backend/.env.example (COORD_OUTCOME_HORIZON_MIN, COORD_OUTCOME_PUMP_MIN_PCT, COORD_OUTCOME_CRON_ENABLED, …).
  * - If 012 is not applied: app remains tolerant; “verified” recurrence uses signal_performance fallback when
  *   coordination_outcomes has no row; if the table is missing, the outcome map is empty and the same fallback applies.
@@ -34,7 +34,8 @@ async function main() {
     "011_signal_performance_emission_regime.sql",
     "010_wallet_coordination_alerting.sql",
     "012_coordination_outcomes.sql",
-    "013_coordination_outcomes_rls.sql"
+    "013_coordination_outcomes_rls.sql",
+    "014_wallet_behavior_and_coordination_rls.sql"
   ];
   const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
   await client.connect();
@@ -46,7 +47,7 @@ async function main() {
       await client.query(sql);
       console.log(`OK: ${name}`);
     }
-    console.log("OK: signal_performance, coordination tables, coordination_outcomes, and RLS (013) applied.");
+    console.log("OK: signal_performance, coordination tables, coordination_outcomes, RLS (013–014) applied.");
   } finally {
     await client.end();
   }

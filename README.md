@@ -55,9 +55,9 @@ Script rápido para validar release hygiene + smoke endpoints:
   `powershell -ExecutionPolicy Bypass -File "scripts/release-check-v1.1.ps1" -BackendUrl "https://<backend>" -FrontendUrl "https://<frontend>"`  
   Para la ops key, preferible definir `$env:OMNI_BOT_OPS_KEY` en la sesión (evita que quede en historial de línea de comandos).
 
-El script cubre: git hygiene, smoke (`/health`, `/signals/latest`, `/ops/data-freshness`, y con ops key `/ops/wallet-coordination/outcomes` — falla si `degraded=true`, p. ej. sin migraciones **012/013**, recordatorios de seguridad y deploy, y plantilla para `HANDOFF.md`.
+El script cubre: git hygiene, smoke (`/health`, `/signals/latest`, `/ops/data-freshness`, y con ops key `/ops/wallet-coordination/outcomes` — falla si `degraded=true`, p. ej. sin migraciones **012/013** en la DB del API, recordatorios de seguridad y deploy, y plantilla para `HANDOFF.md`.
 
-Tras **012 + 013** en Supabase + redeploy API:  
+Tras **012–014** en Supabase (incl. **014** para RLS / Security Advisor) + redeploy API:  
 `powershell -ExecutionPolicy Bypass -File "scripts/post-migration-smoke-012.ps1"` (ops key **solo** por entorno), o `npm run smoke:post-deploy --prefix backend` con `SMOKE_API_BASE_URL` + `OMNI_BOT_OPS_KEY`.
 
 ## Deploy (resumen)
@@ -65,7 +65,7 @@ Tras **012 + 013** en Supabase + redeploy API:
 - **Vercel (frontend):** en el proyecto, **Root Directory** = `frontend` (**una sola vez**, relativo a la raíz del repo: exactamente el texto `frontend`, **sin** `frontend/frontend`). En repo hay `frontend/vercel.json` con `install` + `build`; el build usa `next build --webpack` vía `package.json` → `npm run build`. Antes del build se ejecuta `scripts/check-deploy-contract.cjs` (vía `prebuild`): exige `vercel.json`, `data-sl-nav="slim"`, `data-sentinel-build` y `NEXT_PUBLIC_GIT_SHA` en `next.config` + `Navbar` — si falta un archivo nuevo o se borra un marcador, **el build falla** en local y en CI. El deploy usa el **árbol completo del commit** desplegado (HEAD de `main`); no hace falta “elegir solo” el commit de backend para el front si ese HEAD ya incluye ambos cambios.
 - **Si `vercel deploy` falla con `…\frontend\frontend` no existe:** el panel tiene Root mal **o** estás en `cd frontend` con Root ya = `frontend`. Corrige el panel y ejecuta **`vercel deploy --prod --yes` desde la raíz del monorepo** (carpeta que contiene `frontend/` y `backend/`). El script `scripts/recover-prod.ps1 -Redeploy` ya hace deploy desde esa raíz.
 - **Railway (backend):** conectar repo `mohameps3-ux/sentinel-ledger`, **Root Directory** = `backend`, rama `main`. Variables mínimas según `backend/.env.example`. Tras migraciones SQL, **redeploy** del servicio Node para alinear runtime con el commit que espera el esquema.
-- **Supabase:** en el proyecto que usa el API, aplicar **012** (tabla `coordination_outcomes`) y **013** (`013_coordination_outcomes_rls.sql`, RLS deny-by-default vía PostgREST para claves no service_role). Con `DATABASE_URL` o `SUPABASE_DATABASE_URL` en `backend/.env`: `npm run db:ensure-signal-performance --prefix backend` aplica en cadena **003 → 011 → 010 → 012 → 013** (idempotente donde aplica).
+- **Supabase:** en el proyecto que usa el API, aplicar **012**–**014** según necesidad: **012** tabla `coordination_outcomes`, **013** RLS en esa tabla, **014** (`014_wallet_behavior_and_coordination_rls.sql`) RLS en `wallet_behavior_stats` y `wallet_coordination_pairs` (Security Advisor). Con `DATABASE_URL` / `SUPABASE_DATABASE_URL`: `npm run db:ensure-signal-performance --prefix backend` aplica **003 → 011 → 010 → 012 → 013 → 014**. Sin script: `supabase db push` o SQL Editor pegando el `.sql` de **014**; tras aplicar, revisa **Security Advisor** (puede tardar un refresco).
 - **Smoke post-deploy (Node, repo):** variables en entorno o `backend/.env` (no pegues `OMNI_BOT_OPS_KEY` en el shell compartido si puedes evitarlo; en CI usa secretos del runner). Ejemplo prod duro:
   ```bash
   SMOKE_API_BASE_URL="https://<tu-api>.up.railway.app" \
