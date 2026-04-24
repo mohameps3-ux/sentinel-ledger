@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getPublicApiUrl } from "../../lib/publicRuntime";
+import { recordClientTelemetry } from "../../lib/clientTelemetry.mjs";
 
 /**
- * Fixed strip pinned directly under the navbar (home only). Mock
- * dynamics + PRO CTA.
+ * Fixed strip pinned directly under the navbar (home only). Reads public
+ * sync health so the home HUD shows measured freshness instead of mock motion.
  *
  * Layout contract
  * ---------------
@@ -28,22 +30,41 @@ import Link from "next/link";
  * of truth.
  */
 export function LiveTensionBar() {
-  const [live24h, setLive24h] = useState(37);
-  const [recent2m, setRecent2m] = useState(3);
-  const [nextSec, setNextSec] = useState(30);
+  const [freshness, setFreshness] = useState({ state: "STALE", label: "Checking freshness", hint: "measuring" });
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setLive24h((n) => n + (Math.random() > 0.72 ? 1 : 0));
-      if (Math.random() > 0.82) {
-        setRecent2m(2 + Math.floor(Math.random() * 4));
+    let alive = true;
+    const load = async () => {
+      try {
+        const res = await fetch(`${getPublicApiUrl()}/health/sync`, { cache: "no-store" });
+        const json = await res.json().catch(() => ({}));
+        if (!alive) return;
+        if (!res.ok) throw new Error("sync_health_failed");
+        const measuredAt = Number(json.measuredAt || Date.now());
+        const ageMs = Math.max(0, Date.now() - measuredAt);
+        const marketDegraded = json.services?.market_data === "degraded";
+        const state = marketDegraded || json.status === "DEGRADED" ? "DEGRADED" : ageMs > 60_000 ? "STALE" : "LIVE";
+        const realSignals = Math.round(Number(json.dataFreshness?.signalsLatest?.realRatio24h || 0) * 100);
+        const realHot = Math.round(Number(json.dataFreshness?.tokensHot?.realRatio24h || 0) * 100);
+        setFreshness({
+          state,
+          label: state === "LIVE" ? "Live" : state === "STALE" ? "Stale" : "Degraded",
+          hint: `signals ${realSignals}% real · hot ${realHot}% real`,
+          ageSec: Math.round(ageMs / 1000)
+        });
+        recordClientTelemetry("freshness_state", { path: "/", state, ageMs });
+      } catch {
+        if (!alive) return;
+        setFreshness({ state: "DEGRADED", label: "Degraded", hint: "health unavailable" });
+        recordClientTelemetry("freshness_state", { path: "/", state: "DEGRADED" });
       }
-      setNextSec((s) => {
-        if (s <= 1) return 22 + Math.floor(Math.random() * 40);
-        return s - 1;
-      });
-    }, 2000);
-    return () => clearInterval(id);
+    };
+    load();
+    const id = setInterval(load, 30_000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
   }, []);
 
   // Publish presence to the layout system. We use a dataset attribute
@@ -58,7 +79,12 @@ export function LiveTensionBar() {
     };
   }, []);
 
-  const rounded = Math.max(5, Math.round(nextSec / 5) * 5);
+  const tone =
+    freshness.state === "LIVE"
+      ? "bg-emerald-400 text-emerald-200 border-emerald-500/25"
+      : freshness.state === "STALE"
+        ? "bg-amber-400 text-amber-200 border-amber-500/25"
+        : "bg-red-400 text-red-200 border-red-500/25";
 
   return (
     <div
@@ -70,19 +96,19 @@ export function LiveTensionBar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-2 sm:gap-3 text-[11px] sm:text-xs font-medium text-gray-200">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
           <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-80" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+            {freshness.state === "LIVE" ? (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70" />
+            ) : null}
+            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${tone.split(" ")[0]} shadow-[0_0_10px_rgba(52,211,153,0.45)]`} />
           </span>
-          <span className="text-emerald-200/95 tracking-wide uppercase shrink-0">🟢 LIVE SIGNALS DETECTED (24H):</span>
-          <span className="font-mono tabular-nums text-white font-bold">{live24h}</span>
-          <span className="text-gray-600 hidden sm:inline">|</span>
-          <span className="text-gray-300">
-            +{recent2m} signals in last 2 min
+          <span className={`tracking-wide uppercase shrink-0 ${tone.split(" ")[1]}`}>
+            {freshness.label} feed
           </span>
           <span className="text-gray-600 hidden sm:inline">|</span>
-          <span className="text-gray-300 inline-flex items-center gap-1">
-            <span aria-hidden>⏱</span>
-            Next signal expected in ~{rounded}s
+          <span className="text-gray-300">{freshness.hint}</span>
+          <span className="text-gray-600 hidden sm:inline">|</span>
+          <span className="text-gray-300 inline-flex items-center gap-1 font-mono tabular-nums">
+            {freshness.ageSec != null ? `age ${freshness.ageSec}s` : "age n/a"}
           </span>
         </div>
         <Link

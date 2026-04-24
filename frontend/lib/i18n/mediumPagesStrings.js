@@ -97,8 +97,8 @@ export const MEDIUM_PAGES_STRINGS = {
   "portfolio.descSignedOut": S("Track your Solana positions and edge once you connect a wallet session.", {
     es: "Sigue posiciones y ventaja en Solana cuando conectes una sesión de wallet."
   }),
-  "portfolio.desc": S("Watchlist tokens with live Dex liquidity, price, and 24h move.", {
-    es: "Tokens de la watchlist con liquidez Dex en vivo, precio y movimiento 24 h."
+  "portfolio.desc": S("Watchlist tokens with real market snapshots only; no invented ROI or P&L.", {
+    es: "Tokens de la watchlist con snapshots reales de mercado; sin ROI ni P&L inventado."
   }),
   "portfolio.label": S("Portfolio", { es: "Cartera", fr: "Portefeuille", de: "Portfolio", zh: "投资组合", ko: "포트폴리오", ja: "ポートフォリオ", pt: "Carteira" }),
   "portfolio.h1SignedOut": S("Connect wallet to unlock portfolio", {
@@ -113,13 +113,24 @@ export const MEDIUM_PAGES_STRINGS = {
     fr: "Aller au tableau de bord",
     de: "Zum Dashboard"
   }),
-  "portfolio.h1": S("Watchlist pulse", { es: "Pulso de la watchlist", fr: "Pouls de la watchlist" }),
+  "portfolio.h1": S("P&L reality check", { es: "Reality check de P&L", fr: "Vérification P&L" }),
   "portfolio.sub": S(
-    "Live DexScreener snapshot per mint in your watchlist (not wallet balances). Add tokens from any token page.",
+    "Cold credibility: worked / failed uses real 24h market movement only. Personal P&L stays unverified until fills, balances, quantities and cost basis exist.",
     {
-      es: "Instantánea DexScreener en vivo por mint en tu watchlist (no saldos de wallet). Añade tokens desde cualquier página de token."
+      es: "Credibilidad fría: worked / failed usa solo movimiento real de mercado 24 h. El P&L personal queda sin verificar hasta tener fills, saldos, cantidades y coste base."
     }
   ),
+  "portfolio.realityTitle": S("Reality layer", { es: "Capa de realidad", pt: "Camada de realidade" }),
+  "portfolio.realityBody": S(
+    "This page refuses synthetic ROI. It compares live market snapshots and explicitly marks personal P&L as unverified.",
+    {
+      es: "Esta página rechaza ROI sintético. Compara snapshots reales de mercado y marca explícitamente el P&L personal como no verificado.",
+      pt: "Esta página recusa ROI sintético. Compara snapshots reais de mercado e marca P&L pessoal como não verificado."
+    }
+  ),
+  "portfolio.worked": S("Worked", { es: "Funcionó", pt: "Funcionou" }),
+  "portfolio.failed": S("Failed", { es: "Falló", pt: "Falhou" }),
+  "portfolio.unverified": S("Unverified", { es: "No verificado", pt: "Não verificado" }),
   "portfolio.refresh": S("Refresh", { es: "Actualizar", fr: "Actualiser", de: "Aktualisieren" }),
   "portfolio.loadingMarkets": S("Loading watchlist markets…", {
     es: "Cargando mercados de la watchlist…",
@@ -134,6 +145,15 @@ export const MEDIUM_PAGES_STRINGS = {
   "portfolio.price": S("Price", { es: "Precio", fr: "Prix", de: "Preis" }),
   "portfolio.liq": S("Liq", { es: "Liq", fr: "Liq" }),
   "portfolio.change24h": S("24h:", { es: "24 h:", fr: "24 h :" }),
+  "portfolio.outcome.worked": S("Worked 24h", { es: "Funcionó 24 h", pt: "Funcionou 24 h" }),
+  "portfolio.outcome.failed": S("Failed 24h", { es: "Falló 24 h", pt: "Falhou 24 h" }),
+  "portfolio.outcome.flat": S("Flat 24h", { es: "Plano 24 h", pt: "Plano 24 h" }),
+  "portfolio.outcome.unknown": S("Unknown", { es: "Desconocido", pt: "Desconhecido" }),
+  "portfolio.pnlReality": S("Personal P&L", { es: "P&L personal", pt: "P&L pessoal" }),
+  "portfolio.pnlUnverified": S("Unverified — no balance, fills, quantity or cost basis in this endpoint.", {
+    es: "No verificado — este endpoint no tiene saldo, fills, cantidad ni coste base.",
+    pt: "Não verificado — este endpoint não tem saldo, fills, quantidade nem custo base."
+  }),
   "portfolio.openToken": S("Open token", { es: "Abrir token", fr: "Ouvrir le jeton" }),
 
   "watchlist.pageTitle": S("Watchlist — Sentinel Ledger", {

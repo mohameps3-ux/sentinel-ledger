@@ -134,6 +134,7 @@ export default function OpsPage() {
   const [walletBehaviorTop, setWalletBehaviorTop] = useState([]);
   const [signalGate, setSignalGate] = useState(null);
   const [signalGateTuner, setSignalGateTuner] = useState(null);
+  const [telemetrySummary, setTelemetrySummary] = useState(null);
   const [walletCoordStatus, setWalletCoordStatus] = useState(null);
   const [walletCoordAlerts, setWalletCoordAlerts] = useState([]);
   const [walletCoordOutcomes, setWalletCoordOutcomes] = useState([]);
@@ -175,6 +176,7 @@ export default function OpsPage() {
         walletBehaviorTopRes,
         signalGateRes,
         signalGateTunerRes,
+        telemetryRes,
         walletCoordStatusRes,
         walletCoordAlertsRes,
         walletCoordOutcomesRes
@@ -192,6 +194,7 @@ export default function OpsPage() {
         withOpsKey("/api/v1/ops/wallet-behavior/top?limit=25&minResolved=5", opsKey),
         withOpsKey("/api/v1/ops/signal-gate/status", opsKey),
         withOpsKey("/api/v1/ops/signal-gate/tuner/status", opsKey),
+        withOpsKey("/api/v1/telemetry/client/summary", opsKey),
         withOpsKey("/api/v1/ops/wallet-coordination/status", opsKey),
         withOpsKey("/api/v1/ops/wallet-coordination/alerts?limit=50", opsKey),
         withOpsKey("/api/v1/ops/wallet-coordination/outcomes?limit=40", opsKey)
@@ -209,6 +212,7 @@ export default function OpsPage() {
       setWalletBehaviorTop(walletBehaviorTopRes.data || []);
       setSignalGate(signalGateRes.data || null);
       setSignalGateTuner(signalGateTunerRes.data || null);
+      setTelemetrySummary(telemetryRes.summary || null);
       setWalletCoordStatus(walletCoordStatusRes.data || null);
       setWalletCoordAlerts(walletCoordAlertsRes.data || []);
       setWalletCoordOutcomes(walletCoordOutcomesRes.data || []);
@@ -421,6 +425,9 @@ export default function OpsPage() {
   const signalGateBlockedEntries = Object.entries(signalGate?.stats?.blockedByReason || {}).sort(
     (a, b) => Number(b[1] || 0) - Number(a[1] || 0)
   );
+  const ttaAvgMs = telemetrySummary?.tta?.avgMs;
+  const freshnessCounts = telemetrySummary?.freshness || {};
+  const degradedFreshnessCount = Number(freshnessCounts.DEGRADED || 0) + Number(freshnessCounts.STALE || 0);
 
   return (
     <>
@@ -545,6 +552,18 @@ export default function OpsPage() {
                   value={formatInteger(historyRows.length)}
                   hint={`Tick ${formatInteger(historyStatus?.tickIntervalMs || 0)} ms`}
                   tone="neutral"
+                />
+                <Kpi
+                  label="TTA first action"
+                  value={ttaAvgMs != null ? `${formatInteger(ttaAvgMs)} ms` : "—"}
+                  hint={telemetrySummary?.tta?.count ? `${formatInteger(telemetrySummary.tta.count)} measured sessions` : "Waiting for users"}
+                  tone="neutral"
+                />
+                <Kpi
+                  label="Freshness states"
+                  value={telemetrySummary ? `L${formatInteger(freshnessCounts.LIVE || 0)} / S${formatInteger(freshnessCounts.STALE || 0)} / D${formatInteger(freshnessCounts.DEGRADED || 0)}` : "—"}
+                  hint="Live / Stale / Degraded observed by clients"
+                  tone={!telemetrySummary ? "neutral" : degradedFreshnessCount ? "warn" : "good"}
                 />
               </div>
 

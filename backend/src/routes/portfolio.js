@@ -25,6 +25,14 @@ function quickScore(md) {
   return Math.max(0, Math.min(100, Math.round(s)));
 }
 
+function outcome24hFromMarket(change24hPct) {
+  if (change24hPct == null || !Number.isFinite(Number(change24hPct))) return "unknown";
+  const n = Number(change24hPct);
+  if (n > 0) return "worked";
+  if (n < 0) return "failed";
+  return "flat";
+}
+
 /**
  * GET /api/v1/portfolio/watchlist-markets
  * Live DexScreener snapshot per watchlist mint (not wallet token balances).
@@ -53,6 +61,7 @@ router.get("/watchlist-markets", authMiddleware, async (req, res) => {
       const mint = row.token_address;
       const md = await getMarketData(mint);
       if (delayMs) await sleep(delayMs);
+      const change24hPct = md != null && Number.isFinite(Number(md.priceChange24h)) ? Number(md.priceChange24h) : null;
       positions.push({
         tokenAddress: mint,
         note: row.note || "",
@@ -62,14 +71,27 @@ router.get("/watchlist-markets", authMiddleware, async (req, res) => {
         priceUsd: md != null && Number.isFinite(Number(md.price)) ? Number(md.price) : null,
         liquidityUsd: md != null && Number.isFinite(Number(md.liquidity)) ? Number(md.liquidity) : null,
         fdvUsd: md != null && Number.isFinite(Number(md.marketCap)) ? Number(md.marketCap) : null,
-        change24hPct: md != null && Number.isFinite(Number(md.priceChange24h)) ? Number(md.priceChange24h) : null,
+        change24hPct,
+        outcome24h: outcome24hFromMarket(change24hPct),
+        outcomeBasis: "dexscreener_24h_change_not_user_pnl",
+        pnlStatus: "unverified",
+        pnlReason: "no_wallet_balance_or_cost_basis",
+        verifiedPnlUsd: null,
+        verifiedRoiPct: null,
         score: quickScore(md)
       });
     }
 
     return res.json({
       ok: true,
-      meta: { source: "watchlist+dexscreener", count: positions.length },
+      meta: {
+        source: "watchlist+dexscreener",
+        count: positions.length,
+        pnlVerified: false,
+        pnlBasis: "none",
+        comparisonBasis: "real_market_snapshot_only",
+        caveat: "No wallet balances, fills, quantities, or cost basis are available in this endpoint; ROI/PnL is intentionally not estimated."
+      },
       positions
     });
   } catch (e) {

@@ -13,6 +13,9 @@ export function Navbar() {
   const { t } = useLocale();
   const router = useRouter();
   const isHome = router.pathname === "/";
+  const isControlRoom = ["/ops", "/pricing", "/legal", "/privacy", "/terms", "/contact"].includes(router.pathname);
+  const showTradingChrome = !isControlRoom;
+  const showHealthBadge = isHome || router.pathname === "/ops";
   const navRef = useRef(null);
   const menuRef = useRef(null);
   const [stalkerUnread, setStalkerUnread] = useState(0);
@@ -102,16 +105,24 @@ export function Navbar() {
           </div>
 
           <div className="flex-1 min-w-0 flex items-center gap-1 pl-0.5 overflow-hidden">
-            {isHome ? (
-              <SearchBar headerMicro withRecents />
+            {showTradingChrome ? (
+              isHome ? (
+                <SearchBar headerMicro withRecents />
+              ) : (
+                <div className="shrink-0 w-36 min-[900px]:w-44 min-w-0 max-w-[28%]">
+                  <SearchBar compact />
+                </div>
+              )
             ) : (
-              <div className="shrink-0 w-36 min-[900px]:w-44 min-w-0 max-w-[28%]">
-                <SearchBar compact />
+              <div className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">
+                Control room
               </div>
             )}
-            <div className="shrink-0 max-w-[5.5rem] sm:max-w-[6.5rem]">
-              <HealthBar onlyBadge />
-            </div>
+            {showHealthBadge ? (
+              <div className="shrink-0 max-w-[5.5rem] sm:max-w-[6.5rem]">
+                <HealthBar onlyBadge />
+              </div>
+            ) : null}
           </div>
           <WalletButton />
         </div>
@@ -145,13 +156,25 @@ export function Navbar() {
               </div>
             </div>
             <div className="flex items-center gap-0.5 shrink-0">
-              <div className="max-w-[3.5rem] shrink-0">
-                <HealthBar onlyBadge />
-              </div>
+              {showHealthBadge ? (
+                <div className="max-w-[3.5rem] shrink-0">
+                  <HealthBar onlyBadge />
+                </div>
+              ) : null}
               <WalletButton />
             </div>
           </div>
-          {isHome ? <SearchBar headerMicro withRecents /> : <SearchBar compact />}
+          {showTradingChrome ? (
+            isHome ? (
+              <SearchBar headerMicro withRecents />
+            ) : (
+              <SearchBar compact />
+            )
+          ) : (
+            <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[10px] uppercase tracking-[0.18em] text-slate-500 font-semibold">
+              Control room
+            </div>
+          )}
         </div>
 
         {menuOpen ? (

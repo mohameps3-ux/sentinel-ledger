@@ -1,27 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
+import { useQueries } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { ArrowLeftRight, BellRing, CheckCircle2, MinusCircle, Star, TrendingUp } from "lucide-react";
-import { useTokenCompare } from "../hooks/useTokenCompare";
-import { useTokenData } from "../hooks/useTokenData";
+import { ArrowLeftRight, CheckCircle2, Eye, Radio, Star, TrendingUp } from "lucide-react";
 import { useWatchlist } from "../hooks/useWatchlist";
-import { formatDateTime, formatUsdWhole } from "../lib/formatStable";
+import { formatUsdWhole } from "../lib/formatStable";
 import { ProButton } from "../components/ui/ProButton";
 import { PageHead } from "../components/seo/PageHead";
 import { useLocale } from "../contexts/LocaleContext";
-
-const SOL_MINT = "So11111111111111111111111111111111111111112";
-const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+import { useClientAuthToken } from "../hooks/useClientAuthToken";
+import { getPublicApiUrl } from "../lib/publicRuntime";
+import { isProbableSolanaMint } from "../lib/solanaMint.mjs";
+import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../lib/terminalLinks";
 
 function safeNum(value) {
   const n = Number(value || 0);
   return Number.isFinite(n) ? n : 0;
-}
-
-function pickBetter(left, right, higherIsBetter = true) {
-  if (left === right) return "tie";
-  if (higherIsBetter) return left > right ? "left" : "right";
-  return left < right ? "left" : "right";
 }
 
 function scoreToken(token) {
@@ -34,98 +28,102 @@ function scoreToken(token) {
   return Math.max(0, Math.min(100, Math.round(raw)));
 }
 
-function MetricRow({ label, left, right, higherIsBetter = true, formatter = (v) => v }) {
-  const better = pickBetter(left, right, higherIsBetter);
-  return (
-    <div className="grid grid-cols-[minmax(140px,1fr)_auto_auto] gap-3 items-center py-2 border-b soft-divider last:border-b-0">
-      <div className="text-sm text-gray-400">{label}</div>
-      <div className={`text-sm mono ${better === "left" ? "text-emerald-300" : "text-gray-200"}`}>{formatter(left)}</div>
-      <div className={`text-sm mono ${better === "right" ? "text-emerald-300" : "text-gray-200"}`}>{formatter(right)}</div>
-    </div>
-  );
+function compactMint(mint) {
+  if (!mint) return "—";
+  return `${mint.slice(0, 5)}…${mint.slice(-4)}`;
+}
+
+function parseTokenList(query) {
+  const rawTokens = typeof query.tokens === "string" ? query.tokens : "";
+  const fromTokens = rawTokens.split(",").map((s) => s.trim()).filter(Boolean);
+  const legacy = [query.left, query.right].filter((v) => typeof v === "string" && v.trim()).map((v) => v.trim());
+  return [...new Set([...(fromTokens.length ? fromTokens : legacy)])].filter(isProbableSolanaMint).slice(0, 4);
+}
+
+async function fetchToken(address, authToken) {
+  const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+  const res = await fetch(`${getPublicApiUrl()}/api/v1/token/${address}`, { headers });
+  if (!res.ok) throw new Error("Failed to fetch token");
+  return res.json();
+}
+
+function metricValue(token, key) {
+  if (key === "score") return scoreToken(token);
+  if (key === "confidence") return safeNum(token?.analysis?.confidence);
+  if (key === "liquidity") return safeNum(token?.market?.liquidity);
+  if (key === "volume") return safeNum(token?.market?.volume24h);
+  if (key === "holders") return safeNum(token?.holders?.top10Percentage);
+  if (key === "deployer") return safeNum(token?.deployer?.riskScore);
+  return 0;
+}
+
+function metricDisplay(value, key) {
+  if (key === "liquidity" || key === "volume") return `$${formatUsdWhole(value)}`;
+  if (key === "confidence" || key === "holders") return `${Number(value).toFixed(key === "holders" ? 1 : 0)}%`;
+  if (key === "deployer") return `${Number(value).toFixed(0)}/100`;
+  return `${value}/100`;
 }
 
 export default function ComparePage() {
   const { t } = useLocale();
   const router = useRouter();
-  const leftParam = typeof router.query.left === "string" ? router.query.left : "";
-  const rightParam = typeof router.query.right === "string" ? router.query.right : "";
-  const [leftAddress, setLeftAddress] = useState(leftParam);
-  const [rightAddress, setRightAddress] = useState(rightParam);
+  const clientToken = useClientAuthToken();
+  const [slots, setSlots] = useState(["", "", "", ""]);
+  const [chosenMint, setChosenMint] = useState("");
   const [watchlistLocal, setWatchlistLocal] = useState([]);
-  const [rotationAlerts, setRotationAlerts] = useState([]);
   const { addToWatchlist, removeFromWatchlist, isLoading } = useWatchlist();
 
-  const { leftQuery, rightQuery } = useTokenCompare(leftAddress, rightAddress);
-  const solQuery = useTokenData(SOL_MINT);
-  const usdcQuery = useTokenData(USDC_MINT);
-  const leftToken = leftQuery.data?.data;
-  const rightToken = rightQuery.data?.data;
-  const solToken = solQuery.data?.data;
-  const usdcToken = usdcQuery.data?.data;
-
-  const leftScore = useMemo(() => scoreToken(leftToken), [leftToken]);
-  const rightScore = useMemo(() => scoreToken(rightToken), [rightToken]);
-  const solScore = useMemo(() => scoreToken(solToken), [solToken]);
-  const usdcScore = useMemo(() => scoreToken(usdcToken), [usdcToken]);
-  const winner = leftScore === rightScore ? "tie" : leftScore > rightScore ? "left" : "right";
+  const mints = useMemo(() => [...new Set(slots.map((s) => s.trim()).filter(isProbableSolanaMint))].slice(0, 4), [slots]);
+  const tokenQueries = useQueries({
+    queries: mints.map((mint) => ({
+      queryKey: ["compare-choice", mint, clientToken ? "auth" : "anon"],
+      queryFn: () => fetchToken(mint, clientToken),
+      staleTime: 30000
+    }))
+  });
+  const loaded = useMemo(
+    () =>
+      mints
+        .map((mint, idx) => ({ mint, token: tokenQueries[idx]?.data?.data || null, isLoading: tokenQueries[idx]?.isLoading }))
+        .filter((row) => row.token),
+    [mints, tokenQueries]
+  );
+  const ranked = useMemo(
+    () =>
+      loaded
+        .map((row) => ({ ...row, score: scoreToken(row.token) }))
+        .sort((a, b) => b.score - a.score),
+    [loaded]
+  );
+  const recommended = ranked[0] || null;
+  const chosen = loaded.find((row) => row.mint === chosenMint) || recommended;
+  const watchCtaLabel = loaded.length <= 2 ? t("compare.cta.watchBoth") : t("compare.cta.watchAll");
 
   useEffect(() => {
     if (!router.isReady) return;
-    const l = typeof router.query.left === "string" ? router.query.left : "";
-    const r = typeof router.query.right === "string" ? router.query.right : "";
-    if (l) setLeftAddress(l);
-    if (r) setRightAddress(r);
-  }, [router.isReady, router.query.left, router.query.right]);
+    const next = parseTokenList(router.query);
+    if (next.length) setSlots([next[0] || "", next[1] || "", next[2] || "", next[3] || ""]);
+  }, [router.isReady, router.query]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const saved = JSON.parse(localStorage.getItem("sentinel-watchlist-cache") || "[]");
       setWatchlistLocal(saved);
-      const savedAlerts = JSON.parse(localStorage.getItem("sentinel-rotation-alerts") || "[]");
-      setRotationAlerts(savedAlerts.slice(0, 8));
     } catch (_) {
       setWatchlistLocal([]);
-      setRotationAlerts([]);
     }
   }, []);
 
   useEffect(() => {
-    if (!leftToken || !rightToken) return;
-    const pairKey = [leftAddress.trim(), rightAddress.trim()].sort().join("|");
-    if (!pairKey.includes("|")) return;
-    const storageKey = "sentinel-compare-last-winner";
-    let map = {};
-    try {
-      map = JSON.parse(localStorage.getItem(storageKey) || "{}");
-    } catch (_) {}
-
-    const prevWinner = map[pairKey];
-    if (prevWinner && prevWinner !== winner && winner !== "tie") {
-      const selected = winner === "left" ? leftToken.market?.symbol : rightToken.market?.symbol;
-      const alert = {
-        id: `${Date.now()}-${pairKey}`,
-        pairKey,
-        selected,
-        from: prevWinner,
-        to: winner,
-        createdAt: Date.now()
-      };
-      const nextAlerts = [alert, ...rotationAlerts].slice(0, 8);
-      setRotationAlerts(nextAlerts);
-      localStorage.setItem("sentinel-rotation-alerts", JSON.stringify(nextAlerts));
-      toast(t("compare.toast.rotation", { symbol: selected }));
-    }
-    map[pairKey] = winner;
-    localStorage.setItem(storageKey, JSON.stringify(map));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [winner, leftToken, rightToken, t]);
+    if (!chosenMint && recommended?.mint) setChosenMint(recommended.mint);
+  }, [chosenMint, recommended?.mint]);
 
   const onCompare = (e) => {
     e.preventDefault();
+    const next = [...new Set(slots.map((s) => s.trim()).filter(isProbableSolanaMint))].slice(0, 4);
     router.replace(
-      { pathname: "/compare", query: { left: leftAddress.trim(), right: rightAddress.trim() } },
+      { pathname: "/compare", query: next.length ? { tokens: next.join(",") } : {} },
       undefined,
       { shallow: true }
     );
@@ -155,9 +153,30 @@ export default function ComparePage() {
   };
 
   const loadFromWatchlist = (mint) => {
-    if (!leftAddress) setLeftAddress(mint);
-    else if (!rightAddress) setRightAddress(mint);
-    else setRightAddress(mint);
+    setSlots((prev) => {
+      if (prev.includes(mint)) return prev;
+      const empty = prev.findIndex((v) => !v.trim());
+      if (empty >= 0) {
+        const next = [...prev];
+        next[empty] = mint;
+        return next;
+      }
+      return [prev[0], prev[1], prev[2], mint];
+    });
+  };
+
+  const watchAllLoaded = async () => {
+    const targets = loaded.map((row) => row.mint).filter((mint) => !watchlistLocal.includes(mint));
+    if (!targets.length) return;
+    try {
+      for (const mint of targets) await addToWatchlist(mint);
+      const next = [...targets, ...watchlistLocal.filter((w) => !targets.includes(w))].slice(0, 20);
+      setWatchlistLocal(next);
+      localStorage.setItem("sentinel-watchlist-cache", JSON.stringify(next));
+      toast.success(t("compare.toast.watchAll"));
+    } catch (_) {
+      toast.error(t("compare.toast.watchErr"));
+    }
   };
 
   return (
@@ -175,29 +194,125 @@ export default function ComparePage() {
             <p className="sl-body sl-muted mt-2 max-w-2xl">{t("compare.hero.body")}</p>
           </div>
         </div>
-        <form onSubmit={onCompare} className="grid md:grid-cols-[1fr_1fr_auto] gap-4 items-stretch md:items-end">
-          <div>
-            <p className="sl-label mb-2">{t("compare.form.tokenA")}</p>
-            <input
-              value={leftAddress}
-              onChange={(e) => setLeftAddress(e.target.value)}
-              placeholder={t("compare.form.placeholder")}
-              className="sl-input h-12 px-4"
-            />
-          </div>
-          <div>
-            <p className="sl-label mb-2">{t("compare.form.tokenB")}</p>
-            <input
-              value={rightAddress}
-              onChange={(e) => setRightAddress(e.target.value)}
-              placeholder={t("compare.form.placeholder")}
-              className="sl-input h-12 px-4"
-            />
-          </div>
-          <ProButton type="submit" className="h-12 md:mb-0 w-full md:w-auto justify-center">
+        <form onSubmit={onCompare} className="grid md:grid-cols-[repeat(4,minmax(0,1fr))_auto] gap-3 items-stretch md:items-end">
+          {slots.map((value, idx) => (
+            <div key={idx}>
+              <p className="sl-label mb-2">{t("compare.form.slot", { n: idx + 1 })}</p>
+              <input
+                value={value}
+                onChange={(e) => {
+                  const next = [...slots];
+                  next[idx] = e.target.value;
+                  setSlots(next);
+                }}
+                placeholder={t("compare.form.placeholder")}
+                className="sl-input h-11 px-3 font-mono text-xs"
+              />
+            </div>
+          ))}
+          <ProButton type="submit" className="h-11 md:mb-0 w-full md:w-auto justify-center">
             {t("compare.form.submit")}
           </ProButton>
         </form>
+      </section>
+
+      <section className="border border-white/[0.08] bg-[#07080b] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06]">
+          <div>
+            <p className="text-[10px] font-semibold tracking-[0.22em] uppercase text-gray-500">{t("compare.decision.title")}</p>
+            <p className="text-[11px] text-gray-500 mt-1">{t("compare.decision.body")}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {chosen?.mint ? (
+              <a
+                href={buildJupiterSwapUrl(chosen.mint)}
+                target="_blank"
+                rel={EXTERNAL_ANCHOR_REL}
+                className="px-3 py-2 rounded-md border border-emerald-500/35 bg-emerald-500/[0.08] text-emerald-100 text-xs font-semibold"
+              >
+                {t("compare.cta.tradeChosen")}
+              </a>
+            ) : null}
+            <button
+              type="button"
+              onClick={watchAllLoaded}
+              disabled={!loaded.length || isLoading}
+              className="px-3 py-2 rounded-md border border-white/12 bg-white/[0.03] text-gray-200 text-xs font-semibold disabled:opacity-40"
+            >
+              {watchCtaLabel}
+            </button>
+          </div>
+        </div>
+
+        {!loaded.length ? (
+          <div className="px-4 py-8 text-sm text-gray-500">{t("compare.decision.empty")}</div>
+        ) : (
+          <div className="grid md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-white/[0.06]">
+            {ranked.map((row, idx) => {
+              const token = row.token;
+              const chosenNow = chosen?.mint === row.mint;
+              const symbol = token.market?.symbol || "TOKEN";
+              return (
+                <article
+                  key={row.mint}
+                  className={`p-4 min-h-[15rem] ${chosenNow ? "bg-cyan-500/[0.04]" : "bg-transparent"}`}
+                  translate="no"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-gray-500 font-mono">#{idx + 1}</p>
+                      <h2 className="text-lg font-semibold text-white truncate mt-1">{symbol}</h2>
+                      <p className="text-[10px] text-gray-500 font-mono mt-1">{compactMint(row.mint)}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[9px] uppercase tracking-wider text-gray-500">{t("compare.card.score")}</p>
+                      <p className="text-3xl font-black font-mono text-white">{row.score}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="rounded-md border border-white/[0.07] bg-black/25 px-2 py-1.5">
+                      <p className="text-gray-500">{t("compare.card.grade")}</p>
+                      <p className="font-mono text-gray-100">{token.analysis?.grade || "—"}</p>
+                    </div>
+                    <div className="rounded-md border border-white/[0.07] bg-black/25 px-2 py-1.5">
+                      <p className="text-gray-500">{t("compare.card.confidence")}</p>
+                      <p className="font-mono text-gray-100">{safeNum(token.analysis?.confidence)}%</p>
+                    </div>
+                    <div className="rounded-md border border-white/[0.07] bg-black/25 px-2 py-1.5">
+                      <p className="text-gray-500">{t("compare.metric.liquidity")}</p>
+                      <p className="font-mono text-gray-100">${formatUsdWhole(safeNum(token.market?.liquidity))}</p>
+                    </div>
+                    <div className="rounded-md border border-white/[0.07] bg-black/25 px-2 py-1.5">
+                      <p className="text-gray-500">{t("compare.metric.top10")}</p>
+                      <p className="font-mono text-gray-100">{safeNum(token.holders?.top10Percentage).toFixed(1)}%</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setChosenMint(row.mint)}
+                      className={`px-3 py-1.5 rounded-md border text-xs font-semibold ${
+                        chosenNow
+                          ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-100"
+                          : "border-white/12 bg-white/[0.03] text-gray-300 hover:text-white"
+                      }`}
+                    >
+                      {chosenNow ? t("compare.cta.chosen") : t("compare.cta.choose")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleWatch(row.mint)}
+                      disabled={isLoading}
+                      className="px-3 py-1.5 rounded-md border border-white/12 text-xs text-gray-300 hover:text-white disabled:opacity-40"
+                    >
+                      {watchlistLocal.includes(row.mint) ? t("compare.watch.remove") : t("compare.watch.add")}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section className="glass-card sl-inset">
@@ -223,177 +338,68 @@ export default function ComparePage() {
         )}
       </section>
 
-      <section className="grid md:grid-cols-2 gap-4">
-        {[leftToken, rightToken].map((token, idx) => (
-          <div key={idx} className="glass-card sl-inset flex flex-col gap-5" translate="no">
-            {!token ? (
-              <div className="sl-body sl-muted py-6 text-center">{t("compare.card.noData")}</div>
-            ) : (
-              <>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="sl-label">{t("compare.card.symbol")}</p>
-                    <div className="sl-h2 text-white mt-1" translate="no">
-                      {token.market?.symbol || "TOKEN"}
-                    </div>
-                    <div className="text-[12px] text-gray-500 mono mt-2">
-                      {(idx === 0 ? leftAddress : rightAddress).slice(0, 6)}…
-                      {(idx === 0 ? leftAddress : rightAddress).slice(-4)}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="sl-label">{t("compare.card.score")}</p>
-                    <div className="text-3xl font-bold text-white mt-1">{idx === 0 ? leftScore : rightScore}</div>
-                  </div>
-                </div>
-                <div className="sl-divider" />
-                <div className="sl-body text-gray-300">
-                  {t("compare.card.grade")} <span className="font-semibold text-white">{token.analysis?.grade || "—"}</span>
-                  <span className="text-gray-600 mx-2">·</span>
-                  {t("compare.card.confidence")}{" "}
-                  <span className="font-semibold text-white">{safeNum(token.analysis?.confidence)}%</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => toggleWatch(idx === 0 ? leftAddress : rightAddress)}
-                  disabled={isLoading}
-                  className={
-                    watchlistLocal.includes((idx === 0 ? leftAddress : rightAddress).trim())
-                      ? "btn-ghost self-start !py-2 !text-[13px]"
-                      : "btn-pro btn-pro-sm self-start"
-                  }
-                >
-                  {watchlistLocal.includes((idx === 0 ? leftAddress : rightAddress).trim())
-                    ? t("compare.watch.remove")
-                    : t("compare.watch.add")}
-                </button>
-              </>
-            )}
-          </div>
-        ))}
-      </section>
-
       <section className="glass-card sl-inset overflow-x-auto">
-        <h2 className="sl-h2 text-white mb-6">{t("compare.metrics.h2")}</h2>
-        {!leftToken || !rightToken ? (
+        <div className="flex items-center gap-2 mb-5">
+          <Radio size={16} className="text-cyan-300" />
+          <h2 className="sl-h2 text-white">{t("compare.metrics.h2")}</h2>
+        </div>
+        {ranked.length < 2 ? (
           <div className="text-sm text-gray-500">{t("compare.metrics.loadBoth")}</div>
         ) : (
-          <div className="min-w-[360px]">
-            <div className="grid grid-cols-[minmax(140px,1fr)_auto_auto] gap-3 pb-2 mb-1 border-b soft-divider text-xs uppercase tracking-wide text-gray-500">
+          <div className="min-w-[560px]">
+            <div className="grid gap-3 pb-2 mb-1 border-b soft-divider text-xs uppercase tracking-wide text-gray-500" style={{ gridTemplateColumns: `minmax(150px,1fr) repeat(${ranked.length}, minmax(86px, auto))` }}>
               <span>{t("compare.metrics.th.metric")}</span>
-              <span>{t("compare.metrics.th.a")}</span>
-              <span>{t("compare.metrics.th.b")}</span>
+              {ranked.map((row) => <span key={row.mint}>{row.token.market?.symbol || compactMint(row.mint)}</span>)}
             </div>
-            <MetricRow
-              label={t("compare.metric.score")}
-              left={leftScore}
-              right={rightScore}
-              formatter={(v) => `${v}/100`}
-            />
-            <MetricRow
-              label={t("compare.metric.confidence")}
-              left={safeNum(leftToken.analysis?.confidence)}
-              right={safeNum(rightToken.analysis?.confidence)}
-              formatter={(v) => `${v}%`}
-            />
-            <MetricRow
-              label={t("compare.metric.liquidity")}
-              left={safeNum(leftToken.market?.liquidity)}
-              right={safeNum(rightToken.market?.liquidity)}
-              formatter={(v) => `$${formatUsdWhole(v)}`}
-            />
-            <MetricRow
-              label={t("compare.metric.vol24")}
-              left={safeNum(leftToken.market?.volume24h)}
-              right={safeNum(rightToken.market?.volume24h)}
-              formatter={(v) => `$${formatUsdWhole(v)}`}
-            />
-            <MetricRow
-              label={t("compare.metric.top10")}
-              left={safeNum(leftToken.holders?.top10Percentage)}
-              right={safeNum(rightToken.holders?.top10Percentage)}
-              higherIsBetter={false}
-              formatter={(v) => `${v.toFixed(1)}%`}
-            />
-            <MetricRow
-              label={t("compare.metric.deployer")}
-              left={safeNum(leftToken.deployer?.riskScore)}
-              right={safeNum(rightToken.deployer?.riskScore)}
-              higherIsBetter={false}
-              formatter={(v) => `${v}/100`}
-            />
-          </div>
-        )}
-      </section>
-
-      <section className="glass-card p-5 overflow-x-auto">
-        <h2 className="text-lg font-semibold mb-3">{t("compare.benchmark.h2")}</h2>
-        {!leftToken || !rightToken ? (
-          <div className="text-sm text-gray-500">{t("compare.benchmark.loadBoth")}</div>
-        ) : (
-          <div className="space-y-2 text-sm min-w-[360px]">
-            <div className="grid grid-cols-[minmax(140px,1fr)_auto_auto] gap-3 pb-2 mb-1 border-b soft-divider text-xs uppercase tracking-wide text-gray-500">
-              <span>{t("compare.benchmark.th.edge")}</span>
-              <span>{t("compare.metrics.th.a")}</span>
-              <span>{t("compare.metrics.th.b")}</span>
-            </div>
-            <MetricRow
-              label={t("compare.benchmark.vsSol")}
-              left={leftScore - solScore}
-              right={rightScore - solScore}
-              formatter={(v) => `${v >= 0 ? "+" : ""}${v}`}
-            />
-            <MetricRow
-              label={t("compare.benchmark.vsUsdc")}
-              left={leftScore - usdcScore}
-              right={rightScore - usdcScore}
-              formatter={(v) => `${v >= 0 ? "+" : ""}${v}`}
-            />
+            {[
+              ["score", t("compare.metric.score")],
+              ["confidence", t("compare.metric.confidence")],
+              ["liquidity", t("compare.metric.liquidity")],
+              ["volume", t("compare.metric.vol24")],
+              ["holders", t("compare.metric.top10")],
+              ["deployer", t("compare.metric.deployer")]
+            ].map(([key, label]) => {
+              const values = ranked.map((row) => metricValue(row.token, key));
+              const lowerBetter = key === "holders" || key === "deployer";
+              const best = lowerBetter ? Math.min(...values) : Math.max(...values);
+              return (
+                <div key={key} className="grid gap-3 items-center py-2 border-b soft-divider last:border-b-0" style={{ gridTemplateColumns: `minmax(150px,1fr) repeat(${ranked.length}, minmax(86px, auto))` }}>
+                  <div className="text-sm text-gray-400">{label}</div>
+                  {ranked.map((row) => {
+                    const v = metricValue(row.token, key);
+                    return (
+                      <div key={row.mint} className={`text-sm mono ${v === best ? "text-emerald-300" : "text-gray-200"}`}>
+                        {metricDisplay(v, key)}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
 
       <section className="glass-card p-5">
         <h2 className="text-lg font-semibold mb-2">{t("compare.ranking.h2")}</h2>
-        {!leftToken || !rightToken ? (
+        {!recommended ? (
           <div className="text-sm text-gray-500">{t("compare.ranking.wait")}</div>
-        ) : winner === "tie" ? (
-          <div className="text-sm text-amber-300 inline-flex items-center gap-2">
-            <MinusCircle size={14} />
-            {t("compare.ranking.tie")}
-          </div>
         ) : (
           <div className="space-y-2">
             <div className="text-sm text-emerald-300 inline-flex items-center gap-2">
               <CheckCircle2 size={14} />
               {t("compare.ranking.preferBefore")}{" "}
-              <strong translate="no">{winner === "left" ? leftToken.market?.symbol : rightToken.market?.symbol}</strong>{" "}
+              <strong translate="no">{recommended.token.market?.symbol || compactMint(recommended.mint)}</strong>{" "}
               {t("compare.ranking.preferAfter")}
             </div>
             <div className="text-sm text-gray-300 inline-flex items-center gap-2">
               <TrendingUp size={14} />
               {t("compare.ranking.weaker")}
             </div>
-          </div>
-        )}
-      </section>
-
-      <section className="glass-card p-5" translate="no">
-        <div className="flex items-center gap-2 mb-3">
-          <BellRing size={16} className="text-purple-300" />
-          <h2 className="text-lg font-semibold">{t("compare.rotation.h2")}</h2>
-        </div>
-        {!rotationAlerts.length ? (
-          <div className="text-sm text-gray-500">{t("compare.rotation.empty")}</div>
-        ) : (
-          <div className="space-y-2">
-            {rotationAlerts.map((alert) => (
-              <div key={alert.id} className="bg-[#0E1318] border soft-divider rounded-xl px-3 py-2 text-sm">
-                <span className="text-gray-300">{t("compare.rotation.edgeTo")} </span>
-                <span className="text-emerald-300 font-semibold">{alert.selected}</span>
-                <span className="text-gray-500"> · {formatDateTime(alert.createdAt)}</span>
-              </div>
-            ))}
+            <div className="text-sm text-gray-400 inline-flex items-center gap-2">
+              <Eye size={14} />
+              {t("compare.ranking.watchRest")}
+            </div>
           </div>
         )}
       </section>

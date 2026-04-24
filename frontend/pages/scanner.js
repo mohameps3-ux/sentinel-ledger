@@ -4,6 +4,7 @@ import { ProButton } from "../components/ui/ProButton";
 import { PageHead } from "../components/seo/PageHead";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
 import { useLocale } from "../contexts/LocaleContext";
+import { TerminalActionIcons } from "../components/terminal/TerminalActionIcons";
 
 const NARRATIVE_OPTIONS = ["ALL", "AI", "DeFi", "Gaming", "Meme", "RWA", "L2", "Dog", "Cat"];
 
@@ -71,32 +72,44 @@ export default function ScannerPage() {
             </select>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {(trending.data?.data || []).slice(0, 12).map((token) => (
-              <button
+            {(trending.data?.data || []).slice(0, 12).map((token) => {
+              const mint = token.tokenAddress;
+              return (
+              <div
                 key={token.tokenAddress}
-                type="button"
-                onClick={() => router.push(`/token/${token.tokenAddress}`)}
-                className="text-left rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] px-4 py-3"
+                role="button"
+                tabIndex={0}
+                onClick={() => router.push(`/token/${mint}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(`/token/${mint}`);
+                  }
+                }}
+                className="text-left rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] px-4 py-3 cursor-pointer"
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-white">{token.token || token.symbol || "TOKEN"}</p>
                   <p className="text-xs text-emerald-300">{Number(token.sentinelScore || 0)}/100</p>
                 </div>
                 <p className="mono text-[11px] text-gray-500 mt-1">
-                  {String(token.tokenAddress || "").slice(0, 6)}...{String(token.tokenAddress || "").slice(-6)}
+                  {String(mint || "").slice(0, 6)}...{String(mint || "").slice(-6)}
                 </p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {(token.narrativeTags || []).slice(0, 3).map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-0.5 rounded border border-violet-500/30 bg-violet-500/10 text-[10px] text-violet-200"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {(token.narrativeTags || []).slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-0.5 rounded border border-violet-500/30 bg-violet-500/10 text-[10px] text-violet-200"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <TerminalActionIcons mint={mint} className="justify-end" />
                 </div>
-              </button>
-            ))}
+              </div>
+            );})}
           </div>
         </section>
       </div>

@@ -19,6 +19,7 @@ import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
 import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
 import { getPublicWsUrl } from "../lib/publicRuntime";
+import { useTtaFirstAction } from "../hooks/useTtaFirstAction";
 import io from "socket.io-client";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -38,6 +39,7 @@ export default function App({ Component, pageProps }) {
   const buildStamp = process.env.NEXT_PUBLIC_GIT_SHA || "local";
   const endpoint = useMemo(() => getPublicSolanaRpcUrl(), []);
   const wallets = useMemo(() => createSolanaWalletAdapters(), []);
+  useTtaFirstAction(router);
 
   useEffect(() => {
     document.documentElement.dataset.sentinelClient = "1";

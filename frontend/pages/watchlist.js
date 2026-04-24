@@ -4,6 +4,7 @@ import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useClientAuthToken } from "../hooks/useClientAuthToken";
 import { PageHead } from "../components/seo/PageHead";
 import { useLocale } from "../contexts/LocaleContext";
+import { TerminalActionIcons } from "../components/terminal/TerminalActionIcons";
 
 function readLocalWatchlist() {
   try {
@@ -79,9 +80,12 @@ export default function WatchlistPage() {
                     <p className="mono text-sm text-gray-200">{row.token_address}</p>
                     {row.note ? <p className="text-xs text-gray-500 mt-1">{row.note}</p> : null}
                   </div>
-                  <Link href={`/token/${row.token_address}`} className="btn-ghost no-underline">
-                    {t("watchlist.open")}
-                  </Link>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <TerminalActionIcons mint={row.token_address} />
+                    <Link href={`/token/${row.token_address}`} className="btn-ghost no-underline">
+                      {t("watchlist.open")}
+                    </Link>
+                  </div>
                 </div>
               ))}
             </div>

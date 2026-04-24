@@ -13,6 +13,7 @@ import { Loader2, Radio, SlidersHorizontal, Star } from "lucide-react";
 import { WalletNarrativeCard } from "../components/WalletNarrativeCard";
 import { useLocale } from "../contexts/LocaleContext";
 import { walletNarrativeApiLang } from "../lib/walletNarrativeLang";
+import { TerminalActionIcons } from "../components/terminal/TerminalActionIcons";
 
 function walletDecision(winRate, t) {
   const wr = Number(winRate || 0);
@@ -435,14 +436,15 @@ export default function SmartMoneyPage() {
                             <span className="text-gray-600">—</span>
                           )}
                           {w.bestTradeMint ? (
-                            <div className="text-[10px] text-gray-600 mono truncate max-w-[200px] mt-0.5">
+                            <div className="flex items-center gap-2 mt-1">
                               <Link
-                                className="hover:text-cyan-300"
+                                className="hover:text-cyan-300 text-[10px] text-gray-600 mono truncate max-w-[120px]"
                                 href={`/token/${w.bestTradeMint}`}
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 mint…{w.bestTradeMint.slice(-4)}
                               </Link>
+                              <TerminalActionIcons mint={w.bestTradeMint} className="scale-90 origin-left" />
                             </div>
                           ) : null}
                         </td>
@@ -609,7 +611,7 @@ export default function SmartMoneyPage() {
                     </div>
                   </div>
                   {w.bestTradePct != null ? (
-                    <p className="text-[11px] text-gray-400">
+                    <div className="text-[11px] text-gray-400">
                       {t("smart.mobile.bestSignal")}{" "}
                       <span className="text-emerald-300">+{w.bestTradePct.toFixed(1)}%</span>
                       {w.bestTradeMint ? (
@@ -623,9 +625,12 @@ export default function SmartMoneyPage() {
                           >
                             …{w.bestTradeMint.slice(-4)}
                           </Link>
+                          <div className="inline-flex align-middle ml-1">
+                            <TerminalActionIcons mint={w.bestTradeMint} className="scale-90 origin-left" />
+                          </div>
                         </>
                       ) : null}
-                    </p>
+                    </div>
                   ) : null}
                   {expandedWallet === w.wallet ? (
                     <div className="pt-2 space-y-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
@@ -688,9 +693,12 @@ export default function SmartMoneyPage() {
                   >
                     {r.side}
                   </span>
-                  <Link href={`/token/${r.token}`} className="text-cyan-300 hover:underline mono text-xs truncate max-w-[200px]">
-                    {r.token?.slice(0, 4)}…{r.token?.slice(-4)}
-                  </Link>
+                  <div className="inline-flex items-center gap-2">
+                    <Link href={`/token/${r.token}`} className="text-cyan-300 hover:underline mono text-xs truncate max-w-[160px]">
+                      {r.token?.slice(0, 4)}…{r.token?.slice(-4)}
+                    </Link>
+                    <TerminalActionIcons mint={r.token} className="scale-90 origin-left" />
+                  </div>
                   <span className="text-gray-500 text-xs ml-auto tabular-nums">
                     {r.createdAt ? formatDateTime(r.createdAt) : "—"}
                   </span>
