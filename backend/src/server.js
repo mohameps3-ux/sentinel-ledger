@@ -22,6 +22,10 @@ const { startSmartWalletWorker } = require("./workers/smartWallet.worker");
 const { startSmartWalletCron } = require("./jobs/smartWalletCron");
 const { startProAlertCron, getProAlertCronStatus } = require("./jobs/proAlertCron");
 const {
+  startTacticalRegimeNotifyCron,
+  getTacticalRegimeNotifyCronStatus
+} = require("./jobs/tacticalRegimeNotifyCron");
+const {
   startSmartWalletSignalPriceCron,
   getSignalPriceCronStatus
 } = require("./jobs/smartWalletSignalPriceCron");
@@ -236,6 +240,7 @@ app.get("/health", async (_, res) => {
     missingCriticalSecrets: missingCritical,
     smartWorkersEnabled: isWorkersEnabled(),
     proAlerts: getProAlertCronStatus(),
+    tacticalRegimeNotify: getTacticalRegimeNotifyCronStatus(),
     signalPrices: getSignalPriceCronStatus(),
     signalOutcomes: getSignalOutcomeCronStatus(),
     coordinationOutcomes: getCoordinationOutcomeCronStatus(),
@@ -390,6 +395,7 @@ async function bootstrap() {
   }
   startTelegramBot();
   startProAlertCron();
+  startTacticalRegimeNotifyCron();
   startSmartWalletSignalPriceCron();
   startSignalOutcomeCron();
   startCoordinationOutcomeCron({ skipInitialTick: Boolean(coordOutWarmed) });

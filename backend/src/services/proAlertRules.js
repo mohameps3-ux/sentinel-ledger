@@ -15,7 +15,7 @@ function clamp(n, min, max) {
 
 /**
  * @param {object|null|undefined} raw - users.pro_alert_prefs
- * @returns {{ strategy: string, minMovePct: number, direction: string, dedupHours: number }}
+ * @returns {{ strategy: string, minMovePct: number, direction: string, dedupHours: number, tacticalRegime: boolean }}
  */
 function resolveProAlertPrefs(raw) {
   const o = raw && typeof raw === "object" ? raw : {};
@@ -32,7 +32,10 @@ function resolveProAlertPrefs(raw) {
 
   const direction = ["any", "up", "down"].includes(o.direction) ? o.direction : "any";
 
-  return { strategy, minMovePct, direction, dedupHours };
+  /** When true, PRO Telegram can receive execution-regime (BUY/SCALP/AVOID) digests for watchlist mints (tacticalRegimeNotifyCron). */
+  const tacticalRegime = Boolean(o.tacticalRegime);
+
+  return { strategy, minMovePct, direction, dedupHours, tacticalRegime };
 }
 
 function shouldFireForDirection(direction, signedMovePct) {

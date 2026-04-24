@@ -1,5 +1,29 @@
 # Sentinel Ops Runbook
 
+## Supabase RLS — Security Advisor (`wallet_behavior_stats`, `wallet_coordination_pairs`, `coordination_outcomes`)
+
+- **Síntoma:** Security Advisor → “RLS Disabled in Public” en `public.wallet_behavior_stats` y/o `public.wallet_coordination_pairs` (a veces el título menciona otra tabla vecina).
+- **Qué hace la app:** el API usa `SUPABASE_SERVICE_ROLE_KEY` (bypass RLS). Activar RLS **sin** políticas para `anon`/`authenticated` = deny-by-default en PostgREST; no rompe el backend.
+- **Aplicar 014 (+ cadena si hace falta):**
+  - Con URI: `npm run db:ensure-signal-performance --prefix backend` (orden **003 → 011 → 010 → 012 → 013 → 014**).
+  - Railway (env inyectado): `railway run npm run db:ensure-signal-performance` desde `backend/` o la variante documentada en `HANDOFF.md` §6b.
+  - Supabase CLI: `supabase db push` si el proyecto enlaza estas migraciones.
+  - Sin CLI: **SQL Editor** → pegar `supabase/migrations/014_wallet_behavior_and_coordination_rls.sql` → ejecutar (tras **010**/**012** si aún no existen las tablas).
+- **Comprobar:** `npm run db:verify-schema --prefix backend` — si la tabla existe y RLS está off, falla con mensaje que indica 013–014.
+- **Advisor:** refresca Security Advisor tras unos minutos.
+
+## tactical regime → PRO Telegram (advisory)
+
+- **Engine:** `backend/src/lib/tripleRiskRegime.cjs` (`buildTacticalRegimeForTokenResponse`) — same v1 as cockpit; do not duplicate client-only rules.
+- **Service:** `backend/src/services/tacticalRegimeNotify.js` — preview + Telegram send with Redis signature + cooldown.
+- **User opt-in:** `users.pro_alert_prefs.tacticalRegime: true` (PRO + linked `telegram_chat_id`).
+- **Cron (optional):** `TACTICAL_REGIME_CRON_ENABLED=true` — `TACTICAL_REGIME_CRON_TICK_MS` (default 30m), `TACTICAL_REGIME_NOTIFY_COOLDOWN_SEC`, `TACTICAL_REGIME_NOTIFY_ACTIONS`, `TACTICAL_REGIME_WATCHLIST_LIMIT`. Health: `GET /health` → `tacticalRegimeNotify`.
+- **Web Push:** stub `trySendTacticalRegimeWebPush` — implement in a follow-up (same payload as Telegram path).
+- **Ops (x-ops-key):**
+  - `GET /api/v1/ops/tactical-regime/notify/status`
+  - `GET /api/v1/ops/tactical-regime/notify/preview?mint=<pk>`
+  - `POST /api/v1/ops/tactical-regime/notify/send-test` body `{ "mint": "…", "telegramChatId": "optional", "force": false }`
+
 ## signals/latest fallback monitoring
 
 - Scope: `GET /api/v1/ops/signals-latest-fallback/snapshot` (requires `x-ops-key`).

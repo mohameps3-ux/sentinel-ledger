@@ -280,6 +280,8 @@ function startTelegramBot() {
   return bot;
 }
 
+// Tactical regime → Telegram: use `../services/tacticalRegimeNotify.js` + `../lib/tripleRiskRegime.cjs` (ops preview + optional cron).
+
 /** Outbound PRO alert to a linked user (private chat id == Telegram user id). */
 async function sendProUserAlert(telegramChatId, text) {
   if (!bot || telegramChatId == null || !text) return false;

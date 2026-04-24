@@ -41,6 +41,9 @@ const {
   getSignalGateTunerCronStatus
 } = require("../jobs/signalGateTunerCron");
 const { previewSignalGateTuner } = require("../services/signalGateTuner");
+const { getTacticalRegimeNotifyCronStatus } = require("../jobs/tacticalRegimeNotifyCron");
+const { previewTacticalRegimeForMint, trySendTacticalRegimeTelegram } = require("../services/tacticalRegimeNotify");
+const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 
 const router = express.Router();
 
@@ -305,6 +308,49 @@ router.post("/signal-performance/calibration/run", assertOpsAuth, async (req, re
   const maxDeltaPct = Number(req.body?.maxDeltaPct || 0.35);
   const out = await runCalibrationOnce({ lookbackHours, minSamplesPerSignal, maxDeltaPct });
   if (!out?.ok) return res.status(503).json({ ok: false, error: out?.reason || "calibration_failed" });
+  return res.json({ ok: true, data: out });
+});
+
+/**
+ * PRO tactical / execution regime → Telegram (tripleRiskRegime.cjs; same v1 as cockpit).
+ */
+router.get("/tactical-regime/notify/status", assertOpsAuth, (_req, res) => {
+  return res.json({ ok: true, data: getTacticalRegimeNotifyCronStatus() });
+});
+
+/** Read-only: regime + formatted message, no send. */
+router.get("/tactical-regime/notify/preview", assertOpsAuth, async (req, res) => {
+  const mint = String(req.query.mint || req.query.address || "").trim();
+  if (!mint || !isProbableSolanaPubkey(mint)) {
+    return res.status(400).json({ ok: false, error: "valid_mint_required" });
+  }
+  const out = await previewTacticalRegimeForMint(mint);
+  if (!out.ok) return res.status(503).json({ ok: false, error: out.reason || "preview_failed" });
+  return res.json({ ok: true, data: out.data });
+});
+
+/**
+ * One-shot Telegram to TELEGRAM_CHAT_ID or `telegramChatId` in body (ops smoke).
+ * `force: true` bypasses cooldown and signature dedup.
+ */
+router.post("/tactical-regime/notify/send-test", assertOpsAuth, async (req, res) => {
+  const mint = String(req.body?.mint || req.body?.address || "").trim();
+  const targetChat = String(
+    req.body?.telegramChatId != null && String(req.body.telegramChatId).trim() !== ""
+      ? req.body.telegramChatId
+      : process.env.TELEGRAM_CHAT_ID || ""
+  ).trim();
+  if (!mint || !isProbableSolanaPubkey(mint) || !targetChat) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "mint_and_telegram_required", hint: "Set TELEGRAM_CHAT_ID or body.telegramChatId" });
+  }
+  const out = await trySendTacticalRegimeTelegram({
+    userId: "ops",
+    chatId: targetChat,
+    mint,
+    force: Boolean(req.body?.force)
+  });
   return res.json({ ok: true, data: out });
 });
 

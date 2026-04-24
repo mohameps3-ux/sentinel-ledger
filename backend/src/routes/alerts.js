@@ -66,6 +66,9 @@ router.patch("/settings", authMiddleware, requirePro, async (req, res) => {
       const n = Number(req.body.dedupHours);
       if (Number.isFinite(n)) nextPrefs.dedupHours = Math.min(24, Math.max(1, n));
     }
+    if (typeof req.body?.tacticalRegime === "boolean") {
+      nextPrefs.tacticalRegime = req.body.tacticalRegime;
+    }
 
     const updatePayload = {
       pro_alert_prefs: nextPrefs
