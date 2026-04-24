@@ -30,6 +30,12 @@
   3. **Postgres:** fila en `stalker_position_baselines` para `(wallet_address, token_address)`; en `stalker_baseline_dedup` fila por firma en replays de Helius.
   4. **Cliente:** evento socket `wallet-stalk` con `enrichment` (F0 + F4); en una recompra ≥ **3×** la primera notional, `conviction === 'DOUBLE_DOWN'` y badge en la UI.
 
+## PRO alert feed (migration 018, `/alerts` inbox strip)
+
+- **Qué aporta:** tabla `pro_alert_feed_items` — trail append-only de despachos **urgent / surefire** (watchlist move grande, régimen AVOID/SCALP). La API `GET /api/v1/alerts/feed` devuelve las últimas 5 para la cuenta PRO.
+- **Aplicar:** incluida en `npm run db:ensure-signal-performance --prefix backend` (018). `db:verify-schema` imprime `OK` o `SKIP` si aún no está.
+- **Umbrales watchlist (abs %):** env `PRO_ALERT_FEED_URGENT_MIN_PCT` (default 12), `PRO_ALERT_FEED_SUREFIRE_MIN_PCT` (default 25).
+
 ## tactical regime → PRO Telegram + Web Push (advisory)
 
 - **Engine:** `backend/src/lib/tripleRiskRegime.cjs` (`buildTacticalRegimeForTokenResponse`) — same v1 as cockpit; do not duplicate client-only rules.

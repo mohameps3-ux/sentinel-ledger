@@ -1,12 +1,12 @@
 /**
- * One-shot Postgres migrations (002 … 017). Safe to re-run (IF NOT EXISTS / idempotent patterns).
+ * One-shot Postgres migrations (002 … 018). Safe to re-run (IF NOT EXISTS / idempotent patterns).
  *
  * Runbook
  * - Set at least DATABASE_URL or SUPABASE_DATABASE_URL in backend/.env (or Railway/Supabase panel).
  *   This URI is for running this script only; API runtime uses SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY.
  * - Once: from repo root: `node backend/scripts/applySignalPerformanceSchema.js`
  *   or: `npm run db:ensure-signal-performance` with cwd backend (see package.json).
- * - Order: 002 (wallet_stalks + deployer_history columns) → 003 → 011 → 010 → 012 (coordination_outcomes) → 013 → 014 → 015 → 016 → 017 (stalker F4 baselines / dedupe).
+ * - Order: 002 → 003 → 011 → 010 → 012 → 013 → 014 → 015 → 016 → 017 → 018 (PRO alert feed inbox).
  * - Optional tunables: see backend/.env.example (COORD_OUTCOME_HORIZON_MIN, COORD_OUTCOME_PUMP_MIN_PCT, COORD_OUTCOME_CRON_ENABLED, …).
  * - If 012 is not applied: app remains tolerant; “verified” recurrence uses signal_performance fallback when
  *   coordination_outcomes has no row; if the table is missing, the outcome map is empty and the same fallback applies.
@@ -55,7 +55,8 @@ async function main() {
     "014_wallet_behavior_and_coordination_rls.sql",
     "015_web_push_subscriptions.sql",
     "016_smart_wallet_signal_window_extrema.sql",
-    "017_stalker_double_down_baselines.sql"
+    "017_stalker_double_down_baselines.sql",
+    "018_pro_alert_feed_items.sql"
   ];
 
   let lastErr;
@@ -80,7 +81,7 @@ async function main() {
           console.log(`OK: ${name}`);
         }
         console.log(
-          "OK: wallet_stalks (002), signal_performance, coordination tables, RLS, web_push (015), window extrema (016), stalker F4 baselines (017) applied."
+          "OK: wallet_stalks (002), signal_performance, coordination tables, RLS, web_push (015), window extrema (016), stalker F4 (017), PRO alert feed (018) applied."
         );
         console.log(`(connected with ${redactUrlForLog(url)})`);
       } finally {

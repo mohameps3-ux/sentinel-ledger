@@ -13,8 +13,33 @@ import {
 import { FinancialDisclaimer } from "../components/layout/FinancialDisclaimer";
 import { PageHead } from "../components/seo/PageHead";
 import { useLocale } from "../contexts/LocaleContext";
+import { isProbableSolanaMint } from "../lib/solanaMint.mjs";
 
 const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "";
+
+function formatDispatchTime(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    });
+  } catch {
+    return "—";
+  }
+}
+
+function tierAbbr(tier) {
+  if (tier === "surefire") return "SURE";
+  if (tier === "urgent") return "URG";
+  return String(tier || "—")
+    .slice(0, 4)
+    .toUpperCase();
+}
 
 export default function ProAlertsPage() {
   const { t } = useLocale();
@@ -33,9 +58,15 @@ export default function ProAlertsPage() {
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [pushUiBusy, setPushUiBusy] = useState(false);
   const [thisBrowserSubscribed, setThisBrowserSubscribed] = useState(false);
+  const [priorityFeed, setPriorityFeed] = useState({
+    items: [],
+    feedUnavailable: false,
+    loaded: false
+  });
 
   const load = useCallback(async () => {
     if (!token) {
+      setPriorityFeed({ items: [], feedUnavailable: false, loaded: false });
       setLoading(false);
       return;
     }
@@ -51,7 +82,8 @@ export default function ProAlertsPage() {
       ]);
       const statusJson = await statusRes.json().catch(() => ({}));
       const alertJson = await alertRes.json().catch(() => ({}));
-      setPro(Boolean(statusJson?.data?.hasProAccess));
+      const isPro = Boolean(statusJson?.data?.hasProAccess);
+      setPro(isPro);
       if (alertJson?.ok && alertJson?.data) {
         setSettings({
           linked: alertJson.data.linked,
@@ -62,8 +94,30 @@ export default function ProAlertsPage() {
           strategies: alertJson.data.strategies || ["conservative", "balanced", "aggressive"]
         });
       }
+      if (isPro) {
+        try {
+          const feedRes = await fetch(`${getPublicApiUrl()}/api/v1/alerts/feed?limit=5`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const feedJson = await feedRes.json().catch(() => ({}));
+          if (feedJson?.ok && feedJson?.data) {
+            setPriorityFeed({
+              items: Array.isArray(feedJson.data.items) ? feedJson.data.items : [],
+              feedUnavailable: Boolean(feedJson.data.feedUnavailable),
+              loaded: true
+            });
+          } else {
+            setPriorityFeed({ items: [], feedUnavailable: true, loaded: true });
+          }
+        } catch {
+          setPriorityFeed({ items: [], feedUnavailable: true, loaded: true });
+        }
+      } else {
+        setPriorityFeed({ items: [], feedUnavailable: false, loaded: true });
+      }
     } catch (e) {
       toast.error(t("alerts.toast.loadError"));
+      setPriorityFeed({ items: [], feedUnavailable: true, loaded: true });
     } finally {
       setLoading(false);
     }
@@ -262,6 +316,80 @@ export default function ProAlertsPage() {
             </div>
           </div>
         </section>
+
+        {token && pro && priorityFeed.loaded ? (
+          <section className="mt-6 border border-white/[0.07] bg-[#08090c] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-2.5 border-b border-white/[0.06]">
+              <div>
+                <p className="text-[10px] font-semibold tracking-[0.22em] text-gray-500 uppercase">
+                  {t("alerts.dispatchTitle")}
+                </p>
+                <p className="text-[9px] text-gray-600 font-mono mt-0.5">{t("alerts.dispatchSubtitle")}</p>
+              </div>
+            </div>
+            {!priorityFeed.items.length ? (
+              <p className="px-4 py-6 text-[11px] text-gray-500 font-mono leading-relaxed">{t("alerts.dispatchEmpty")}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[520px] text-left border-collapse">
+                  <thead>
+                    <tr className="text-[9px] uppercase tracking-[0.14em] text-gray-600 border-b border-white/[0.06]">
+                      <th className="px-4 py-2 font-medium w-[7.5rem] whitespace-nowrap">{t("alerts.dispatchColTime")}</th>
+                      <th className="px-4 py-2 font-medium w-14 whitespace-nowrap">{t("alerts.dispatchColClass")}</th>
+                      <th className="px-4 py-2 font-medium min-w-[12rem]">{t("alerts.dispatchColSubject")}</th>
+                      <th className="px-4 py-2 font-medium w-[8.5rem] whitespace-nowrap">{t("alerts.dispatchColRef")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {priorityFeed.items.map((row) => {
+                      const mint = row.tokenAddress;
+                      const ref =
+                        mint && isProbableSolanaMint(mint) ? (
+                          <Link href={`/token/${mint}`} className="font-mono text-[10px] text-gray-400 hover:text-cyan-200/90">
+                            {mint.slice(0, 4)}…{mint.slice(-4)}
+                          </Link>
+                        ) : (
+                          <span className="font-mono text-[10px] text-gray-600">—</span>
+                        );
+                      const urgent = row.tier === "urgent";
+                      return (
+                        <tr
+                          key={row.id}
+                          className="border-b border-white/[0.04] text-[11px] text-gray-300 hover:bg-white/[0.02] transition-colors"
+                        >
+                          <td className="px-4 py-2.5 align-top font-mono tabular-nums text-gray-500 whitespace-nowrap">
+                            {formatDispatchTime(row.createdAt)}
+                          </td>
+                          <td className="px-4 py-2.5 align-top">
+                            <span
+                              className={`inline-block font-mono text-[9px] font-semibold tracking-wide px-1.5 py-0.5 border ${
+                                urgent
+                                  ? "border-amber-500/35 text-amber-100/90 bg-amber-500/[0.07]"
+                                  : "border-rose-500/30 text-rose-100/85 bg-rose-500/[0.06]"
+                              }`}
+                            >
+                              {tierAbbr(row.tier)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 align-top">
+                            <p className="text-gray-200 font-medium leading-snug">{row.headline}</p>
+                            {row.detail ? (
+                              <p className="text-[10px] text-gray-500 font-mono mt-1 leading-snug line-clamp-2">{row.detail}</p>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-2.5 align-top">{ref}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="px-4 py-2 text-[9px] text-gray-600 font-mono border-t border-white/[0.05] leading-relaxed">
+              {t("alerts.dispatchFoot")}
+            </p>
+          </section>
+        ) : null}
 
         <section className="sl-section mt-6">
           <div className="glass-card sl-inset space-y-6">

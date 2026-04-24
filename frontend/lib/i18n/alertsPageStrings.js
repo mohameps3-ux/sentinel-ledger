@@ -52,6 +52,29 @@ export const ALERTS_PAGE_STRINGS = {
     ar: "نظام التنبيهات",
     pt: "Sistema de alertas"
   }),
+  "alerts.dispatchTitle": S("Priority dispatch", {
+    es: "Despacho prioritario",
+    pt: "Despacho prioritário"
+  }),
+  "alerts.dispatchSubtitle": S("Last 5 · urgent & surefire class only", {
+    es: "Últimas 5 · solo clase urgent y surefire",
+    pt: "Últimas 5 · apenas urgent e surefire"
+  }),
+  "alerts.dispatchEmpty": S("No priority-class dispatches on file for this account.", {
+    es: "Sin despachos de clase prioritaria registrados para esta cuenta.",
+    pt: "Sem despachos de classe prioritária registados nesta conta."
+  }),
+  "alerts.dispatchColTime": S("Time", { es: "Hora", pt: "Hora" }),
+  "alerts.dispatchColClass": S("Class", { es: "Clase", pt: "Classe" }),
+  "alerts.dispatchColSubject": S("Subject", { es: "Asunto", pt: "Assunto" }),
+  "alerts.dispatchColRef": S("Reference", { es: "Ref.", pt: "Ref." }),
+  "alerts.dispatchFoot": S(
+    "Tactical and info-tier traffic is not shown here — only material flagged urgent or surefire per Sentinel routing.",
+    {
+      es: "El tráfico táctico e informativo no se muestra aquí — solo lo marcado urgent o surefire según el enrutado Sentinel.",
+      pt: "Tráfego táctico e informativo não aparece aqui — só urgent ou surefire pelo roteamento Sentinel."
+    }
+  ),
   "alerts.heroBody": S(
     "Telegram when your watchlist moves beyond your threshold (Conservative / Balanced / Aggressive). Not financial advice.",
     {

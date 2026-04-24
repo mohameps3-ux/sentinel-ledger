@@ -6,6 +6,7 @@ const { tokenPageUrl } = require("../services/marketingLinks");
 const { sendProUserAlert } = require("../bots/telegramBot");
 const { resolveProAlertPrefs, shouldFireForDirection } = require("../services/proAlertRules");
 const { getSmartMoneyHintForMint } = require("../services/proAlertSmartHint");
+const { recordProAlertFeedItem, tierForWatchlistMove } = require("../services/proAlertFeed");
 
 const SMART_HINT_MIN_CONF = Number(process.env.PRO_ALERT_SMART_HINT_MIN_CONF || 38);
 const SMART_HINT_MIN_COUNT_WEAK = 4;
@@ -204,6 +205,22 @@ async function runProAlertTick() {
         if (sent) {
           messagesSent += 1;
           await setBaseline(userId, mint, price);
+          const feedTier = tierForWatchlistMove(absMove, minMovePct);
+          await recordProAlertFeedItem({
+            userId,
+            tier: feedTier,
+            source: "watchlist_move",
+            headline: `${sym} ${signedMovePct >= 0 ? "+" : ""}${signedMovePct.toFixed(1)}% (${dirLabel})`,
+            detail: `Δ vs prior mark · threshold ${minMovePct}% · ${prefs.strategy} · ${direction}`,
+            tokenAddress: mint,
+            meta: {
+              absMovePct: Math.round(absMove * 100) / 100,
+              minMovePct,
+              strategy: prefs.strategy,
+              direction,
+              priceUsd: price
+            }
+          });
         }
       }
     }

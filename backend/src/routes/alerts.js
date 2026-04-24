@@ -10,6 +10,44 @@ function countOrZero(n) {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+/** Last N priority-class rows for institutional inbox strip (PRO). */
+router.get("/feed", authMiddleware, requirePro, async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const limit = Math.min(10, Math.max(1, Number(req.query.limit) || 5));
+    const { data: rows, error } = await supabase
+      .from("pro_alert_feed_items")
+      .select("id,tier,source,headline,detail,token_address,meta,created_at")
+      .eq("user_id", req.user.userId)
+      .in("tier", ["urgent", "surefire"])
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      if (/pro_alert_feed_items|42P01|relation/i.test(String(error.message || ""))) {
+        return res.json({ ok: true, data: { items: [], feedUnavailable: true } });
+      }
+      throw error;
+    }
+
+    const items = (rows || []).map((r) => ({
+      id: r.id,
+      tier: r.tier,
+      source: r.source,
+      headline: r.headline,
+      detail: r.detail,
+      tokenAddress: r.token_address,
+      meta: r.meta || {},
+      createdAt: r.created_at
+    }));
+
+    return res.json({ ok: true, data: { items } });
+  } catch (error) {
+    console.error("alerts/feed:", error);
+    return res.status(500).json({ ok: false, error: "feed_failed" });
+  }
+});
+
 router.get("/settings", authMiddleware, async (req, res) => {
   try {
     const supabase = getSupabase();

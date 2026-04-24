@@ -13,6 +13,7 @@ const { tokenPageUrl } = require("./marketingLinks");
 const { sendProUserAlert } = require("../bots/telegramBot");
 const redis = require("../lib/cache");
 const { trySendTacticalRegimeWebPush } = require("./tacticalRegimeWebPush");
+const { recordProAlertFeedItem, tierForTacticalRegimeAction } = require("./proAlertFeed");
 
 const COOLDOWN_SEC = Math.max(60, Math.min(86400, Number(process.env.TACTICAL_REGIME_NOTIFY_COOLDOWN_SEC || 3600)));
 const ACTIONS_ALLOW = new Set(
@@ -138,6 +139,22 @@ async function trySendTacticalRegimeTelegram(opts) {
       await redis.set(sigKey, sig, { ex: 7 * 24 * 60 * 60 });
       await redis.set(timeKey, String(Date.now()), { ex: COOLDOWN_SEC });
     } catch (_) {}
+    const sym = built.marketData?.symbol || "?";
+    await recordProAlertFeedItem({
+      userId,
+      tier: tierForTacticalRegimeAction(regime.action),
+      source: "tactical_regime",
+      headline: `${sym} · ${regime.action}`,
+      detail: `${regime.contextLabelId || "—"} · SGN ${regime.signalScore ?? "—"} · XEC ${regime.executionScore} · OVH ${regime.overheatScore}`,
+      tokenAddress: mint,
+      meta: {
+        action: regime.action,
+        contextLabelId: regime.contextLabelId || null,
+        signalScore: regime.signalScore,
+        executionScore: regime.executionScore,
+        overheatScore: regime.overheatScore
+      }
+    });
   }
 
   let reason = "all_failed";

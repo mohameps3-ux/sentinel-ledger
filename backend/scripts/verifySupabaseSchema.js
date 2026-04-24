@@ -161,6 +161,13 @@ async function main() {
     } else if (!strictStalker) {
       console.log("SKIP: stalker F4 bundle (wallet_stalks not present; use --stalker-strict on Stalker Postgres to require OK)");
     }
+
+    const { rows: feedReg } = await client.query("SELECT to_regclass($1) AS r", ["public.pro_alert_feed_items"]);
+    if (feedReg[0]?.r) {
+      console.log("OK: table public.pro_alert_feed_items");
+    } else {
+      console.log("SKIP: pro_alert_feed_items (migration 018 not applied — optional until db:ensure-signal-performance)");
+    }
   } finally {
     await client.end();
   }
