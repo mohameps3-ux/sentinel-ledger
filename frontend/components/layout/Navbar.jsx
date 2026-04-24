@@ -4,10 +4,13 @@ import { useRouter } from "next/router";
 import { SearchBar } from "./SearchBar";
 import { HealthBar } from "./HealthBar";
 import { APP_NAV_LINKS } from "./appNavConfig";
+import { LanguageMenu } from "./LanguageMenu";
+import { useLocale } from "../../contexts/LocaleContext";
 import { useLayoutEffect, useRef, useEffect, useState } from "react";
 import { Home, Menu, Sparkles, X } from "lucide-react";
 
 export function Navbar() {
+  const { t } = useLocale();
   const router = useRouter();
   const isHome = router.pathname === "/";
   const navRef = useRef(null);
@@ -87,12 +90,16 @@ export function Navbar() {
             className="shrink-0 h-7 px-1.5 rounded-md border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] text-gray-200 inline-flex items-center gap-1"
             aria-expanded={menuOpen}
             aria-haspopup="true"
-            aria-label="Open app menu"
-            title="Menu"
+            aria-label={t("layout.menu")}
+            title={t("layout.menu")}
           >
             <Home size={12} />
             {menuOpen ? <X size={12} /> : <Menu size={12} />}
           </button>
+
+          <div className="shrink-0">
+            <LanguageMenu />
+          </div>
 
           <div className="flex-1 min-w-0 flex items-center gap-1 pl-0.5 overflow-hidden">
             {isHome ? (
@@ -127,15 +134,18 @@ export function Navbar() {
                 className="h-7 px-1.5 rounded-md border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] text-gray-200 inline-flex items-center gap-1"
                 aria-expanded={menuOpen}
                 aria-haspopup="true"
-                aria-label="Open app menu"
-                title="Menu"
+                aria-label={t("layout.menu")}
+                title={t("layout.menu")}
               >
                 <Home size={12} />
                 {menuOpen ? <X size={12} /> : <Menu size={12} />}
               </button>
+              <div className="shrink-0">
+                <LanguageMenu />
+              </div>
             </div>
-            <div className="flex items-center gap-0.5 shrink-0 min-w-0">
-              <div className="max-w-[3.5rem]">
+            <div className="flex items-center gap-0.5 shrink-0">
+              <div className="max-w-[3.5rem] shrink-0">
                 <HealthBar onlyBadge />
               </div>
               <WalletButton />
@@ -152,7 +162,9 @@ export function Navbar() {
               aria-hidden
             />
             <div className="sm:hidden fixed left-0 top-0 bottom-0 z-[220] w-[min(17rem,88vw)] border-r border-white/10 bg-[#0a0c0f]/98 backdrop-blur-xl shadow-2xl shadow-black/60 p-2.5">
-              <p className="text-[9px] uppercase tracking-wider text-gray-500 font-semibold px-2 pb-1.5">Menu</p>
+              <p className="text-[9px] uppercase tracking-wider text-gray-500 font-semibold px-2 pb-1.5">
+                {t("layout.menu")}
+              </p>
               <div className="flex flex-col gap-1">
                 {APP_NAV_LINKS.map((item) => {
                   const active = item.key === "pricing" ? router.pathname === "/pricing" : router.pathname === item.href;
@@ -171,7 +183,7 @@ export function Navbar() {
                       }`}
                       aria-current={active ? "page" : undefined}
                     >
-                      <span className="truncate">{item.label}</span>
+                      <span className="truncate">{t(`nav.${item.key}`)}</span>
                       {item.isStalker && stalkerUnread > 0 ? (
                         <span className="inline-flex min-w-[16px] h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[9px] items-center justify-center px-0.5">
                           {Math.min(stalkerUnread, 99)}
@@ -184,7 +196,9 @@ export function Navbar() {
             </div>
 
             <div className="hidden sm:block absolute left-2 sm:left-4 top-[calc(100%-0.25rem)] z-[220] w-[min(15rem,calc(100vw-1rem))] rounded-xl border border-white/10 bg-[#0a0c0f]/98 backdrop-blur-xl shadow-2xl shadow-black/50 p-2">
-              <p className="text-[9px] uppercase tracking-wider text-gray-500 font-semibold px-2 pb-1">Menu</p>
+              <p className="text-[9px] uppercase tracking-wider text-gray-500 font-semibold px-2 pb-1">
+                {t("layout.menu")}
+              </p>
               <div className="flex flex-col gap-1">
                 {APP_NAV_LINKS.map((item) => {
                   const active = item.key === "pricing" ? router.pathname === "/pricing" : router.pathname === item.href;
@@ -203,7 +217,7 @@ export function Navbar() {
                       }`}
                       aria-current={active ? "page" : undefined}
                     >
-                      <span className="truncate">{item.label}</span>
+                      <span className="truncate">{t(`nav.${item.key}`)}</span>
                       {item.isStalker && stalkerUnread > 0 ? (
                         <span className="inline-flex min-w-[16px] h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[9px] items-center justify-center px-0.5">
                           {Math.min(stalkerUnread, 99)}

@@ -1,6 +1,6 @@
 /**
- * PRO Telegram: execution-regime (advisory) for users with users.pro_alert_prefs.tacticalRegime === true
- * and watchlist mints. Paired with services/tacticalRegimeNotify.js (tripleRiskRegime.cjs).
+ * PRO execution-regime (advisory) for users with pro_alert_prefs.tacticalRegime === true and watchlist mints.
+ * Delivers via Telegram and/or Web Push. Paired with services/tacticalRegimeNotify.js (tripleRiskRegime.cjs).
  */
 "use strict";
 
@@ -37,16 +37,23 @@ async function runTacticalRegimeNotifyTick() {
     const { data: users, error } = await supabase
       .from("users")
       .select("id, telegram_chat_id, pro_alerts_enabled, pro_alert_prefs")
-      .eq("pro_alerts_enabled", true)
-      .not("telegram_chat_id", "is", null);
+      .eq("pro_alerts_enabled", true);
     if (error) {
       lastStats = { usersConsidered: 0, mintsChecked: 0, sent: 0, skipped: 0, error: error.message };
       return;
     }
 
+    const { data: pushRows } = await supabase.from("web_push_subscriptions").select("user_id");
+    const pushUserIds = new Set((pushRows || []).map((r) => r.user_id).filter(Boolean));
+
     for (const u of users || []) {
       const prefs = resolveProAlertPrefs(u.pro_alert_prefs);
       if (!prefs.tacticalRegime) {
+        skipped += 1;
+        continue;
+      }
+      const hasTg = Boolean(u.telegram_chat_id);
+      if (!hasTg && !pushUserIds.has(u.id)) {
         skipped += 1;
         continue;
       }
@@ -62,7 +69,7 @@ async function runTacticalRegimeNotifyTick() {
         mintsChecked += 1;
         const out = await trySendTacticalRegimeTelegram({
           userId: u.id,
-          chatId: u.telegram_chat_id,
+          chatId: u.telegram_chat_id || "",
           mint
         });
         if (out.ok) sent += 1;

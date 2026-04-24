@@ -8,13 +8,13 @@ import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WarModeProvider } from "../contexts/WarModeContext";
+import { LocaleProvider } from "../contexts/LocaleContext";
 import { Toaster } from "react-hot-toast";
-import Link from "next/link";
 import { AppErrorBoundary } from "../components/layout/AppErrorBoundary";
 import { Navbar } from "../components/layout/Navbar";
 import { GlobalWayfinding } from "../components/layout/GlobalWayfinding";
 import { LiveTensionBar } from "../components/layout/LiveTensionBar";
-import { FinancialDisclaimer } from "../components/layout/FinancialDisclaimer";
+import { SiteFooter } from "../components/layout/SiteFooter";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
 import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
@@ -84,6 +84,7 @@ export default function App({ Component, pageProps }) {
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
           <QueryClientProvider client={queryClient}>
+            <LocaleProvider>
             <WarModeProvider>
             <div
               className={`${inter.className} min-h-screen bg-[#070709] text-white antialiased selection:bg-emerald-500/25 selection:text-emerald-100`}
@@ -108,79 +109,7 @@ export default function App({ Component, pageProps }) {
                   <Component {...pageProps} />
                 </AppErrorBoundary>
               </main>
-              <footer className="border-t border-white/[0.06] bg-[#050508]/80 backdrop-blur-sm mt-16 safe-bottom-pad">
-                <div className="sl-container sl-container-wide py-10 sl-body text-gray-500">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 mb-6">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-300 tracking-tight">Sentinel Ledger</p>
-                      <p className="text-xs text-gray-600 mt-1 max-w-xs">
-                        Solana intel · Not financial advice. On every page, the strip under the header shows where you
-                        are and where to go next.
-                      </p>
-                    </div>
-                    <div className="sl-footer-grid text-sm">
-                      <Link href="/results" className="hover:text-gray-300 transition py-1">
-                        Results
-                      </Link>
-                      <Link href="/scanner" className="hover:text-gray-300 transition py-1">
-                        Scanner
-                      </Link>
-                      <Link href="/smart-money" className="hover:text-gray-300 transition py-1">
-                        Smart Money
-                      </Link>
-                      <Link href="/compare" className="hover:text-gray-300 transition py-1">
-                        Compare
-                      </Link>
-                      <Link href="/watchlist" className="hover:text-gray-300 transition py-1">
-                        Watchlist
-                      </Link>
-                      <Link href="/portfolio" className="hover:text-gray-300 transition py-1">
-                        Portfolio
-                      </Link>
-                      <Link href="/alerts" className="hover:text-gray-300 transition py-1">
-                        Alerts
-                      </Link>
-                      <Link href="/pricing" className="hover:text-gray-300 transition py-1">
-                        Pricing
-                      </Link>
-                      <Link href="/ops" className="hover:text-gray-300 transition py-1">
-                        Ops
-                      </Link>
-                      <Link href="/terms" className="hover:text-gray-300 transition py-1">
-                        Terms
-                      </Link>
-                      <Link href="/privacy" className="hover:text-gray-300 transition py-1">
-                        Privacy
-                      </Link>
-                      <Link href="/legal" className="hover:text-gray-300 transition py-1">
-                        Legal
-                      </Link>
-                      <Link href="/contact" className="hover:text-gray-300 transition py-1">
-                        Contact
-                      </Link>
-                      <a
-                        href="https://x.com"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="hover:text-gray-300 transition py-1"
-                      >
-                        Twitter
-                      </a>
-                      <a
-                        href="https://github.com/mohameps3-ux/sentinel-ledger"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="hover:text-gray-300 transition py-1"
-                      >
-                        GitHub
-                      </a>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t border-gray-800/80 py-6">
-                  <FinancialDisclaimer />
-                </div>
-              </footer>
+              <SiteFooter />
               {showDevUiBadge ? (
                 <div className="fixed left-2 bottom-2 z-[260] pointer-events-none select-none text-[10px] leading-tight px-2 py-1 rounded-md border border-cyan-500/35 bg-[#0a0f14]/90 text-cyan-200 font-mono shadow-[0_0_14px_rgba(34,211,238,0.18)]">
                   DEV · UI {devUiStamp} · BUILD {buildStamp}
@@ -204,6 +133,7 @@ export default function App({ Component, pageProps }) {
               />
             </div>
             </WarModeProvider>
+            </LocaleProvider>
           </QueryClientProvider>
         </WalletModalProvider>
       </WalletProvider>

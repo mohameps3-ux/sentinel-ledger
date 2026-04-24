@@ -98,10 +98,14 @@ Key files:
 ## 4) Critical Endpoints
 
 Health:
-- `GET /health`
+- `GET /health` (includes `webPushVapidKeysConfigured` when `WEB_PUSH_VAPID_PUBLIC_KEY` + `WEB_PUSH_VAPID_PRIVATE_KEY` are set; no key material in the response)
 - `GET /health/live`
 - `GET /health/ingestion`
 - `GET /health/sync`
+
+Web Push (public / PRO):
+- `GET /api/v1/push/vapid-public-key` — public VAPID key for `PushManager.subscribe` (rate-limited)
+- `GET|POST /api/v1/push/status|subscribe|unsubscribe` — JWT + PRO; strict subscription validation; per-IP rate limits
 
 Scoring:
 - `GET /api/v1/scoring/latest/:asset`
@@ -146,6 +150,11 @@ Ops (requires `x-ops-key`):
 
 See `backend/.env.example` for full list.
 
+**Web Push (VAPID), if you use PRO tactical / browser push**
+
+- `WEB_PUSH_VAPID_PUBLIC_KEY` / `WEB_PUSH_VAPID_PRIVATE_KEY` / `WEB_PUSH_VAPID_SUBJECT` — keep **private** key in Railway/secret manager only; never in Vercel or the browser. The **public** key is exposed at `GET /api/v1/push/vapid-public-key` (by design) and in `GET /health` as `webPushVapidKeysConfigured: true` when both public+private are set (booleans only, no key material in JSON).
+- Optional: `WEB_PUSH_VAPID_RATE_LIMIT_MAX`, `WEB_PUSH_STATUS_RATE_LIMIT_MAX`, `WEB_PUSH_MUTATE_RATE_LIMIT_MAX` — per-IP throttling for `/api/v1/push/*` (see `backend/src/routes/push.js`).
+
 ## 6) Scripts You Will Use
 
 - `npm run db:ensure-signal-performance`
@@ -155,7 +164,7 @@ See `backend/.env.example` for full list.
 
 ### 6b) Internal reminder — DB URL + migrations (`signal_performance`, coordination)
 
-`applySignalPerformanceSchema.js` always loads `backend/.env` (not the shell cwd). It applies, in order: `003_signal_performance.sql`, `011_signal_performance_emission_regime.sql`, `010_wallet_coordination_alerting.sql`, `012_coordination_outcomes.sql` (012 needs 010 for the FK to `wallet_coordination_alerts`), `013_coordination_outcomes_rls.sql`, `014_wallet_behavior_and_coordination_rls.sql` (RLS on `wallet_behavior_stats` and `wallet_coordination_pairs`; Security Advisor). Empty `DATABASE_URL=` / `SUPABASE_DATABASE_URL=` lines still load as blank strings — fix with sync or set values manually.
+`applySignalPerformanceSchema.js` always loads `backend/.env` (not the shell cwd). It applies, in order: `003_signal_performance.sql`, `011_signal_performance_emission_regime.sql`, `010_wallet_coordination_alerting.sql`, `012_coordination_outcomes.sql` (012 needs 010 for the FK to `wallet_coordination_alerts`), `013_coordination_outcomes_rls.sql`, `014_wallet_behavior_and_coordination_rls.sql` (RLS on `wallet_behavior_stats` and `wallet_coordination_pairs`; Security Advisor), `015_web_push_subscriptions.sql` (Web Push subscription rows; RLS on, deny-by-default to PostgREST; API uses service role). Empty `DATABASE_URL=` / `SUPABASE_DATABASE_URL=` lines still load as blank strings — fix with sync or set values manually.
 
 ```bash
 # Fill empty DATABASE_URL in backend/.env from the linked Railway service env
@@ -172,7 +181,17 @@ npm run db:verify-schema --prefix backend
 # or: railway run npm run db:verify-schema
 ```
 
-In the Supabase SQL editor, verify `wallet_coordination_alerts` and `coordination_outcomes` exist and that `coordination_outcomes.alert_id` references `wallet_coordination_alerts(id)`.
+In the Supabase SQL editor, verify `wallet_coordination_alerts` and `coordination_outcomes` exist and that `coordination_outcomes.alert_id` references `wallet_coordination_alerts(id)`. If you ship **Web Push**, also confirm `web_push_subscriptions` exists and RLS is on (`015` in the same script as above, or `015_web_push_subscriptions.sql` in the SQL editor).
+
+## 5b) Web Push + deploy — nothing reaches prod until `main` + secrets + DB
+
+1. **Git:** The cloud does not get `015_web_push_subscriptions.sql`, `push.js`, `tacticalRegimeWebPush`, `sw.js`, etc. until the commit is on **`origin/main`** (or the branch your Railway/Vercel build tracks) — merge/push first.
+2. **Vercel (frontend):** Project → **Settings → General → Root Directory** = `frontend` (a single `frontend` segment, not `frontend/frontend`). From the **repo root:** `npx vercel deploy --prod` (see §2 and `scripts/recover-prod.ps1`). `NEXT_PUBLIC_*` per your panel / `frontend/.env.example` (no server secrets in Vercel).
+3. **Railway (API):** After the new commit deploys, set: Supabase, Redis, JWT, Telegram, **`WEB_PUSH_VAPID_*`**, optional **`TACTICAL_REGIME_*`**. Generate keys: `npx web-push generate-vapid-keys`.
+4. **DB:** Run `npm run db:ensure-signal-performance --prefix backend` (or your bundle) so **`015`** is applied. Then: `npm run db:verify-schema --prefix backend`.
+5. **Post-deploy checks:** e.g. `GET …/api/v1/push/vapid-public-key` → `ok: true` if VAPID is set; `GET /health` includes `webPushVapidKeysConfigured`. Ops preview: `GET …/api/v1/ops/tactical-regime/notify/preview?mint=…` with `x-ops-key`. Backend smoke: `SMOKE_API_BASE_URL=…` `npm run smoke:post-deploy --prefix backend` (see `docs/OPS_RUNBOOK.md`).
+
+**Suggested PR split (if you want smaller reviews):** (A) `015` + `applySignalPerformanceSchema` + `verifySupabaseSchema` — (B) `tacticalRegimeWebPush` + `push` + `tacticalRegimeNotify` + `server` + `alerts` API — (C) `sw.js` + `webPushClient` + `/alerts` page + i18n. Single squashed commit on `main` is fine for a small team.
 
 ## 7) Current Operational Blockers
 

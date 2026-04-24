@@ -12,17 +12,17 @@
 - **Comprobar:** `npm run db:verify-schema --prefix backend` — si la tabla existe y RLS está off, falla con mensaje que indica 013–014.
 - **Advisor:** refresca Security Advisor tras unos minutos.
 
-## tactical regime → PRO Telegram (advisory)
+## tactical regime → PRO Telegram + Web Push (advisory)
 
 - **Engine:** `backend/src/lib/tripleRiskRegime.cjs` (`buildTacticalRegimeForTokenResponse`) — same v1 as cockpit; do not duplicate client-only rules.
-- **Service:** `backend/src/services/tacticalRegimeNotify.js` — preview + Telegram send with Redis signature + cooldown.
-- **User opt-in:** `users.pro_alert_prefs.tacticalRegime: true` (PRO + linked `telegram_chat_id`).
-- **Cron (optional):** `TACTICAL_REGIME_CRON_ENABLED=true` — `TACTICAL_REGIME_CRON_TICK_MS` (default 30m), `TACTICAL_REGIME_NOTIFY_COOLDOWN_SEC`, `TACTICAL_REGIME_NOTIFY_ACTIONS`, `TACTICAL_REGIME_WATCHLIST_LIMIT`. Health: `GET /health` → `tacticalRegimeNotify`.
-- **Web Push:** stub `trySendTacticalRegimeWebPush` — implement in a follow-up (same payload as Telegram path).
+- **Service:** `backend/src/services/tacticalRegimeNotify.js` — preview; delivery via Telegram and/or VAPID Web Push (`tacticalRegimeWebPush.js`) with Redis signature + cooldown when **either** channel succeeds.
+- **User opt-in:** `users.pro_alert_prefs.tacticalRegime: true` (PRO). At least one delivery channel: linked `telegram_chat_id` and/or a row in `web_push_subscriptions` (PRO alerts page, browser “Enable” after migration **015**).
+- **VAPID env (required for push):** `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_PRIVATE_KEY`, `WEB_PUSH_VAPID_SUBJECT` (see `backend/.env.example`). Generate: `npx web-push generate-vapid-keys` (or your secrets manager). After deploy, confirm `GET /api/v1/push/vapid-public-key` returns `ok: true` (or 503 if keys missing). **Security:** private key only on the API host (Railway); never in the frontend or in `NEXT_PUBLIC_*`. `GET /health` reports `webPushVapidKeysConfigured` (boolean) without exposing keys. Subscriptions are validated (HTTPS push endpoints, key shape), rate-limited per IP, and storage errors are not echoed from Postgres to clients.
+- **Cron (optional):** `TACTICAL_REGIME_CRON_ENABLED=true` — `TACTICAL_REGIME_CRON_TICK_MS` (default 30m), `TACTICAL_REGIME_NOTIFY_COOLDOWN_SEC`, `TACTICAL_REGIME_NOTIFY_ACTIONS`, `TACTICAL_REGIME_WATCHLIST_LIMIT`. Eligible users: `pro_alerts_enabled` + `tacticalRegime` + (Telegram **or** at least one web push subscription). Health: `GET /health` → `tacticalRegimeNotify`.
 - **Ops (x-ops-key):**
   - `GET /api/v1/ops/tactical-regime/notify/status`
   - `GET /api/v1/ops/tactical-regime/notify/preview?mint=<pk>`
-  - `POST /api/v1/ops/tactical-regime/notify/send-test` body `{ "mint": "…", "telegramChatId": "optional", "force": false }`
+  - `POST /api/v1/ops/tactical-regime/notify/send-test` body `{ "mint": "…", "telegramChatId": "optional", "force": false }` — `userId=ops` is not a valid UUID, so Web Push is skipped; use for Telegram smoke only.
 
 ## signals/latest fallback monitoring
 

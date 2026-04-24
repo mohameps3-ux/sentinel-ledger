@@ -6,6 +6,10 @@ const { resolveProAlertPrefs, STRATEGY } = require("../services/proAlertRules");
 
 const router = express.Router();
 
+function countOrZero(n) {
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 router.get("/settings", authMiddleware, async (req, res) => {
   try {
     const supabase = getSupabase();
@@ -19,6 +23,10 @@ router.get("/settings", authMiddleware, async (req, res) => {
 
     const chat = row?.telegram_chat_id ? String(row.telegram_chat_id) : null;
     const resolved = resolveProAlertPrefs(row?.pro_alert_prefs);
+    const { count: pushCount } = await supabase
+      .from("web_push_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", req.user.userId);
 
     return res.json({
       ok: true,
@@ -26,6 +34,7 @@ router.get("/settings", authMiddleware, async (req, res) => {
         linked: Boolean(chat),
         enabled: Boolean(row?.pro_alerts_enabled),
         chatHint: chat ? `${chat.slice(0, 2)}…${chat.slice(-2)}` : null,
+        browserPushCount: countOrZero(pushCount),
         prefs: resolved,
         strategies: Object.keys(STRATEGY)
       }
@@ -87,7 +96,14 @@ router.patch("/settings", authMiddleware, requirePro, async (req, res) => {
 
     if (error) throw error;
     if (row?.pro_alerts_enabled && !row?.telegram_chat_id) {
-      return res.status(400).json({ ok: false, error: "telegram_not_linked" });
+      const { count, error: cErr } = await supabase
+        .from("web_push_subscriptions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", req.user.userId);
+      if (cErr) throw cErr;
+      if (!countOrZero(count)) {
+        return res.status(400).json({ ok: false, error: "delivery_channel_required" });
+      }
     }
 
     const resolved = resolveProAlertPrefs(row?.pro_alert_prefs);

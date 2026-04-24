@@ -45,7 +45,8 @@
     "tweetnacl": "^1.0.3",
     "twitter-api-v2": "^1.18.2",
     "utf-8-validate": "^5.0.10",
-    "uuid": "^11.0.5"
+    "uuid": "^11.0.5",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "socket.io-client": "^4.8.3"

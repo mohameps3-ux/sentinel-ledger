@@ -1,13 +1,14 @@
+"use client";
+
+import { useLocale } from "../../contexts/LocaleContext";
+
 export function FinancialDisclaimer({ className = "" }) {
+  const { t } = useLocale();
   return (
     <div
-      className={`text-xs text-gray-500 text-center leading-relaxed max-w-4xl mx-auto px-4 ${className}`}
+      className={`text-xs text-[var(--sl-fg-soft)] text-center leading-relaxed max-w-4xl mx-auto px-4 ${className}`.trim()}
     >
-      <p>
-        Sentinel Ledger is an informational tool. It does not provide financial, investment, legal, or tax advice. All
-        information is based on algorithmic analysis and may be incomplete. You are solely responsible for your
-        investment decisions. Trading cryptocurrencies involves significant risk.
-      </p>
+      <p>{t("footer.disclaimer")}</p>
     </div>
   );
 }

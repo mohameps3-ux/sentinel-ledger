@@ -1,5 +1,5 @@
 /**
- * PRO Telegram (and future Web Push) for tactical / execution regime — **must** use
+ * PRO Telegram and Web Push for tactical / execution regime — **must** use
  * `../lib/tripleRiskRegime.cjs` (same v1 as cockpit UI), never a parallel client-only formula.
  */
 "use strict";
@@ -12,6 +12,7 @@ const { pairCreatedRawToUnixMs } = require("../lib/pairTime");
 const { tokenPageUrl } = require("./marketingLinks");
 const { sendProUserAlert } = require("../bots/telegramBot");
 const redis = require("../lib/cache");
+const { trySendTacticalRegimeWebPush } = require("./tacticalRegimeWebPush");
 
 const COOLDOWN_SEC = Math.max(60, Math.min(86400, Number(process.env.TACTICAL_REGIME_NOTIFY_COOLDOWN_SEC || 3600)));
 const ACTIONS_ALLOW = new Set(
@@ -67,14 +68,6 @@ function formatTelegramMessage(mint, symbol, regime, pageUrl) {
 }
 
 /**
- * Web Push hook — not wired yet; same payload contract as Telegram for a follow-up.
- * @returns {Promise<{ ok: boolean, reason?: string }>}
- */
-async function trySendTacticalRegimeWebPush(_opts) {
-  return { ok: false, reason: "web_push_not_implemented" };
-}
-
-/**
  * Read-only: regime + message text (for Ops preview, no side effects).
  */
 async function previewTacticalRegimeForMint(mint) {
@@ -95,11 +88,11 @@ async function previewTacticalRegimeForMint(mint) {
 
 /**
  * Send Telegram to a PRO user if regime allowed, signature changed, and cooldown satisfied.
- * @param {{ userId: string, chatId: string, mint: string, force?: boolean }} opts
+ * @param {{ userId: string, chatId?: string, mint: string, force?: boolean }} opts
  */
 async function trySendTacticalRegimeTelegram(opts) {
   const { userId, chatId, mint, force = false } = opts;
-  if (!userId || !chatId || !mint) return { ok: false, reason: "missing_args" };
+  if (!userId || !mint) return { ok: false, reason: "missing_args" };
 
   const built = await buildTokenDataShape(mint);
   if (!built) return { ok: false, reason: "no_data" };
@@ -128,18 +121,44 @@ async function trySendTacticalRegimeTelegram(opts) {
 
   const pageUrl = tokenPageUrl(mint);
   const msg = formatTelegramMessage(mint, built.marketData?.symbol, regime, pageUrl);
-  const sent = await sendProUserAlert(String(chatId), msg);
+  let sentTg = false;
+  if (chatId) {
+    sentTg = await sendProUserAlert(String(chatId), msg);
+  }
+  let webRes = { ok: false, reason: "skipped" };
   try {
-    await trySendTacticalRegimeWebPush({ userId, chatId, mint, regime, message: msg });
-  } catch (_) {}
+    webRes = await trySendTacticalRegimeWebPush({ userId, mint, regime, message: msg, url: pageUrl });
+  } catch (e) {
+    webRes = { ok: false, reason: e?.message || "web_push_error" };
+  }
 
-  if (sent) {
+  const delivered = sentTg || webRes.ok;
+  if (delivered) {
     try {
       await redis.set(sigKey, sig, { ex: 7 * 24 * 60 * 60 });
       await redis.set(timeKey, String(Date.now()), { ex: COOLDOWN_SEC });
     } catch (_) {}
   }
-  return { ok: sent, reason: sent ? "sent" : "telegram_failed", regime, message: msg };
+
+  let reason = "all_failed";
+  if (delivered) {
+    if (sentTg && webRes.ok) reason = "sent_both";
+    else if (sentTg) reason = "sent_telegram";
+    else reason = "sent_web_push";
+  } else if (!chatId) {
+    reason = webRes.reason || "no_telegram_no_push";
+  } else {
+    reason = "telegram_and_push_failed";
+  }
+
+  return {
+    ok: delivered,
+    reason,
+    regime,
+    message: msg,
+    telegram: sentTg,
+    webPush: webRes
+  };
 }
 
 module.exports = {

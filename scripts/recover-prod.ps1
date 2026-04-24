@@ -9,7 +9,10 @@ $ErrorActionPreference = "Stop"
 $frontendUrl = "https://sentinel-ledger-ochre.vercel.app"
 $tokenTestUrl = "https://sentinel-ledger-ochre.vercel.app/token/So11111111111111111111111111111111111111112"
 $backendLiveUrl = "https://sentinel-ledger-backend-production.up.railway.app/health/live"
-$backendHealthUrl = "https://sentinel-ledger-backend-production.up.railway.app/health"
+$backendBaseUrl = "https://sentinel-ledger-backend-production.up.railway.app"
+$backendHealthUrl = "$backendBaseUrl/health"
+# Optional Web Push: 200 { ok, data } when VAPID env is set; 503 vapid_not_configured if keys missing (not a hard fail).
+$backendPushVapidUrl = "$backendBaseUrl/api/v1/push/vapid-public-key"
 
 function Test-Http200 {
   param(
@@ -62,6 +65,10 @@ foreach ($check in $checks) {
     Write-Host "      $($check.Error)" -ForegroundColor DarkRed
   }
 }
+
+Write-Host ""
+Write-Host "Web Push VAPID (optional; edit `$backendBaseUrl` if the API host changes):" -ForegroundColor DarkGray
+Write-Host "  GET $backendPushVapidUrl — expect 200 { ok: true, data.publicKey } when WEB_PUSH_VAPID_* is set; 503 otherwise." -ForegroundColor DarkGray
 
 if ($Redeploy) {
   Write-Host ""

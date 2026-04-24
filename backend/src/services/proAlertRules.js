@@ -32,7 +32,7 @@ function resolveProAlertPrefs(raw) {
 
   const direction = ["any", "up", "down"].includes(o.direction) ? o.direction : "any";
 
-  /** When true, PRO Telegram can receive execution-regime (BUY/SCALP/AVOID) digests for watchlist mints (tacticalRegimeNotifyCron). */
+  /** When true, PRO users can receive execution-regime (BUY/SCALP/AVOID) for watchlist mints via Telegram and/or Web Push (tacticalRegimeNotifyCron). */
   const tacticalRegime = Boolean(o.tacticalRegime);
 
   return { strategy, minMovePct, direction, dedupHours, tacticalRegime };

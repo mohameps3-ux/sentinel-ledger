@@ -1,5 +1,7 @@
 /**
  * Read-only checks against Postgres (DATABASE_URL). Same expectations as supabase/apply_production_bundle.sql tail.
+ * Also verifies RLS is enabled on coordination_outcomes, wallet_behavior_stats, wallet_coordination_pairs when present
+ * (migrations 013–015 / rls_public_lockdown.sql).
  */
 require("dotenv").config();
 const { Client } = require("pg");
@@ -57,6 +59,37 @@ async function main() {
         console.error(`FAIL: smart_wallets.${c}`);
         failed += 1;
       } else console.log(`OK: smart_wallets.${c}`);
+    }
+
+    // If these tables exist, RLS must be ON (migrations 013/014/015 or rls_public_lockdown.sql).
+    const rlsTables = [
+      "coordination_outcomes",
+      "wallet_behavior_stats",
+      "wallet_coordination_pairs",
+      "web_push_subscriptions"
+    ];
+    for (const t of rlsTables) {
+      const { rows: regRows } = await client.query("SELECT to_regclass($1) AS r", [`public.${t}`]);
+      if (!regRows[0]?.r) {
+        console.log(`SKIP RLS check: public.${t} (table not present yet)`);
+        continue;
+      }
+      const { rows: rlsRows } = await client.query(
+        `SELECT c.relrowsecurity AS rls_on
+         FROM pg_class c
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname = 'public' AND c.relname = $1 AND c.relkind = 'r'`,
+        [t]
+      );
+      const on = rlsRows[0]?.rls_on === true;
+      if (!on) {
+        console.error(
+          `FAIL: RLS disabled on public.${t} — run npm run db:ensure-signal-performance --prefix backend (includes 013–015) or apply the matching migration in SQL Editor, then refresh Security Advisor.`
+        );
+        failed += 1;
+      } else {
+        console.log(`OK: RLS enabled on public.${t}`);
+      }
     }
   } finally {
     await client.end();

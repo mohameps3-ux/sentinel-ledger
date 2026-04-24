@@ -77,6 +77,7 @@ const walletStalkerRouter = require("./routes/walletStalker");
 const walletNarrativeRouter = require("./routes/walletNarrative");
 const scoringRouter = require("./routes/scoring");
 const opsRouter = require("./routes/ops");
+const pushRouter = require("./routes/push");
 const { verifyFreshnessHistorySignedExport } = require("./lib/freshnessSignedExport");
 const { startTelegramBot } = require("./bots/telegramBot");
 const { startSubscriptionExpiryCron } = require("./services/subscriptionCron");
@@ -87,6 +88,7 @@ const { getIngestionSnapshot } = require("./ingestion/ingestionState");
 const { getDedupeStats } = require("./ingestion/dedupe");
 const { getMarketDataCircuitStatus, getMarketDataProviderStats } = require("./services/marketData");
 const { getDataFreshnessSnapshot } = require("./services/homeTerminalApi");
+const { isVapidKeyMaterialPresent } = require("./services/tacticalRegimeWebPush");
 const { getSignalGateOpsSnapshot } = require("./services/signalEmissionGate");
 const {
   startSignalGateTunerCron,
@@ -237,6 +239,7 @@ app.get("/health", async (_, res) => {
     redisRestConfigured: Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
     bullMqTcpConfigured: Boolean(process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL),
     heliusWebhookConfigured: Boolean(process.env.HELIUS_WEBHOOK_SECRET),
+    webPushVapidKeysConfigured: isVapidKeyMaterialPresent(),
     missingCriticalSecrets: missingCritical,
     smartWorkersEnabled: isWorkersEnabled(),
     proAlerts: getProAlertCronStatus(),
@@ -342,6 +345,7 @@ app.use("/api/v1/wallets", walletNarrativeRouter);
 app.use("/api/v1/nlu", nluRouter);
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/alerts", alertsRouter);
+app.use("/api/v1/push", pushRouter);
 app.use("/api/v1", billingRouter);
 app.use("/api/v1/webhooks", heliusWebhookRouter);
 app.use("/api/v1/bots/omni", omniBotsRouter);
