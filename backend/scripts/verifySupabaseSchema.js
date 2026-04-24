@@ -1,7 +1,7 @@
 /**
  * Read-only checks against Postgres (DATABASE_URL). Same expectations as supabase/apply_production_bundle.sql tail.
  * Also verifies RLS is enabled on coordination_outcomes, wallet_behavior_stats, wallet_coordination_pairs when present
- * (migrations 013–015 / rls_public_lockdown.sql).
+ * (migrations 013–015 / rls_public_lockdown.sql). When `wallet_stalks` exists, expects migration **017** stalker F4 tables.
  */
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
@@ -116,6 +116,24 @@ async function main() {
       } else {
         console.log(`OK: RLS enabled on public.${t}`);
       }
+    }
+
+    // Wallet Stalker F4 (017): if wallet_stalks exists, baselines + dedup must exist for double-down.
+    const { rows: wsReg } = await client.query("SELECT to_regclass($1) AS r", ["public.wallet_stalks"]);
+    if (wsReg[0]?.r) {
+      for (const t of ["stalker_position_baselines", "stalker_baseline_dedup"]) {
+        const { rows } = await client.query("SELECT to_regclass($1) AS r", [`public.${t}`]);
+        if (!rows[0]?.r) {
+          console.error(
+            `FAIL: missing public.${t} — run migration 017 (npm run db:ensure-signal-performance --prefix backend) or paste supabase/migrations/017_stalker_double_down_baselines.sql in SQL Editor.`
+          );
+          failed += 1;
+        } else {
+          console.log(`OK: table public.${t}`);
+        }
+      }
+    } else {
+      console.log("SKIP: stalker F4 tables (wallet_stalks not present)");
     }
   } finally {
     await client.end();
