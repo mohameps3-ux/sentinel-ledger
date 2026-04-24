@@ -5,7 +5,7 @@
 - **Síntoma:** Security Advisor → “RLS Disabled in Public” en `public.wallet_behavior_stats` y/o `public.wallet_coordination_pairs` (a veces el título menciona otra tabla vecina).
 - **Qué hace la app:** el API usa `SUPABASE_SERVICE_ROLE_KEY` (bypass RLS). Activar RLS **sin** políticas para `anon`/`authenticated` = deny-by-default en PostgREST; no rompe el backend.
 - **Aplicar 014 (+ cadena si hace falta):**
-  - Con URI: `npm run db:ensure-signal-performance --prefix backend` (orden **003 → 011 → 010 → 012 → 013 → 014**).
+  - Con URI: `npm run db:ensure-signal-performance --prefix backend` (orden **002 → 003 → 011 → 010 → 012 → 013 → 014** … hasta **017** si aplica Stalker F4; ver cabecera de `applySignalPerformanceSchema.js`).
   - Railway (env inyectado): `railway run npm run db:ensure-signal-performance` desde `backend/` o la variante documentada en `HANDOFF.md` §6b.
   - Supabase CLI: `supabase db push` si el proyecto enlaza estas migraciones.
   - Sin CLI: **SQL Editor** → pegar `supabase/migrations/014_wallet_behavior_and_coordination_rls.sql` → ejecutar (tras **010**/**012** si aún no existen las tablas).
