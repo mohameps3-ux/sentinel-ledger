@@ -428,6 +428,7 @@ export default function OpsPage() {
   const ttaAvgMs = telemetrySummary?.tta?.avgMs;
   const freshnessCounts = telemetrySummary?.freshness || {};
   const degradedFreshnessCount = Number(freshnessCounts.DEGRADED || 0) + Number(freshnessCounts.STALE || 0);
+  const swProfileTe = telemetrySummary?.swProfile;
 
   return (
     <>
@@ -564,6 +565,16 @@ export default function OpsPage() {
                   value={telemetrySummary ? `L${formatInteger(freshnessCounts.LIVE || 0)} / S${formatInteger(freshnessCounts.STALE || 0)} / D${formatInteger(freshnessCounts.DEGRADED || 0)}` : "—"}
                   hint="Live / Stale / Degraded observed by clients"
                   tone={!telemetrySummary ? "neutral" : degradedFreshnessCount ? "warn" : "good"}
+                />
+                <Kpi
+                  label="smart_wallets profile rows synced"
+                  value={swProfileTe != null ? formatInteger(swProfileTe.totalRowUpdates || 0) : "—"}
+                  hint={
+                    swProfileTe?.lastAt
+                      ? `behavior → early/cluster/consistency · last ${formatDateTime(swProfileTe.lastAt)}`
+                      : "From wallet-behavior tick (resolved_signals ≥ 1)"
+                  }
+                  tone="neutral"
                 />
               </div>
 

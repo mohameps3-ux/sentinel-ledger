@@ -3,6 +3,8 @@
 const redis = require("../lib/cache");
 
 const SUMMARY_KEY = "sentinel:client_telemetry:v1:summary";
+/** Server-side: wallet-behavior → smart_wallets(early/cluster/consistency) sync counts (not client POST). */
+const SW_PROFILE_TELEM_KEY = "sentinel:server:sw_profile_telemetry:v1";
 const TTL_SECONDS = 7 * 24 * 60 * 60;
 const VALID_TYPES = new Set(["tta_first_action", "freshness_state"]);
 
@@ -17,18 +19,41 @@ function cleanState(raw) {
   return ["LIVE", "STALE", "DEGRADED"].includes(state) ? state : null;
 }
 
+function stripSwProfileFromStoredBase(obj) {
+  if (!obj || typeof obj !== "object") return obj;
+  if (!("swProfile" in obj)) return obj;
+  const { swProfile: _ignore, ...rest } = obj;
+  return rest;
+}
+
 async function getClientTelemetrySummary() {
   const value = await redis.get(SUMMARY_KEY);
-  return value && typeof value === "object"
-    ? value
-    : { tta: { count: 0, avgMs: null, byPath: {} }, freshness: { LIVE: 0, STALE: 0, DEGRADED: 0 } };
+  const rawBase =
+    value && typeof value === "object"
+      ? stripSwProfileFromStoredBase(value)
+      : { tta: { count: 0, avgMs: null, byPath: {} }, freshness: { LIVE: 0, STALE: 0, DEGRADED: 0 } };
+  const base = rawBase;
+  let swProfile = { totalRowUpdates: 0, lastAt: null };
+  try {
+    const x = await redis.get(SW_PROFILE_TELEM_KEY);
+    if (x && typeof x === "object") {
+      swProfile = {
+        totalRowUpdates: Number(x.totalRowUpdates || 0),
+        lastAt: x.lastAt || null
+      };
+    }
+  } catch {
+    // ignore
+  }
+  return { ...base, swProfile };
 }
 
 async function recordClientTelemetryEvent(event = {}) {
   const type = typeof event.type === "string" ? event.type.trim() : "";
   if (!VALID_TYPES.has(type)) return { ok: false, reason: "invalid_type" };
 
-  const summary = await getClientTelemetrySummary();
+  const full = await getClientTelemetrySummary();
+  const { swProfile: _sw, ...summary } = full;
   const data = event.data && typeof event.data === "object" ? event.data : {};
   const path = cleanPath(data.path || event.path);
 
@@ -65,7 +90,33 @@ async function recordClientTelemetryEvent(event = {}) {
   return { ok: true };
 }
 
+/**
+ * Incremented when `walletBehaviorMemory.upsertWalletBehavior` updates `smart_wallets` profile columns.
+ * Surfaced in GET /api/v1/telemetry/client/summary (Ops dashboard).
+ */
+async function recordSwProfileRowSync(count = 1) {
+  const n = Math.max(1, Math.floor(Number(count) || 1));
+  let cur = { totalRowUpdates: 0, lastAt: null };
+  try {
+    const raw = await redis.get(SW_PROFILE_TELEM_KEY);
+    if (raw && typeof raw === "object") cur = { ...cur, ...raw };
+  } catch {
+    // ignore
+  }
+  const next = {
+    totalRowUpdates: Number(cur.totalRowUpdates || 0) + n,
+    lastAt: new Date().toISOString()
+  };
+  try {
+    await redis.set(SW_PROFILE_TELEM_KEY, next, { ex: TTL_SECONDS });
+  } catch {
+    // ignore
+  }
+  return { ok: true, ...next };
+}
+
 module.exports = {
   getClientTelemetrySummary,
-  recordClientTelemetryEvent
+  recordClientTelemetryEvent,
+  recordSwProfileRowSync
 };

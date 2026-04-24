@@ -60,6 +60,39 @@ function maxKnownOutcome(row) {
   return best;
 }
 
+/**
+ * Maps `wallet_behavior_stats` summary into `smart_wallets` early/cluster/consistency (and smart_score)
+ * so home / smart-wallets top show real decomposed profile, not only win-rate heuristics.
+ * Requires at least one resolved signal (result_pct) in the lookback to avoid writing noise.
+ * @param {object} s summary row from computeWalletBehaviorForWindow
+ * @returns {{ early_entry_score: number, cluster_score: number, consistency_score: number, smart_score: number } | null}
+ */
+function smartWalletProfileScoresFromBehaviorSummary(s) {
+  if (!s || typeof s !== "object") return null;
+  const res = Math.floor(Number(s.resolved_signals) || 0);
+  if (res < 1) return null;
+  const wr = Math.min(100, Math.max(0, Number(s.win_rate_real) || 0));
+  const ant = Math.min(1, Math.max(0, Number(s.anticipatory_buy_ratio) || 0));
+  const grp = Math.min(1, Math.max(0, Number(s.group_buy_ratio) || 0));
+  const lat = s.avg_latency_post_deploy_min;
+  const latNum = Number(lat);
+  const latNorm = Number.isFinite(latNum) && latNum >= 0 ? Math.min(1, latNum / 150) : 0.4;
+  const early = Math.round(
+    Math.min(100, Math.max(0, 100 * (0.42 * ant + 0.38 * (1 - latNorm) + 0.2 * (wr / 100))))
+  );
+  const cluster = Math.round(Math.min(100, Math.max(0, 100 * (0.68 * grp + 0.32 * Math.min(1, res / 25)))));
+  const consistency = Math.round(
+    Math.min(100, Math.max(0, wr * (0.55 + 0.45 * Math.min(1, res / 30))))
+  );
+  const smart = Math.min(100, Math.max(35, Math.round(wr * 0.4 + early * 0.3 + cluster * 0.2 + consistency * 0.1)));
+  return {
+    early_entry_score: early,
+    cluster_score: cluster,
+    consistency_score: consistency,
+    smart_score: smart
+  };
+}
+
 function classifyStyle({
   groupRatio,
   anticipatoryRatio,
@@ -408,6 +441,25 @@ async function upsertWalletBehavior(computed) {
     if (iErr) return { ok: false, reason: iErr.message || "token_features_insert_failed" };
   }
 
+  const profileScores = smartWalletProfileScoresFromBehaviorSummary(summary);
+  if (profileScores) {
+    const { recordSwProfileRowSync } = require("./clientTelemetry");
+    const nowIso = toIso(Date.now());
+    const { data: upRows, error: swErr } = await supabase
+      .from("smart_wallets")
+      .update({
+        ...profileScores,
+        updated_at: nowIso
+      })
+      .eq("wallet_address", String(summary.wallet_address))
+      .select("wallet_address");
+    if (swErr) {
+      console.warn("[wallet-behavior] smart_wallets profile update:", swErr.message || swErr);
+    } else if (Array.isArray(upRows) && upRows.length) {
+      recordSwProfileRowSync(1).catch(() => {});
+    }
+  }
+
   return { ok: true, tokenFeatures: tokenFeatures.length };
 }
 
@@ -459,6 +511,7 @@ module.exports = {
   upsertWalletBehavior,
   getWalletBehaviorSummary,
   getWalletBehaviorTop,
-  getWalletBehaviorTokenFeatures
+  getWalletBehaviorTokenFeatures,
+  smartWalletProfileScoresFromBehaviorSummary
 };
 

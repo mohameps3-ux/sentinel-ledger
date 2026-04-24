@@ -36,6 +36,14 @@
 - **Aplicar:** incluida en `npm run db:ensure-signal-performance --prefix backend` (018). `db:verify-schema` imprime `OK` o `SKIP` si aún no está.
 - **Umbrales watchlist (abs %):** env `PRO_ALERT_FEED_URGENT_MIN_PCT` (default 12), `PRO_ALERT_FEED_SUREFIRE_MIN_PCT` (default 25).
 
+## `smart_wallets` early / cluster / consistency (producto completo)
+
+- **Origen:** columnas `early_entry_score`, `cluster_score`, `consistency_score` (y `smart_score` derivado) en **`smart_wallets`**.
+  - **`analyzeWallet`** (cron smart-wallet + cola) las rellena desde Helius + mercado.
+  - **`upsertWalletBehavior`** (cron wallet-behavior, `walletBehaviorCron`) ahora **también** las escribe cuando `wallet_behavior_stats.resolved_signals >= 1`, derivándolas del resumen de comportamiento (anticipatory/group/latency/win_rate_real). Así prod llega al **100 %** de perfil sin depender solo de `analyzeWallet`.
+- **UI:** si siguen en `—`, revisar que existan señales con `result_pct` resuelto en ventana y que el tick de behavior haya corrido (`GET /health` → `walletBehavior`).
+- **Telemetría:** `GET /api/v1/telemetry/client/summary` (ops key) incluye `swProfile: { totalRowUpdates, lastAt }` — contador de filas `smart_wallets` actualizadas por ese pipeline. Ops → KPI **«smart_wallets profile rows synced»**.
+
 ## tactical regime → PRO Telegram + Web Push (advisory)
 
 - **Engine:** `backend/src/lib/tripleRiskRegime.cjs` (`buildTacticalRegimeForTokenResponse`) — same v1 as cockpit; do not duplicate client-only rules.
