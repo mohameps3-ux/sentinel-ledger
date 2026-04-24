@@ -17,6 +17,7 @@ import { COMPARE_PAGE_STRINGS } from "./comparePageStrings";
 import { SMART_MONEY_PAGE_STRINGS } from "./smartMoneyPageStrings";
 import { HOME_PAGE_STRINGS } from "./homePageStrings";
 import { OPS_PAGE_STRINGS } from "./opsPageStrings";
+import { TERMINAL_LEXICON_STRINGS } from "./terminalLexiconStrings";
 
 function S(en, overrides = {}) {
   const codes = ["en", "es", "fr", "de", "it", "ru", "zh", "ko", "ja", "ar", "pt", "nl", "pl", "tr", "hi", "vi"];
@@ -460,7 +461,8 @@ export const FLAT_STRINGS = {
   "cockpit.desk.radarCtxHelp": S(
     "This bar reflects tamper-checked ?ctx= from the feed. It disappears if the URL had stale ctx or you edited ?t= without a matching ctx (we scrub junk bookmarks).",
     {
-      es: "Esta franja refleja ?ctx= comprobado desde el feed. Desaparece si la URL traía ctx obsoleto o cambiaste ?t= sin ctx coherente (limpiamos marcadores basura)."
+      es: "Esta franja refleja ?ctx= comprobado desde el feed. Desaparece si la URL traía ctx obsoleto o cambiaste ?t= sin ctx coherente (limpiamos marcadores basura).",
+      pt: "Esta faixa reflete ?ctx= verificado a partir do feed. Some se a URL tinha ctx obsoleto ou se editou ?t= sem ctx correspondente (removemos lixo de bookmark)."
     }
   ),
   "cockpit.desk.loadingToken": S("Loading token context…", { es: "Cargando contexto del token…" }),
@@ -656,5 +658,7 @@ export const FLAT_STRINGS = {
 
   ...HOME_PAGE_STRINGS,
 
-  ...OPS_PAGE_STRINGS
+  ...OPS_PAGE_STRINGS,
+
+  ...TERMINAL_LEXICON_STRINGS
 };
