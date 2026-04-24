@@ -23,10 +23,10 @@
   1. `npm run db:ensure-signal-performance --prefix backend` (si hiciera falta 017).
   2. `npm run db:verify-schema:stalker-ops --prefix backend` (= `verifySupabaseSchema.js --stalker-strict`): **exige** `wallet_stalks` y las dos tablas `stalker_*`; si falla, corrige `DATABASE_URL` hasta que veas `OK: table public.stalker_position_baselines` y `stalker_baseline_dedup` (no SKIP).
 - **Comprobar tablas (modo laxo, CI / dev):** `npm run db:verify-schema --prefix backend` — si existe `wallet_stalks` y faltan tablas F4, falla; si no hay Stalker en esa DB, hace SKIP del bloque F4.
-- **Expectativa `type` (Helius):** F4 solo corre cuando el normalizador entrega `type === 'buy'` en la pierna stalker (`stalkerDoubleDown.js`). Si en prod solo entran piernas como `swap`, veréis **F0** (pool / USD) en `enrichment` pero **no** `conviction: DOUBLE_DOWN` salvo que en el futuro se amplíe el clasificador (**F4.1** producto).
+- **Expectativa `type` (Helius / F4.1):** F4 corre en piernas `buy` **o** `swap` donde `wallet` es el receptor del `mint` (`expandHeliusPayload`: `to || from`). Las piernas `sell` no cuentan. Si el upstream cambiara la semántica de `wallet`/`type`, revisar `stalkerDoubleDown.js`.
 - **Checklist verificación en vivo una vez (no automatizable sin E2E):**
   1. Usuario con sesión: en `/wallet-stalker`, añadir una wallet que vaya a comprar on-chain (o ya stalkeada con actividad).
-  2. Disparar una **compra** que el pipeline clasifique como `type === 'buy'` para stalker, con precio/liquidez suficientes en el memo de mercado (si `amountUsd` es null, F4 no calcula multiplicador).
+  2. Disparar una **compra o swap** (pierna receptora del mint) con precio/liquidez suficientes en el memo de mercado (si `amountUsd` es null, F4 no calcula multiplicador).
   3. **Postgres:** fila en `stalker_position_baselines` para `(wallet_address, token_address)`; en `stalker_baseline_dedup` fila por firma en replays de Helius.
   4. **Cliente:** evento socket `wallet-stalk` con `enrichment` (F0 + F4); en una recompra ≥ **3×** la primera notional, `conviction === 'DOUBLE_DOWN'` y badge en la UI.
 

@@ -132,6 +132,7 @@ function expandHeliusPayload(raw) {
     else if (from && !to) type = "sell";
     else if (to && from) type = "swap";
 
+    // Recipient first: for `swap`, wallet is the side receiving `mint` (F4.1 double-down aligns with this).
     const wallet = to || from || raw.feePayer || null;
     if (!wallet) continue;
 

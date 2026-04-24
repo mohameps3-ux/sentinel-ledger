@@ -54,10 +54,10 @@ export const STALKER_PAGE_STRINGS = {
     pt: "Reforço ×{{mult}}"
   }),
   "stalker.f4Help": S(
-    "F4: server compares this buy’s USD size to the first buy on the same wallet+mint (≥3×). Needs DB migration 017 + market USD.",
+    "F4 (+F4.1): server compares this leg’s USD (buy or DEX swap receiving the mint) to the first such leg on the same wallet+mint (≥3×). Needs migration 017 + market USD.",
     {
-      es: "F4: el servidor compara el tamaño USD de esta compra con la primera compra misma wallet+mint (≥3×). Requiere migración 017 + USD de mercado.",
-      pt: "F4: o servidor compara o USD desta compra à primeira compra mesma wallet+mint (≥3×). Precisa migração 017 + USD de mercado."
+      es: "F4 (+F4.1): el servidor compara el USD de esta pierna (compra o swap DEX recibiendo el mint) con la primera igual wallet+mint (≥3×). Requiere migración 017 + USD de mercado.",
+      pt: "F4 (+F4.1): o servidor compara o USD desta perna (compra ou swap DEX recebendo o mint) à primeira mesma wallet+mint (≥3×). Precisa migração 017 + USD de mercado."
     }
   ),
   "stalker.poolImpactLine": S("Pool impact · {{level}} · {{pct}}%", {

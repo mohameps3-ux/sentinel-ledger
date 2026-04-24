@@ -1,9 +1,12 @@
 /**
  * F4: "Double down" for wallet-stalk: current notional / first notional on (wallet, mint) ≥ 3.
- * BUY-only: `isBuyLike` is strictly `type === "buy"`. Helius legs normalized as `swap` do not
- * update baselines or emit DOUBLE_DOWN (you still get F0 pool/USD enrichment from heliusWebhook).
- * Treating net-buy inside swaps as F4 is product scope **F4.1** (normalizer / classification change),
- * not a gap in the current F4 implementation.
+ *
+ * F4.1: `swap` legs count when they represent position increase for the mint. In
+ * `heliusWebhook.expandHeliusPayload`, `wallet` is `to || from`, so for typical
+ * DEX legs with both ends set, `wallet` is the **recipient** (`to`) — i.e. the
+ * side that receives `mint`. Pure sells where the stalked user is `from` do not
+ * match `stalked_wallet` on that leg. `sell` stays excluded.
+ *
  * Dedupe (wallet, mint, signature) for Helius replays.
  */
 "use strict";
@@ -12,8 +15,10 @@ const { isMissingColumnError } = require("../lib/columnMissingError");
 
 const DOUBLE_DOWN_MIN_MULT = 3;
 
-function isBuyLike(type) {
-  return type === "buy";
+/** @param {string} type */
+function isPositionIncreaseLike(type) {
+  const t = String(type || "");
+  return t === "buy" || t === "swap";
 }
 
 function round2(n) {
@@ -50,7 +55,7 @@ async function applyStalkerDoubleDown(supabase, p) {
   const token = String(p.token || "").trim();
   const sig = String(p.signature || "").trim();
   const t = String(p.type || "");
-  if (!wallet || !token || !sig || !isBuyLike(t)) return {};
+  if (!wallet || !token || !sig || !isPositionIncreaseLike(t)) return {};
 
   const amountUsd = p.amountUsd != null ? Number(p.amountUsd) : null;
   if (!Number.isFinite(amountUsd) || amountUsd <= 0) return {};
@@ -119,4 +124,12 @@ async function applyStalkerDoubleDown(supabase, p) {
   }
 }
 
-module.exports = { applyStalkerDoubleDown, DOUBLE_DOWN_MIN_MULT, isBuyLike };
+/** @deprecated Use `isPositionIncreaseLike` (same function; kept for callers/tests). */
+const isBuyLike = isPositionIncreaseLike;
+
+module.exports = {
+  applyStalkerDoubleDown,
+  DOUBLE_DOWN_MIN_MULT,
+  isBuyLike,
+  isPositionIncreaseLike
+};

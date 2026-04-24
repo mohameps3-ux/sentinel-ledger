@@ -7,9 +7,8 @@
  * Contract: `wallet-stalk` payload may include `enrichment` built ONLY here.
  * Frontend must not recompute impactPoolPct / impactLevel (single source of truth).
  *
- * F4 Double Down: baseline updates consider only net BUY / position-increase
- * legs (`type === 'buy'` or agreed swap semantics). Ignore sells, partial exits, and
- * rebalance noise to avoid false DOUBLE_DOWN.
+ * F4 Double Down: baseline updates use position-increase legs (`type === 'buy'` or
+ * `type === 'swap'` per Helius expander — see `stalkerDoubleDown.js`). Ignore `sell`.
  *
  * @typedef {Object} StalkerEnrichment
  * @property {number|null} amountUsd
