@@ -456,6 +456,13 @@ export const FLAT_STRINGS = {
     ar: "انقر بطاقة في التدفق لتثبيتها هنا عبر الرابط، أو الصق mint أدناه.",
     pt: "Clique num card do feed para fixar aqui via URL, ou cole um mint abaixo."
   }),
+  "cockpit.desk.radarCtxTitle": S("Radar context (pinned)", { es: "Contexto radar (fijado)" }),
+  "cockpit.desk.radarCtxHelp": S(
+    "This bar reflects tamper-checked ?ctx= from the feed. It disappears if the URL had stale ctx or you edited ?t= without a matching ctx (we scrub junk bookmarks).",
+    {
+      es: "Esta franja refleja ?ctx= comprobado desde el feed. Desaparece si la URL traía ctx obsoleto o cambiaste ?t= sin ctx coherente (limpiamos marcadores basura)."
+    }
+  ),
   "cockpit.desk.loadingToken": S("Loading token context…", { es: "Cargando contexto del token…" }),
   "cockpit.desk.tokenError": S("Token API unavailable — score socket still live.", {
     es: "API de token no disponible — el socket de score sigue en vivo."

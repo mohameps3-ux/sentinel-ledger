@@ -3,8 +3,10 @@
  * Context travels in a single `ctx` query param (base64url JSON) whose embedded
  * `m` must match `?t=`; loose `src`/`tr`/`sw` without `ctx` are ignored so edits
  * to the mint alone cannot reuse stale metadata.
+ *
+ * `.mjs` so Node unit tests run without MODULE_TYPELESS_PACKAGE_JSON warnings.
  */
-import { isProbableSolanaMint } from "./solanaMint.js";
+import { isProbableSolanaMint } from "./solanaMint.mjs";
 
 const CTX_SCHEMA = 1;
 const MAX_CTX_RAW_LEN = 512;

@@ -5,7 +5,7 @@ import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
 import { WatchedCardShell } from "../../../../components/home/WatchedCardShell";
 import { TacticalRegimePill } from "../../../../components/home/TacticalRegimePill";
 import { buildJupiterSwapUrl } from "../../../../lib/jupiterSwap";
-import { isProbableSolanaMint } from "../../../../lib/solanaMint";
+import { isProbableSolanaMint } from "../../../../lib/solanaMint.mjs";
 import { AnimatedNumber } from "../../../../components/ui/AnimatedNumber";
 import {
   clusterHeatEmoji,
@@ -151,7 +151,11 @@ export function HotTab({
                   if (!token?.mint || !isProbableSolanaMint(token.mint)) return;
                   if (cockpitCardClickTargetIsInteractive(e)) return;
                   e.preventDefault();
-                  onSelectMint(token.mint);
+                  onSelectMint(token.mint, {
+                    src: "hot",
+                    tr: signalStrength,
+                    sw: Math.max(0, Math.round(Number(token?.smartWallets || 0)))
+                  });
                 }}
                 baseClassName={`sl-terminal-shell sl-terminal-shell--heat glass-card sl-glow-heat p-1.5 sm:p-2 rounded-lg flex flex-col gap-1 touch-manipulation transition-all duration-200 ${
                   token?.mint

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ArrowRight, Search } from "lucide-react";
 import { useRouter } from "next/router";
 import toast from "react-hot-toast";
-import { isProbableSolanaMint } from "../../lib/solanaMint";
+import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 
 function readRecents() {
   try {

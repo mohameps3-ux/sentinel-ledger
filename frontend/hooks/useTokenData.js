@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useClientAuthToken } from "./useClientAuthToken";
-import { isProbableSolanaMint } from "../lib/solanaMint";
+import { isProbableSolanaMint } from "../lib/solanaMint.mjs";
 
 async function fetchToken(address, token) {
   const headers = token ? { Authorization: `Bearer ${token}` } : {};

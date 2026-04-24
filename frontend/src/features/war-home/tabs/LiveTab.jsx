@@ -18,7 +18,7 @@ import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
 import { TacticalRegimePill } from "../../../../components/home/TacticalRegimePill";
 import { WatchedCardShell } from "../../../../components/home/WatchedCardShell";
 import { buildJupiterSwapUrl } from "../../../../lib/jupiterSwap";
-import { isProbableSolanaMint } from "../../../../lib/solanaMint";
+import { isProbableSolanaMint } from "../../../../lib/solanaMint.mjs";
 import { RankBadge, RankDeltaChip } from "./RankIndicators";
 import { AnimatedNumber } from "../../../../components/ui/AnimatedNumber";
 import { useLocale } from "../../../../contexts/LocaleContext";
@@ -134,7 +134,11 @@ export function LiveTab({
           if (!sig.mint || !isProbableSolanaMint(sig.mint)) return;
           if (cockpitCardClickTargetIsInteractive(e)) return;
           e.preventDefault();
-          onSelectMint(sig.mint);
+          onSelectMint(sig.mint, {
+            src: isHeatFill ? "heat" : "live",
+            tr: sig.signalStrength,
+            sw: Math.max(0, Math.round(Number(sig?.smartWallets || 0)))
+          });
         }}
         baseClassName={`${
           isHeatFill

@@ -3,13 +3,14 @@ import { useMemo } from "react";
 import { useRouter } from "next/router";
 import { useScoreSocket } from "../../hooks/useScoreSocket";
 import { useTokenData } from "../../hooks/useTokenData";
-import { isProbableSolanaMint } from "../../lib/solanaMint";
+import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 import { AccordionSection } from "./AccordionSection";
 import {
   DeskAntiSignalBody,
   DeskContextStrip,
   DeskJupiterLinks,
   DeskQuickScan,
+  DeskRadarHintStrip,
   DeskSmartMoneyLazy,
   deskAntiSummaryTone,
   useFlaggedWalletSet
@@ -48,7 +49,7 @@ function MiniBar({ label, value, gradient }) {
  * Cockpit Zone C — Intel desk: live score (`useScoreSocket`) plus lazy accordions
  * backed by `useTokenData` (one REST load per pinned mint for structural intel).
  */
-export function TokenDesk({ mint }) {
+export function TokenDesk({ mint, deskRadarHint = null }) {
   const { t } = useLocale();
   const router = useRouter();
   const { score, isConnected } = useScoreSocket(mint || undefined);
@@ -118,6 +119,8 @@ export function TokenDesk({ mint }) {
           </button>
         </div>
       </div>
+
+      {deskRadarHint ? <DeskRadarHintStrip hint={deskRadarHint} /> : null}
 
       {tokenQuery.isPending ? (
         <p className="text-[11px] text-gray-500 shrink-0">{t("cockpit.desk.loadingToken")}</p>

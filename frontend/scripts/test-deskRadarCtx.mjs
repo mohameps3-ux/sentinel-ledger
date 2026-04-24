@@ -10,7 +10,7 @@ import {
   mergeDeskMintIntoQuery,
   parseDeskRadarCtxPayload,
   parseDeskRadarHintFromQuery
-} from "../lib/deskRadarCtx.js";
+} from "../lib/deskRadarCtx.mjs";
 
 const M_SOL = "So11111111111111111111111111111111111111112";
 const M_USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";

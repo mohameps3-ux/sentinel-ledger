@@ -13,13 +13,14 @@ import { HomeOnboarding } from "../components/public/HomeOnboarding";
 import { useWalletLabels } from "../hooks/useWalletLabels";
 import { WarLayout } from "../components/layout/WarLayout";
 import { TokenDesk } from "../components/cockpit/TokenDesk";
-import { isProbableSolanaMint } from "../lib/solanaMint";
+import { isProbableSolanaMint } from "../lib/solanaMint.mjs";
 import {
   deskMintFromQuery,
   deskRadarQueryNeedsScrub,
   mergeDeskMintIntoQuery,
+  parseDeskRadarHintFromQuery,
   scrubDeskRadarParamsFromQuery
-} from "../lib/deskRadarCtx";
+} from "../lib/deskRadarCtx.mjs";
 import WarHeader from "@/features/war-home/WarHeader";
 import WarHomeCombatPanels from "@/features/war-home/WarHomeCombatPanels";
 import WarHomeIntro from "@/features/war-home/WarHomeIntro";
@@ -136,6 +137,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   useLiveFeedSocket({ onSignal: useCallback(() => {}, []) });
   const router = useRouter();
   const selectedMint = useMemo(() => deskMintFromQuery(router.query), [router.query]);
+  const deskRadarHint = useMemo(() => parseDeskRadarHintFromQuery(router.query), [router.query]);
 
   const pushDeskMint = useCallback(
     (mint, ctx) => {
@@ -672,7 +674,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       </div>
           </>
         }
-        desk={<TokenDesk key={selectedMint ?? "__desk_none__"} mint={selectedMint} />}
+        desk={<TokenDesk key={selectedMint ?? "__desk_none__"} mint={selectedMint} deskRadarHint={deskRadarHint} />}
       />
     </>
   );

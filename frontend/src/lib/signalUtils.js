@@ -3,7 +3,7 @@
  * Reusable from `/`, `/scanner`, token pages — no React imports.
  */
 
-import { isProbableSolanaMint } from "../../lib/solanaMint";
+import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 import { formatCountdown } from "./formatters";
 
 // ——— Ranking / pool shaping (was `warHomeSignalHelpers`) ———

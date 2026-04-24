@@ -6,7 +6,9 @@ import { SmartMoneyPanel } from "../token/SmartMoneyPanel";
 import { WalletThreatBanner } from "../token/WalletThreatBanner";
 import { buildJupiterSwapUrl } from "../../lib/jupiterSwap";
 import { formatUsdWhole } from "../../lib/formatStable";
-import { isProbableSolanaMint } from "../../lib/solanaMint";
+import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
+import { mergeDeskMintIntoQuery } from "../../lib/deskRadarCtx.mjs";
+import { useLocale } from "../../contexts/LocaleContext";
 
 /** @param {object | null | undefined} token Token payload from `useTokenData().data?.data` */
 export function deskAntiSummaryTone(token) {
@@ -106,7 +108,8 @@ export const DeskQuickScan = memo(function DeskQuickScan({ currentMint }) {
   const onSubmit = (e) => {
     e.preventDefault();
     if (!canGo) return;
-    router.push(`/?t=${encodeURIComponent(trimmed)}`, undefined, { shallow: true });
+    const nextQuery = mergeDeskMintIntoQuery(router.query, trimmed, null);
+    void router.push({ pathname: router.pathname || "/", query: nextQuery }, undefined, { shallow: true });
   };
 
   return (
@@ -163,6 +166,26 @@ export const DeskContextStrip = memo(function DeskContextStrip({ token }) {
         </span>
       ) : null}
       {liq != null ? <span>Liq ${liq}</span> : null}
+    </div>
+  );
+});
+
+/** Tamper-evident radar row context (from `?ctx=`); hidden when URL is scrubbed as invalid. */
+export const DeskRadarHintStrip = memo(function DeskRadarHintStrip({ hint }) {
+  const { t } = useLocale();
+  if (!hint || (!hint.src && hint.tr == null && hint.sw == null)) return null;
+  const parts = [];
+  if (hint.src) parts.push(String(hint.src));
+  if (Number.isFinite(hint.tr)) parts.push(`TR ${hint.tr}`);
+  if (Number.isFinite(hint.sw)) parts.push(`SW ${hint.sw}`);
+  return (
+    <div
+      className="rounded-md border border-violet-500/35 bg-gradient-to-r from-violet-950/45 via-violet-950/20 to-transparent px-2.5 py-1.5 shrink-0"
+      role="status"
+    >
+      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-violet-200/90">{t("cockpit.desk.radarCtxTitle")}</p>
+      <p className="font-mono text-[10px] text-violet-100/90 mt-0.5">{parts.join(" · ")}</p>
+      <p className="text-[9px] text-violet-300/75 mt-1 leading-snug">{t("cockpit.desk.radarCtxHelp")}</p>
     </div>
   );
 });
