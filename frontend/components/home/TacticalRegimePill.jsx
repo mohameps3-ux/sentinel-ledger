@@ -23,7 +23,7 @@ export function TacticalRegimePill({ signalStrength, token, priceChange24h, clas
       className={`text-[7px] sm:text-[8px] font-mono font-bold px-1 py-0.5 rounded border shrink-0 max-w-full truncate ${chipClass(
         regime.action
       )} ${className}`}
-      title={`Tactical: ${String(regime.action)} · v${regime.inputsVersion} · ${ctx}`}
+      title={`${t("terminal.lexicon.execution")}: ${String(regime.action)} · v${regime.inputsVersion} · ${ctx}`}
     >
       {String(regime.action)}
     </span>

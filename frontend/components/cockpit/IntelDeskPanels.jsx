@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { BarChart3, ExternalLink, Radar } from "lucide-react";
 import { SmartMoneyPanel } from "../token/SmartMoneyPanel";
 import { WalletThreatBanner } from "../token/WalletThreatBanner";
-import { buildJupiterSwapUrl } from "../../lib/jupiterSwap";
+import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../lib/terminalLinks";
 import { formatUsdWhole } from "../../lib/formatStable";
 import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 import { mergeDeskMintIntoQuery } from "../../lib/deskRadarCtx.mjs";
@@ -40,7 +40,7 @@ export const DeskJupiterLinks = memo(function DeskJupiterLinks({ mint }) {
             key={size}
             href={buildJupiterSwapUrl(mint, size)}
             target="_blank"
-            rel="noreferrer"
+            rel={EXTERNAL_ANCHOR_REL}
             className="text-[10px] px-2 py-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 font-mono inline-flex items-center gap-1"
           >
             {size} SOL
@@ -49,9 +49,9 @@ export const DeskJupiterLinks = memo(function DeskJupiterLinks({ mint }) {
         ))}
       </div>
       <a
-        href={`https://jup.ag/swap/SOL-${mint}`}
+        href={buildJupiterSwapUrl(mint)}
         target="_blank"
-        rel="noreferrer"
+        rel={EXTERNAL_ANCHOR_REL}
         className="text-[11px] text-cyan-300/90 hover:underline inline-flex items-center gap-1"
       >
         Open Jupiter for this mint →

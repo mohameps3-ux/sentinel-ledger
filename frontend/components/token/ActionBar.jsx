@@ -1,9 +1,10 @@
 import toast from "react-hot-toast";
 import { Copy, ShoppingCart, Star, Zap } from "lucide-react";
+import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../lib/terminalLinks";
 
 export function ActionBar({ tokenAddress, symbol, isWatchlisted = false, onToggleWatchlist }) {
   if (!tokenAddress) return null;
-  const jupiterUrl = `https://jup.ag/swap/SOL-${tokenAddress}`;
+  const jupiterUrl = buildJupiterSwapUrl(tokenAddress);
 
   return (
     <div className="glass-card p-4 flex flex-col md:flex-row md:items-center gap-3 justify-between">
@@ -14,7 +15,7 @@ export function ActionBar({ tokenAddress, symbol, isWatchlisted = false, onToggl
       <a
         href={jupiterUrl}
         target="_blank"
-        rel="noreferrer"
+        rel={EXTERNAL_ANCHOR_REL}
         className="h-11 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-black font-semibold inline-flex items-center justify-center gap-2 hover:opacity-90 transition"
       >
         <ShoppingCart size={16} />

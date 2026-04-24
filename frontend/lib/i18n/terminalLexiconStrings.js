@@ -34,6 +34,26 @@ export const TERMINAL_LEXICON_STRINGS = {
     es: "Lectura técnica",
     pt: "Leitura técnica"
   }),
+  "terminal.lexicon.execution": S("Execution", {
+    es: "Ejecución",
+    pt: "Execução"
+  }),
+  "terminal.lexicon.overheat": S("Overheat", {
+    es: "Sobrecalentamiento",
+    pt: "Sobreaquecimento"
+  }),
+  "terminal.lexicon.outlierCatch": S("Outlier Catch", {
+    es: "Captura de outlier",
+    pt: "Captura de outlier"
+  }),
+  "terminal.lexicon.verifiedTrackRecord": S("Verified Track Record", {
+    es: "Historial verificado",
+    pt: "Histórico verificado"
+  }),
+  "terminal.lexicon.alertInfo": S("Info", { es: "Info", pt: "Info" }),
+  "terminal.lexicon.alertTactical": S("Tactical", { es: "Táctica", pt: "Tática" }),
+  "terminal.lexicon.alertUrgent": S("Urgent", { es: "Urgente", pt: "Urgente" }),
+  "terminal.lexicon.alertSurefire": S("Surefire", { es: "Surefire", pt: "Surefire" }),
   "terminal.lexicon.openFullDesk": S("Open full desk for read + risk", {
     es: "Abrir desk completo para lectura y riesgo",
     pt: "Abrir desk completo para leitura e risco"

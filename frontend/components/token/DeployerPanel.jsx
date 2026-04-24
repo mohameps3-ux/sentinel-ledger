@@ -1,3 +1,5 @@
+import { buildSolscanAccountUrl, EXTERNAL_ANCHOR_REL } from "../../lib/terminalLinks";
+
 export function DeployerPanel({ deployer }) {
   if (!deployer) {
     return (
@@ -29,9 +31,9 @@ export function DeployerPanel({ deployer }) {
         </div>
         {deployer.address ? (
           <a
-            href={`https://solscan.io/account/${deployer.address}`}
+            href={buildSolscanAccountUrl(deployer.address)}
             target="_blank"
-            rel="noreferrer"
+            rel={EXTERNAL_ANCHOR_REL}
             className="text-xs text-blue-300 hover:text-blue-200"
           >
             View on Solscan

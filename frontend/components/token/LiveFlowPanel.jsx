@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { formatTime, formatUsdWhole } from "../../lib/formatStable";
 import { useMemo } from "react";
 import { useWalletLabels } from "../../hooks/useWalletLabels";
+import { buildSolscanTxUrl, EXTERNAL_ANCHOR_REL } from "../../lib/terminalLinks";
 
 const WHALE_USD_MIN = 5000;
 
@@ -127,9 +128,9 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
                 <span className="text-right mono self-center">{Number(tx.amount || 0).toFixed(2)}</span>
                 <span className="text-gray-500 text-xs text-right self-center">{formatTime(tx.timestamp)}</span>
                 <a
-                  href={tx.signature ? `https://solscan.io/tx/${tx.signature}` : "#"}
+                  href={buildSolscanTxUrl(tx.signature)}
                   target="_blank"
-                  rel="noreferrer"
+                  rel={EXTERNAL_ANCHOR_REL}
                   className={`text-right inline-flex justify-end items-center self-center ${tx.signature ? "text-blue-300 hover:text-blue-200" : "text-gray-600 pointer-events-none"}`}
                 >
                   <ExternalLink size={14} />
@@ -166,9 +167,9 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
                 <div className="flex items-center justify-between">
                   <span className="text-sm mono">{Number(tx.amount || 0).toFixed(2)} tokens</span>
                   <a
-                    href={tx.signature ? `https://solscan.io/tx/${tx.signature}` : "#"}
+                    href={buildSolscanTxUrl(tx.signature)}
                     target="_blank"
-                    rel="noreferrer"
+                    rel={EXTERNAL_ANCHOR_REL}
                     className={`text-blue-300 text-xs ${tx.signature ? "" : "pointer-events-none text-gray-600"}`}
                   >
                     Solscan

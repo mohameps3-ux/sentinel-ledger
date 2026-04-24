@@ -17,7 +17,7 @@ import { redFlagsForSignal } from "@/lib/redFlags";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
 import { TacticalRegimePill } from "../../../../components/home/TacticalRegimePill";
 import { WatchedCardShell } from "../../../../components/home/WatchedCardShell";
-import { buildJupiterSwapUrl } from "../../../../lib/jupiterSwap";
+import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../../lib/terminalLinks";
 import { isProbableSolanaMint } from "../../../../lib/solanaMint.mjs";
 import { RankBadge, RankDeltaChip } from "./RankIndicators";
 import { AnimatedNumber } from "../../../../components/ui/AnimatedNumber";
@@ -342,7 +342,7 @@ export function LiveTab({
                 key={size}
                 href={canSwap ? buildJupiterSwapUrl(sig.mint, size) : "#"}
                 target="_blank"
-                rel="noreferrer"
+                rel={EXTERNAL_ANCHOR_REL}
                 aria-disabled={!canSwap}
                 onClick={(e) => {
                   if (!canSwap) e.preventDefault();

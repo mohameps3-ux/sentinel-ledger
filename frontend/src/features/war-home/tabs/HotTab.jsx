@@ -4,7 +4,7 @@ import { formatUsdWhole } from "../../../../lib/formatStable";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
 import { WatchedCardShell } from "../../../../components/home/WatchedCardShell";
 import { TacticalRegimePill } from "../../../../components/home/TacticalRegimePill";
-import { buildJupiterSwapUrl } from "../../../../lib/jupiterSwap";
+import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../../lib/terminalLinks";
 import { isProbableSolanaMint } from "../../../../lib/solanaMint.mjs";
 import { AnimatedNumber } from "../../../../components/ui/AnimatedNumber";
 import {
@@ -304,7 +304,7 @@ export function HotTab({
                           key={size}
                           href={canSwap ? buildJupiterSwapUrl(token.mint, size) : "#"}
                           target="_blank"
-                          rel="noreferrer"
+                          rel={EXTERNAL_ANCHOR_REL}
                           aria-disabled={!canSwap}
                           onClick={(e) => {
                             if (!canSwap) e.preventDefault();

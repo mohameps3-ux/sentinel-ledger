@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
 import { ExternalLink } from "lucide-react";
+import {
+  buildDexscreenerSolanaEmbedUrl,
+  buildDexscreenerSolanaTokenUrl,
+  EXTERNAL_ANCHOR_REL
+} from "../../lib/terminalLinks";
 
 export function ChartPanel({ address }) {
   const [timeframe, setTimeframe] = useState("1h");
@@ -7,8 +12,9 @@ export function ChartPanel({ address }) {
   const iframeUrl = useMemo(() => {
     if (!address) return "";
     const tf = timeframe === "1w" ? "1W" : timeframe;
-    return `https://dexscreener.com/solana/${address}?embed=1&theme=dark&trades=0&info=0&interval=${tf}`;
+    return buildDexscreenerSolanaEmbedUrl(address, tf);
   }, [address, timeframe]);
+  const dexUrl = buildDexscreenerSolanaTokenUrl(address);
 
   if (!address) return <div className="glass-card h-96 skeleton-shimmer" />;
   return (
@@ -33,9 +39,9 @@ export function ChartPanel({ address }) {
             </button>
           ))}
           <a
-            href={`https://dexscreener.com/solana/${address}`}
+            href={dexUrl}
             target="_blank"
-            rel="noreferrer"
+            rel={EXTERNAL_ANCHOR_REL}
             className="h-7 px-2 rounded-lg text-xs inline-flex items-center gap-1 bg-[#0D1216] text-gray-300 hover:text-white transition"
           >
             Open <ExternalLink size={12} />

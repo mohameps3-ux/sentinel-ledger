@@ -19,6 +19,7 @@ const DEXSCREENER_ORIGIN = "https://dexscreener.com";
 const SOLSCAN_ORIGIN = "https://solscan.io";
 const PUMP_FUN_ORIGIN = "https://pump.fun";
 const METEORA_ORIGIN = "https://app.meteora.ag";
+const DEX_EMBED_TIMEFRAMES = new Set(["1h", "4h", "1d", "1W"]);
 
 /**
  * @param {unknown} s
@@ -75,6 +76,26 @@ export function buildDexscreenerSolanaTokenUrl(mint) {
 }
 
 /**
+ * DexScreener embed URL. Timeframe is allowlisted because this URL lands in an iframe.
+ * @param {string} mint
+ * @param {string} [timeframe]
+ * @returns {string}
+ */
+export function buildDexscreenerSolanaEmbedUrl(mint, timeframe = "1h") {
+  const base = buildDexscreenerSolanaTokenUrl(mint);
+  if (base === "#") return "";
+  const tf = DEX_EMBED_TIMEFRAMES.has(timeframe) ? timeframe : "1h";
+  const params = new URLSearchParams({
+    embed: "1",
+    theme: "dark",
+    trades: "0",
+    info: "0",
+    interval: tf
+  });
+  return `${base}?${params.toString()}`;
+}
+
+/**
  * @param {string} mint
  * @returns {string}
  */
@@ -100,7 +121,7 @@ export function buildSolscanAccountUrl(wallet) {
  */
 export function buildSolscanTxUrl(signature) {
   const s = typeof signature === "string" ? signature.trim() : "";
-  if (!s || s.length < 64) return "#";
+  if (!s || s.length < 64 || s.length > 96 || !/^[1-9A-HJ-NP-Za-km-z]+$/.test(s)) return "#";
   return `${SOLSCAN_ORIGIN}/tx/${encodeURIComponent(s)}`;
 }
 

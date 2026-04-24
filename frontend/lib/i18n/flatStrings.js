@@ -472,22 +472,22 @@ export const FLAT_STRINGS = {
   "cockpit.desk.waitingScore": S("Waiting for score…", { es: "Esperando score…" }),
   "cockpit.desk.confidence": S("Confidence", { es: "Confianza" }),
   "cockpit.desk.integrity": S("Integrity:", { es: "Integridad:" }),
-  "cockpit.desk.jupiterTitle": S("Jupiter · quick buy", { es: "Jupiter · compra rápida" }),
+  "cockpit.desk.jupiterTitle": S("Execution · Jupiter quick buy", { es: "Ejecución · compra rápida Jupiter" }),
   "cockpit.desk.smartWallets": S("Smart wallets"),
-  "cockpit.desk.antiSignal": S("⚠ Anti-signal"),
-  "cockpit.desk.quickScan": S("Quick scan", { es: "Escaneo rápido" }),
+  "cockpit.desk.antiSignal": S("Risk trap", { es: "Trampa de riesgo" }),
+  "cockpit.desk.quickScan": S("Command scan", { es: "Escaneo de comando" }),
   "cockpit.desk.invalidMint": S("Invalid mint.", { es: "Mint no válido." }),
 
-  "cockpit.desk.tripleTitle": S("Execution regime (advisory)", { es: "Régimen de ejecución (orientativo)" }),
+  "cockpit.desk.tripleTitle": S("Execution regime", { es: "Régimen de ejecución" }),
   "cockpit.desk.tripleAdvisory": S("Client-side risk layer — not financial advice", {
     es: "Capa de riesgo en cliente — no es asesoramiento financiero"
   }),
   "cockpit.desk.triplePoolAgeNote": S("Pool age unknown — execution score capped at 80", {
     es: "Edad del pool desconocida — puntuación de ejecución limitada a 80"
   }),
-  "cockpit.desk.barSignal": S("SGN", { es: "SGN" }),
-  "cockpit.desk.barExecution": S("XEC", { es: "XEC" }),
-  "cockpit.desk.barOverheat": S("OVH", { es: "OVH" }),
+  "cockpit.desk.barSignal": S("Technical Read", { es: "Lectura técnica" }),
+  "cockpit.desk.barExecution": S("Execution", { es: "Ejecución" }),
+  "cockpit.desk.barOverheat": S("Overheat", { es: "Sobrecalentamiento" }),
   "cockpit.desk.tripleContext.illiquidSlippage": S("Illiquid / High Slippage", {
     es: "Iliquidez / slippage alto"
   }),
@@ -501,7 +501,7 @@ export const FLAT_STRINGS = {
   "cockpit.desk.tripleAction.SCALP": S("🟠 HIGH RISK SCALP", { es: "🟠 SCALP ALTO RIESGO" }),
   "cockpit.desk.tripleAction.AVOID": S("🔴 TOXIC / ILLIQUID", { es: "🔴 TÓXICO / ILÍQUIDO" }),
 
-  "cockpit.proof.title": S("Proof of Edge"),
+  "cockpit.proof.title": S("Verified Track Record", { es: "Historial verificado" }),
   "cockpit.proof.subtitle": S("Historical performance of comparable signals", {
     es: "Rendimiento histórico de señales comparables",
     fr: "Performance historique de signaux comparables",

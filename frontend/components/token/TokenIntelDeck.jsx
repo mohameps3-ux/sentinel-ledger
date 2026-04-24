@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { Copy, ExternalLink, Globe, Radio, Shield, TrendingUp } from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  buildDexscreenerSolanaTokenUrl,
+  buildJupiterSwapUrl,
+  EXTERNAL_ANCHOR_REL
+} from "../../lib/terminalLinks";
 
 function tri(v) {
   if (v === true) return { label: "YES", cls: "text-emerald-300 border-emerald-500/35 bg-emerald-500/10" };
@@ -20,6 +25,8 @@ function pctBar(pct) {
 export function TokenIntelDeck({ address, market, security, terminal, smartMoneyForToken, deployer }) {
   const soc = market?.socials || {};
   const dexPairs = Array.isArray(market?.dexPairs) ? market.dexPairs : [];
+  const dexUrl = buildDexscreenerSolanaTokenUrl(address);
+  const jupiterUrl = buildJupiterSwapUrl(address);
   const hp =
     security?.honeypot === "flagged"
       ? { label: "FLAG", cls: "text-red-300 border-red-500/40 bg-red-500/10" }
@@ -198,21 +205,21 @@ export function TokenIntelDeck({ address, market, security, terminal, smartMoney
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 shrink-0">
-                  {p.url ? (
+                  {dexUrl !== "#" ? (
                     <a
-                      href={p.url}
+                      href={dexUrl}
                       target="_blank"
-                      rel="noreferrer"
+                      rel={EXTERNAL_ANCHOR_REL}
                       className="px-2 py-1 rounded-md border border-white/10 bg-white/[0.04] text-[11px] text-gray-200 hover:bg-white/[0.08] inline-flex items-center gap-1"
                     >
                       Chart <ExternalLink size={11} />
                     </a>
                   ) : null}
-                  {p.jupiterSwapUrl ? (
+                  {jupiterUrl !== "#" ? (
                     <a
-                      href={p.jupiterSwapUrl}
+                      href={jupiterUrl}
                       target="_blank"
-                      rel="noreferrer"
+                      rel={EXTERNAL_ANCHOR_REL}
                       className="px-2 py-1 rounded-md border border-cyan-500/25 bg-cyan-500/10 text-[11px] text-cyan-100 hover:bg-cyan-500/15 inline-flex items-center gap-1"
                     >
                       Jupiter <ExternalLink size={11} />

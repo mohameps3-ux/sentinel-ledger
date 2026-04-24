@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import { formatInteger } from "../../lib/formatStable";
+import { buildSolscanAccountUrl, EXTERNAL_ANCHOR_REL } from "../../lib/terminalLinks";
 
 export function HoldersPanel({ holders }) {
   const data = holders || null;
@@ -92,9 +93,9 @@ export function HoldersPanel({ holders }) {
                     <td className="py-1.5 px-2 text-gray-500 tabular-nums">{row.rank}</td>
                     <td className="py-1.5 px-2 mono text-gray-300">
                       <a
-                        href={`https://solscan.io/account/${row.owner}`}
+                        href={buildSolscanAccountUrl(row.owner)}
                         target="_blank"
-                        rel="noreferrer"
+                        rel={EXTERNAL_ANCHOR_REL}
                         className="inline-flex items-center gap-1 hover:text-cyan-200"
                       >
                         {row.owner?.slice(0, 4)}…{row.owner?.slice(-4)}
