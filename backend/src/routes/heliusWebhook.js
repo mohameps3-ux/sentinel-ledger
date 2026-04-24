@@ -22,6 +22,11 @@ const { recordSignalEmission } = require("../services/signalPerformance");
 const { getMarketData } = require("../services/marketData");
 const { evaluateSignalEmission } = require("../services/signalEmissionGate");
 const { buildAlphaLayer } = require("../services/signalAlphaLayer");
+const { applyStalkerDoubleDown } = require("../services/stalkerDoubleDown");
+const {
+  buildStalkerEnrichmentFallback,
+  buildStalkerEnrichmentFromMarket
+} = require("../lib/stalkerImpact");
 
 const SENTINEL_SOURCE = "helius_webhook";
 
@@ -381,6 +386,7 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
 
         try {
           const supabase = getSupabase();
+          /** Wallet stalker: optional `enrichment` (F0 pool impact + F4 double-down when migration 017 exists). */
           const { data: watchers, error } = await supabase
             .from("wallet_stalks")
             .select("user_id, stalked_wallet")
@@ -388,15 +394,44 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
             .eq("is_active", true)
             .limit(100);
           if (!error && Array.isArray(watchers) && watchers.length) {
-            for (const w of watchers) {
-              global.io.to(`user:${w.user_id}`).emit("wallet-stalk", {
-                wallet: tx.wallet,
-                tokenAddress: tx.tokenAddress,
-                amount: tx.amount,
-                type: tx.type,
-                signature: tx.signature,
-                timestamp: tx.timestamp
+            let enrichment = buildStalkerEnrichmentFallback();
+            try {
+              const market = await getMarketDataMemoized(tx.tokenAddress);
+              const ctx = buildScoringContext(market, tx.amount);
+              enrichment = buildStalkerEnrichmentFromMarket({
+                tokenAmount: Number(tx.amount),
+                priceUsd: ctx.priceUsd,
+                liquidityUsd: ctx.liquidityUsd
               });
+            } catch (_) {
+              /* keep fallback enrichment */
+            }
+
+            let f4 = {};
+            try {
+              f4 = await applyStalkerDoubleDown(supabase, {
+                wallet: tx.wallet,
+                token: tx.tokenAddress,
+                amountUsd: enrichment.amountUsd,
+                type: tx.type,
+                signature: tx.signature
+              });
+            } catch (_) {
+              /* F4 optional until migration 017 applied */
+            }
+
+            const stalkPayload = {
+              wallet: tx.wallet,
+              tokenAddress: tx.tokenAddress,
+              amount: tx.amount,
+              type: tx.type,
+              signature: tx.signature,
+              timestamp: tx.timestamp,
+              enrichment: { ...enrichment, ...f4 }
+            };
+
+            for (const w of watchers) {
+              global.io.to(`user:${w.user_id}`).emit("wallet-stalk", stalkPayload);
             }
           }
         } catch (_) {}

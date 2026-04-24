@@ -48,5 +48,20 @@ export const STALKER_PAGE_STRINGS = {
     es: "Ventana coordinada en este mint — revisa antes de posicionar.",
     pt: "Janela coordenada neste mint — revisa antes de posicionar."
   }),
-  "stalker.atomicLine": S("{{type}} · {{wallet}}", { es: "{{type}} · {{wallet}}", pt: "{{type}} · {{wallet}}" })
+  "stalker.atomicLine": S("{{type}} · {{wallet}}", { es: "{{type}} · {{wallet}}", pt: "{{type}} · {{wallet}}" }),
+  "stalker.f4Badge": S("Double down ×{{mult}}", {
+    es: "Recarga ×{{mult}}",
+    pt: "Reforço ×{{mult}}"
+  }),
+  "stalker.f4Help": S(
+    "F4: server compares this buy’s USD size to the first buy on the same wallet+mint (≥3×). Needs DB migration 017 + market USD.",
+    {
+      es: "F4: el servidor compara el tamaño USD de esta compra con la primera compra misma wallet+mint (≥3×). Requiere migración 017 + USD de mercado.",
+      pt: "F4: o servidor compara o USD desta compra à primeira compra mesma wallet+mint (≥3×). Precisa migração 017 + USD de mercado."
+    }
+  ),
+  "stalker.poolImpactLine": S("Pool impact · {{level}} · {{pct}}%", {
+    es: "Impacto pool · {{level}} · {{pct}}%",
+    pt: "Impacto pool · {{level}} · {{pct}}%"
+  })
 };

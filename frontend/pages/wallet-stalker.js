@@ -161,6 +161,7 @@ export default function WalletStalkerPage() {
             <div>
               <p className="sl-label text-violet-200/90">{t("stalker.f3Title")}</p>
               <p className="text-sm text-gray-400 mt-1 max-w-2xl leading-snug">{t("stalker.f3Sub")}</p>
+              <p className="text-[10px] text-gray-500 mt-2 max-w-2xl leading-snug">{t("stalker.f4Help")}</p>
             </div>
             {rawEvents.length ? (
               <button
@@ -205,6 +206,7 @@ export default function WalletStalkerPage() {
                 );
               }
               const ev = item.event || {};
+              const en = ev.enrichment && typeof ev.enrichment === "object" ? ev.enrichment : {};
               const sig = ev.signature || idx;
               const w = shortAddr(ev.wallet);
               const typ = String(ev.type || "—");
@@ -215,13 +217,35 @@ export default function WalletStalkerPage() {
               ) : ev.tokenAddress ? (
                 <span className="text-gray-500">{shortAddr(ev.tokenAddress)}</span>
               ) : null;
+              const f4 =
+                en.conviction === "DOUBLE_DOWN" &&
+                en.convictionMultiplier != null &&
+                Number.isFinite(Number(en.convictionMultiplier));
+              const poolLine =
+                en.impactLevel &&
+                en.impactLevel !== "UNKNOWN" &&
+                en.impactPoolPct != null &&
+                Number.isFinite(Number(en.impactPoolPct))
+                  ? t("stalker.poolImpactLine", {
+                      level: String(en.impactLevel),
+                      pct: String(en.impactPoolPct)
+                    })
+                  : null;
               return (
                 <div
                   key={`at-${sig}-${ev.timestamp}`}
                   className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-gray-300"
                 >
-                  <span className="font-mono text-gray-200">{t("stalker.atomicLine", { type: typ, wallet: w })}</span>
-                  {tok ? <span className="ml-2 inline-flex items-center gap-1">· {tok}</span> : null}
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="font-mono text-gray-200">{t("stalker.atomicLine", { type: typ, wallet: w })}</span>
+                    {tok ? <span className="inline-flex items-center gap-1">· {tok}</span> : null}
+                    {f4 ? (
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-amber-500/50 bg-amber-500/15 text-amber-100">
+                        {t("stalker.f4Badge", { mult: String(en.convictionMultiplier) })}
+                      </span>
+                    ) : null}
+                  </div>
+                  {poolLine ? <p className="text-[9px] text-gray-500 mt-1 font-mono">{poolLine}</p> : null}
                 </div>
               );
             })}
