@@ -21,7 +21,8 @@
     "ops:daily": "node scripts/opsDailyReport.js",
     "ops:verify-export-offline": "node scripts/verifyFreshnessSignedExportOffline.js",
     "verify:signal-gate-tuner-regime": "node scripts/verifySignalGateTunerRegimeAware.js",
-    "ops:signal-gate-tuner-dry-run": "node scripts/opsSignalGateTunerDryRun.js"
+    "ops:signal-gate-tuner-dry-run": "node scripts/opsSignalGateTunerDryRun.js",
+    "ops:push-railway-vapid": "node scripts/setWebPushAndTacticalRegimeOnRailway.js"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.4",
