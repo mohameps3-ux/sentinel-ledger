@@ -1,5 +1,5 @@
+import Link from "next/link";
 import { ArrowDown, ArrowUp, ExternalLink, Bell, Sparkles } from "lucide-react";
-import toast from "react-hot-toast";
 import { formatTime, formatUsdWhole } from "../../lib/formatStable";
 import { useMemo } from "react";
 import { useWalletLabels } from "../../hooks/useWalletLabels";
@@ -58,14 +58,13 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
             </span>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={() => toast("Whale alerts — coming soon.")}
+        <Link
+          href="/alerts"
           className="text-xs text-purple-300 hover:text-purple-200 inline-flex items-center gap-1 shrink-0"
         >
           <Bell size={12} />
-          Alert on whale
-        </button>
+          Configure whale alerts
+        </Link>
       </div>
       <div className="max-h-96 overflow-y-auto">
         <div className="hidden md:grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-gray-500 bg-[#0E1318]">

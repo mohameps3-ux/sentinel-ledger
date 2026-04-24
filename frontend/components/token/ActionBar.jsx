@@ -1,5 +1,5 @@
 import toast from "react-hot-toast";
-import { Copy, ExternalLink, LineChart, Search, ShoppingCart, Star, Zap } from "lucide-react";
+import { Copy, ExternalLink, LineChart, Search, ShoppingCart, Star } from "lucide-react";
 import {
   buildDexscreenerSolanaTokenUrl,
   buildJupiterSwapUrl,
@@ -83,13 +83,6 @@ export function ActionBar({ tokenAddress, symbol, market, isWatchlisted = false,
           Meteora <ExternalLink size={12} />
         </a>
       ) : null}
-      <button
-        onClick={() => toast("One-click swap coming soon.")}
-        className="h-9 px-3 rounded-xl bg-[#13171A] border soft-divider text-gray-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
-      >
-        <Zap size={14} />
-        Swap (1-click)
-      </button>
       <button
         onClick={async () => {
           try {
