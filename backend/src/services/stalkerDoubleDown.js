@@ -1,6 +1,10 @@
 /**
  * F4: "Double down" for wallet-stalk: current notional / first notional on (wallet, mint) ≥ 3.
- * BUY-only (ignore sell and swap noise). Dedupe (wallet, mint, signature) for Helius replays.
+ * BUY-only: `isBuyLike` is strictly `type === "buy"`. Helius legs normalized as `swap` do not
+ * update baselines or emit DOUBLE_DOWN (you still get F0 pool/USD enrichment from heliusWebhook).
+ * Treating net-buy inside swaps as F4 is product scope **F4.1** (normalizer / classification change),
+ * not a gap in the current F4 implementation.
+ * Dedupe (wallet, mint, signature) for Helius replays.
  */
 "use strict";
 

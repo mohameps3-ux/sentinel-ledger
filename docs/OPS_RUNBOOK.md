@@ -19,12 +19,16 @@
   1. **Script de migraciones:** `DATABASE_URL` o `SUPABASE_URL` + `SUPABASE_DB_PASSWORD` en `backend/.env`, luego `npm run db:ensure-signal-performance --prefix backend` (cadena **003→016** y **017**).
   2. **Railway:** `railway run npm run db:ensure-signal-performance` desde `backend/` con el proyecto enlazado (inyecta env).
   3. **Supabase SQL Editor:** pegar `supabase/migrations/017_stalker_double_down_baselines.sql` → Run (idempotente `IF NOT EXISTS`).
-- **Comprobar tablas:** `npm run db:verify-schema --prefix backend` — si existe `wallet_stalks` y faltan tablas F4, el script falla con mensaje explícito.
-- **Checklist verificación en vivo (prod):**
+- **Alineación DB ↔ app («100 %» scriptable):** el `SKIP` en `db:verify-schema` solo indica que **este** Postgres no tiene `public.wallet_stalks` (otro proyecto Supabase o sin migración 002). Para el **mismo** URI que usa Railway con Stalker activo:
+  1. `npm run db:ensure-signal-performance --prefix backend` (si hiciera falta 017).
+  2. `npm run db:verify-schema:stalker-ops --prefix backend` (= `verifySupabaseSchema.js --stalker-strict`): **exige** `wallet_stalks` y las dos tablas `stalker_*`; si falla, corrige `DATABASE_URL` hasta que veas `OK: table public.stalker_position_baselines` y `stalker_baseline_dedup` (no SKIP).
+- **Comprobar tablas (modo laxo, CI / dev):** `npm run db:verify-schema --prefix backend` — si existe `wallet_stalks` y faltan tablas F4, falla; si no hay Stalker en esa DB, hace SKIP del bloque F4.
+- **Expectativa `type` (Helius):** F4 solo corre cuando el normalizador entrega `type === 'buy'` en la pierna stalker (`stalkerDoubleDown.js`). Si en prod solo entran piernas como `swap`, veréis **F0** (pool / USD) en `enrichment` pero **no** `conviction: DOUBLE_DOWN` salvo que en el futuro se amplíe el clasificador (**F4.1** producto).
+- **Checklist verificación en vivo una vez (no automatizable sin E2E):**
   1. Usuario con sesión: en `/wallet-stalker`, añadir una wallet que vaya a comprar on-chain (o ya stalkeada con actividad).
   2. Disparar una **compra** que el pipeline clasifique como `type === 'buy'` para stalker, con precio/liquidez suficientes en el memo de mercado (si `amountUsd` es null, F4 no calcula multiplicador).
   3. **Postgres:** fila en `stalker_position_baselines` para `(wallet_address, token_address)`; en `stalker_baseline_dedup` fila por firma en replays de Helius.
-  4. **Cliente:** evento socket `wallet-stalk` con `enrichment` (F0 + F4); en una recompra grande vs baseline, `conviction === 'DOUBLE_DOWN'` y badge en la UI.
+  4. **Cliente:** evento socket `wallet-stalk` con `enrichment` (F0 + F4); en una recompra ≥ **3×** la primera notional, `conviction === 'DOUBLE_DOWN'` y badge en la UI.
 
 ## tactical regime → PRO Telegram + Web Push (advisory)
 

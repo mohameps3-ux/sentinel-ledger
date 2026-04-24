@@ -2,6 +2,9 @@
  * Read-only checks against Postgres (DATABASE_URL). Same expectations as supabase/apply_production_bundle.sql tail.
  * Also verifies RLS is enabled on coordination_outcomes, wallet_behavior_stats, wallet_coordination_pairs when present
  * (migrations 013–015 / rls_public_lockdown.sql). When `wallet_stalks` exists, expects migration **017** stalker F4 tables.
+ *
+ * CLI: `node scripts/verifySupabaseSchema.js --stalker-strict` — for the **same** Postgres donde corre Stalker (Railway):
+ * exige `public.wallet_stalks` y las dos tablas F4; falla si apuntas a un proyecto sin Stalker (evita SKIP silencioso).
  */
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
@@ -23,7 +26,12 @@ const TABLES = [
   "token_activity_logs"
 ];
 
+function stalkerStrictMode() {
+  return process.argv.includes("--stalker-strict");
+}
+
 async function main() {
+  const strictStalker = stalkerStrictMode();
   const url = String(tryResolvePostgresUrlFromSupabaseEnv(process.env) || "").trim();
   if (!url) {
     console.error("Missing DATABASE_URL, or SUPABASE_URL + SUPABASE_DB_PASSWORD, in backend/.env");
@@ -118,9 +126,26 @@ async function main() {
       }
     }
 
-    // Wallet Stalker F4 (017): if wallet_stalks exists, baselines + dedup must exist for double-down.
+    // Wallet Stalker F4 (017): baselines + dedup when Stalker is deployed on this database.
     const { rows: wsReg } = await client.query("SELECT to_regclass($1) AS r", ["public.wallet_stalks"]);
-    if (wsReg[0]?.r) {
+    const hasWalletStalks = Boolean(wsReg[0]?.r);
+    const { rows: blReg } = await client.query("SELECT to_regclass($1) AS r", ["public.stalker_position_baselines"]);
+    const { rows: ddReg } = await client.query("SELECT to_regclass($1) AS r", ["public.stalker_baseline_dedup"]);
+    const hasF4Baselines = Boolean(blReg[0]?.r);
+    const hasF4Dedup = Boolean(ddReg[0]?.r);
+
+    if (!hasWalletStalks && (hasF4Baselines || hasF4Dedup)) {
+      console.log(
+        "WARN: stalker F4 table(s) exist but public.wallet_stalks is missing — wrong Supabase project, or migration 002 never applied on this database."
+      );
+    }
+
+    if (strictStalker && !hasWalletStalks) {
+      console.error(
+        "FAIL: public.wallet_stalks missing (--stalker-strict). Point DATABASE_URL (or SUPABASE_URL + SUPABASE_DB_PASSWORD) at the same Postgres the API uses for Stalker, then re-run. See docs/OPS_RUNBOOK.md § Wallet Stalker F4."
+      );
+      failed += 1;
+    } else if (hasWalletStalks) {
       for (const t of ["stalker_position_baselines", "stalker_baseline_dedup"]) {
         const { rows } = await client.query("SELECT to_regclass($1) AS r", [`public.${t}`]);
         if (!rows[0]?.r) {
@@ -132,8 +157,8 @@ async function main() {
           console.log(`OK: table public.${t}`);
         }
       }
-    } else {
-      console.log("SKIP: stalker F4 tables (wallet_stalks not present)");
+    } else if (!strictStalker) {
+      console.log("SKIP: stalker F4 bundle (wallet_stalks not present; use --stalker-strict on Stalker Postgres to require OK)");
     }
   } finally {
     await client.end();
