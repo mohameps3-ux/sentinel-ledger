@@ -1,12 +1,12 @@
 /**
- * One-shot Postgres migrations (003 … 017). Safe to re-run (IF NOT EXISTS / idempotent patterns).
+ * One-shot Postgres migrations (002 … 017). Safe to re-run (IF NOT EXISTS / idempotent patterns).
  *
  * Runbook
  * - Set at least DATABASE_URL or SUPABASE_DATABASE_URL in backend/.env (or Railway/Supabase panel).
  *   This URI is for running this script only; API runtime uses SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY.
  * - Once: from repo root: `node backend/scripts/applySignalPerformanceSchema.js`
  *   or: `npm run db:ensure-signal-performance` with cwd backend (see package.json).
- * - Order: 003 → 011 → 010 → 012 (coordination_outcomes) → 013 (RLS coordination_outcomes) → 014 (RLS wallet_behavior_stats, wallet_coordination_pairs; Security Advisor) → 015 (web_push_subscriptions) → 016 (signal window min/max price) → 017 (stalker F4 baselines / dedupe).
+ * - Order: 002 (wallet_stalks + deployer_history columns) → 003 → 011 → 010 → 012 (coordination_outcomes) → 013 → 014 → 015 → 016 → 017 (stalker F4 baselines / dedupe).
  * - Optional tunables: see backend/.env.example (COORD_OUTCOME_HORIZON_MIN, COORD_OUTCOME_PUMP_MIN_PCT, COORD_OUTCOME_CRON_ENABLED, …).
  * - If 012 is not applied: app remains tolerant; “verified” recurrence uses signal_performance fallback when
  *   coordination_outcomes has no row; if the table is missing, the outcome map is empty and the same fallback applies.
@@ -44,8 +44,9 @@ async function main() {
     process.exit(1);
   }
   const migrationsDir = path.join(__dirname, "..", "..", "supabase", "migrations");
-  // Order: signal_performance first; 010 before 012 (FK to wallet_coordination_alerts).
+  // Order: 002 wallet_stalks (Stalker) before 017 F4; signal_performance 003+; 010 before 012 (FK to wallet_coordination_alerts).
   const migrationFiles = [
+    "002_deployer_dna_wallet_stalker.sql",
     "003_signal_performance.sql",
     "011_signal_performance_emission_regime.sql",
     "010_wallet_coordination_alerting.sql",
@@ -79,7 +80,7 @@ async function main() {
           console.log(`OK: ${name}`);
         }
         console.log(
-          "OK: signal_performance, coordination tables, RLS, web_push (015), window extrema (016), stalker F4 baselines (017) applied."
+          "OK: wallet_stalks (002), signal_performance, coordination tables, RLS, web_push (015), window extrema (016), stalker F4 baselines (017) applied."
         );
         console.log(`(connected with ${redactUrlForLog(url)})`);
       } finally {

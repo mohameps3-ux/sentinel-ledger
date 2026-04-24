@@ -146,6 +146,7 @@ async function main() {
       );
       failed += 1;
     } else if (hasWalletStalks) {
+      console.log("OK: table public.wallet_stalks");
       for (const t of ["stalker_position_baselines", "stalker_baseline_dedup"]) {
         const { rows } = await client.query("SELECT to_regclass($1) AS r", [`public.${t}`]);
         if (!rows[0]?.r) {

@@ -16,7 +16,7 @@
 
 - **Qué aporta:** tablas `stalker_position_baselines` y `stalker_baseline_dedup` para idempotencia y ratio *current / first* notional USD (Helius + `applyStalkerDoubleDown`). Sin 017 el backend tolera errores de Supabase y no rompe el webhook; no verás `conviction: DOUBLE_DOWN` hasta que existan las tablas y **`amountUsd`** sea usable (mercado memoizado en `heliusWebhook.js`).
 - **Aplicar en prod (elige uno):**
-  1. **Script de migraciones:** `DATABASE_URL` o `SUPABASE_URL` + `SUPABASE_DB_PASSWORD` en `backend/.env`, luego `npm run db:ensure-signal-performance --prefix backend` (cadena **003→016** y **017**).
+  1. **Script de migraciones:** `DATABASE_URL` o `SUPABASE_URL` + `SUPABASE_DB_PASSWORD` en `backend/.env`, luego `npm run db:ensure-signal-performance --prefix backend` (cadena **002** `wallet_stalks`, **003→016**, **017**).
   2. **Railway:** `railway run npm run db:ensure-signal-performance` desde `backend/` con el proyecto enlazado (inyecta env).
   3. **Supabase SQL Editor:** pegar `supabase/migrations/017_stalker_double_down_baselines.sql` → Run (idempotente `IF NOT EXISTS`).
 - **Alineación DB ↔ app («100 %» scriptable):** el `SKIP` en `db:verify-schema` solo indica que **este** Postgres no tiene `public.wallet_stalks` (otro proyecto Supabase o sin migración 002). Para el **mismo** URI que usa Railway con Stalker activo:
