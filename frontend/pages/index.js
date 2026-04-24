@@ -14,6 +14,12 @@ import { useWalletLabels } from "../hooks/useWalletLabels";
 import { WarLayout } from "../components/layout/WarLayout";
 import { TokenDesk } from "../components/cockpit/TokenDesk";
 import { isProbableSolanaMint } from "../lib/solanaMint";
+import {
+  deskMintFromQuery,
+  deskRadarQueryNeedsScrub,
+  mergeDeskMintIntoQuery,
+  scrubDeskRadarParamsFromQuery
+} from "../lib/deskRadarCtx";
 import WarHeader from "@/features/war-home/WarHeader";
 import WarHomeCombatPanels from "@/features/war-home/WarHomeCombatPanels";
 import WarHomeIntro from "@/features/war-home/WarHomeIntro";
@@ -95,15 +101,6 @@ function mapHotTrendToLiveFill(row, heatContext) {
   };
 }
 
-/** Mint selected in cockpit desk via `?t=` (shallow routing on `/`). */
-function deskMintFromQuery(query) {
-  const raw = query?.t;
-  const s = Array.isArray(raw) ? raw[0] : raw;
-  if (typeof s !== "string") return null;
-  const trimmed = s.trim();
-  return isProbableSolanaMint(trimmed) ? trimmed : null;
-}
-
 export async function getServerSideProps() {
   try {
     const res = await fetch(`${getPublicApiUrl()}/api/v1/tokens/hot?limit=24`);
@@ -139,6 +136,23 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   useLiveFeedSocket({ onSignal: useCallback(() => {}, []) });
   const router = useRouter();
   const selectedMint = useMemo(() => deskMintFromQuery(router.query), [router.query]);
+
+  const pushDeskMint = useCallback(
+    (mint, ctx) => {
+      if (!mint || !isProbableSolanaMint(mint)) return;
+      const nextQuery = mergeDeskMintIntoQuery(router.query, mint, ctx);
+      void router.push({ pathname: router.pathname || "/", query: nextQuery }, undefined, { shallow: true });
+    },
+    [router]
+  );
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (!deskRadarQueryNeedsScrub(router.query)) return;
+    const nextQuery = scrubDeskRadarParamsFromQuery(router.query);
+    void router.replace({ pathname: router.pathname || "/", query: nextQuery }, undefined, { shallow: true });
+  }, [router, router.isReady, router.query, router.pathname]);
+
   const { coordination: deskCoordination } = useWebSocket(selectedMint);
   const { isWarMode } = useWarMode();
   const isFallbackSource = useCallback((meta) => {
@@ -615,7 +629,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           quotesPricesFetching={quotesQuery.isFetching}
           selectedMint={selectedMint}
           deskCoordination={deskCoordination}
-          onSelectMint={(mint) => router.push(`/?t=${encodeURIComponent(mint)}`, undefined, { shallow: true })}
+          onSelectMint={pushDeskMint}
           heatExpanded={heatExpanded}
           onToggleHeatExpanded={() => setHeatExpanded((v) => !v)}
           heatTokensForGrid={heatTokensForGrid}

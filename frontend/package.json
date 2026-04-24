@@ -8,6 +8,7 @@
     "clean:next": "node scripts/clean-next.cjs",
     "check:deploy-contract": "node scripts/check-deploy-contract.cjs",
     "check:home-live-invariants": "node scripts/check-home-live-invariants.cjs",
+    "test:desk-radar-ctx": "node scripts/test-deskRadarCtx.mjs",
     "prebuild": "node scripts/check-deploy-contract.cjs && node scripts/check-home-live-invariants.cjs",
     "build": "next build --webpack",
     "vercel-build": "npm run build",
