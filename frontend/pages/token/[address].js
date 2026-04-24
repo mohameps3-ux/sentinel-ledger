@@ -26,6 +26,7 @@ import { formatUsdWhole } from "../../lib/formatStable";
 import { Ticker } from "../../components/layout/Ticker";
 import { FinancialDisclaimer } from "../../components/layout/FinancialDisclaimer";
 import { PageHead } from "../../components/seo/PageHead";
+import { useLocale } from "../../contexts/LocaleContext";
 
 function shortMint(addr) {
   if (!addr || typeof addr !== "string" || addr.length < 12) return addr || "";
@@ -44,14 +45,15 @@ function normalizeAddress(query) {
   return "";
 }
 
-function usdOrNA(value) {
+function usdOrNA(value, naLabel) {
   const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return "N/A";
+  if (!Number.isFinite(n) || n <= 0) return naLabel;
   return `$${formatUsdWhole(n)}`;
 }
 
 export default function TokenPage() {
   const router = useRouter();
+  const { t } = useLocale();
   const address = normalizeAddress(router.query);
   const query = useTokenData(address);
   const proStatus = useProStatus();
@@ -121,16 +123,11 @@ export default function TokenPage() {
   if (!address || address.length < 32) {
     return (
       <>
-        <PageHead
-          title="Token — Sentinel Ledger"
-          description="Open a Solana mint to see grades, liquidity, smart money flow, and deployer intel."
-        />
+        <PageHead title={t("token.pageTitleShort")} description={t("token.pageDescMint")} />
       <div className="max-w-xl mx-auto px-4 py-20">
         <div className="glass-card p-8 text-center">
-          <h2 className="text-xl font-semibold mb-2">Invalid token URL</h2>
-          <p className="text-gray-400 text-sm">
-            Use a full Solana mint in the path (for example <span className="mono text-gray-300">/token/&lt;mint&gt;</span>).
-          </p>
+          <h2 className="text-xl font-semibold mb-2">{t("token.invalidTitle")}</h2>
+          <p className="text-gray-400 text-sm">{t("token.invalidBody")}</p>
         </div>
       </div>
       </>
@@ -142,14 +139,11 @@ export default function TokenPage() {
   if (query.isError) {
     return (
       <>
-        <PageHead
-          title={`${shortMint(address)} — Sentinel Ledger`}
-          description="Token intelligence for this Solana mint. Retry if data is temporarily unavailable."
-        />
+        <PageHead title={`${shortMint(address)} — Sentinel Ledger`} description={t("token.pageDescRetry")} />
       <div className="max-w-xl mx-auto px-4 py-20">
         <div className="glass-card p-8 text-center">
-          <h2 className="text-xl font-semibold text-red-300 mb-2">Data unavailable</h2>
-          <p className="text-gray-400 text-sm">We could not fetch token data right now. Please retry in a moment.</p>
+          <h2 className="text-xl font-semibold text-red-300 mb-2">{t("token.errorTitle")}</h2>
+          <p className="text-gray-400 text-sm">{t("token.errorBody")}</p>
         </div>
       </div>
       </>
@@ -159,14 +153,11 @@ export default function TokenPage() {
   if (!token) {
     return (
       <>
-        <PageHead
-          title={`${shortMint(address)} — Sentinel Ledger`}
-          description="Token intelligence for this Solana mint on Sentinel Ledger."
-        />
+        <PageHead title={`${shortMint(address)} — Sentinel Ledger`} description={t("token.pageDescMint")} />
       <div className="max-w-xl mx-auto px-4 py-20">
         <div className="glass-card p-8 text-center">
-          <h2 className="text-xl font-semibold mb-2">No data available</h2>
-          <p className="text-gray-400 text-sm">This token could not be resolved or has no market data yet.</p>
+          <h2 className="text-xl font-semibold mb-2">{t("token.noDataTitle")}</h2>
+          <p className="text-gray-400 text-sm">{t("token.noDataBody")}</p>
         </div>
       </div>
       </>
@@ -176,24 +167,18 @@ export default function TokenPage() {
   if (!token.market || !token.analysis) {
     return (
       <>
-        <PageHead
-          title={`${shortMint(address)} — Sentinel Ledger`}
-          description="Token intelligence for this Solana mint on Sentinel Ledger."
-        />
+        <PageHead title={`${shortMint(address)} — Sentinel Ledger`} description={t("token.pageDescMint")} />
         <div className="max-w-xl mx-auto px-4 py-20">
           <div className="glass-card p-8 text-center space-y-4">
-            <h2 className="text-xl font-semibold text-amber-200">Incomplete response</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              The server returned a payload without market or analysis fields — you would otherwise see an endless
-              loading state here. Retry, or confirm this mint has a live pair on supported venues (DexScreener path).
-            </p>
+            <h2 className="text-xl font-semibold text-amber-200">{t("token.incompleteTitle")}</h2>
+            <p className="text-gray-400 text-sm leading-relaxed">{t("token.incompleteBody")}</p>
             <button
               type="button"
               onClick={() => query.refetch()}
               disabled={query.isFetching}
               className="px-4 py-2.5 rounded-xl border border-white/15 bg-white/[0.06] text-sm text-gray-100 hover:bg-white/10 disabled:opacity-50"
             >
-              {query.isFetching ? "Retrying…" : "Retry"}
+              {query.isFetching ? t("token.retrying") : t("token.retry")}
             </button>
             <p className="text-[11px] text-gray-600 font-mono break-all">{address}</p>
           </div>
@@ -218,28 +203,28 @@ export default function TokenPage() {
         : "bg-red-400";
   const statusLabel =
     connectionState === "connected"
-      ? "Connected"
+      ? t("token.status.connected")
       : connectionState === "reconnecting"
-        ? "Reconnecting"
-        : "Disconnected";
+        ? t("token.status.reconnecting")
+        : t("token.status.disconnected");
 
   return (
     <>
       <PageHead
         title={`${market.symbol} (${shortMint(address)}) — Sentinel Ledger`}
-        description={`Live grade, liquidity, smart money flow, and deployer intel for ${market.symbol} on Solana. Not financial advice.`}
+        description={t("token.pageDescLive", { symbol: market.symbol })}
       />
     <div className="sl-container py-6 space-y-6 pb-28 lg:pb-10">
       <Ticker />
       <WalletThreatBanner walletIntel={token.walletIntel} />
       {convergence?.detected ? (
         <div className="glass-card border border-emerald-500/35 bg-emerald-500/10 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-emerald-200 font-semibold">
-            Convergence detected
-          </p>
+          <p className="text-xs uppercase tracking-wider text-emerald-200 font-semibold">{t("token.conv.title")}</p>
           <p className="text-sm text-gray-200 mt-1">
-            {Math.max(3, Number(convergence?.wallets?.length || 0))} smart wallets bought in ~
-            {Number(convergence?.windowMinutes || 10)}m:
+            {t("token.conv.body", {
+              count: Math.max(3, Number(convergence?.wallets?.length || 0)),
+              minutes: Number(convergence?.windowMinutes || 10)
+            })}
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
             {(convergence?.wallets || []).slice(0, 8).map((w) => (
@@ -264,27 +249,27 @@ export default function TokenPage() {
           }`}
         >
           <p className="text-xs uppercase tracking-wider font-semibold text-gray-200">
-            Wallet coordination — {redSig.replace(/_/g, " ")}
+            {t("token.red.walletCoord")} — {redSig.replace(/_/g, " ")}
           </p>
           {coordMeta && typeof coordMeta === "object" && (
             <p className="text-[12px] text-gray-300 mt-2 leading-relaxed">
-              {coordMeta.priorClusterAlerts != null ? (
-                <>
-                  Prior same-cluster signals (other mints): {coordMeta.priorClusterAlerts}
-                  {coordMeta.uniqueMintsWithPriorClusterAlerts != null
-                    ? ` across ${coordMeta.uniqueMintsWithPriorClusterAlerts} distinct mints`
-                    : ""}
-                  .
-                </>
-              ) : null}{" "}
+              {coordMeta.priorClusterAlerts != null
+                ? t("token.red.priorIntro", {
+                    a: String(coordMeta.priorClusterAlerts),
+                    suffix:
+                      coordMeta.uniqueMintsWithPriorClusterAlerts != null
+                        ? t("token.red.priorSuffixMints", { m: coordMeta.uniqueMintsWithPriorClusterAlerts })
+                        : ""
+                  })
+                : null}{" "}
               {coordMeta.meanCoordinationLeadSecPrior != null
-                ? `Mean lead (prior): ~${coordMeta.meanCoordinationLeadSecPrior}s. `
+                ? t("token.red.meanLeadPrior", { s: coordMeta.meanCoordinationLeadSecPrior })
                 : null}
               {coordMeta.coordinationLeadSec != null
-                ? `This window lead: ${coordMeta.coordinationLeadSec}s. `
+                ? t("token.red.windowLead", { s: coordMeta.coordinationLeadSec })
                 : null}
               {coordMeta.meanScorePriorClusterAlerts != null
-                ? `Prior mean cluster score: ${coordMeta.meanScorePriorClusterAlerts}.`
+                ? t("token.red.priorMeanScore", { s: coordMeta.meanScorePriorClusterAlerts })
                 : null}
             </p>
           )}
@@ -293,28 +278,30 @@ export default function TokenPage() {
               coordMeta.meanSignalOutcomePctPriorVerified != null) && (
             <p className="text-[12px] text-cyan-200/90 mt-2 leading-relaxed border-t border-white/10 pt-2">
               {coordMeta.priorClusterAlertsWithVerifiedPumps != null
-                ? `With verified follow-through (T+N market vs entry at alert, min ≥${
-                    coordMeta.pumpMinMarketOutcomePct != null
-                      ? coordMeta.pumpMinMarketOutcomePct
-                      : coordMeta.pumpMinOutcomePctThreshold != null
-                        ? coordMeta.pumpMinOutcomePctThreshold
-                        : "…"
-                  }%; legacy rows use signal_performance if no market row): ${coordMeta.priorClusterAlertsWithVerifiedPumps} of prior cluster alerts${
-                    coordMeta.uniqueMintsWithVerifiedPumps != null
-                      ? `, ${coordMeta.uniqueMintsWithVerifiedPumps} distinct mints`
-                      : ""
-                  }. `
+                ? t("token.red.verifiedIntro", {
+                    pct:
+                      coordMeta.pumpMinMarketOutcomePct != null
+                        ? coordMeta.pumpMinMarketOutcomePct
+                        : coordMeta.pumpMinOutcomePctThreshold != null
+                          ? coordMeta.pumpMinOutcomePctThreshold
+                          : "…",
+                    pump: coordMeta.priorClusterAlertsWithVerifiedPumps,
+                    mintPart:
+                      coordMeta.uniqueMintsWithVerifiedPumps != null
+                        ? t("token.red.verifiedMints", { n: coordMeta.uniqueMintsWithVerifiedPumps })
+                        : ""
+                  })
                 : ""}
               {coordMeta.meanSignalOutcomePctPriorVerified != null
-                ? `Mean resolved outcome% on those: ${coordMeta.meanSignalOutcomePctPriorVerified}%. `
+                ? t("token.red.meanOutcome", { v: coordMeta.meanSignalOutcomePctPriorVerified })
                 : null}
               {coordMeta.meanCoordinationLeadSecPriorVerified != null
-                ? `Mean lead when outcome verified: ~${coordMeta.meanCoordinationLeadSecPriorVerified}s.`
+                ? t("token.red.meanLeadVerified", { s: coordMeta.meanCoordinationLeadSecPriorVerified })
                 : null}
             </p>
           )}
           {redSig === "RED_ABORT" && (
-            <p className="text-[12px] text-slate-300 mt-1">Cluster no longer met prepare criteria — stand down or reassess.</p>
+            <p className="text-[12px] text-slate-300 mt-1">{t("token.red.abortNote")}</p>
           )}
         </div>
       ) : null}
@@ -338,7 +325,7 @@ export default function TokenPage() {
             onClick={() => setSoundEnabled((v) => !v)}
             className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs hover:bg-white/10 transition-transform hover:scale-105"
           >
-            {soundEnabled ? "🔊 Sound On" : "🔈 Sound Off"}
+            {soundEnabled ? t("token.soundOn") : t("token.soundOff")}
           </button>
           <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
           {proStatusReady && (
@@ -348,7 +335,7 @@ export default function TokenPage() {
                   href="/alerts"
                   className="px-2.5 py-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-xs text-cyan-200 hover:bg-cyan-500/20 transition"
                 >
-                  Telegram alerts
+                  {t("token.link.tgAlerts")}
                 </Link>
               ) : null}
               {hasToken && !hasProAccess ? (
@@ -356,7 +343,7 @@ export default function TokenPage() {
                   href="/pricing"
                   className="px-2.5 py-1.5 rounded-lg border border-white/15 bg-white/5 text-xs text-gray-200 hover:bg-white/10 transition"
                 >
-                  PRO · alerts
+                  {t("token.link.proAlerts")}
                 </Link>
               ) : null}
               {!hasToken ? (
@@ -364,7 +351,7 @@ export default function TokenPage() {
                   href="/pricing"
                   className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs text-gray-400 hover:text-gray-200 hover:bg-white/10 transition"
                 >
-                  PRO alerts
+                  {t("token.link.proAlertsShort")}
                 </Link>
               ) : null}
             </>
@@ -374,24 +361,24 @@ export default function TokenPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
-          <div className="sl-label">Liquidity</div>
-          <div className="text-lg font-semibold text-white tracking-tight">{usdOrNA(market.liquidity)}</div>
+          <div className="sl-label">{t("token.stat.liq")}</div>
+          <div className="text-lg font-semibold text-white tracking-tight">{usdOrNA(market.liquidity, t("token.stat.na"))}</div>
         </div>
         <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
-          <div className="sl-label">24h volume</div>
-          <div className="text-lg font-semibold text-white tracking-tight">{usdOrNA(market.volume24h)}</div>
+          <div className="sl-label">{t("token.stat.vol24")}</div>
+          <div className="text-lg font-semibold text-white tracking-tight">{usdOrNA(market.volume24h, t("token.stat.na"))}</div>
         </div>
         <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
-          <div className="sl-label">FDV</div>
-          <div className="text-lg font-semibold text-white tracking-tight">{usdOrNA(market.marketCap)}</div>
+          <div className="sl-label">{t("token.stat.fdv")}</div>
+          <div className="text-lg font-semibold text-white tracking-tight">{usdOrNA(market.marketCap, t("token.stat.na"))}</div>
         </div>
         <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
           <div className="sl-label inline-flex items-center gap-2">
             <Activity size={14} className="text-gray-500" />
-            Live feed
+            {t("token.stat.liveFeed")}
           </div>
           <div className={`text-lg font-semibold ${isConnected ? "text-emerald-300" : "text-amber-300"}`}>
-            {isConnected ? "Connected" : "Reconnecting"}
+            {isConnected ? t("token.status.connected") : t("token.status.reconnecting")}
           </div>
         </div>
       </div>
@@ -418,30 +405,35 @@ export default function TokenPage() {
         <section id="chart" className="lg:col-span-2 space-y-6">
           <ChartPanel address={address} />
           <DecisionPanel analysis={analysis} />
-          <ExpandablePanel title="⚡ Momentum" icon={BarChart3} defaultOpen={false}>
+          <ExpandablePanel title={t("token.panel.momentum")} icon={BarChart3} defaultOpen={false}>
             <MomentumPanel market={market} />
           </ExpandablePanel>
 
-          <ExpandablePanel title="👥 Holders Distribution" icon={Users} defaultOpen={false}>
+          <ExpandablePanel title={t("token.panel.holders")} icon={Users} defaultOpen={false}>
             <HoldersPanel holders={token?.holders} />
           </ExpandablePanel>
 
-          <ExpandablePanel title="🔍 Deployer Intelligence" icon={ShieldAlert} defaultOpen={false}>
+          <ExpandablePanel title={t("token.panel.deployer")} icon={ShieldAlert} defaultOpen={false}>
             <DeployerPanel deployer={token?.deployer} />
           </ExpandablePanel>
         </section>
 
         <section id="flow" className="space-y-4">
           <ExpandablePanel
-            title="📡 Live Transactions"
+            title={t("token.panel.liveTx")}
             icon={CandlestickChart}
             defaultOpen={true}
-            badge={recentTransactions.length ? `${recentTransactions.length} tx` : null}
+            badge={recentTransactions.length ? t("token.panel.badgeTx", { n: recentTransactions.length }) : null}
           >
             <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={market.price} />
           </ExpandablePanel>
 
-          <ExpandablePanel title="🧠 Smart Money Activity" icon={Radar} defaultOpen={true} badge="intel">
+          <ExpandablePanel
+            title={t("token.panel.smartMoney")}
+            icon={Radar}
+            defaultOpen={true}
+            badge={t("token.panel.badgeIntel")}
+          >
             <SmartMoneyPanel tokenAddress={address} flaggedWallets={flaggedWallets} />
           </ExpandablePanel>
         </section>
@@ -458,13 +450,13 @@ export default function TokenPage() {
       <div className="fixed safe-bottom-offset left-1/2 -translate-x-1/2 z-40 xl:hidden">
         <div className="glass-card px-2 py-1 flex items-center gap-1">
           <a href="#chart" className="px-3 h-8 rounded-lg text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
-            Chart
+            {t("token.nav.chart")}
           </a>
           <a href="#intel" className="px-3 h-8 rounded-lg text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
-            Intel
+            {t("token.nav.intel")}
           </a>
           <a href="#flow" className="px-3 h-8 rounded-lg text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
-            Flow
+            {t("token.nav.flow")}
           </a>
         </div>
       </div>

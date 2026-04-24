@@ -51,7 +51,7 @@ export function SmartWalletDetailPanel({ row, labelFor, titleFor, narrativeLang 
             Copiar
           </button>
           <Link
-            href={`/wallet/${w.wallet}?lang=${narrativeLang || "es"}`}
+            href={`/wallet/${w.wallet}?lang=${narrativeLang || "en"}`}
             className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"
           >
             <ExternalLink size={12} className="opacity-70" />

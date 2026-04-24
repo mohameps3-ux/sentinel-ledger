@@ -1,23 +1,29 @@
+import { useMemo } from "react";
 import { Volume2, VolumeX } from "lucide-react";
-
-const STRATEGY_OPTIONS = [
-  { id: "conservative", label: "Prudente" },
-  { id: "balanced", label: "Equilibrado" },
-  { id: "aggressive", label: "Más riesgo" }
-];
+import { useLocale } from "../../../contexts/LocaleContext";
 
 export default function WarHomeIntro({ strategyMode, onStrategyModeChange, soundEnabled, onToggleSound }) {
+  const { t } = useLocale();
+  const strategyOptions = useMemo(
+    () => [
+      { id: "conservative", label: t("war.intro.strategy.conservative") },
+      { id: "balanced", label: t("war.intro.strategy.balanced") },
+      { id: "aggressive", label: t("war.intro.strategy.aggressive") }
+    ],
+    [t]
+  );
+
   return (
     <>
       <section className="sl-section !mt-0 !mb-1">
         <div className="sl-glow-info rounded-lg border border-white/[0.08] bg-white/[0.02] h-[1cm] px-2 flex items-center transition-all duration-200 hover:-translate-y-[1px] hover:border-cyan-400/45 hover:shadow-[0_0_14px_rgba(34,211,238,0.16)]">
           <p
             className="text-[11px] sm:text-xs text-gray-300 truncate w-full leading-tight"
-            title="Seguimiento de smart money en Solana. Un solo flujo: ver señales, abrir un token y decidir. No es asesoramiento financiero: tú priorizas el riesgo."
+            title={`${t("war.intro.ribbonTitle")} · ${t("war.intro.ribbonBody")}`}
           >
-            <span className="text-white font-semibold">Seguimiento de smart money en Solana</span>
+            <span className="text-white font-semibold">{t("war.intro.ribbonTitle")}</span>
             {" · "}
-            Un solo flujo: ver señales, abrir un token y decidir. No es asesoramiento financiero: tú priorizas el riesgo.
+            {t("war.intro.ribbonBody")}
           </p>
         </div>
       </section>
@@ -25,11 +31,9 @@ export default function WarHomeIntro({ strategyMode, onStrategyModeChange, sound
       <section className="sl-section !mt-0 !pt-0 !pb-0">
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-2 sm:p-2.5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-            <p className="text-[11px] text-gray-500 leading-snug min-w-0">
-              Ajusta cómo de estricta es la sugerencia. Sonido solo avisa; no es obligatorio.
-            </p>
+            <p className="text-[11px] text-gray-500 leading-snug min-w-0">{t("war.intro.strategyHint")}</p>
             <div className="flex flex-wrap items-center gap-1.5">
-              {STRATEGY_OPTIONS.map((mode) => (
+              {strategyOptions.map((mode) => (
                 <button
                   key={mode.id}
                   type="button"
@@ -50,11 +54,11 @@ export default function WarHomeIntro({ strategyMode, onStrategyModeChange, sound
               >
                 {soundEnabled ? (
                   <span className="inline-flex items-center gap-1.5">
-                    <Volume2 size={14} /> Sonido
+                    <Volume2 size={14} /> {t("war.intro.soundOn")}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5">
-                    <VolumeX size={14} /> Silencio
+                    <VolumeX size={14} /> {t("war.intro.soundOff")}
                   </span>
                 )}
               </button>

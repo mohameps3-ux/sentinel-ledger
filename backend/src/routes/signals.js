@@ -7,6 +7,9 @@ const {
   capSignalsLatestLimit
 } = require("../services/homeTerminalApi");
 const { pctFromPrices } = require("../services/smartWalletSignalPrices");
+const { buildDeskProofOfEdge } = require("../services/deskProofOfEdge");
+const { isMissingColumnError } = require("../lib/columnMissingError");
+const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 
 const router = express.Router();
 
@@ -35,6 +38,68 @@ function actionFromConfidence(confidence) {
 }
 
 /**
+ * When the price job has min/max for the post-entry window, those DEX spot samples
+ * (not full CLOB OHLC) drive run-up and drawdown; otherwise use sparse checkpoints.
+ */
+function extremaPctForGraveyard(row) {
+  const entry = Number(row.entry_price_usd);
+  if (!Number.isFinite(entry) || entry <= 0) {
+    return { maxRunUpPct: null, maxDrawdownPct: null, extremaSource: "no_entry" };
+  }
+  const wMin = row.min_price_window_usd != null ? Number(row.min_price_window_usd) : null;
+  const wMax = row.max_price_window_usd != null ? Number(row.max_price_window_usd) : null;
+  if (Number.isFinite(wMin) && wMin > 0 && Number.isFinite(wMax) && wMax > 0) {
+    return {
+      maxRunUpPct: Number((((wMax - entry) / entry) * 100).toFixed(4)),
+      maxDrawdownPct: Number((((wMin - entry) / entry) * 100).toFixed(4)),
+      extremaSource: "window"
+    };
+  }
+  return extremaPctFromCheckpoints(row);
+}
+
+/**
+ * Min/max from sparse job checkpoints (5m/30m/1h/2h/4h) + implied 24h from result_pct.
+ * Not full intraday OHLC — if checkpoints are missing, extrema may be null.
+ */
+function extremaPctFromCheckpoints(row) {
+  const entry = Number(row.entry_price_usd);
+  if (!Number.isFinite(entry) || entry <= 0) {
+    return { maxRunUpPct: null, maxDrawdownPct: null, extremaSource: "no_entry" };
+  }
+  const cps = [
+    row.price_5m_usd,
+    row.price_30m_usd,
+    row.price_1h_usd,
+    row.price_2h_usd,
+    row.price_4h_usd
+  ];
+  const rp = row.result_pct != null ? Number(row.result_pct) : null;
+  let p24 = null;
+  if (Number.isFinite(rp)) {
+    p24 = entry * (1 + rp / 100);
+  }
+  const prices = [entry];
+  for (const x of cps) {
+    const v = x != null ? Number(x) : null;
+    if (Number.isFinite(v) && v > 0) prices.push(v);
+  }
+  if (p24 != null && Number.isFinite(p24) && p24 > 0) {
+    prices.push(p24);
+  }
+  if (prices.length < 2) {
+    return { maxRunUpPct: null, maxDrawdownPct: null, extremaSource: "insufficient" };
+  }
+  const maxP = Math.max(...prices);
+  const minP = Math.min(...prices);
+  return {
+    maxRunUpPct: Number((((maxP - entry) / entry) * 100).toFixed(4)),
+    maxDrawdownPct: Number((((minP - entry) / entry) * 100).toFixed(4)),
+    extremaSource: "checkpoints"
+  };
+}
+
+/**
  * GET /api/v1/signals/outcomes
  * Proof of Edge — rows with result_pct set (price worker). Redis TTL ~3m.
  * Flat shape: wins, losses, avgWin, avgLoss, netReturn, recentOutcomes (+ legacy summary/recent).
@@ -50,6 +115,29 @@ router.get("/outcomes", async (req, res) => {
   } catch (e) {
     const code = /unconfigured/i.test(String(e?.message || "")) ? 503 : 500;
     return res.status(code).json({ ok: false, error: e?.message || "signals_outcomes_failed" });
+  }
+});
+
+/**
+ * GET /api/v1/signals/desk-proof-of-edge
+ * Cohort stats from resolved `signal_performance` (confidence band, optional regime, excludes current mint).
+ */
+router.get("/desk-proof-of-edge", async (req, res) => {
+  const supabase = safeSupabase();
+  if (!supabase) {
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured" });
+  }
+  const mintRaw = String(req.query.mint || "").trim();
+  const mint = isProbableSolanaPubkey(mintRaw) ? mintRaw : "";
+  const confRaw = Number(req.query.confidence);
+  const confidence = Number.isFinite(confRaw) ? Math.max(0, Math.min(100, confRaw)) : null;
+  const regime = String(req.query.regime || "").trim().slice(0, 48) || null;
+  try {
+    const body = await buildDeskProofOfEdge(supabase, { mint: mint || null, confidence, regime });
+    return res.json(body);
+  } catch (e) {
+    const code = /unconfigured/i.test(String(e?.message || "")) ? 503 : 500;
+    return res.status(code).json({ ok: false, error: e?.message || "desk_proof_of_edge_failed" });
   }
 });
 
@@ -134,6 +222,14 @@ router.get("/history", async (req, res) => {
   }
 });
 
+const GRAVEYARD_SELECT_NO_EXTREMA =
+  "id, token_address, confidence, created_at, entry_price_usd, " +
+  "price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_pct, wallet_address";
+const GRAVEYARD_SELECT_WITH_EXTREMA =
+  "id, token_address, confidence, created_at, entry_price_usd, " +
+  "min_price_window_usd, max_price_window_usd, " +
+  "price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_pct, wallet_address";
+
 router.get("/graveyard", async (req, res) => {
   const supabase = safeSupabase();
   if (!supabase) return res.status(503).json({ ok: false, error: "supabase_unconfigured", rows: [] });
@@ -143,22 +239,30 @@ router.get("/graveyard", async (req, res) => {
     const outcome = String(req.query.outcome || "all").toUpperCase();
     const lim = Math.min(300, Math.max(10, Number(req.query.limit) || 120));
 
-    let q = supabase
-      .from("smart_wallet_signals")
-      .select(
-        "id, token_address, confidence, created_at, entry_price_usd, price_4h_usd, result_pct, wallet_address"
-      )
-      .order("created_at", { ascending: false })
-      .limit(lim);
-    if (from) q = q.gte("created_at", from);
-    if (to) q = q.lte("created_at", to);
-    const { data, error } = await q;
+    async function runQ(selectList) {
+      let q = supabase
+        .from("smart_wallet_signals")
+        .select(selectList)
+        .order("created_at", { ascending: false })
+        .limit(lim);
+      if (from) q = q.gte("created_at", from);
+      if (to) q = q.lte("created_at", to);
+      return q;
+    }
+
+    let extremaColumns = true;
+    let { data, error } = await runQ(GRAVEYARD_SELECT_WITH_EXTREMA);
+    if (error && isMissingColumnError(error, "min_price_window_usd")) {
+      extremaColumns = false;
+      ({ data, error } = await runQ(GRAVEYARD_SELECT_NO_EXTREMA));
+    }
     if (error) throw error;
 
     let rows = (data || []).map((row) => {
       const result4h = pctFromPrices(row.entry_price_usd, row.price_4h_usd);
       const result24h = row.result_pct != null ? Number(row.result_pct) : null;
       const finalPct = result24h != null ? result24h : result4h;
+      const extrema = extremaPctForGraveyard(row);
       return {
         id: row.id,
         token: row.token_address,
@@ -166,6 +270,9 @@ router.get("/graveyard", async (req, res) => {
         suggestedAction: actionFromConfidence(row.confidence),
         actualResult4h: result4h,
         actualResult24h: result24h,
+        maxRunUpPct: extrema.maxRunUpPct,
+        maxDrawdownPct: extrema.maxDrawdownPct,
+        extremaSource: extrema.extremaSource,
         outcome: statusFromPct(finalPct),
         createdAt: row.created_at,
         wallet: row.wallet_address
@@ -179,7 +286,20 @@ router.get("/graveyard", async (req, res) => {
     return res.json({
       ok: true,
       rows,
-      meta: { count: rows.length, wins, losses, winRate, resolved, from, to, outcome }
+      meta: {
+        extremaColumns,
+        count: rows.length,
+        wins,
+        losses,
+        winRate,
+        resolved,
+        from,
+        to,
+        outcome,
+        extremaNote: extremaColumns
+          ? "maxRunUp/maxDrawdown prefer min/max of DEX spot seen while the worker tracks ~25h after the signal; otherwise checkpoint prices and implied 24h from result_pct. Not full candle OHLC."
+          : "Window extrema columns not in DB yet (apply migration 016). maxRunUp/maxDrawdown use checkpoint prices and implied 24h from result_pct only."
+      }
     });
   } catch (error) {
     return res.status(500).json({ ok: false, error: error.message, rows: [] });

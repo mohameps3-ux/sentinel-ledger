@@ -105,7 +105,7 @@ if (-not $c.Ok) {
     } elseif ($j.degraded) {
       $reason = [string]$j.reason
       Write-Host ("[FAIL] coordination outcomes -> degraded=true reason=" + $reason)
-      Write-Host "  Hint: if reason mentions missing relation, apply 012 + 013 in supabase/migrations/ (or npm run db:ensure-signal-performance --prefix backend) on the correct project."
+      Write-Host "  Hint: if reason mentions missing relation, apply 012 + 013 (+014 RLS wallet tables) in supabase/migrations/ (or npm run db:ensure-signal-performance --prefix backend) on the correct project. Security Advisor: refresh after 014."
       $fails.Add("coordination_outcomes_degraded")
     } else {
       $n = 0

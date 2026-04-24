@@ -12,9 +12,11 @@ export default function TacticalFeed({
   liveSignalsForGrid,
   liveSignalPool,
   signalsFeedIsError,
+  signalsFeedIsDegraded = false,
   signalsFeedIsLoading,
   signalsAgeSec,
   isWarMode,
+  liveUseVirtualizedLayout = false,
   liveVirtuosoRows,
   entryCountdownByMint,
   strategyMode,
@@ -48,9 +50,11 @@ export default function TacticalFeed({
           liveSignalsForGrid={liveSignalsForGrid}
           liveSignalPool={liveSignalPool}
           signalsFeedIsError={signalsFeedIsError}
+          signalsFeedIsDegraded={signalsFeedIsDegraded}
           signalsFeedIsLoading={signalsFeedIsLoading}
           signalsAgeSec={signalsAgeSec}
           isWarMode={isWarMode}
+          useVirtualizedLayout={liveUseVirtualizedLayout}
           liveVirtuosoRows={liveVirtuosoRows}
           entryCountdownByMint={entryCountdownByMint}
           strategyMode={strategyMode}

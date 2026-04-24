@@ -15,6 +15,14 @@ const liveTabPath = path.join(root, "src", "features", "war-home", "tabs", "Live
 function read(p) {
   return fs.readFileSync(p, "utf8");
 }
+function mustPathExists(p, label) {
+  if (!fs.existsSync(p)) {
+    err(
+      `${label} not found at ${p} — Vercel Root Directory must be the frontend/ folder (contains pages/ and src/). ` +
+        `If this is the monorepo root, set Project → Settings → Root Directory to "frontend" (not frontend/frontend).`
+    );
+  }
+}
 
 let failed = false;
 function err(msg) {
@@ -22,8 +30,18 @@ function err(msg) {
   failed = true;
 }
 
-const index = read(indexPath);
-const live = read(liveTabPath);
+mustPathExists(indexPath, "pages/index.js");
+mustPathExists(liveTabPath, "LiveTab.jsx");
+if (failed) process.exit(1);
+let index;
+let live;
+try {
+  index = read(indexPath);
+  live = read(liveTabPath);
+} catch (e) {
+  err(`read failed: ${e.message}`);
+  process.exit(1);
+}
 
 /**
  * Coarse comment strip (good enough for this file) so we can forbid *code* patterns
@@ -49,7 +67,10 @@ function stripHashLineComments(s) {
 const indexCode = stripHashLineComments(index);
 
 // --- index.js: forbidden *code* patterns (comments may still name the pitfall for reviewers)
-if (/(?:import|from|require\()\s*[^;]*\buseRankingSnapshot\b|(?<![\w.])\buseRankingSnapshot\s*\(/.test(indexCode)) {
+// No lookbehind: some CI/Node regex engines reject (?<!
+const badImport = /(?:import|from|require\()[^;]*\buseRankingSnapshot\b/.test(indexCode);
+const badCall = /(?:^|[^.$\w])useRankingSnapshot\s*\(/.test(indexCode);
+if (badImport || badCall) {
   err("pages/index.js must not import or call useRankingSnapshot (whole-grid flicker).");
 }
 if (/\b(?:const|let|var)\s+visibleTrending\b|=\s*visibleTrending|visibleTrending\s*[,;)]\s*[,}=]/.test(indexCode)) {

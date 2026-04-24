@@ -1,4 +1,5 @@
 const { getSupabase } = require("../lib/supabase");
+const { isMissingColumnError } = require("../lib/columnMissingError");
 const { getMarketData } = require("./marketData");
 
 function pctFromPrices(entry, later) {
@@ -18,10 +19,26 @@ function ageMs(createdAt) {
   return Date.now() - t;
 }
 
+const SIGNAL_WINDOW_EXTREMA_MS = Math.max(
+  1,
+  Number(process.env.SIGNAL_PRICE_WINDOW_EXTREMA_MS || 25 * 60 * 60 * 1000)
+);
+/** Snapshot columns for all price-job queries (keep in sync with DB; migration 016 adds window min/max). */
+const SWS_SELECT_FULL =
+  "id, token_address, created_at, entry_price_usd, min_price_window_usd, max_price_window_usd, " +
+  "price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, " +
+  "result_5m_pct, result_30m_pct, result_2h_pct, result_pct";
+/** When 016 is not applied yet, select without window extrema (same row shape minus two columns). */
+const SWS_SELECT_NO_WINDOW =
+  "id, token_address, created_at, entry_price_usd, " +
+  "price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, " +
+  "result_5m_pct, result_30m_pct, result_2h_pct, result_pct";
+
 /**
  * Enriches smart_wallet_signals with spot USD from DexScreener (via getMarketData).
  * Snapshots are taken when the cron runs after the row age crosses 1h / 4h — not exact wall-clock T+1h,
  * but good enough for track-record / win-rate aggregates.
+ * Also tracks min/max spot in `min_price_window_usd` / `max_price_window_usd` for ~25h after signal (DEX samples only).
  */
 async function runSignalPriceEnrichmentOnce(options = {}) {
   const batch = Number(options.batch || process.env.SIGNAL_PRICE_BATCH || 30);
@@ -30,6 +47,20 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
   const safeDelay = Number.isFinite(delayMs) ? Math.min(2000, Math.max(0, Math.floor(delayMs))) : 200;
 
   const supabase = getSupabase();
+  let selectCols = SWS_SELECT_FULL;
+  let windowExtremaEnabled = true;
+  {
+    const { error: probe } = await supabase.from("smart_wallet_signals").select("min_price_window_usd").limit(1);
+    if (probe && isMissingColumnError(probe, "min_price_window_usd")) {
+      selectCols = SWS_SELECT_NO_WINDOW;
+      windowExtremaEnabled = false;
+      console.warn(
+        "[signal-prices] min_price_window_usd not in DB (apply migration 016) — price job runs without window extrema"
+      );
+    } else if (probe) {
+      console.warn("[signal-prices] probe min_price_window_usd:", probe.message);
+    }
+  }
   const now = Date.now();
   const iso1h = new Date(now - 65 * 60 * 1000).toISOString();
   const iso5m = new Date(now - 7 * 60 * 1000).toISOString();
@@ -39,9 +70,7 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
 
   const { data: needEntry, error: e1 } = await supabase
     .from("smart_wallet_signals")
-    .select(
-      "id, token_address, created_at, entry_price_usd, price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_5m_pct, result_30m_pct, result_2h_pct, result_pct"
-    )
+    .select(selectCols)
     .is("entry_price_usd", null)
     .order("created_at", { ascending: false })
     .limit(safeBatch);
@@ -49,9 +78,7 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
 
   const { data: need5m, error: e5m } = await supabase
     .from("smart_wallet_signals")
-    .select(
-      "id, token_address, created_at, entry_price_usd, price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_5m_pct, result_30m_pct, result_2h_pct, result_pct"
-    )
+    .select(selectCols)
     .not("entry_price_usd", "is", null)
     .is("price_5m_usd", null)
     .lte("created_at", iso5m)
@@ -61,9 +88,7 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
 
   const { data: need30m, error: e30m } = await supabase
     .from("smart_wallet_signals")
-    .select(
-      "id, token_address, created_at, entry_price_usd, price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_5m_pct, result_30m_pct, result_2h_pct, result_pct"
-    )
+    .select(selectCols)
     .not("entry_price_usd", "is", null)
     .is("price_30m_usd", null)
     .lte("created_at", iso30m)
@@ -73,9 +98,7 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
 
   const { data: need1h, error: e2 } = await supabase
     .from("smart_wallet_signals")
-    .select(
-      "id, token_address, created_at, entry_price_usd, price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_5m_pct, result_30m_pct, result_2h_pct, result_pct"
-    )
+    .select(selectCols)
     .not("entry_price_usd", "is", null)
     .is("price_1h_usd", null)
     .lte("created_at", iso1h)
@@ -85,9 +108,7 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
 
   const { data: need2h, error: e2h } = await supabase
     .from("smart_wallet_signals")
-    .select(
-      "id, token_address, created_at, entry_price_usd, price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_5m_pct, result_30m_pct, result_2h_pct, result_pct"
-    )
+    .select(selectCols)
     .not("entry_price_usd", "is", null)
     .is("price_2h_usd", null)
     .lte("created_at", iso2h)
@@ -97,9 +118,7 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
 
   const { data: need4h, error: e3 } = await supabase
     .from("smart_wallet_signals")
-    .select(
-      "id, token_address, created_at, entry_price_usd, price_5m_usd, price_30m_usd, price_1h_usd, price_2h_usd, price_4h_usd, result_5m_pct, result_30m_pct, result_2h_pct, result_pct"
-    )
+    .select(selectCols)
     .not("entry_price_usd", "is", null)
     .is("price_4h_usd", null)
     .lte("created_at", iso4h)
@@ -107,9 +126,30 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
     .limit(safeBatch);
   if (e3) throw e3;
 
+  const iso26hAgo = new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString();
+  const { data: needWindow, error: ew } = await supabase
+    .from("smart_wallet_signals")
+    .select(selectCols)
+    .not("entry_price_usd", "is", null)
+    .gte("created_at", iso26hAgo)
+    .order("created_at", { ascending: false })
+    .limit(safeBatch);
+  if (ew) throw ew;
+
   const byId = new Map();
-  for (const row of [...(needEntry || []), ...(need5m || []), ...(need30m || []), ...(need1h || []), ...(need2h || []), ...(need4h || [])]) {
-    if (row?.id) byId.set(row.id, row);
+  for (const row of [
+    ...(needEntry || []),
+    ...(need5m || []),
+    ...(need30m || []),
+    ...(need1h || []),
+    ...(need2h || []),
+    ...(need4h || []),
+    ...(needWindow || [])
+  ]) {
+    if (row?.id) {
+      const prev = byId.get(row.id);
+      if (!prev) byId.set(row.id, row);
+    }
   }
   const rows = [...byId.values()];
   if (!rows.length) {
@@ -188,6 +228,26 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
     if (row.result_2h_pct == null && entry > 0 && p2 != null) {
       const pct2h = pctFromPrices(entry, p2);
       if (pct2h != null) updates.result_2h_pct = pct2h;
+    }
+
+    if (windowExtremaEnabled) {
+      if (updates.entry_price_usd != null) {
+        updates.min_price_window_usd = spot;
+        updates.max_price_window_usd = spot;
+      } else {
+        const baseEntry = Number(row.entry_price_usd);
+        if (Number.isFinite(baseEntry) && baseEntry > 0 && a < SIGNAL_WINDOW_EXTREMA_MS) {
+          const haveWindow = row.min_price_window_usd != null && row.max_price_window_usd != null;
+          const prevMin = haveWindow ? Number(row.min_price_window_usd) : baseEntry;
+          const prevMax = haveWindow ? Number(row.max_price_window_usd) : baseEntry;
+          const nMin = Math.min(prevMin, spot);
+          const nMax = Math.max(prevMax, spot);
+          if (!haveWindow || nMin < prevMin || nMax > prevMax) {
+            updates.min_price_window_usd = nMin;
+            updates.max_price_window_usd = nMax;
+          }
+        }
+      }
     }
 
     if (!Object.keys(updates).length) {

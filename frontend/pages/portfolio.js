@@ -5,8 +5,10 @@ import { formatUsdWhole, formatTokenPrice } from "../lib/formatStable";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { PageHead } from "../components/seo/PageHead";
 import { Loader2 } from "lucide-react";
+import { useLocale } from "../contexts/LocaleContext";
 
 export default function PortfolioPage() {
+  const { t } = useLocale();
   const token = useClientAuthToken();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -38,19 +40,14 @@ export default function PortfolioPage() {
   if (!token) {
     return (
       <>
-        <PageHead
-          title="Portfolio — Sentinel Ledger"
-          description="Track your Solana positions and edge once you connect a wallet session."
-        />
+        <PageHead title={t("portfolio.pageTitle")} description={t("portfolio.descSignedOut")} />
         <div className="sl-container py-10">
           <section className="glass-card sl-inset max-w-2xl mx-auto text-center">
-            <p className="sl-label">Portfolio</p>
-            <h1 className="sl-h2 text-white mt-1">Connect wallet to unlock portfolio</h1>
-            <p className="text-sm text-gray-400 mt-3">
-              Your portfolio view requires a signed wallet session.
-            </p>
+            <p className="sl-label">{t("portfolio.label")}</p>
+            <h1 className="sl-h2 text-white mt-1">{t("portfolio.h1SignedOut")}</h1>
+            <p className="text-sm text-gray-400 mt-3">{t("portfolio.pSignedOut")}</p>
             <Link href="/" className="btn-pro inline-flex mt-5 no-underline">
-              Go to dashboard
+              {t("portfolio.goDashboard")}
             </Link>
           </section>
         </div>
@@ -60,19 +57,13 @@ export default function PortfolioPage() {
 
   return (
     <>
-      <PageHead
-        title="Portfolio — Sentinel Ledger"
-        description="Watchlist tokens with live Dex liquidity, price, and 24h move."
-      />
+      <PageHead title={t("portfolio.pageTitle")} description={t("portfolio.desc")} />
       <div className="sl-container py-10 space-y-6">
         <section className="glass-card sl-inset flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <p className="sl-label">Portfolio</p>
-            <h1 className="sl-h2 text-white mt-1">Watchlist pulse</h1>
-            <p className="text-sm text-gray-400 mt-2 max-w-2xl">
-              Live DexScreener snapshot per mint in your watchlist (not wallet balances). Add tokens from any token
-              page.
-            </p>
+            <p className="sl-label">{t("portfolio.label")}</p>
+            <h1 className="sl-h2 text-white mt-1">{t("portfolio.h1")}</h1>
+            <p className="text-sm text-gray-400 mt-2 max-w-2xl">{t("portfolio.sub")}</p>
           </div>
           <button
             type="button"
@@ -81,22 +72,22 @@ export default function PortfolioPage() {
             className="btn-ghost inline-flex items-center gap-2 shrink-0 self-start sm:self-auto"
           >
             {loading ? <Loader2 className="animate-spin" size={16} /> : null}
-            Refresh
+            {t("portfolio.refresh")}
           </button>
         </section>
 
         {loading && !positions.length ? (
           <p className="text-sm text-gray-400 flex items-center gap-2">
             <Loader2 className="animate-spin" size={16} />
-            Loading watchlist markets…
+            {t("portfolio.loadingMarkets")}
           </p>
         ) : null}
-        {error ? <p className="text-sm text-red-300">Could not load portfolio: {error}</p> : null}
+        {error ? <p className="text-sm text-red-300">{t("portfolio.error", { err: error })}</p> : null}
         {!loading && !error && !positions.length ? (
           <section className="glass-card sl-inset text-center py-10">
-            <p className="text-gray-300">No watchlist tokens yet.</p>
+            <p className="text-gray-300">{t("portfolio.empty")}</p>
             <Link href="/watchlist" className="btn-pro inline-flex mt-4 no-underline">
-              Open watchlist
+              {t("portfolio.openWatchlist")}
             </Link>
           </section>
         ) : null}
@@ -122,13 +113,15 @@ export default function PortfolioPage() {
                           : "text-red-300 border-red-500/30 bg-red-500/10"
                     }`}
                   >
-                    Score {p.score ?? "—"}
+                    {t("portfolio.score", { s: p.score ?? "—" })}
                   </span>
                 </div>
                 <p className="text-sm text-gray-400 mt-3">
-                  Price ${p.priceUsd != null ? formatTokenPrice(p.priceUsd) : "—"}
+                  {t("portfolio.price")} ${p.priceUsd != null ? formatTokenPrice(p.priceUsd) : "—"}
                 </p>
-                <p className="text-sm text-gray-400 mt-1">Liq ${formatUsdWhole(p.liquidityUsd || 0)}</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  {t("portfolio.liq")} ${formatUsdWhole(p.liquidityUsd || 0)}
+                </p>
                 <p
                   className={`text-sm mt-1 ${
                     p.change24hPct == null
@@ -138,14 +131,14 @@ export default function PortfolioPage() {
                         : "text-red-300"
                   }`}
                 >
-                  24h:{" "}
+                  {t("portfolio.change24h")}{" "}
                   {p.change24hPct == null
                     ? "—"
                     : `${p.change24hPct >= 0 ? "+" : ""}${Number(p.change24hPct).toFixed(2)}%`}
                 </p>
                 {p.note ? <p className="text-xs text-gray-500 mt-2 border-t border-white/10 pt-2">{p.note}</p> : null}
                 <Link href={`/token/${p.tokenAddress}`} className="btn-ghost inline-flex mt-3 text-xs no-underline">
-                  Open token
+                  {t("portfolio.openToken")}
                 </Link>
               </article>
             ))}

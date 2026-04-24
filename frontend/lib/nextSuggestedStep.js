@@ -5,7 +5,7 @@ import { t } from "./i18n";
  * Returns a localized string or null when the route has no advice.
  *
  * @param {string} pathname - Next.js `router.pathname` (e.g. `/token/[address]`)
- * @param {string} [lang] - "en" | "es"
+ * @param {string} [lang] - UI locale code; wayfinding steps are flat i18n strings for all supported locales.
  * @returns {string | null}
  */
 export function getNextSuggestedStep(pathname, lang = "en") {

@@ -11,12 +11,14 @@ import { PageHead } from "../components/seo/PageHead";
 import { SmartWalletDetailPanel } from "../components/smart-money/SmartWalletDetailPanel";
 import { Loader2, Radio, SlidersHorizontal, Star } from "lucide-react";
 import { WalletNarrativeCard } from "../components/WalletNarrativeCard";
+import { useLocale } from "../contexts/LocaleContext";
+import { walletNarrativeApiLang } from "../lib/walletNarrativeLang";
 
-function walletDecision(winRate) {
+function walletDecision(winRate, t) {
   const wr = Number(winRate || 0);
-  if (wr >= 88) return { label: "FOLLOW", tone: "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" };
-  if (wr >= 74) return { label: "MONITOR", tone: "text-amber-300 border-amber-500/30 bg-amber-500/10" };
-  return { label: "IGNORE", tone: "text-red-300 border-red-500/30 bg-red-500/10" };
+  if (wr >= 88) return { label: t("smart.decision.follow"), tone: "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" };
+  if (wr >= 74) return { label: t("smart.decision.monitor"), tone: "text-amber-300 border-amber-500/30 bg-amber-500/10" };
+  return { label: t("smart.decision.ignore"), tone: "text-red-300 border-red-500/30 bg-red-500/10" };
 }
 
 const MIN_HORIZON_SAMPLE = 5;
@@ -48,17 +50,24 @@ function eventTargetInInteractive(t) {
 
 export default function SmartMoneyPage() {
   const router = useRouter();
+  const { locale, t } = useLocale();
+  const derivedNarrative = walletNarrativeApiLang(locale);
+  const [narrativeOverride, setNarrativeOverride] = useState(null);
+  const narrativeLang = narrativeOverride ?? derivedNarrative;
   const trending = useTrendingTokens();
   const [chain, setChain] = useState("solana");
   const [minWinRate, setMinWinRate] = useState(0);
   const [minTrades, setMinTrades] = useState(0);
   const [expandedWallet, setExpandedWallet] = useState("");
-  const [narrativeLang, setNarrativeLang] = useState("es");
   /** Evita error de hidratación: SSG/SSR y la primera capa de cliente usan el mismo límite/filtro; la query real se aplica al montar. */
   const [urlHydrated, setUrlHydrated] = useState(false);
   useEffect(() => {
     setUrlHydrated(true);
   }, []);
+
+  useEffect(() => {
+    setNarrativeOverride(null);
+  }, [locale]);
 
   const limit = useMemo(() => {
     if (!urlHydrated) return 50;
@@ -107,9 +116,9 @@ export default function SmartMoneyPage() {
     return rows.map((w, i) => ({
       ...w,
       rank: i + 1,
-      decision: walletDecision(w.winRate)
+      decision: walletDecision(w.winRate, t)
     }));
-  }, [rows]);
+  }, [rows, t]);
 
   const displayedRanked = useMemo(() => {
     const list = soloFavorites ? ranked.filter((w) => isFavorite(w.wallet)) : ranked;
@@ -123,6 +132,14 @@ export default function SmartMoneyPage() {
     });
   }, [ranked, soloFavorites, isFavorite, favKey]);
 
+  const heroRowsSuffix = useMemo(() => {
+    if (meta.count == null) return "";
+    return t("smart.hero.rowsMeta", {
+      count: meta.count,
+      limitHint: meta.limit != null ? t("smart.hero.limitHint", { limit: meta.limit }) : ""
+    });
+  }, [meta.count, meta.limit, t]);
+
   const onToggleExpand = useCallback((wallet) => {
     if (!wallet) return;
     setExpandedWallet((v) => (v === wallet ? "" : wallet));
@@ -130,48 +147,38 @@ export default function SmartMoneyPage() {
 
   return (
     <>
-      <PageHead
-        title="Smart Money Wallets — Sentinel Ledger"
-        description="Top Solana smart wallets by win rate, 30d PnL, ROI vs average ticket size, and recent signal flow."
-      />
+      <PageHead title={t("smart.pageTitle")} description={t("smart.pageDesc")} />
       <div className="sl-container py-10 space-y-6 pb-24">
         <section className="sl-home-hero sl-inset sm:p-7 ring-1 ring-white/[0.06]">
-          <p className="sl-label text-emerald-400/90">Smart Money</p>
+          <p className="sl-label text-emerald-400/90">{t("smart.label")}</p>
           <h1 className="sl-h1 text-white mt-2 tracking-tight">
             {soloFavorites
-              ? `Favoritos en el top ${limit}${
-                  displayedRanked.length > 0 ? ` · ${displayedRanked.length}` : ""
-                }`
-              : `Top ${limit} smart wallets`}
+              ? t("smart.hero.h1.favorites", {
+                  limit,
+                  suffix: displayedRanked.length > 0 ? ` · ${displayedRanked.length}` : ""
+                })
+              : t("smart.hero.h1.top", { limit })}
           </h1>
           <p className="sl-body sl-muted mt-2">
             {soloFavorites ? (
-              <span>
-                Sólo aparecen carteras <strong className="text-gray-300">favoritas que caen dentro de este top {limit}</strong>.
-                Si añadiste estrellas a wallets fuera de la ventana, súbela el límite (URL{" "}
-                <span className="font-mono text-gray-500">?limit=100</span>) o quita el filtro.
-              </span>
+              <span>{t("smart.hero.body.favorites", { limit })}</span>
             ) : (
               <span>
-                Ranked by win rate with 30d PnL, estimated return versus average position size, and best resolved signal
-                move when <span className="mono text-gray-400">result_pct</span> is populated. Source:{" "}
-                <span className="font-mono text-gray-400">{meta.source || "—"}</span>
-                {meta.count != null
-                  ? ` · ${meta.count} rows` + (meta.limit != null ? ` (límite API ${meta.limit})` : "")
-                  : ""}
-                .
+                {t("smart.hero.body.default", {
+                  source: meta.source || "—",
+                  rows: heroRowsSuffix
+                })}
               </span>
             )}{" "}
-            Toca o haz clic en fila o carta para el panel. Estrella = favorito local.{" "}
-            <span className="text-gray-500">URL: </span>
-            <code className="text-[11px] text-gray-500">/smart-money?limit=10–100</code>{" "}
-            <code className="text-[11px] text-gray-500">&amp;favorites=1</code>.
+            <span>{t("smart.hero.body.tail")}</span>
           </p>
           <p className="text-xs text-gray-500 mt-3">
-            Trending feed: {trending.isError ? "degraded" : "connected"} · Favoritos locales:{" "}
-            {favCount > 0 ? <span className="text-amber-200/90 font-mono">{favCount}</span> : "0"} ·{" "}
+            {t("smart.hero.trending", {
+              state: trending.isError ? t("smart.hero.trending.degraded") : t("smart.hero.trending.connected"),
+              fav: favCount > 0 ? String(favCount) : "0"
+            })}{" "}
             <button type="button" onClick={() => refetch()} className="text-cyan-400 hover:underline">
-              Refresh leaderboard
+              {t("smart.hero.refreshLb")}
             </button>
           </p>
         </section>
@@ -179,11 +186,11 @@ export default function SmartMoneyPage() {
         <section className="glass-card sl-inset space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm text-gray-300">
             <SlidersHorizontal size={16} className="text-gray-500" />
-            <span className="sl-label text-gray-400">Filters</span>
+            <span className="sl-label text-gray-400">{t("smart.filters.label")}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <label className="space-y-1.5 text-xs text-gray-400">
-              <span className="uppercase tracking-wide">Límite API (URL ?limit=)</span>
+              <span className="uppercase tracking-wide">{t("smart.filters.apiLimit")}</span>
               <select
                 className="sl-input w-full h-10 px-3"
                 value={String(limit)}
@@ -196,24 +203,24 @@ export default function SmartMoneyPage() {
                 <option value="10">10</option>
                 <option value="20">20</option>
                 <option value="30">30</option>
-                <option value="50">50 (default)</option>
+                <option value="50">{t("smart.select.default50")}</option>
                 <option value="75">75</option>
                 <option value="100">100</option>
               </select>
             </label>
             <label className="space-y-1.5 text-xs text-gray-400">
-              <span className="uppercase tracking-wide">Chain</span>
+              <span className="uppercase tracking-wide">{t("smart.filters.chain")}</span>
               <select
                 className="sl-input w-full h-10 px-3"
                 value={chain}
                 onChange={(e) => setChain(e.target.value)}
               >
-                <option value="solana">Solana</option>
-                <option value="all">All (same dataset)</option>
+                <option value="solana">{t("smart.filters.opt.solana")}</option>
+                <option value="all">{t("smart.filters.opt.all")}</option>
               </select>
             </label>
             <label className="space-y-1.5 text-xs text-gray-400">
-              <span className="uppercase tracking-wide">Min win rate %</span>
+              <span className="uppercase tracking-wide">{t("smart.filters.minWr")}</span>
               <input
                 type="number"
                 min={0}
@@ -225,7 +232,7 @@ export default function SmartMoneyPage() {
               />
             </label>
             <label className="space-y-1.5 text-xs text-gray-400">
-              <span className="uppercase tracking-wide">Min total trades</span>
+              <span className="uppercase tracking-wide">{t("smart.filters.minTrades")}</span>
               <input
                 type="number"
                 min={0}
@@ -236,11 +243,14 @@ export default function SmartMoneyPage() {
               />
             </label>
             <label className="space-y-1.5 text-xs text-gray-400">
-              <span className="uppercase tracking-wide">Narrative lang</span>
+              <span className="uppercase tracking-wide">{t("smart.filters.narrativeLang")}</span>
               <select
                 className="sl-input w-full h-10 px-3"
                 value={narrativeLang}
-                onChange={(e) => setNarrativeLang(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setNarrativeOverride(v === derivedNarrative ? null : v);
+                }}
               >
                 <option value="es">Español</option>
                 <option value="en">English</option>
@@ -257,53 +267,47 @@ export default function SmartMoneyPage() {
                 }}
                 disabled={!router.isReady}
               />
-              <span className="select-none">Sólo favoritos (en este top)</span>
+              <span className="select-none">{t("smart.filters.favoritesOnly")}</span>
             </label>
           </div>
-          <p className="text-[11px] text-gray-600">
-            ROI column is <span className="text-gray-400">30d PnL ÷ avg position size</span> — a coarse multiple, not
-            leverage-adjusted APR. El límite queda en la barra de direcciones; comparte el enlace.
-          </p>
+          <p className="text-[11px] text-gray-600">{t("smart.filters.roiNote")}</p>
         </section>
 
         {isLoading ? (
           <div className="glass-card sl-inset flex items-center justify-center gap-3 py-16 text-gray-400">
             <Loader2 className="animate-spin" size={22} />
-            Loading wallets…
+            {t("smart.loading")}
           </div>
         ) : null}
 
         {isError ? (
           <div className="glass-card sl-inset border border-red-500/30 text-red-200 text-sm py-6 px-4">
-            {error?.message || "Could not load leaderboard."}
+            {error?.message || t("smart.errorFallback")}
           </div>
         ) : null}
 
         {!isLoading && !isError && ranked.length === 0 ? (
           <section className="glass-card sl-inset text-center py-12 space-y-3">
-            <p className="text-gray-300">No rows match filters (or smart_wallets is empty).</p>
+            <p className="text-gray-300">{t("smart.empty.title")}</p>
             <p className="text-sm text-gray-500 max-w-lg mx-auto">
-              Run <code className="text-gray-400">npm run seed:terminal-home</code> in backend, or widen filters.
+              {t("smart.empty.hint")}
             </p>
             <Link href="/pricing" className="btn-pro inline-flex no-underline mt-2">
-              Upgrade for token-level smart money
+              {t("smart.empty.upgrade")}
             </Link>
           </section>
         ) : null}
 
         {!isLoading && !isError && ranked.length > 0 && displayedRanked.length === 0 && soloFavorites ? (
           <section className="glass-card sl-inset text-center py-12 space-y-3 border border-amber-500/20">
-            <p className="text-gray-200">Ningún favorito entra en el top {limit} ahora.</p>
-            <p className="text-sm text-gray-500 max-w-lg mx-auto">
-              Sube <span className="text-gray-400">limit</span> a 100, desmarca “Sólo favoritos”, o marca estrella en
-              filas de esta tabla y vuelve a activar el filtro.
-            </p>
+            <p className="text-gray-200">{t("smart.favEmpty.title", { limit })}</p>
+            <p className="text-sm text-gray-500 max-w-lg mx-auto">{t("smart.favEmpty.hint")}</p>
             <button
               type="button"
               className="text-cyan-400 text-sm hover:underline"
               onClick={() => pushQuery({ favorites: undefined })}
             >
-              Quitar filtro de favoritos
+              {t("smart.favEmpty.clear")}
             </button>
           </section>
         ) : null}
@@ -314,19 +318,19 @@ export default function SmartMoneyPage() {
               <table className="w-full min-w-[1200px] text-sm">
                 <thead>
                   <tr className="text-left text-gray-500 border-b border-white/10">
-                    <th className="py-2 pr-1 w-8 text-center" title="Favorito (local)">
+                    <th className="py-2 pr-1 w-8 text-center" title={t("smart.th.fav")}>
                       ★
                     </th>
-                    <th className="py-2 pr-2 w-10">#</th>
-                    <th className="py-2 pr-3">Wallet</th>
-                    <th className="py-2 pr-3">Win rate</th>
-                    <th className="py-2 pr-3">WR real 5m/30m/2h</th>
-                    <th className="py-2 pr-3">30d ROI†</th>
-                    <th className="py-2 pr-3">30d PnL</th>
-                    <th className="py-2 pr-3">Trades</th>
-                    <th className="py-2 pr-3">Best trade</th>
-                    <th className="py-2 pr-3">Last seen</th>
-                    <th className="py-2 min-w-[160px]">Call</th>
+                    <th className="py-2 pr-2 w-10">{t("smart.th.rank")}</th>
+                    <th className="py-2 pr-3">{t("smart.th.wallet")}</th>
+                    <th className="py-2 pr-3">{t("smart.th.winRate")}</th>
+                    <th className="py-2 pr-3">{t("smart.th.wrReal")}</th>
+                    <th className="py-2 pr-3">{t("smart.th.roi")}</th>
+                    <th className="py-2 pr-3">{t("smart.th.pnl")}</th>
+                    <th className="py-2 pr-3">{t("smart.th.trades")}</th>
+                    <th className="py-2 pr-3">{t("smart.th.best")}</th>
+                    <th className="py-2 pr-3">{t("smart.th.lastSeen")}</th>
+                    <th className="py-2 min-w-[160px]">{t("smart.th.call")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -356,9 +360,9 @@ export default function SmartMoneyPage() {
                               toggleFavorite(w.wallet);
                             }}
                             className="inline-flex p-1 rounded-md hover:bg-amber-500/15 text-gray-500 hover:text-amber-200 transition"
-                            title={isFavorite(w.wallet) ? "Quitar de favoritos" : "Añadir a favoritos (solo en este dispositivo)"}
+                            title={isFavorite(w.wallet) ? t("smart.fav.removeTitle") : t("smart.fav.addTitle")}
                             aria-pressed={isFavorite(w.wallet)}
-                            aria-label="Favorito"
+                            aria-label={t("smart.fav.aria")}
                           >
                             <Star
                               size={16}
@@ -375,9 +379,9 @@ export default function SmartMoneyPage() {
                               <span className="text-gray-200">#{w.rank}</span>
                               <div
                                 className="text-[10px] text-gray-600"
-                                title={`Puesto en el top ${limit} (ranking completo de la API)`}
+                                title={t("smart.globalRankTitle", { limit })}
                               >
-                                global {w.globalRank}
+                                {t("smart.global")} {w.globalRank}
                               </div>
                             </div>
                           ) : (
@@ -413,12 +417,12 @@ export default function SmartMoneyPage() {
                               </div>
                               {hasLowHorizonSample(w.profile) ? (
                                 <div className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border border-amber-500/35 bg-amber-500/10 text-amber-200">
-                                  Low sample
+                                  {t("smart.lowSample")}
                                 </div>
                               ) : null}
                             </div>
                           ) : (
-                            <span className="text-gray-600">pending</span>
+                            <span className="text-gray-600">{t("smart.pending")}</span>
                           )}
                         </td>
                         <td className="py-3 pr-3 text-cyan-200/90 tabular-nums">{Number(w.roi30dVsAvgSize || 0).toFixed(2)}×</td>
@@ -452,14 +456,14 @@ export default function SmartMoneyPage() {
                               href={`/wallet/${w.wallet}?lang=${narrativeLang}#behavior-memory`}
                               className="text-[11px] px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
                             >
-                              Behavior
+                              {t("smart.behavior")}
                             </Link>
                             <button
                               type="button"
                               onClick={() => onToggleExpand(w.wallet)}
                               className="text-[11px] px-2 py-1 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
                             >
-                              {expandedWallet === w.wallet ? "Cerrar panel" : "Abrir panel"}
+                              {expandedWallet === w.wallet ? t("smart.panel.close") : t("smart.panel.open")}
                             </button>
                           </div>
                           {w.profile ? (
@@ -479,7 +483,7 @@ export default function SmartMoneyPage() {
                       {expandedWallet === w.wallet ? (
                         <tr className="border-b border-white/5 bg-white/[0.02]">
                           <td colSpan={11} className="px-3 py-4">
-                            <p className="text-xs text-violet-200/80 font-semibold mb-3">Detalle completo</p>
+                            <p className="text-xs text-violet-200/80 font-semibold mb-3">{t("smart.detail.title")}</p>
                             <SmartWalletDetailPanel
                               row={w}
                               labelFor={labelFor}
@@ -487,7 +491,7 @@ export default function SmartMoneyPage() {
                               narrativeLang={narrativeLang}
                             />
                             <div className="mt-4 border-t border-white/10 pt-4">
-                              <p className="text-xs text-violet-200/80 font-semibold mb-2">Narrativa asistida</p>
+                              <p className="text-xs text-violet-200/80 font-semibold mb-2">{t("smart.narrative.title")}</p>
                               <WalletNarrativeCard walletAddress={w.wallet} lang={narrativeLang} />
                             </div>
                           </td>
@@ -523,7 +527,9 @@ export default function SmartMoneyPage() {
                       <p className="text-white font-semibold truncate" title={titleFor(w.wallet)}>
                         #{w.rank}
                         {soloFavorites ? (
-                          <span className="text-gray-500 font-normal text-xs ml-1">(global {w.globalRank})</span>
+                          <span className="text-gray-500 font-normal text-xs ml-1">
+                            ({t("smart.global")} {w.globalRank})
+                          </span>
                         ) : null}{" "}
                         ·{" "}
                         <Link
@@ -544,9 +550,9 @@ export default function SmartMoneyPage() {
                           toggleFavorite(w.wallet);
                         }}
                         className="inline-flex p-1.5 rounded-lg hover:bg-amber-500/15 text-gray-500 hover:text-amber-200"
-                        title={isFavorite(w.wallet) ? "Quitar de favoritos" : "Favorito (local)"}
+                        title={isFavorite(w.wallet) ? t("smart.fav.removeTitle") : t("smart.fav.mobileTitle")}
                         aria-pressed={isFavorite(w.wallet)}
-                        aria-label="Favorito"
+                        aria-label={t("smart.fav.aria")}
                       >
                         <Star
                           size={18}
@@ -558,9 +564,15 @@ export default function SmartMoneyPage() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs text-gray-300">
-                    <span>Win {w.winRate.toFixed(1)}%</span>
-                    <span>ROI† {Number(w.roi30dVsAvgSize || 0).toFixed(2)}×</span>
-                    <span>Trades {w.totalTrades ?? "—"}</span>
+                    <span>
+                      {t("smart.mobile.win")} {w.winRate.toFixed(1)}%
+                    </span>
+                    <span>
+                      {t("smart.mobile.roi")} {Number(w.roi30dVsAvgSize || 0).toFixed(2)}×
+                    </span>
+                    <span>
+                      {t("smart.mobile.trades")} {w.totalTrades ?? "—"}
+                    </span>
                     <span className="text-gray-500">{w.lastSeen ? formatDateTime(w.lastSeen) : "—"}</span>
                   </div>
                   {w.profile ? (
@@ -571,36 +583,39 @@ export default function SmartMoneyPage() {
                       </p>
                       {hasLowHorizonSample(w.profile) ? (
                         <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border border-amber-500/35 bg-amber-500/10 text-amber-200">
-                          Low sample (n&lt;{MIN_HORIZON_SAMPLE})
+                          {t("smart.lowSampleMobile", { n: MIN_HORIZON_SAMPLE })}
                         </span>
                       ) : null}
                     </div>
                   ) : null}
-                  <p className="text-emerald-300 text-sm font-mono">+${formatUsdWhole(w.pnl30d)} 30d</p>
+                  <p className="text-emerald-300 text-sm font-mono">
+                    +${formatUsdWhole(w.pnl30d)} {t("smart.mobile.pnl30")}
+                  </p>
                   <div onClick={(e) => e.stopPropagation()}>
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
                         href={`/wallet/${w.wallet}?lang=${narrativeLang}#behavior-memory`}
                         className="text-[11px] px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
                       >
-                        Behavior
+                        {t("smart.behavior")}
                       </Link>
                       <button
                         type="button"
                         onClick={() => onToggleExpand(w.wallet)}
                         className="text-[11px] px-2 py-1 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
                       >
-                        {expandedWallet === w.wallet ? "Cerrar panel" : "Abrir panel completo"}
+                        {expandedWallet === w.wallet ? t("smart.panel.close") : t("smart.panel.openFull")}
                       </button>
                     </div>
                   </div>
                   {w.bestTradePct != null ? (
                     <p className="text-[11px] text-gray-400">
-                      Best signal: <span className="text-emerald-300">+{w.bestTradePct.toFixed(1)}%</span>
+                      {t("smart.mobile.bestSignal")}{" "}
+                      <span className="text-emerald-300">+{w.bestTradePct.toFixed(1)}%</span>
                       {w.bestTradeMint ? (
                         <>
                           {" "}
-                          on{" "}
+                          {t("smart.mobile.on")}{" "}
                           <Link
                             href={`/token/${w.bestTradeMint}`}
                             className="text-cyan-300 hover:underline mono"
@@ -614,7 +629,7 @@ export default function SmartMoneyPage() {
                   ) : null}
                   {expandedWallet === w.wallet ? (
                     <div className="pt-2 space-y-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
-                      <p className="text-xs text-violet-200/80 font-semibold">Detalle completo</p>
+                      <p className="text-xs text-violet-200/80 font-semibold">{t("smart.detail.title")}</p>
                       <SmartWalletDetailPanel
                         row={w}
                         labelFor={labelFor}
@@ -622,7 +637,7 @@ export default function SmartMoneyPage() {
                         narrativeLang={narrativeLang}
                       />
                       <div className="border-t border-white/10 pt-3">
-                        <p className="text-xs text-violet-200/80 font-semibold mb-2">Narrativa asistida</p>
+                        <p className="text-xs text-violet-200/80 font-semibold mb-2">{t("smart.narrative.title")}</p>
                         <WalletNarrativeCard walletAddress={w.wallet} lang={narrativeLang} />
                       </div>
                     </div>
@@ -637,27 +652,27 @@ export default function SmartMoneyPage() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="sl-label inline-flex items-center gap-2 text-gray-200">
               <Radio size={14} className="text-purple-300" />
-              Recent activity
+              {t("smart.activity.label")}
             </p>
             <button
               type="button"
               onClick={() => activity.refetch()}
               className="text-xs text-cyan-400 hover:underline"
             >
-              Refresh feed
+              {t("smart.activity.refresh")}
             </button>
           </div>
           {activity.isLoading ? (
             <div className="flex items-center gap-2 text-gray-500 text-sm py-6">
               <Loader2 className="animate-spin" size={18} />
-              Loading latest touches…
+              {t("smart.activity.loading")}
             </div>
           ) : null}
           {activity.isError ? (
-            <p className="text-sm text-red-300">{activity.error?.message || "Activity unavailable."}</p>
+            <p className="text-sm text-red-300">{activity.error?.message || t("smart.activity.error")}</p>
           ) : null}
           {!activity.isLoading && !activity.isError && actRows.length === 0 ? (
-            <p className="text-sm text-gray-500">No recent rows in smart_wallet_signals.</p>
+            <p className="text-sm text-gray-500">{t("smart.activity.empty")}</p>
           ) : null}
           {!activity.isLoading && !activity.isError && actRows.length > 0 ? (
             <ul className="divide-y divide-white/[0.06] border border-white/[0.06] rounded-xl overflow-hidden">

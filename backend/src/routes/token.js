@@ -11,6 +11,7 @@ const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 const { getSmartWalletsForToken } = require("../services/smartMoneyService");
 const { computeTerminalSignal } = require("../lib/tokenTerminalSignal");
 const { getConvergenceState } = require("../services/convergenceService");
+const { pairCreatedRawToUnixMs } = require("../lib/pairTime");
 
 const router = express.Router();
 const { fetchTrendingList } = require("../services/trendingList");
@@ -145,6 +146,8 @@ router.get("/:address", async (req, res) => {
           priceChange24h: marketData.priceChange24h,
           symbol: marketData.symbol,
           name: marketData.name,
+          // Always Unix **ms** (re-normalize so seconds from any source never leak)
+          pairCreatedAt: pairCreatedRawToUnixMs(marketData.pairCreatedAt) ?? null,
           lpLocked: marketData.lpLocked,
           lpLockDuration: marketData.lpLockDuration,
           lpLockDetail: marketData.lpLockDetail || null,

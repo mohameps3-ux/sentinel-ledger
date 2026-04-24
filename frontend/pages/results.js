@@ -2,19 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHead } from "../components/seo/PageHead";
 import { getPublicApiUrl } from "../lib/publicRuntime";
+import { useLocale } from "../contexts/LocaleContext";
 
-const FILTERS = [
-  { id: "all", label: "All" },
-  { id: "win", label: "WIN only" },
-  { id: "loss", label: "LOSS only" },
-  { id: "24h", label: "Last 24h" },
-  { id: "week", label: "Last week" }
-];
-
-function statusBadge(status) {
-  if (status === "WIN") return <span className="text-emerald-300 font-mono">✅ WIN</span>;
-  if (status === "LOSS") return <span className="text-red-300 font-mono">❌ LOSS</span>;
-  return <span className="text-gray-400 font-mono">⏳ PENDING</span>;
+function statusBadge(status, t) {
+  if (status === "WIN") return <span className="text-emerald-300 font-mono">{t("results.status.win")}</span>;
+  if (status === "LOSS") return <span className="text-red-300 font-mono">{t("results.status.loss")}</span>;
+  return <span className="text-gray-400 font-mono">{t("results.status.pending")}</span>;
 }
 
 function fmtPrice(v) {
@@ -33,8 +26,20 @@ function fmtPct(v) {
 }
 
 export default function ResultsPage() {
+  const { t } = useLocale();
   const [filter, setFilter] = useState("all");
   const [data, setData] = useState({ rows: [], winRate7d: null, count7d: 0, loading: true, error: null });
+
+  const filters = useMemo(
+    () => [
+      { id: "all", label: t("results.filter.all") },
+      { id: "win", label: t("results.filter.win") },
+      { id: "loss", label: t("results.filter.loss") },
+      { id: "24h", label: t("results.filter.24h") },
+      { id: "week", label: t("results.filter.week") }
+    ],
+    [t]
+  );
 
   const load = useCallback(async () => {
     setData((d) => ({ ...d, loading: true, error: null }));
@@ -61,32 +66,25 @@ export default function ResultsPage() {
   const badge = useMemo(() => {
     const wr = data.winRate7d;
     const n = data.count7d;
-    if (wr == null || !n) return "Win rate last 7 days: — (no resolved signals yet)";
-    return `Win rate last 7 days: ${wr}% (${n} signals)`;
-  }, [data.winRate7d, data.count7d]);
+    if (wr == null || !n) return t("results.badge.empty");
+    return t("results.badge.withData", { wr, n });
+  }, [data.winRate7d, data.count7d, t]);
 
   return (
     <>
-      <PageHead
-        title="Verified Results — Sentinel Ledger"
-        description="Real win rate of Sentinel Ledger signals. On-chain data, not promises."
-      />
+      <PageHead title={t("results.pageTitle")} description={t("results.pageDesc")} />
       <div className="sl-container py-8 sm:py-10 pb-28 space-y-6">
         <header className="space-y-2">
-          <p className="sl-label">Transparency</p>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            LIVE SIGNALS — VERIFIED ON-CHAIN RESULTS
-          </h1>
-          <p className="text-gray-400 max-w-2xl">
-            Not predictions. Real outcomes from signals tied to wallets that move markets.
-          </p>
+          <p className="sl-label">{t("results.label")}</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{t("results.h1")}</h1>
+          <p className="text-gray-400 max-w-2xl">{t("results.sub")}</p>
           <p className="text-sm font-mono text-emerald-300/90 border border-emerald-500/25 rounded-lg px-3 py-2 inline-block bg-emerald-500/10">
             {badge}
           </p>
         </header>
 
         <div className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => (
+          {filters.map((f) => (
             <button
               key={f.id}
               type="button"
@@ -104,28 +102,26 @@ export default function ResultsPage() {
         </div>
 
         {data.error ? <p className="text-sm text-red-300">{data.error}</p> : null}
-        {data.loading ? <p className="text-sm text-gray-500">Loading…</p> : null}
+        {data.loading ? <p className="text-sm text-gray-500">{t("results.loading")}</p> : null}
 
         <div className="hidden lg:block overflow-x-auto rounded-xl border border-white/10">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-500 border-b border-white/10">
-                <th className="py-3 pr-3">Token</th>
-                <th className="py-3 pr-3">Signal time</th>
-                <th className="py-3 pr-3">Entry</th>
-                <th className="py-3 pr-3">1h</th>
-                <th className="py-3 pr-3">4h</th>
-                <th className="py-3 pr-3">Result</th>
-                <th className="py-3">Status</th>
+                <th className="py-3 pr-3">{t("results.th.token")}</th>
+                <th className="py-3 pr-3">{t("results.th.signalTime")}</th>
+                <th className="py-3 pr-3">{t("results.th.entry")}</th>
+                <th className="py-3 pr-3">{t("results.th.1h")}</th>
+                <th className="py-3 pr-3">{t("results.th.4h")}</th>
+                <th className="py-3 pr-3">{t("results.th.result")}</th>
+                <th className="py-3">{t("results.th.status")}</th>
               </tr>
             </thead>
             <tbody>
               {data.rows.length === 0 && !data.loading ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-gray-500">
-                    No signals yet. Run{" "}
-                    <code className="text-gray-400">public_surface_enhancements.sql</code> and backfill prices, or wait
-                    for live inserts.
+                    {t("results.empty")}
                   </td>
                 </tr>
               ) : (
@@ -139,7 +135,7 @@ export default function ResultsPage() {
                     <td className="py-3 pr-3 font-mono">{fmtPrice(r.price1h)}</td>
                     <td className="py-3 pr-3 font-mono">{fmtPrice(r.price4h)}</td>
                     <td className="py-3 pr-3 font-mono">{fmtPct(r.resultPct)}</td>
-                    <td className="py-3">{statusBadge(r.status)}</td>
+                    <td className="py-3">{statusBadge(r.status, t)}</td>
                   </tr>
                 ))
               )}
@@ -155,11 +151,15 @@ export default function ResultsPage() {
             >
               <div className="flex justify-between gap-2">
                 <span className="text-gray-200">{r.token?.slice(0, 6)}…</span>
-                {statusBadge(r.status)}
+                {statusBadge(r.status, t)}
               </div>
               <p className="text-xs text-gray-500">{r.signalAt ? new Date(r.signalAt).toLocaleString() : ""}</p>
               <p>
-                Entry {fmtPrice(r.entryPrice)} · 1h {fmtPrice(r.price1h)} · 4h {fmtPrice(r.price4h)}
+                {t("results.mobile.entryLine", {
+                  e: fmtPrice(r.entryPrice),
+                  h1: fmtPrice(r.price1h),
+                  h4: fmtPrice(r.price4h)
+                })}
               </p>
               <p className="text-emerald-300">{fmtPct(r.resultPct)}</p>
             </div>
@@ -168,11 +168,9 @@ export default function ResultsPage() {
 
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0B0B0E]/95 backdrop-blur-md py-3 px-4 safe-bottom-pad">
           <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-sm">
-            <span className="text-gray-300 text-center sm:text-left">
-              Want signals before they pump? → PRO from $9.99/mo
-            </span>
+            <span className="text-gray-300 text-center sm:text-left">{t("results.stickyLine")}</span>
             <Link href="/pricing" className="btn-pro inline-flex text-center no-underline">
-              Upgrade to PRO
+              {t("results.upgradePro")}
             </Link>
           </div>
         </div>

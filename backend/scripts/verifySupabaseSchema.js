@@ -3,7 +3,15 @@
  * Also verifies RLS is enabled on coordination_outcomes, wallet_behavior_stats, wallet_coordination_pairs when present
  * (migrations 013–015 / rls_public_lockdown.sql).
  */
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+const { tryResolvePostgresUrlFromSupabaseEnv } = require(path.join(
+  __dirname,
+  "..",
+  "src",
+  "lib",
+  "resolvePostgresUrlFromSupabase"
+));
 const { Client } = require("pg");
 
 const TABLES = [
@@ -16,9 +24,9 @@ const TABLES = [
 ];
 
 async function main() {
-  const url = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
+  const url = String(tryResolvePostgresUrlFromSupabaseEnv(process.env) || "").trim();
   if (!url) {
-    console.error("Missing DATABASE_URL or SUPABASE_DATABASE_URL");
+    console.error("Missing DATABASE_URL, or SUPABASE_URL + SUPABASE_DB_PASSWORD, in backend/.env");
     process.exit(1);
   }
   const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
@@ -59,6 +67,24 @@ async function main() {
         console.error(`FAIL: smart_wallets.${c}`);
         failed += 1;
       } else console.log(`OK: smart_wallets.${c}`);
+    }
+
+    const { rows: swsigReg } = await client.query("SELECT to_regclass($1) AS r", ["public.smart_wallet_signals"]);
+    if (swsigReg[0]?.r) {
+      const sswCols = ["min_price_window_usd", "max_price_window_usd"];
+      for (const c of sswCols) {
+        const { rows } = await client.query(
+          `SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'smart_wallet_signals' AND column_name = $1`,
+          [c]
+        );
+        if (rows.length === 0) {
+          console.error(`FAIL: smart_wallet_signals.${c} (run migration 016 / npm run db:ensure-signal-performance)`);
+          failed += 1;
+        } else console.log(`OK: smart_wallet_signals.${c}`);
+      }
+    } else {
+      console.log("SKIP: smart_wallet_signals (table not present)");
     }
 
     // If these tables exist, RLS must be ON (migrations 013/014/015 or rls_public_lockdown.sql).

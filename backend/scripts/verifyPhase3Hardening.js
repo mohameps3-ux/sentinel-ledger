@@ -1,12 +1,21 @@
 #!/usr/bin/env node
 "use strict";
 
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+const { tryResolvePostgresUrlFromSupabaseEnv } = require(path.join(
+  __dirname,
+  "..",
+  "src",
+  "lib",
+  "resolvePostgresUrlFromSupabase"
+));
 const { Client } = require("pg");
 
 const BASE = "https://sentinel-ledger-backend-production.up.railway.app";
 
 async function main() {
-  const url = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
+  const url = String(tryResolvePostgresUrlFromSupabaseEnv(process.env) || "").trim() || null;
   const opsKey = process.env.OMNI_BOT_OPS_KEY || "";
   if (!url) throw new Error("missing database url");
   if (!opsKey) throw new Error("missing OMNI_BOT_OPS_KEY");

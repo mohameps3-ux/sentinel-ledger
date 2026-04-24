@@ -284,6 +284,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       if (sig._liveSource === "hot_fill") hotFill.push(sig);
       else signals.push(sig);
     }
+    // Product: ordering is by network / signal strength only. Tactical (execution) regime does not affect rank — see TacticalRegimePill on cards (display-only).
+    // Product: order is by network signal only; tactical (execution) regime is display-only on cards, not a sort key.
     signals.sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
     hotFill.sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
     return [...signals, ...hotFill];

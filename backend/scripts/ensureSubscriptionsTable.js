@@ -3,15 +3,24 @@
  * Set DATABASE_URL in backend/.env — Supabase → Project Settings → Database → URI (Session mode or Transaction).
  * Or run supabase/payments_and_pro.sql manually in SQL Editor.
  */
-require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+const { tryResolvePostgresUrlFromSupabaseEnv } = require(path.join(
+  __dirname,
+  "..",
+  "src",
+  "lib",
+  "resolvePostgresUrlFromSupabase"
+));
 
 async function main() {
   const { Client } = require("pg");
-  const url = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
+  const url = String(tryResolvePostgresUrlFromSupabaseEnv(process.env) || "").trim();
   if (!url) {
-    console.error("Missing DATABASE_URL or SUPABASE_DATABASE_URL in .env");
+    console.error(
+      "Missing Postgres connection: set DATABASE_URL, or SUPABASE_URL + SUPABASE_DB_PASSWORD, in backend/.env (see .env.example)."
+    );
     process.exit(1);
   }
   const sqlPath = path.join(__dirname, "..", "..", "supabase", "payments_and_pro.sql");

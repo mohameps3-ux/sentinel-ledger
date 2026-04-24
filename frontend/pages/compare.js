@@ -8,6 +8,7 @@ import { useWatchlist } from "../hooks/useWatchlist";
 import { formatDateTime, formatUsdWhole } from "../lib/formatStable";
 import { ProButton } from "../components/ui/ProButton";
 import { PageHead } from "../components/seo/PageHead";
+import { useLocale } from "../contexts/LocaleContext";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -45,6 +46,7 @@ function MetricRow({ label, left, right, higherIsBetter = true, formatter = (v) 
 }
 
 export default function ComparePage() {
+  const { t } = useLocale();
   const router = useRouter();
   const leftParam = typeof router.query.left === "string" ? router.query.left : "";
   const rightParam = typeof router.query.right === "string" ? router.query.right : "";
@@ -113,12 +115,12 @@ export default function ComparePage() {
       const nextAlerts = [alert, ...rotationAlerts].slice(0, 8);
       setRotationAlerts(nextAlerts);
       localStorage.setItem("sentinel-rotation-alerts", JSON.stringify(nextAlerts));
-      toast(`Rotation alert: edge moved to ${selected}`);
+      toast(t("compare.toast.rotation", { symbol: selected }));
     }
     map[pairKey] = winner;
     localStorage.setItem(storageKey, JSON.stringify(map));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [winner, leftToken, rightToken]);
+  }, [winner, leftToken, rightToken, t]);
 
   const onCompare = (e) => {
     e.preventDefault();
@@ -139,16 +141,16 @@ export default function ComparePage() {
         const next = watchlistLocal.filter((w) => w !== mint);
         setWatchlistLocal(next);
         localStorage.setItem("sentinel-watchlist-cache", JSON.stringify(next));
-        toast.success("Removed from watchlist.");
+        toast.success(t("compare.toast.removed"));
       } else {
         await addToWatchlist(mint);
         const next = [mint, ...watchlistLocal.filter((w) => w !== mint)].slice(0, 20);
         setWatchlistLocal(next);
         localStorage.setItem("sentinel-watchlist-cache", JSON.stringify(next));
-        toast.success("Added to watchlist.");
+        toast.success(t("compare.toast.added"));
       }
     } catch (_) {
-      toast.error("Connect wallet/login for watchlist sync.");
+      toast.error(t("compare.toast.watchErr"));
     }
   };
 
@@ -160,10 +162,7 @@ export default function ComparePage() {
 
   return (
     <>
-      <PageHead
-        title="Token compare — Sentinel Ledger"
-        description="Side-by-side Solana token analysis: grades, liquidity, holders, deployer risk, and momentum."
-      />
+      <PageHead title={t("compare.pageTitle")} description={t("compare.pageDesc")} />
     <div className="sl-container sl-container-wide py-8 md:py-10 space-y-8">
       <section className="glass-card sl-inset">
         <div className="flex items-start gap-4 mb-8">
@@ -171,34 +170,32 @@ export default function ComparePage() {
             <ArrowLeftRight size={22} className="text-purple-200" />
           </div>
           <div>
-            <p className="sl-label">Laboratory</p>
-            <h1 className="sl-h1 text-white mt-1">Token compare lab</h1>
-            <p className="sl-body sl-muted mt-2 max-w-2xl">
-              Paste two mints and run a full differential — grades, liquidity, holders and deployer risk.
-            </p>
+            <p className="sl-label">{t("compare.hero.label")}</p>
+            <h1 className="sl-h1 text-white mt-1">{t("compare.hero.h1")}</h1>
+            <p className="sl-body sl-muted mt-2 max-w-2xl">{t("compare.hero.body")}</p>
           </div>
         </div>
         <form onSubmit={onCompare} className="grid md:grid-cols-[1fr_1fr_auto] gap-4 items-stretch md:items-end">
           <div>
-            <p className="sl-label mb-2">Token A</p>
+            <p className="sl-label mb-2">{t("compare.form.tokenA")}</p>
             <input
               value={leftAddress}
               onChange={(e) => setLeftAddress(e.target.value)}
-              placeholder="Mint address…"
+              placeholder={t("compare.form.placeholder")}
               className="sl-input h-12 px-4"
             />
           </div>
           <div>
-            <p className="sl-label mb-2">Token B</p>
+            <p className="sl-label mb-2">{t("compare.form.tokenB")}</p>
             <input
               value={rightAddress}
               onChange={(e) => setRightAddress(e.target.value)}
-              placeholder="Mint address…"
+              placeholder={t("compare.form.placeholder")}
               className="sl-input h-12 px-4"
             />
           </div>
           <ProButton type="submit" className="h-12 md:mb-0 w-full md:w-auto justify-center">
-            Compare
+            {t("compare.form.submit")}
           </ProButton>
         </form>
       </section>
@@ -206,10 +203,10 @@ export default function ComparePage() {
       <section className="glass-card sl-inset">
         <div className="flex items-center gap-3 mb-5">
           <Star size={18} className="text-purple-300" />
-          <h2 className="sl-h2 text-white">Watchlist comparables</h2>
+          <h2 className="sl-h2 text-white">{t("compare.watchlist.h2")}</h2>
         </div>
         {!watchlistLocal.length ? (
-          <div className="text-sm text-gray-500">No cached watchlist yet. Add tokens from compare cards below.</div>
+          <div className="text-sm text-gray-500">{t("compare.watchlist.empty")}</div>
         ) : (
           <div className="flex flex-wrap gap-2">
             {watchlistLocal.map((mint) => (
@@ -230,12 +227,12 @@ export default function ComparePage() {
         {[leftToken, rightToken].map((token, idx) => (
           <div key={idx} className="glass-card sl-inset flex flex-col gap-5" translate="no">
             {!token ? (
-              <div className="sl-body sl-muted py-6 text-center">No data available yet.</div>
+              <div className="sl-body sl-muted py-6 text-center">{t("compare.card.noData")}</div>
             ) : (
               <>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="sl-label">Symbol</p>
+                    <p className="sl-label">{t("compare.card.symbol")}</p>
                     <div className="sl-h2 text-white mt-1" translate="no">
                       {token.market?.symbol || "TOKEN"}
                     </div>
@@ -245,15 +242,15 @@ export default function ComparePage() {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="sl-label">Sentinel score</p>
+                    <p className="sl-label">{t("compare.card.score")}</p>
                     <div className="text-3xl font-bold text-white mt-1">{idx === 0 ? leftScore : rightScore}</div>
                   </div>
                 </div>
                 <div className="sl-divider" />
                 <div className="sl-body text-gray-300">
-                  Grade <span className="font-semibold text-white">{token.analysis?.grade || "—"}</span>
+                  {t("compare.card.grade")} <span className="font-semibold text-white">{token.analysis?.grade || "—"}</span>
                   <span className="text-gray-600 mx-2">·</span>
-                  Confidence{" "}
+                  {t("compare.card.confidence")}{" "}
                   <span className="font-semibold text-white">{safeNum(token.analysis?.confidence)}%</span>
                 </div>
                 <button
@@ -267,8 +264,8 @@ export default function ComparePage() {
                   }
                 >
                   {watchlistLocal.includes((idx === 0 ? leftAddress : rightAddress).trim())
-                    ? "Remove from watchlist"
-                    : "Add to watchlist"}
+                    ? t("compare.watch.remove")
+                    : t("compare.watch.add")}
                 </button>
               </>
             )}
@@ -277,49 +274,49 @@ export default function ComparePage() {
       </section>
 
       <section className="glass-card sl-inset overflow-x-auto">
-        <h2 className="sl-h2 text-white mb-6">Differential metrics</h2>
+        <h2 className="sl-h2 text-white mb-6">{t("compare.metrics.h2")}</h2>
         {!leftToken || !rightToken ? (
-          <div className="text-sm text-gray-500">Load both tokens to see side-by-side metrics.</div>
+          <div className="text-sm text-gray-500">{t("compare.metrics.loadBoth")}</div>
         ) : (
           <div className="min-w-[360px]">
             <div className="grid grid-cols-[minmax(140px,1fr)_auto_auto] gap-3 pb-2 mb-1 border-b soft-divider text-xs uppercase tracking-wide text-gray-500">
-              <span>Metric</span>
-              <span>A</span>
-              <span>B</span>
+              <span>{t("compare.metrics.th.metric")}</span>
+              <span>{t("compare.metrics.th.a")}</span>
+              <span>{t("compare.metrics.th.b")}</span>
             </div>
             <MetricRow
-              label="Sentinel score"
+              label={t("compare.metric.score")}
               left={leftScore}
               right={rightScore}
               formatter={(v) => `${v}/100`}
             />
             <MetricRow
-              label="Confidence"
+              label={t("compare.metric.confidence")}
               left={safeNum(leftToken.analysis?.confidence)}
               right={safeNum(rightToken.analysis?.confidence)}
               formatter={(v) => `${v}%`}
             />
             <MetricRow
-              label="Liquidity"
+              label={t("compare.metric.liquidity")}
               left={safeNum(leftToken.market?.liquidity)}
               right={safeNum(rightToken.market?.liquidity)}
               formatter={(v) => `$${formatUsdWhole(v)}`}
             />
             <MetricRow
-              label="24h volume"
+              label={t("compare.metric.vol24")}
               left={safeNum(leftToken.market?.volume24h)}
               right={safeNum(rightToken.market?.volume24h)}
               formatter={(v) => `$${formatUsdWhole(v)}`}
             />
             <MetricRow
-              label="Top10 concentration (lower better)"
+              label={t("compare.metric.top10")}
               left={safeNum(leftToken.holders?.top10Percentage)}
               right={safeNum(rightToken.holders?.top10Percentage)}
               higherIsBetter={false}
               formatter={(v) => `${v.toFixed(1)}%`}
             />
             <MetricRow
-              label="Deployer risk (lower better)"
+              label={t("compare.metric.deployer")}
               left={safeNum(leftToken.deployer?.riskScore)}
               right={safeNum(rightToken.deployer?.riskScore)}
               higherIsBetter={false}
@@ -330,24 +327,24 @@ export default function ComparePage() {
       </section>
 
       <section className="glass-card p-5 overflow-x-auto">
-        <h2 className="text-lg font-semibold mb-3">Benchmark vs SOL / USDC</h2>
+        <h2 className="text-lg font-semibold mb-3">{t("compare.benchmark.h2")}</h2>
         {!leftToken || !rightToken ? (
-          <div className="text-sm text-gray-500">Load both tokens to benchmark against majors.</div>
+          <div className="text-sm text-gray-500">{t("compare.benchmark.loadBoth")}</div>
         ) : (
           <div className="space-y-2 text-sm min-w-[360px]">
             <div className="grid grid-cols-[minmax(140px,1fr)_auto_auto] gap-3 pb-2 mb-1 border-b soft-divider text-xs uppercase tracking-wide text-gray-500">
-              <span>Relative edge</span>
-              <span>A</span>
-              <span>B</span>
+              <span>{t("compare.benchmark.th.edge")}</span>
+              <span>{t("compare.metrics.th.a")}</span>
+              <span>{t("compare.metrics.th.b")}</span>
             </div>
             <MetricRow
-              label="vs SOL score delta"
+              label={t("compare.benchmark.vsSol")}
               left={leftScore - solScore}
               right={rightScore - solScore}
               formatter={(v) => `${v >= 0 ? "+" : ""}${v}`}
             />
             <MetricRow
-              label="vs USDC score delta"
+              label={t("compare.benchmark.vsUsdc")}
               left={leftScore - usdcScore}
               right={rightScore - usdcScore}
               formatter={(v) => `${v >= 0 ? "+" : ""}${v}`}
@@ -357,25 +354,25 @@ export default function ComparePage() {
       </section>
 
       <section className="glass-card p-5">
-        <h2 className="text-lg font-semibold mb-2">Entry / Exit ranking</h2>
+        <h2 className="text-lg font-semibold mb-2">{t("compare.ranking.h2")}</h2>
         {!leftToken || !rightToken ? (
-          <div className="text-sm text-gray-500">Ranking appears after both tokens are loaded.</div>
+          <div className="text-sm text-gray-500">{t("compare.ranking.wait")}</div>
         ) : winner === "tie" ? (
           <div className="text-sm text-amber-300 inline-flex items-center gap-2">
             <MinusCircle size={14} />
-            Both setups are tied. Wait for new flow/volume confirmation.
+            {t("compare.ranking.tie")}
           </div>
         ) : (
           <div className="space-y-2">
             <div className="text-sm text-emerald-300 inline-flex items-center gap-2">
               <CheckCircle2 size={14} />
-              Prefer{" "}
+              {t("compare.ranking.preferBefore")}{" "}
               <strong translate="no">{winner === "left" ? leftToken.market?.symbol : rightToken.market?.symbol}</strong>{" "}
-              for entry setup.
+              {t("compare.ranking.preferAfter")}
             </div>
             <div className="text-sm text-gray-300 inline-flex items-center gap-2">
               <TrendingUp size={14} />
-              Keep the weaker setup in watchlist and wait for confirmation before sizing.
+              {t("compare.ranking.weaker")}
             </div>
           </div>
         )}
@@ -384,15 +381,15 @@ export default function ComparePage() {
       <section className="glass-card p-5" translate="no">
         <div className="flex items-center gap-2 mb-3">
           <BellRing size={16} className="text-purple-300" />
-          <h2 className="text-lg font-semibold">Rotation Alerts</h2>
+          <h2 className="text-lg font-semibold">{t("compare.rotation.h2")}</h2>
         </div>
         {!rotationAlerts.length ? (
-          <div className="text-sm text-gray-500">No rotation changes detected yet.</div>
+          <div className="text-sm text-gray-500">{t("compare.rotation.empty")}</div>
         ) : (
           <div className="space-y-2">
             {rotationAlerts.map((alert) => (
               <div key={alert.id} className="bg-[#0E1318] border soft-divider rounded-xl px-3 py-2 text-sm">
-                <span className="text-gray-300">Edge rotated to </span>
+                <span className="text-gray-300">{t("compare.rotation.edgeTo")} </span>
                 <span className="text-emerald-300 font-semibold">{alert.selected}</span>
                 <span className="text-gray-500"> · {formatDateTime(alert.createdAt)}</span>
               </div>

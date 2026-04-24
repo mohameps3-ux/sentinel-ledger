@@ -96,6 +96,11 @@ ALTER TABLE IF EXISTS wallet_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS wallet_clusters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS token_activity_logs ENABLE ROW LEVEL SECURITY;
 
+-- Wallet intel + coordination pairs (Security Advisor: RLS disabled in public).
+-- Tables come from migrations 008/010; ALTER is no-op if table absent until those run.
+ALTER TABLE IF EXISTS public.wallet_behavior_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.wallet_coordination_pairs ENABLE ROW LEVEL SECURITY;
+
 -- --- Part 3: Verification (read-only; expect 3 rows on second query) ----------
 
 SELECT to_regclass('public.subscriptions') AS subscriptions,

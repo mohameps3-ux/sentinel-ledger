@@ -1,6 +1,15 @@
 #!/usr/bin/env node
 "use strict";
 
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+const { tryResolvePostgresUrlFromSupabaseEnv } = require(path.join(
+  __dirname,
+  "..",
+  "src",
+  "lib",
+  "resolvePostgresUrlFromSupabase"
+));
 const { Client } = require("pg");
 
 const BASE_URL = String(process.env.BACKEND_URL || "https://sentinel-ledger-backend-production.up.railway.app").replace(
@@ -9,9 +18,9 @@ const BASE_URL = String(process.env.BACKEND_URL || "https://sentinel-ledger-back
 );
 
 async function main() {
-  const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
+  const dbUrl = String(tryResolvePostgresUrlFromSupabaseEnv(process.env) || "").trim();
   const webhookSecret = process.env.HELIUS_WEBHOOK_SECRET;
-  if (!dbUrl) throw new Error("Missing DATABASE_URL or SUPABASE_DATABASE_URL");
+  if (!dbUrl) throw new Error("Missing DATABASE_URL or SUPABASE_URL+SUPABASE_DB_PASSWORD");
   if (!webhookSecret) throw new Error("Missing HELIUS_WEBHOOK_SECRET");
 
   const client = new Client({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });

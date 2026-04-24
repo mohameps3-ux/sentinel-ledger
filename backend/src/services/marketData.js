@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { pairCreatedRawToUnixMs } = require("../lib/pairTime");
 const redis = require("../lib/cache");
 const { detectNarrativeTags } = require("./narrativeTags");
 const { createCircuitBreaker } = require("../lib/circuitBreaker");
@@ -191,12 +192,7 @@ function buildMarketDataFromDex(address, data) {
   const pair0Fdv = toPositiveNumber(pairs?.[0]?.fdv);
   const bestPairFdv = toPositiveNumber(bestPair?.fdv);
   const pairCreatedRaw = bestPair?.pairCreatedAt ?? bestPair?.pairCreated ?? null;
-  const pairCreatedAt =
-    Number.isFinite(Number(pairCreatedRaw)) && Number(pairCreatedRaw) > 0
-      ? Number(pairCreatedRaw) < 1e12
-        ? Math.floor(Number(pairCreatedRaw) * 1000)
-        : Math.floor(Number(pairCreatedRaw))
-      : null;
+  const pairCreatedAt = pairCreatedRawToUnixMs(pairCreatedRaw);
   return {
     marketData: {
       price: Number(bestPair.priceUsd) || 0,

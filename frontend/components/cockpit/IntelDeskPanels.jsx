@@ -1,12 +1,10 @@
 import { memo, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useQuery } from "@tanstack/react-query";
 import { BarChart3, ExternalLink, Radar } from "lucide-react";
 import { SmartMoneyPanel } from "../token/SmartMoneyPanel";
 import { WalletThreatBanner } from "../token/WalletThreatBanner";
 import { buildJupiterSwapUrl } from "../../lib/jupiterSwap";
-import { getPublicApiUrl } from "../../lib/publicRuntime";
 import { formatUsdWhole } from "../../lib/formatStable";
 import { isProbableSolanaMint } from "../../lib/solanaMint";
 
@@ -56,64 +54,6 @@ export const DeskJupiterLinks = memo(function DeskJupiterLinks({ mint }) {
       >
         Open Jupiter for this mint →
       </a>
-    </div>
-  );
-});
-
-async function fetchOutcomes168() {
-  const r = await fetch(`${getPublicApiUrl()}/api/v1/signals/outcomes?hours=168`);
-  if (!r.ok) throw new Error("outcomes");
-  return r.json();
-}
-
-export const DeskProofOfEdgePanel = memo(function DeskProofOfEdgePanel({ mint }) {
-  const q = useQuery({
-    queryKey: ["desk-outcomes", "168h"],
-    queryFn: fetchOutcomes168,
-    staleTime: 60_000
-  });
-  if (q.isPending) return <p className="text-xs text-gray-500">Loading rolling edge…</p>;
-  if (q.isError) {
-    return <p className="text-xs text-amber-200/90">Edge data temporarily unavailable.</p>;
-  }
-  const j = q.data || {};
-  const summary = j?.summary && typeof j.summary === "object" ? { ...j.summary } : {};
-  if (j?.wins != null) summary.wins = j.wins;
-  if (j?.losses != null) summary.losses = j.losses;
-  if (j?.avgWin != null) summary.avgWinPct = j.avgWin;
-  if (j?.avgLoss != null) summary.avgLossPct = j.avgLoss;
-  if (j?.netReturn != null) summary.netReturnPct = j.netReturn;
-  if (summary.wins != null && summary.losses != null) {
-    summary.resolved = (Number(summary.wins) || 0) + (Number(summary.losses) || 0);
-  }
-  const has = summary && Object.keys(summary).length > 0;
-  return (
-    <div className="space-y-2 font-mono text-[11px] text-gray-300">
-      <p className="text-[10px] uppercase tracking-wide text-gray-500">Rolling window · 7d · all signals</p>
-      {has ? (
-        <ul className="space-y-1">
-          <li>
-            Wins: {summary.wins ?? "—"} | Losses: {summary.losses ?? "—"} | Pending: {summary.pending ?? "—"}
-          </li>
-          <li>
-            Avg win: {summary.avgWinPct != null ? `+${summary.avgWinPct}%` : "—"} | Avg loss:{" "}
-            {summary.avgLossPct != null ? `${summary.avgLossPct}%` : "—"}
-          </li>
-          <li>
-            Net return (sum of % moves):{" "}
-            {summary.netReturnPct != null
-              ? `${summary.netReturnPct >= 0 ? "+" : ""}${summary.netReturnPct}%`
-              : "—"}
-          </li>
-        </ul>
-      ) : (
-        <p className="text-gray-500">No outcome stats yet. Wire /api/v1/signals/outcomes for live edge.</p>
-      )}
-      {mint ? (
-        <p className="text-[10px] text-gray-500 pt-1 border-t border-white/[0.06]">
-          Desk mint <span className="text-cyan-200/80">{mint.slice(0, 4)}…{mint.slice(-4)}</span> — full token breakdown on the terminal page.
-        </p>
-      ) : null}
     </div>
   );
 });

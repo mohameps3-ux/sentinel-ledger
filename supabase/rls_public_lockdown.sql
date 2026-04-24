@@ -38,6 +38,10 @@ ALTER TABLE IF EXISTS public.wallet_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.wallet_clusters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.token_activity_logs ENABLE ROW LEVEL SECURITY;
 
+-- Wallet intel (backend-only; see migrations 008, 010, 014)
+ALTER TABLE IF EXISTS public.wallet_behavior_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.wallet_coordination_pairs ENABLE ROW LEVEL SECURITY;
+
 COMMIT;
 
 -- Verification: tables in public with RLS disabled (expect 0 rows after hardening).

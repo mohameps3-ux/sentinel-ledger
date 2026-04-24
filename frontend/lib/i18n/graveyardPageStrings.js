@@ -174,6 +174,39 @@ export const GRAVEYARD_PAGE_STRINGS = {
     ar: "النتيجة",
     pt: "Resultado"
   }),
+  "graveyard.thRunUp": S("Max run-up", {
+    es: "Máx. subida",
+    fr: "Hausse max",
+    de: "Max. Lauf",
+    it: "Max rialzo",
+    ru: "Макс. рост",
+    zh: "最大涨幅",
+    ko: "최대 런업",
+    ja: "最大上昇",
+    ar: "أقصى صعود",
+    pt: "Máx. alta"
+  }),
+  "graveyard.thDrawdown": S("Max drawdown", {
+    es: "Máx. caída",
+    fr: "Baisse max",
+    de: "Max. Drawdown",
+    it: "Max drawdown",
+    ru: "Макс. просадка",
+    zh: "最大回撤",
+    ko: "최대 낙폭",
+    ja: "最大ドローダウン",
+    ar: "أقصى هبوط",
+    pt: "Máx. queda"
+  }),
+  "graveyard.runUpTitle": S("Highest vs entry: DEX spot min/max over ~25h when tracked, else job checkpoints and implied 24h.", {
+    es: "Máximo vs entrada: spot DEX mín/máx ~25h si el job lo registró, si no checkpoints e implícito 24h."
+  }),
+  "graveyard.drawdownTitle": S("Lowest vs entry: DEX spot min/max over ~25h when tracked, else job checkpoints and implied 24h.", {
+    es: "Mínimo vs entrada: spot DEX mín/máx ~25h si el job lo registró, si no checkpoints e implícito 24h."
+  }),
+  "graveyard.extremaFoot": S("Run-up and drawdown prefer min/max of DEX spot the worker samples after the signal (about 25h); if not available, the min/max of checkpoints (5m–4h) plus 24h from result% — not full tick-level OHLC.", {
+    es: "Subida y caída prefieren mín/máx de spot DEX que el job muestrea tras la señal (~25h); si no hay, mín/máx de checkpoints (5m–4h) y 24h desde result% — no es OHLC de todos los ticks."
+  }),
   "graveyard.empty": S("No signals in this range.", {
     es: "No hay señales en este rango.",
     fr: "Aucun signal sur cette plage.",

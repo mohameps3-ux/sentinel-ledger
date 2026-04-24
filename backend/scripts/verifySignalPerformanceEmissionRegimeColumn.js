@@ -4,12 +4,19 @@
  */
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+const { tryResolvePostgresUrlFromSupabaseEnv } = require(path.join(
+  __dirname,
+  "..",
+  "src",
+  "lib",
+  "resolvePostgresUrlFromSupabase"
+));
 const { Client } = require("pg");
 
 async function main() {
-  const url = String(process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL || "").trim();
+  const url = String(tryResolvePostgresUrlFromSupabaseEnv(process.env) || "").trim();
   if (!url) {
-    console.error("Missing DATABASE_URL or SUPABASE_DATABASE_URL in backend/.env");
+    console.error("Missing DATABASE_URL, or SUPABASE_URL + SUPABASE_DB_PASSWORD, in backend/.env");
     process.exit(1);
   }
   const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });

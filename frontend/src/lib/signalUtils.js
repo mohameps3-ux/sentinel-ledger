@@ -135,7 +135,7 @@ export function actionTone(signalStrength) {
 
 /** Decision pill for feed — compact, same visual weight as adjacent coord / multi chips. */
 export function feedDecisionPillClass(action, score) {
-  if (action === "Solo mercado") {
+  if (action === "MARKET_ONLY") {
     return "text-[8px] leading-tight px-1 py-0.5 rounded border font-semibold tracking-tight text-amber-100/95 border-amber-500/35 bg-amber-500/12";
   }
   const pulse = action === "ENTER NOW" && score > 90;

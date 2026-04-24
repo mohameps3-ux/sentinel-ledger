@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { PageHead } from "../components/seo/PageHead";
 import { getPublicApiUrl } from "../lib/publicRuntime";
+import { useLocale } from "../contexts/LocaleContext";
 
 function authHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
@@ -36,6 +37,7 @@ async function removeWallet(wallet) {
 }
 
 export default function WalletStalkerPage() {
+  const { t } = useLocale();
   const qc = useQueryClient();
   const [wallet, setWallet] = useState("");
   const query = useQuery({
@@ -48,15 +50,15 @@ export default function WalletStalkerPage() {
     onSuccess: async () => {
       setWallet("");
       await qc.invalidateQueries({ queryKey: ["wallet-stalker"] });
-      toast.success("Wallet added to stalker.");
+      toast.success(t("stalker.toast.added"));
     },
-    onError: (e) => toast.error(e.message || "Could not add wallet.")
+    onError: (e) => toast.error(e.message || t("stalker.toast.addErr"))
   });
   const delMut = useMutation({
     mutationFn: removeWallet,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["wallet-stalker"] });
-      toast.success("Wallet removed.");
+      toast.success(t("stalker.toast.removed"));
     }
   });
 
@@ -64,17 +66,12 @@ export default function WalletStalkerPage() {
 
   return (
     <>
-      <PageHead
-        title="Wallet Stalker — Sentinel Ledger"
-        description="Track up to 3 wallets for free or unlimited on PRO with in-app notifications."
-      />
+      <PageHead title={t("stalker.pageTitle")} description={t("stalker.pageDesc")} />
       <div className="sl-container py-8 space-y-4">
         <section className="glass-card sl-inset">
-          <p className="sl-label">Wallet Stalker</p>
-          <h1 className="text-2xl text-white font-semibold mt-1">Real-time tracked wallets</h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Free: 3 wallets. PRO: unlimited. Notifications are in-app only.
-          </p>
+          <p className="sl-label">{t("stalker.label")}</p>
+          <h1 className="text-2xl text-white font-semibold mt-1">{t("stalker.h1")}</h1>
+          <p className="text-sm text-gray-400 mt-1">{t("stalker.sub")}</p>
           <form
             className="mt-4 flex gap-2"
             onSubmit={(e) => {
@@ -87,17 +84,17 @@ export default function WalletStalkerPage() {
             <input
               value={wallet}
               onChange={(e) => setWallet(e.target.value)}
-              placeholder="Paste wallet address"
+              placeholder={t("stalker.placeholder")}
               className="sl-input h-11"
             />
             <button type="submit" className="btn-primary px-4" disabled={addMut.isPending}>
-              Track
+              {t("stalker.track")}
             </button>
           </form>
         </section>
 
         <section className="glass-card sl-inset">
-          <p className="sl-label">Tracked wallets</p>
+          <p className="sl-label">{t("stalker.listLabel")}</p>
           <div className="mt-2 space-y-2">
             {list.map((row) => (
               <div
@@ -112,15 +109,14 @@ export default function WalletStalkerPage() {
                   onClick={() => delMut.mutate(row.stalked_wallet)}
                   className="text-xs text-red-300 hover:text-red-200"
                 >
-                  Remove
+                  {t("stalker.remove")}
                 </button>
               </div>
             ))}
-            {!list.length && !query.isLoading ? <p className="text-sm text-gray-500">No wallets tracked yet.</p> : null}
+            {!list.length && !query.isLoading ? <p className="text-sm text-gray-500">{t("stalker.empty")}</p> : null}
           </div>
         </section>
       </div>
     </>
   );
 }
-

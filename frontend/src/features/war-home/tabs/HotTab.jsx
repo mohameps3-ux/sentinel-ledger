@@ -3,13 +3,13 @@ import { BarChart3, ChevronsDown, ChevronsUp, Flame, TrendingUp, Waves } from "l
 import { formatUsdWhole } from "../../../../lib/formatStable";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
 import { WatchedCardShell } from "../../../../components/home/WatchedCardShell";
+import { TacticalRegimePill } from "../../../../components/home/TacticalRegimePill";
 import { buildJupiterSwapUrl } from "../../../../lib/jupiterSwap";
 import { isProbableSolanaMint } from "../../../../lib/solanaMint";
 import { AnimatedNumber } from "../../../../components/ui/AnimatedNumber";
 import {
   clusterHeatEmoji,
   computeSignalStrength,
-  confidenceLabel,
   confidenceTone,
   gradeClass,
   heatClass,
@@ -18,6 +18,7 @@ import {
 import { redFlagsForSignal } from "@/lib/redFlags";
 import { UI_CONFIG } from "@/constants/homeData";
 import { RankBadge, RankDeltaChip } from "./RankIndicators";
+import { useLocale } from "../../../../contexts/LocaleContext";
 
 function cockpitCardClickTargetIsInteractive(e) {
   const el = e?.target;
@@ -41,6 +42,23 @@ export function HotTab({
   selectedMint,
   onSelectMint
 }) {
+  const { t } = useLocale();
+
+  const feedLabelTr =
+    feedLabel === "SNAPSHOT"
+      ? t("war.hot.feedSnapshot")
+      : feedLabel === "LIVE-DEGRADED"
+        ? t("war.hot.feedDegraded")
+        : feedLabel === "LIVE"
+          ? t("war.hot.feedLive")
+          : feedLabel;
+
+  const confidenceTr = (signalStrength) => {
+    if (signalStrength >= 95) return t("war.live.confidence.strong");
+    if (signalStrength >= 80) return t("war.live.confidence.build");
+    return t("war.live.confidence.low");
+  };
+
   return (
     <section className="sl-section">
       <div className="glass-card sl-glow-heat p-3 sm:p-3.5">
@@ -50,15 +68,15 @@ export function HotTab({
               <Flame className="text-orange-300" size={18} />
             </div>
             <div>
-              <p className="text-[9px] uppercase tracking-widest text-gray-500 font-semibold">Hot Tokens</p>
+              <p className="sl-label text-[9px] !text-gray-500 tracking-[0.14em]">{t("war.hot.label")}</p>
               <div className="mt-0.5 flex flex-wrap items-center gap-2.5">
                 <h2 className="text-base sm:text-lg font-semibold text-white tracking-tight leading-tight">Heat</h2>
                 <button
                   type="button"
                   onClick={onToggleHeatExpanded}
                   aria-expanded={heatExpanded}
-                  aria-label={heatExpanded ? "Contraer cuadrícula" : "Ampliar cuadrícula"}
-                  title={heatExpanded ? "Contraer" : "Ampliar feed"}
+                  aria-label={heatExpanded ? t("war.live.collapseAria") : t("war.live.expandAria")}
+                  title={heatExpanded ? t("war.live.collapseTitle") : t("war.live.expandTitle")}
                   className="group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-gradient-to-b from-orange-500/[0.12] to-white/[0.02] text-orange-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all hover:border-orange-400/50 hover:from-orange-500/22 hover:to-amber-950/30 hover:text-orange-50 hover:shadow-[0_0_22px_rgba(251,146,60,0.2)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0806]"
                 >
                   {heatExpanded ? (
@@ -68,11 +86,9 @@ export function HotTab({
                   )}
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-1 max-w-xl leading-snug">
-                Ranking en vivo por score del API: mejor token arriba. Métricas reales, swap y ficha en un clic.
-              </p>
+              <p className="text-xs text-gray-500 mt-1 max-w-xl leading-snug">{t("war.hot.sub")}</p>
               <p className="text-[10px] text-gray-500 mt-0.5">
-                {heatTokensForGrid.length} vis · {heatTokenPool.length} ranked
+                {t("war.hot.visLine", { vis: heatTokensForGrid.length, pool: heatTokenPool.length })}
               </p>
             </div>
           </div>
@@ -95,10 +111,11 @@ export function HotTab({
                       : "bg-amber-400"
                 }`}
               />
-              {feedLabel}
+              {feedLabelTr}
             </span>
             <span className="text-[10px] text-gray-500">
-              {feedAgeSec === null ? "recién" : `hace ${feedAgeSec}s`} · {isWarMode ? "cada 5s" : "cada 25s"} · liq min $
+              {feedAgeSec === null ? t("war.hot.recently") : t("war.live.secondsAgo", { sec: feedAgeSec })} ·{" "}
+              {isWarMode ? t("war.hot.pollHotWar") : t("war.hot.pollHotNormal")} · {t("war.hot.minLiq")} $
               {formatUsdWhole(trendingMinLiquidityUsd || 15000)}
             </span>
           </div>
@@ -109,10 +126,13 @@ export function HotTab({
             const signalStrength = Number.isFinite(Number(token?.sentinelScore))
               ? Math.max(1, Math.min(100, Math.round(Number(token.sentinelScore))))
               : computeSignalStrength(token);
-            const action =
-              token?.decision === "MERCADO"
-                ? "Solo mercado"
-                : token?.decision || suggestedAction(signalStrength, strategyMode, "token");
+            const actionKey =
+              token?.decision === "MERCADO" ? "MARKET_ONLY" : token?.decision || suggestedAction(signalStrength, strategyMode, "token");
+            let actionLabel = actionKey;
+            if (actionKey === "MARKET_ONLY") actionLabel = t("war.live.decisionMarketOnly");
+            else if (actionKey === "ENTER NOW") actionLabel = t("war.live.decision.enter");
+            else if (actionKey === "PREPARE") actionLabel = t("war.live.decision.prepare");
+            else if (actionKey === "STAY OUT") actionLabel = t("war.live.decision.stayout");
             const confluence = Boolean(token?.confluence);
             const timeAdvantage = token?.timeAdvantage || null;
             const entryWindowLabel = token?.entryWindow || null;
@@ -126,14 +146,14 @@ export function HotTab({
                 key={`${token?.mint || "token"}-${idx}`}
                 mint={token?.mint}
                 translate="no"
-                title={token?.mint && isProbableSolanaMint(token.mint) ? "Click to show on desk (?t=)" : undefined}
+                title={token?.mint && isProbableSolanaMint(token.mint) ? t("war.hot.clickDesk") : undefined}
                 onClick={(e) => {
                   if (!token?.mint || !isProbableSolanaMint(token.mint)) return;
                   if (cockpitCardClickTargetIsInteractive(e)) return;
                   e.preventDefault();
                   onSelectMint(token.mint);
                 }}
-                baseClassName={`glass-card sl-glow-heat p-1.5 sm:p-2 rounded-lg flex flex-col gap-1 touch-manipulation transition-all duration-200 ${
+                baseClassName={`sl-terminal-shell sl-terminal-shell--heat glass-card sl-glow-heat p-1.5 sm:p-2 rounded-lg flex flex-col gap-1 touch-manipulation transition-all duration-200 ${
                   token?.mint
                     ? "hover:-translate-y-[1px] hover:border-violet-400/45 hover:shadow-[0_0_16px_rgba(139,92,246,0.32)]"
                     : "opacity-75"
@@ -175,7 +195,7 @@ export function HotTab({
 
                 <div className="rounded border border-white/[0.08] bg-white/[0.02] px-1.5 py-1 space-y-0.5">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-[7px] uppercase tracking-wider text-gray-500">Score</span>
+                    <span className="text-[7px] uppercase tracking-wider text-gray-500">{t("war.combat.thScore")}</span>
                     <span className="text-emerald-300 font-bold font-mono tabular-nums text-[10px]">{signalStrength}/100</span>
                   </div>
                   <div className="h-0.5 sm:h-1 rounded-full bg-gray-900 overflow-hidden">
@@ -191,15 +211,22 @@ export function HotTab({
                             : "text-red-300 bg-red-500/10 border-red-500/30"
                       } ${signalStrength > 90 ? "animate-pulse" : ""}`}
                     >
-                      {action}
+                      {actionLabel}
                     </span>
                     <span className={`text-[9px] px-1 py-0.5 rounded border ${confidenceTone(signalStrength)}`}>
-                      {confidenceLabel(signalStrength)}
+                      {confidenceTr(signalStrength)}
                     </span>
                     {confluence ? (
                       <span className="text-[9px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1 py-0.5">
                         🧬
                       </span>
+                    ) : null}
+                    {token?.mint ? (
+                      <TacticalRegimePill
+                        signalStrength={signalStrength}
+                        token={token}
+                        priceChange24h={changeNum}
+                      />
                     ) : null}
                   </div>
                 </div>
@@ -228,7 +255,7 @@ export function HotTab({
 
                 <div className="space-y-0.5">
                   <div className="flex items-center justify-between text-[9px] text-gray-500">
-                    <span>Heat</span>
+                    <span>{t("war.live.badgeHeat")}</span>
                     <span className="leading-none">{clusterHeatEmoji(Math.min(99, signalStrength - 4))}</span>
                   </div>
                   <div className="h-0.5 rounded-full bg-gray-900 overflow-hidden">

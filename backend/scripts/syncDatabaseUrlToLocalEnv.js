@@ -1,8 +1,9 @@
 /**
  * One-shot: if backend/.env has no DATABASE_URL / SUPABASE_DATABASE_URL,
  * fill DATABASE_URL from (in order):
- *   1) process.env (e.g. `railway run npm run db:sync-database-url-from-railway`)
+ *   1) process.env (e.g. `railway run …`)
  *   2) `railway variable list --json` when run locally with a linked Railway project
+ *   3) SUPABASE_URL + SUPABASE_DB_PASSWORD in .env (derive direct db host; same as `tryResolvePostgresUrlFromSupabase` in migration scripts)
  *
  * Railway CLI runs on your machine; this script writes `backend/.env` on disk.
  * Do not commit secrets; run locally only when needed.
@@ -10,6 +11,13 @@
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
+const { tryResolvePostgresUrlFromSupabaseEnv } = require(path.join(
+  __dirname,
+  "..",
+  "src",
+  "lib",
+  "resolvePostgresUrlFromSupabase"
+));
 
 const envPath = path.join(__dirname, "..", ".env");
 
@@ -110,13 +118,22 @@ function main() {
   }
 
   if (!url) {
+    require("dotenv").config({ path: envPath, override: false });
+    const derived = String(tryResolvePostgresUrlFromSupabaseEnv(process.env) || "").trim();
+    if (derived) {
+      url = derived;
+      source = "SUPABASE_URL + SUPABASE_DB_PASSWORD (direct db host, see resolvePostgresUrlFromSupabase)";
+    }
+  }
+
+  if (!url) {
     console.error(
       "Could not resolve DATABASE_URL.\n" +
-        "  • Option A: cd backend && railway run npm run db:sync-database-url-from-railway\n" +
-        "  • Option B: from repo root with backend linked to Railway:\n" +
-        "      npm run db:sync-database-url-from-railway --prefix backend\n" +
-        "    (uses `railway variable list --json` with cwd=backend/; same machine, writes backend/.env)\n" +
-        "  • Option C: set DATABASE_URL or SUPABASE_DATABASE_URL in backend/.env manually."
+        "  • Option A: set DATABASE_URL (or copy from Supabase → Project Settings → Database) in backend/.env.\n" +
+        "  • Option B: set SUPABASE_URL + SUPABASE_DB_PASSWORD in backend/.env (database password, not API keys) —\n" +
+        "    then run this script again to materialize DATABASE_URL, or use npm run db:ensure-signal-performance (derives the URI at run time).\n" +
+        "  • Option C: cd backend && railway run npm run db:sync-database-url-from-railway\n" +
+        "  • Option D: from repo root (backend linked to Railway): npm run db:sync-database-url-from-railway --prefix backend"
     );
     process.exit(1);
   }

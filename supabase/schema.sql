@@ -91,7 +91,9 @@ alter table if exists smart_wallet_signals
   add column if not exists result_5m_pct numeric(10,4),
   add column if not exists result_30m_pct numeric(10,4),
   add column if not exists result_pct numeric(10,4),
-  add column if not exists result_2h_pct numeric(10,4);
+  add column if not exists result_2h_pct numeric(10,4),
+  add column if not exists min_price_window_usd numeric(24,12),
+  add column if not exists max_price_window_usd numeric(24,12);
 
 create table if not exists support_tickets (
   id uuid primary key default gen_random_uuid(),

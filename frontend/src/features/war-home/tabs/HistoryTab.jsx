@@ -1,15 +1,15 @@
 import { formatTimeAgo } from "@/lib/formatters";
+import { useLocale } from "../../../../contexts/LocaleContext";
 
 export function HistoryTab({ historyRows }) {
+  const { t } = useLocale();
   return (
     <section translate="no" className="sl-section">
-      <h2 className="sl-h2 text-white mb-2">24h verified outcomes</h2>
-      <p className="text-xs text-gray-500 mb-4">On-chain linked signals from the last 24 hours.</p>
+      <h2 className="sl-h2 text-white mb-2">{t("war.history.title")}</h2>
+      <p className="text-xs text-gray-500 mb-4">{t("war.history.subtitle")}</p>
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {historyRows.length === 0 ? (
-          <p className="text-sm text-gray-500 col-span-full">
-            No rows in the last 24h. Add signals and prices in Supabase, or switch to LIVE.
-          </p>
+          <p className="text-sm text-gray-500 col-span-full">{t("war.history.empty")}</p>
         ) : (
           historyRows.map((r) => (
             <div

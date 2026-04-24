@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useClientAuthToken } from "../hooks/useClientAuthToken";
 import { PageHead } from "../components/seo/PageHead";
+import { useLocale } from "../contexts/LocaleContext";
 
 function readLocalWatchlist() {
   try {
@@ -14,6 +15,7 @@ function readLocalWatchlist() {
 }
 
 export default function WatchlistPage() {
+  const { t } = useLocale();
   const token = useClientAuthToken();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
@@ -54,40 +56,38 @@ export default function WatchlistPage() {
 
   return (
     <>
-      <PageHead
-        title="Watchlist — Sentinel Ledger"
-        description="Tracked Solana tokens with notes. Syncs to your account when signed in."
-      />
-    <div className="sl-container py-10 space-y-6">
-      <section className="glass-card sl-inset">
-        <p className="sl-label">Watchlist</p>
-        <h1 className="sl-h2 text-white mt-1">Tracked tokens</h1>
-        <p className="text-sm text-gray-400 mt-2">
-          {token ? "Live from your account." : "No signed session: showing local cached watchlist only."}
-        </p>
-      </section>
+      <PageHead title={t("watchlist.pageTitle")} description={t("watchlist.pageDesc")} />
+      <div className="sl-container py-10 space-y-6">
+        <section className="glass-card sl-inset">
+          <p className="sl-label">{t("watchlist.label")}</p>
+          <h1 className="sl-h2 text-white mt-1">{t("watchlist.h1")}</h1>
+          <p className="text-sm text-gray-400 mt-2">{token ? t("watchlist.subLive") : t("watchlist.subLocal")}</p>
+        </section>
 
-      <section className="glass-card sl-inset">
-        {loading ? <p className="text-sm text-gray-400">Loading watchlist...</p> : null}
-        {!loading && error ? <p className="text-sm text-red-300">Could not load watchlist: {error}</p> : null}
-        {!loading && !error && !list.length ? (
-          <p className="text-sm text-gray-400">No tokens yet. Add one from any token page.</p>
-        ) : null}
-        {!loading && !error && list.length ? (
-          <div className="space-y-2">
-            {list.map((row) => (
-              <div key={row.token_address} className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-3 flex items-center justify-between gap-3">
-                <div>
-                  <p className="mono text-sm text-gray-200">{row.token_address}</p>
-                  {row.note ? <p className="text-xs text-gray-500 mt-1">{row.note}</p> : null}
+        <section className="glass-card sl-inset">
+          {loading ? <p className="text-sm text-gray-400">{t("watchlist.loading")}</p> : null}
+          {!loading && error ? <p className="text-sm text-red-300">{t("watchlist.error", { err: error })}</p> : null}
+          {!loading && !error && !list.length ? <p className="text-sm text-gray-400">{t("watchlist.empty")}</p> : null}
+          {!loading && !error && list.length ? (
+            <div className="space-y-2">
+              {list.map((row) => (
+                <div
+                  key={row.token_address}
+                  className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-3 flex items-center justify-between gap-3"
+                >
+                  <div>
+                    <p className="mono text-sm text-gray-200">{row.token_address}</p>
+                    {row.note ? <p className="text-xs text-gray-500 mt-1">{row.note}</p> : null}
+                  </div>
+                  <Link href={`/token/${row.token_address}`} className="btn-ghost no-underline">
+                    {t("watchlist.open")}
+                  </Link>
                 </div>
-                <Link href={`/token/${row.token_address}`} className="btn-ghost no-underline">Open</Link>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </section>
-    </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      </div>
     </>
   );
 }

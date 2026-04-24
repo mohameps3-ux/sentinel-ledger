@@ -2,7 +2,8 @@ import { Fragment, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { formatUsdWhole } from "../../../lib/formatStable";
-import { actionTone, confidenceDot, confidenceLabel, suggestedAction } from "@/lib/signalUtils";
+import { actionTone, confidenceDot, suggestedAction } from "@/lib/signalUtils";
+import { useLocale } from "../../../contexts/LocaleContext";
 import { redFlagsForSignal } from "@/lib/redFlags";
 
 export default function WarHomeCombatPanels({
@@ -19,7 +20,21 @@ export default function WarHomeCombatPanels({
   marketMood,
   alerts
 }) {
+  const { t } = useLocale();
   const [openTopWallet, setOpenTopWallet] = useState(null);
+
+  const confidenceTr = (signalStrength) => {
+    if (signalStrength >= 95) return t("war.live.confidence.strong");
+    if (signalStrength >= 80) return t("war.live.confidence.build");
+    return t("war.live.confidence.low");
+  };
+
+  const walletActionLabel = (code) => {
+    if (code === "FOLLOW") return t("war.combat.walletFollow");
+    if (code === "MONITOR") return t("war.combat.walletMonitor");
+    if (code === "IGNORE") return t("war.combat.walletIgnore");
+    return code;
+  };
 
   function isInteractiveEventTarget(t) {
     if (!t) return false;
@@ -38,7 +53,7 @@ export default function WarHomeCombatPanels({
     <>
       <section className="sl-section grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="glass-card sl-inset border border-orange-500/20">
-          <p className="text-[11px] text-orange-200/80 font-medium">Último resultado resaltado</p>
+          <p className="text-[11px] text-orange-200/80 font-medium">{t("war.combat.bestHighlight")}</p>
           {bestRecentDisplay ? (
             <>
               <h2 className="text-base sm:text-lg font-semibold text-white mt-1">
@@ -50,36 +65,46 @@ export default function WarHomeCombatPanels({
                 <span className="text-gray-500 text-sm">({bestRecentDisplay.horizon})</span>
               </h2>
               <p className="text-sm text-gray-400 mt-2">
-                Puntuación ~{bestRecentDisplay.signal} ·{" "}
+                {t("war.combat.scoreApprox", { score: bestRecentDisplay.signal })} ·{" "}
                 <Link href={`/token/${bestRecentDisplay.mint}`} className="text-cyan-300/90 hover:underline">
-                  Abrir ficha
+                  {t("war.combat.openToken")}
                 </Link>
               </p>
             </>
           ) : (
-            <p className="text-sm text-gray-500 mt-2">Sin resultados cerrados recientes para mostrar.</p>
+            <p className="text-sm text-gray-500 mt-2">{t("war.combat.noRecent")}</p>
           )}
         </div>
         <div className="glass-card sl-inset">
-          <p className="text-[11px] text-gray-500 font-medium">Últimos 7 días (señales cerradas)</p>
-          <h2 className="text-base font-semibold text-white mt-1">Resumen de aciertos</h2>
+          <p className="text-[11px] text-gray-500 font-medium">{t("war.combat.summary7d")}</p>
+          <h2 className="text-base font-semibold text-white mt-1">{t("war.combat.hitSummaryTitle")}</h2>
           <ul className="mt-2 text-sm text-gray-300 space-y-1">
             {outcomesSummary && outcomesSummary.resolved != null ? (
               <>
                 <li>
-                  Aciertos {outcomesSummary.wins} · No aciertos {outcomesSummary.losses}
-                  {outcomesSummary.pending != null ? ` · En curso ${outcomesSummary.pending}` : ""}
+                  {t("war.combat.winsLosses", {
+                    w: outcomesSummary.wins,
+                    l: outcomesSummary.losses,
+                    pend: outcomesSummary.pending != null ? t("war.combat.pendingSuffix", { p: outcomesSummary.pending }) : ""
+                  })}
                 </li>
                 <li>
-                  Medias: {outcomesSummary.avgWinPct != null ? `+${outcomesSummary.avgWinPct}%` : "—"} ganador /{" "}
-                  {outcomesSummary.avgLossPct != null ? `${outcomesSummary.avgLossPct}%` : "—"} perdedor
+                  {t("war.combat.avgs", {
+                    aw: outcomesSummary.avgWinPct != null ? `+${outcomesSummary.avgWinPct}%` : "—",
+                    al: outcomesSummary.avgLossPct != null ? `${outcomesSummary.avgLossPct}%` : "—"
+                  })}
                 </li>
-                <li>Retorno neto: {outcomesSummary.netReturnPct != null
-                  ? `${outcomesSummary.netReturnPct >= 0 ? "+" : ""}${outcomesSummary.netReturnPct}%`
-                  : "—"}</li>
+                <li>
+                  {t("war.combat.net", {
+                    n:
+                      outcomesSummary.netReturnPct != null
+                        ? `${outcomesSummary.netReturnPct >= 0 ? "+" : ""}${outcomesSummary.netReturnPct}%`
+                        : "—"
+                  })}
+                </li>
               </>
             ) : (
-              <li className="text-gray-500 text-sm">Cargando datos o sin historial aún. Los números reales dependen de tu API.</li>
+              <li className="text-gray-500 text-sm">{t("war.combat.summaryLoading")}</li>
             )}
           </ul>
         </div>
@@ -89,11 +114,11 @@ export default function WarHomeCombatPanels({
         <div className="glass-card sl-inset">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-              <h2 className="text-lg sm:text-xl font-semibold text-white">Carteras con mejor puntuación</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-white">{t("war.combat.walletsTitle")}</h2>
               <p className="text-xs text-gray-500 mt-1">
-                {rankedWallets.length} filas · toca la fila para detalles ·{" "}
+                {t("war.combat.walletsMeta", { n: rankedWallets.length })}{" "}
                 <Link className="text-cyan-400/90 hover:underline" href="/smart-money?limit=50">
-                  Ver ranking completo
+                  {t("war.combat.fullRanking")}
                 </Link>
               </p>
             </div>
@@ -104,9 +129,9 @@ export default function WarHomeCombatPanels({
                     ? "px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-200/90"
                     : "px-2 py-0.5 rounded border border-amber-500/25 text-amber-200/80"
                 }
-                title={topWalletsFromApi ? "Datos de servidor" : "Sin datos en API"}
+                title={topWalletsFromApi ? t("war.combat.serverDataTitle") : t("war.combat.noApiTitle")}
               >
-                {topWalletsFromApi ? "Datos en vivo" : "Sin datos"}
+                {topWalletsFromApi ? t("war.combat.liveData") : t("war.combat.noDataShort")}
               </span>
             </div>
           </div>
@@ -115,14 +140,14 @@ export default function WarHomeCombatPanels({
               <thead>
                 <tr className="text-left text-gray-500 border-b border-white/10 text-[10px] uppercase tracking-wide">
                   <th className="py-2 pr-1 w-8" />
-                  <th className="py-2 pr-3">Cartera</th>
-                  <th className="py-2 pr-3">Win</th>
-                  <th className="py-2 pr-3">Entrada</th>
-                  <th className="py-2 pr-3">Agrup.</th>
-                  <th className="py-2 pr-3">Const.</th>
-                  <th className="py-2 pr-3">Puntuac.</th>
-                  <th className="py-2 pr-3">Confianza</th>
-                  <th className="py-2 pr-3">Idea</th>
+                  <th className="py-2 pr-3">{t("war.combat.thWallet")}</th>
+                  <th className="py-2 pr-3">{t("war.combat.thWin")}</th>
+                  <th className="py-2 pr-3">{t("war.combat.thEntry")}</th>
+                  <th className="py-2 pr-3">{t("war.combat.thCluster")}</th>
+                  <th className="py-2 pr-3">{t("war.combat.thConsistency")}</th>
+                  <th className="py-2 pr-3">{t("war.combat.thScore")}</th>
+                  <th className="py-2 pr-3">{t("war.combat.thConfidence")}</th>
+                  <th className="py-2 pr-3">{t("war.combat.thIdea")}</th>
                   <th className="py-2">30d $</th>
                 </tr>
               </thead>
@@ -173,12 +198,12 @@ export default function WarHomeCombatPanels({
                     <td className="py-3 pr-3">
                       <span className="inline-flex items-center gap-2 text-xs text-gray-300">
                         <span className={`h-2.5 w-2.5 rounded-full ${confidenceDot(wallet.signalStrength)}`} />
-                        {confidenceLabel(wallet.signalStrength)}
+                        {confidenceTr(wallet.signalStrength)}
                       </span>
                     </td>
                     <td className="py-3 pr-3">
                       <span className={`text-xs px-2 py-1 rounded border ${actionTone(wallet.signalStrength)}`}>
-                        {suggestedAction(wallet.signalStrength, strategyMode, "wallet")}
+                        {walletActionLabel(suggestedAction(wallet.signalStrength, strategyMode, "wallet"))}
                       </span>
                     </td>
                     <td className="py-3 text-emerald-300">+${formatUsdWhole(wallet.pnl30d)}</td>
@@ -186,7 +211,7 @@ export default function WarHomeCombatPanels({
                   {openTopWallet === rowKey ? (
                     <tr className="bg-white/[0.02] border-b border-white/5">
                       <td colSpan={10} className="px-3 py-3 text-left">
-                        <p className="text-xs font-semibold text-violet-200/90 mb-2">Detalle</p>
+                        <p className="text-xs font-semibold text-violet-200/90 mb-2">{t("war.combat.detail")}</p>
                         {wallet.address ? (
                           <p className="font-mono text-[11px] text-cyan-200/90 break-all mb-2" data-no-row-expand>
                             {wallet.address}
@@ -207,11 +232,11 @@ export default function WarHomeCombatPanels({
                               href={`/wallet/${encodeURIComponent(wallet.address)}`}
                               className="text-[11px] px-2 py-1 rounded border border-cyan-500/30 text-cyan-200 hover:bg-cyan-500/20"
                             >
-                              Ficha wallet
+                              {t("war.combat.walletSheet")}
                             </Link>
                           ) : null}
                           <Link href="/smart-money?limit=50" className="text-[11px] px-2 py-1 rounded border border-white/15 text-gray-300 hover:bg-white/10">
-                            Top 50 leaderboard
+                            {t("war.combat.top50")}
                           </Link>
                         </div>
                       </td>
@@ -266,10 +291,10 @@ export default function WarHomeCombatPanels({
                   <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2 text-[11px] text-gray-300">
                       <span className={`h-2.5 w-2.5 rounded-full ${confidenceDot(wallet.signalStrength)}`} />
-                      {confidenceLabel(wallet.signalStrength)}
+                      {confidenceTr(wallet.signalStrength)}
                     </span>
                     <span className={`text-[11px] px-2 py-1 rounded border ${actionTone(wallet.signalStrength)}`}>
-                      {suggestedAction(wallet.signalStrength, strategyMode, "wallet")}
+                      {walletActionLabel(suggestedAction(wallet.signalStrength, strategyMode, "wallet"))}
                     </span>
                   </div>
                   {openTopWallet === rowKey ? (
@@ -287,7 +312,7 @@ export default function WarHomeCombatPanels({
                             className="text-[10px] px-2 py-1 rounded border border-cyan-500/30 text-cyan-200"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            Ficha wallet
+                            {t("war.combat.walletSheet")}
                           </Link>
                         ) : null}
                         <Link
@@ -295,7 +320,7 @@ export default function WarHomeCombatPanels({
                           className="text-[10px] px-2 py-1 rounded border border-white/15 text-gray-300"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          Top 50
+                          {t("war.combat.top50")}
                         </Link>
                       </div>
                     </div>
@@ -309,18 +334,18 @@ export default function WarHomeCombatPanels({
 
       <section className="sl-section">
         <div className="glass-card sl-inset">
-          <h2 className="text-base font-semibold text-white mb-1">Tu estado</h2>
+          <h2 className="text-base font-semibold text-white mb-1">{t("war.combat.yourStatus")}</h2>
           {isLoggedIn ? (
-            <p className="text-sm text-gray-400">Sesión activa. Las recomendaciones personalizadas aparecerán cuando el endpoint de perfil esté habilitado.</p>
+            <p className="text-sm text-gray-400">{t("war.combat.loggedIn")}</p>
           ) : (
-            <p className="text-sm text-gray-500">Conecta cartera para habilitar contexto personal cuando esté disponible en API.</p>
+            <p className="text-sm text-gray-500">{t("war.combat.loggedOut")}</p>
           )}
         </div>
       </section>
 
       <section className="sl-section">
         <div className="glass-card sl-inset border border-amber-500/20 bg-amber-500/[0.04]">
-          <p className="text-[11px] text-amber-200/80 font-medium">Avisos sobre la señal en foco (heurístico)</p>
+          <p className="text-[11px] text-amber-200/80 font-medium">{t("war.combat.riskTitle")}</p>
           {riskLines.length > 0 ? (
             <ul className="mt-2 text-sm text-amber-100/95 space-y-1">
               {riskLines.map((line) => (
@@ -328,14 +353,14 @@ export default function WarHomeCombatPanels({
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-gray-400 mt-2">Sin alertas extra en esta señal. Sigue comprobando liquidez y contrato en la ficha del token.</p>
+            <p className="text-sm text-gray-400 mt-2">{t("war.combat.riskEmpty")}</p>
           )}
         </div>
       </section>
 
       <section className="sl-section">
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm">
-          <span className="text-gray-500">Tendencia (heat aprox.):</span>
+          <span className="text-gray-500">{t("war.combat.heatTrend")}</span>
           <span className={`${marketMood.className} font-medium`}>{marketMood.label}</span>
         </div>
       </section>
@@ -343,21 +368,21 @@ export default function WarHomeCombatPanels({
       <section className="sl-section">
         <div className="glass-card sl-inset flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-white">Comparar dos tokens</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Mismo resumen, lado a lado (liquidez, nota, riesgo).</p>
+            <h2 className="text-base font-semibold text-white">{t("war.combat.compareTitle")}</h2>
+            <p className="text-sm text-gray-500 mt-0.5">{t("war.combat.compareSub")}</p>
           </div>
           <Link href="/compare" prefetch={false} className="text-sm font-medium text-cyan-300/90 hover:underline shrink-0">
-            Abrir comparador
+            {t("war.combat.compareCta")}
           </Link>
         </div>
       </section>
 
       <section className="sl-section">
         <div className="glass-card sl-inset">
-          <h2 className="text-base font-semibold text-white">Alertas recientes</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Actividad real de smart wallets desde API pública.</p>
+          <h2 className="text-base font-semibold text-white">{t("war.combat.alertsTitle")}</h2>
+          <p className="text-sm text-gray-500 mt-0.5">{t("war.combat.alertsSub")}</p>
           {!alerts.length ? (
-            <p className="text-sm text-gray-600 text-center py-6">Aún no hay alertas</p>
+            <p className="text-sm text-gray-600 text-center py-6">{t("war.combat.alertsEmpty")}</p>
           ) : (
             <div className="flex flex-col gap-2 mt-3">
               {alerts.map((item, idx) => (

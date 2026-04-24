@@ -15,6 +15,7 @@ import {
 } from "@/lib/signalUtils";
 import { redFlagsForSignal } from "@/lib/redFlags";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
+import { TacticalRegimePill } from "../../../../components/home/TacticalRegimePill";
 import { WatchedCardShell } from "../../../../components/home/WatchedCardShell";
 import { buildJupiterSwapUrl } from "../../../../lib/jupiterSwap";
 import { isProbableSolanaMint } from "../../../../lib/solanaMint";
@@ -226,6 +227,11 @@ export function LiveTab({
               {String(coordOnCard).replace(/_/g, " ")}
             </span>
           ) : null}
+          <TacticalRegimePill
+            signalStrength={sig.signalStrength}
+            token={sig.token}
+            priceChange24h={Number(tick?.priceChange24h ?? sig.token?.change) || 0}
+          />
           {!isHeatFill && (sig._api?.confluence || (!sig._api && sig.signalStrength >= 88)) ? (
             <span className="text-[9px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1 py-0.5 font-mono">
               🧬 multi
