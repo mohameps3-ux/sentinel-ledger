@@ -8,6 +8,7 @@ import { AccordionSection } from "./AccordionSection";
 import {
   DeskAntiSignalBody,
   DeskContextStrip,
+  DeskExecutionScope,
   DeskJupiterLinks,
   DeskQuickScan,
   DeskRadarHintStrip,
@@ -197,6 +198,8 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
       )}
 
       <div className="flex flex-col gap-2 pt-1 min-h-0">
+        <DeskExecutionScope mint={mint} token={token} regime={regime} />
+
         <div className="rounded-lg border border-white/[0.08] bg-black/[0.18] px-3 py-2.5 shrink-0">
           <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 font-semibold mb-2">{t("cockpit.desk.jupiterTitle")}</p>
           <DeskJupiterLinks mint={mint} />

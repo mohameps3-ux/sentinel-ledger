@@ -124,7 +124,20 @@ export const FLAT_STRINGS = {
   "war.tactical.aria": S("Tactical feed", { es: "Feed táctico", fr: "Flux tactique", de: "Taktisches Feed", it: "Feed tattico", ru: "Тактическая лента", zh: "战术信息流", ko: "전술 피드", ja: "戦術フィード", ar: "التدفق التكتيكي", pt: "Feed tático" }),
   "war.tactical.tabLive": S("LIVE"),
   "war.tactical.tabHot": S("HOT"),
-  "war.tactical.tabHistory": S("HISTORY", { es: "HISTORIAL", fr: "HISTORIQUE", de: "VERLAUF", it: "CRONOLOGIA", ru: "ИСТОРИЯ", zh: "历史", ko: "기록", ja: "履歴", ar: "السجل", pt: "HISTÓRICO" }),
+  "war.tactical.tabOutlier": S("OUTLIER", { es: "OUTLIER", pt: "OUTLIER" }),
+  "war.tactical.tabTrack": S("TRACK", { es: "TRACK", pt: "TRACK" }),
+  "war.tactical.outlierSub": S("Target-lock candidates pulled from LIVE/HOT. Open one, then decide in Desk.", {
+    es: "Candidatos target-lock desde LIVE/HOT. Abre uno y decide en Desk.",
+    pt: "Candidatos target-lock de LIVE/HOT. Abra um e decida no Desk."
+  }),
+  "war.tactical.outlierEmpty": S("No outlier candidate yet. Keep the radar on LIVE/HOT.", {
+    es: "Aún no hay outlier. Mantén el radar en LIVE/HOT.",
+    pt: "Ainda sem outlier. Mantenha o radar em LIVE/HOT."
+  }),
+  "war.tactical.trackSub": S("Verified signal outcomes. Ledger first, confidence second.", {
+    es: "Resultados verificados de señales. Primero ledger, luego confianza.",
+    pt: "Resultados verificados de sinais. Ledger primeiro, confiança depois."
+  }),
 
   "war.live.decisionMarketOnly": S("Market only", {
     es: "Solo mercado",

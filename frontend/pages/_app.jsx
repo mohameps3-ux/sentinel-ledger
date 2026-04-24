@@ -15,6 +15,7 @@ import { Navbar } from "../components/layout/Navbar";
 import { GlobalWayfinding } from "../components/layout/GlobalWayfinding";
 import { LiveTensionBar } from "../components/layout/LiveTensionBar";
 import { SiteFooter } from "../components/layout/SiteFooter";
+import { GlobalCommandHud } from "../components/terminal/GlobalCommandHud";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
 import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
@@ -111,6 +112,7 @@ export default function App({ Component, pageProps }) {
                   <Component {...pageProps} />
                 </AppErrorBoundary>
               </main>
+              <GlobalCommandHud />
               <SiteFooter />
               {showDevUiBadge ? (
                 <div className="fixed left-2 bottom-2 z-[260] pointer-events-none select-none text-[10px] leading-tight px-2 py-1 rounded-md border border-cyan-500/35 bg-[#0a0f14]/90 text-cyan-200 font-mono shadow-[0_0_14px_rgba(34,211,238,0.18)]">

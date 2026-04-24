@@ -3,12 +3,13 @@ import { useLocale } from "../../contexts/LocaleContext";
 /**
  * Tab strip + three panels (display toggled, nodes stay mounted for sockets / RQ).
  */
-export function TacticalTabs({ activeTab, onTabChange, panelLive, panelHot, panelHistory }) {
+export function TacticalTabs({ activeTab, onTabChange, panelLive, panelHot, panelOutlier, panelTrack }) {
   const { t } = useLocale();
   const tabs = [
-    { id: "live", label: t("war.tactical.tabLive") },
-    { id: "hot", label: t("war.tactical.tabHot") },
-    { id: "history", label: t("war.tactical.tabHistory") }
+    { id: "live", label: t("war.tactical.tabLive"), order: "order-2 md:order-1" },
+    { id: "hot", label: t("war.tactical.tabHot"), order: "order-3 md:order-2" },
+    { id: "outlier", label: t("war.tactical.tabOutlier"), order: "order-1 md:order-3" },
+    { id: "track", label: t("war.tactical.tabTrack"), order: "order-4 md:order-4" }
   ];
 
   return (
@@ -27,7 +28,7 @@ export function TacticalTabs({ activeTab, onTabChange, panelLive, panelHot, pane
             aria-selected={activeTab === tab.id}
             aria-controls={`tactical-panel-${tab.id}`}
             onClick={() => onTabChange(tab.id)}
-            className={`shrink-0 inline-flex items-center gap-1 text-[11px] sm:text-xs px-2.5 sm:px-3 py-1.5 rounded-md sm:rounded-lg border font-semibold transition-all duration-200 ${
+            className={`shrink-0 inline-flex items-center gap-1 text-[11px] sm:text-xs px-2.5 sm:px-3 py-1.5 rounded-md sm:rounded-lg border font-semibold transition-all duration-200 ${tab.order} ${
               activeTab === tab.id
                 ? "border-cyan-400/55 bg-cyan-500/14 text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.18)]"
                 : "border-white/10 bg-white/[0.03] text-gray-400 hover:text-gray-200 hover:border-white/18 hover:bg-white/[0.06]"
@@ -63,13 +64,22 @@ export function TacticalTabs({ activeTab, onTabChange, panelLive, panelHot, pane
           {panelHot}
         </div>
         <div
-          id="tactical-panel-history"
+          id="tactical-panel-outlier"
           role="tabpanel"
-          aria-labelledby="tactical-tab-history"
-          hidden={activeTab !== "history"}
-          className={activeTab === "history" ? "sl-panel-enter" : ""}
+          aria-labelledby="tactical-tab-outlier"
+          hidden={activeTab !== "outlier"}
+          className={activeTab === "outlier" ? "sl-panel-enter" : ""}
         >
-          {panelHistory}
+          {panelOutlier}
+        </div>
+        <div
+          id="tactical-panel-track"
+          role="tabpanel"
+          aria-labelledby="tactical-tab-track"
+          hidden={activeTab !== "track"}
+          className={activeTab === "track" ? "sl-panel-enter" : ""}
+        >
+          {panelTrack}
         </div>
       </div>
     </div>

@@ -383,6 +383,8 @@ export default function TokenPage() {
         </div>
       </div>
 
+      <ActionBar tokenAddress={address} symbol={market.symbol} market={market} />
+
       <TradeReadinessPanel
         analysis={analysis}
         market={market}
@@ -438,9 +440,6 @@ export default function TokenPage() {
           </ExpandablePanel>
         </section>
       </div>
-
-      <ActionBar tokenAddress={address} symbol={market.symbol} />
-
       {hasToken && <NotesPanel tokenAddress={address} initialNote={note} />}
 
       <div className="pt-4 pb-8 border-t border-gray-800/60 mt-8">

@@ -7,6 +7,8 @@ import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useLocale } from "../contexts/LocaleContext";
 import { isProbableSolanaMint } from "../lib/solanaMint.mjs";
 import { groupWolfPackEvents } from "../lib/stalkerWolfPack.js";
+import { TerminalActionIcons } from "../components/terminal/TerminalActionIcons";
+import { buildSolscanAccountUrl, EXTERNAL_ANCHOR_REL } from "../lib/terminalLinks";
 
 function authHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
@@ -72,6 +74,30 @@ export default function WalletStalkerPage() {
   }, [refreshEvents]);
 
   const grouped = useMemo(() => groupWolfPackEvents(rawEvents), [rawEvents]);
+  const actorStats = useMemo(() => {
+    const stats = new Map();
+    const ensure = (walletAddr) => {
+      const key = String(walletAddr || "");
+      if (!key) return null;
+      if (!stats.has(key)) stats.set(key, { events: 0, doubleDowns: 0, tokens: new Set(), clusterOverlaps: 0 });
+      return stats.get(key);
+    };
+    for (const ev of rawEvents) {
+      const s = ensure(ev?.wallet);
+      if (!s) continue;
+      s.events += 1;
+      if (ev?.tokenAddress) s.tokens.add(String(ev.tokenAddress));
+      if (ev?.enrichment?.conviction === "DOUBLE_DOWN") s.doubleDowns += 1;
+    }
+    for (const item of grouped) {
+      if (item.kind !== "WOLF_PACK") continue;
+      for (const w of item.wallets || []) {
+        const s = ensure(w);
+        if (s) s.clusterOverlaps += 1;
+      }
+    }
+    return stats;
+  }, [rawEvents, grouped]);
 
   const clearActivity = useCallback(() => {
     try {
@@ -140,9 +166,31 @@ export default function WalletStalkerPage() {
                 key={row.stalked_wallet}
                 className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2"
               >
-                <span className="mono text-xs text-gray-200">
-                  {row.stalked_wallet?.slice(0, 6)}...{row.stalked_wallet?.slice(-6)}
-                </span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="mono text-xs text-gray-200">
+                      {row.stalked_wallet?.slice(0, 6)}...{row.stalked_wallet?.slice(-6)}
+                    </span>
+                    <a
+                      href={buildSolscanAccountUrl(row.stalked_wallet)}
+                      target="_blank"
+                      rel={EXTERNAL_ANCHOR_REL}
+                      className="text-[10px] text-cyan-200/85 hover:text-cyan-100"
+                    >
+                      Solscan
+                    </a>
+                  </div>
+                  {(() => {
+                    const s = actorStats.get(row.stalked_wallet);
+                    if (!s) return null;
+                    const ddRate = s.events ? Math.round((s.doubleDowns / s.events) * 100) : 0;
+                    return (
+                      <p className="mt-1 text-[10px] font-mono text-gray-500">
+                        consistency {s.events} events · early tokens {s.tokens.size} · double-down {ddRate}% · cluster overlap {s.clusterOverlaps}
+                      </p>
+                    );
+                  })()}
+                </div>
                 <button
                   type="button"
                   onClick={() => delMut.mutate(row.stalked_wallet)}
@@ -202,6 +250,7 @@ export default function WalletStalkerPage() {
                     </div>
                     <p className="text-[10px] text-violet-200/80 font-mono mt-1.5 break-all">{walletLine}</p>
                     <p className="text-[9px] text-violet-300/70 mt-1.5 leading-snug">{t("stalker.wolfPackHint")}</p>
+                    {tokenOk ? <TerminalActionIcons mint={tok} className="mt-2 justify-start" /> : null}
                   </div>
                 );
               }
@@ -246,6 +295,21 @@ export default function WalletStalkerPage() {
                     ) : null}
                   </div>
                   {poolLine ? <p className="text-[9px] text-gray-500 mt-1 font-mono">{poolLine}</p> : null}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {ev.tokenAddress && isProbableSolanaMint(String(ev.tokenAddress)) ? (
+                      <TerminalActionIcons mint={String(ev.tokenAddress)} className="justify-start" />
+                    ) : null}
+                    {ev.wallet ? (
+                      <a
+                        href={buildSolscanAccountUrl(ev.wallet)}
+                        target="_blank"
+                        rel={EXTERNAL_ANCHOR_REL}
+                        className="inline-flex h-7 items-center rounded-md border border-white/10 bg-white/[0.04] px-2 text-[11px] font-semibold text-gray-200 hover:text-white"
+                      >
+                        Wallet Solscan
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
               );
             })}

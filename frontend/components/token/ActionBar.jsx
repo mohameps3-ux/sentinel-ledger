@@ -1,31 +1,93 @@
 import toast from "react-hot-toast";
-import { Copy, ShoppingCart, Star, Zap } from "lucide-react";
-import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../lib/terminalLinks";
+import { Copy, ExternalLink, LineChart, Search, ShoppingCart, Star, Zap } from "lucide-react";
+import {
+  buildDexscreenerSolanaTokenUrl,
+  buildJupiterSwapUrl,
+  buildMeteoraPoolUrl,
+  buildPumpFunTokenUrl,
+  buildSolscanTokenUrl,
+  EXTERNAL_ANCHOR_REL
+} from "../../lib/terminalLinks";
 
-export function ActionBar({ tokenAddress, symbol, isWatchlisted = false, onToggleWatchlist }) {
+function hasPumpRoute(market) {
+  const pairs = Array.isArray(market?.dexPairs) ? market.dexPairs : [];
+  const pairUrl = String(market?.pairUrl || "").toLowerCase();
+  return pairUrl.includes("pump.fun") || pairs.some((p) => String(p?.dexId || "").toLowerCase().includes("pump"));
+}
+
+function meteoraPool(market) {
+  const pairs = Array.isArray(market?.dexPairs) ? market.dexPairs : [];
+  return pairs.find((p) => String(p?.dexId || "").toLowerCase().includes("meteora") && p?.pairAddress)?.pairAddress || null;
+}
+
+export function ActionBar({ tokenAddress, symbol, market, isWatchlisted = false, onToggleWatchlist }) {
   if (!tokenAddress) return null;
   const jupiterUrl = buildJupiterSwapUrl(tokenAddress);
+  const dexUrl = buildDexscreenerSolanaTokenUrl(tokenAddress);
+  const solscanUrl = buildSolscanTokenUrl(tokenAddress);
+  const pumpUrl = hasPumpRoute(market) ? buildPumpFunTokenUrl(tokenAddress) : null;
+  const meteoraUrl = buildMeteoraPoolUrl(meteoraPool(market));
 
   return (
-    <div className="glass-card p-4 flex flex-col md:flex-row md:items-center gap-3 justify-between">
+    <div className="glass-card p-4 flex flex-col lg:flex-row lg:items-center gap-3 justify-between border-emerald-500/20 bg-emerald-500/[0.03]">
       <div className="text-xs text-gray-400 mono hidden md:block">
+        <span className="text-[10px] uppercase tracking-[0.16em] text-emerald-200/80 font-semibold">Execution scope</span>
+        <br />
         Mint: {tokenAddress.slice(0, 6)}...{tokenAddress.slice(-6)}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:flex xl:flex-wrap items-center gap-3 w-full md:w-auto">
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
       <a
         href={jupiterUrl}
         target="_blank"
         rel={EXTERNAL_ANCHOR_REL}
-        className="h-11 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-black font-semibold inline-flex items-center justify-center gap-2 hover:opacity-90 transition"
+        className="col-span-2 h-12 px-5 rounded-xl bg-emerald-400 text-black font-black uppercase tracking-[0.14em] inline-flex items-center justify-center gap-2 hover:bg-emerald-300 transition"
       >
         <ShoppingCart size={16} />
-        Buy {symbol || "Token"} on Jupiter
+        Trade now {symbol || "Token"}
       </a>
+      <a
+        href={dexUrl}
+        target="_blank"
+        rel={EXTERNAL_ANCHOR_REL}
+        className="h-9 px-3 rounded-xl bg-[#13171A] border soft-divider text-cyan-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
+      >
+        <LineChart size={14} />
+        DEX
+      </a>
+      <a
+        href={solscanUrl}
+        target="_blank"
+        rel={EXTERNAL_ANCHOR_REL}
+        className="h-9 px-3 rounded-xl bg-[#13171A] border soft-divider text-gray-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
+      >
+        <Search size={14} />
+        Solscan
+      </a>
+      {pumpUrl ? (
+        <a
+          href={pumpUrl}
+          target="_blank"
+          rel={EXTERNAL_ANCHOR_REL}
+          className="h-9 px-3 rounded-xl bg-[#13171A] border soft-divider text-fuchsia-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
+        >
+          Pump <ExternalLink size={12} />
+        </a>
+      ) : null}
+      {meteoraUrl ? (
+        <a
+          href={meteoraUrl}
+          target="_blank"
+          rel={EXTERNAL_ANCHOR_REL}
+          className="h-9 px-3 rounded-xl bg-[#13171A] border soft-divider text-orange-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
+        >
+          Meteora <ExternalLink size={12} />
+        </a>
+      ) : null}
       <button
         onClick={() => toast("One-click swap coming soon.")}
-        className="h-11 px-5 rounded-xl bg-[#13171A] border soft-divider text-gray-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition"
+        className="h-9 px-3 rounded-xl bg-[#13171A] border soft-divider text-gray-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
       >
-        <Zap size={16} />
+        <Zap size={14} />
         Swap (1-click)
       </button>
       <button
@@ -37,9 +99,9 @@ export function ActionBar({ tokenAddress, symbol, isWatchlisted = false, onToggl
             toast.error("Copy failed.");
           }
         }}
-        className="h-11 px-4 rounded-xl bg-[#13171A] border soft-divider text-gray-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition"
+        className="h-9 px-3 rounded-xl bg-[#13171A] border soft-divider text-gray-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
       >
-        <Copy size={15} />
+        <Copy size={13} />
         Copy Mint
       </button>
       {typeof onToggleWatchlist === "function" ? (

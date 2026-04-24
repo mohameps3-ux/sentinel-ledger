@@ -4,7 +4,14 @@ import { useRouter } from "next/router";
 import { BarChart3, ExternalLink, Radar } from "lucide-react";
 import { SmartMoneyPanel } from "../token/SmartMoneyPanel";
 import { WalletThreatBanner } from "../token/WalletThreatBanner";
-import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../lib/terminalLinks";
+import {
+  buildDexscreenerSolanaTokenUrl,
+  buildJupiterSwapUrl,
+  buildMeteoraPoolUrl,
+  buildPumpFunTokenUrl,
+  buildSolscanTokenUrl,
+  EXTERNAL_ANCHOR_REL
+} from "../../lib/terminalLinks";
 import { formatUsdWhole } from "../../lib/formatStable";
 import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 import { mergeDeskMintIntoQuery } from "../../lib/deskRadarCtx.mjs";
@@ -56,6 +63,97 @@ export const DeskJupiterLinks = memo(function DeskJupiterLinks({ mint }) {
       >
         Open Jupiter for this mint →
       </a>
+    </div>
+  );
+});
+
+function findMeteoraPool(token) {
+  const pairs = Array.isArray(token?.market?.dexPairs) ? token.market.dexPairs : [];
+  const pair = pairs.find((p) => String(p?.dexId || "").toLowerCase().includes("meteora") && p?.pairAddress);
+  return pair?.pairAddress || null;
+}
+
+function hasPumpRoute(token) {
+  const pairs = Array.isArray(token?.market?.dexPairs) ? token.market.dexPairs : [];
+  const pairUrl = String(token?.market?.pairUrl || "").toLowerCase();
+  return pairUrl.includes("pump.fun") || pairs.some((p) => String(p?.dexId || "").toLowerCase().includes("pump"));
+}
+
+export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token, regime }) {
+  if (!mint || !isProbableSolanaMint(mint)) {
+    return <p className="text-xs text-gray-500">Invalid mint — execution links disabled.</p>;
+  }
+
+  const dexUrl = buildDexscreenerSolanaTokenUrl(mint);
+  const solscanUrl = buildSolscanTokenUrl(mint);
+  const pumpUrl = hasPumpRoute(token) ? buildPumpFunTokenUrl(mint) : null;
+  const meteoraUrl = buildMeteoraPoolUrl(findMeteoraPool(token));
+  const riskLabel = regime?.action ? String(regime.action) : "WAIT";
+  const disabled = riskLabel === "AVOID";
+
+  return (
+    <div className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/[0.14] via-cyan-500/[0.05] to-black/20 p-3 shadow-[0_0_28px_rgba(16,185,129,0.08)]">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[9px] uppercase tracking-[0.18em] text-emerald-200/85 font-semibold">Execution scope</p>
+          <p className="mt-1 text-xs text-gray-400 leading-snug">
+            Trade is dominant; chart and explorers are support rails.
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full border border-white/10 bg-black/25 px-2 py-1 text-[10px] font-mono text-gray-200">
+          {riskLabel}
+        </span>
+      </div>
+      <a
+        href={buildJupiterSwapUrl(mint)}
+        target="_blank"
+        rel={EXTERNAL_ANCHOR_REL}
+        className={`mt-3 flex h-12 w-full items-center justify-center rounded-xl border px-4 text-sm font-black uppercase tracking-[0.14em] transition ${
+          disabled
+            ? "border-red-500/35 bg-red-500/10 text-red-100"
+            : "border-emerald-400/50 bg-emerald-400 text-black hover:bg-emerald-300"
+        }`}
+      >
+        TRADE NOW
+      </a>
+      <div className="mt-2 grid grid-cols-2 gap-1.5">
+        <a
+          href={dexUrl}
+          target="_blank"
+          rel={EXTERNAL_ANCHOR_REL}
+          className="rounded-lg border border-cyan-500/25 bg-cyan-500/[0.07] px-2 py-1.5 text-center text-[10px] font-semibold text-cyan-100"
+        >
+          DEX chart
+        </a>
+        <a
+          href={solscanUrl}
+          target="_blank"
+          rel={EXTERNAL_ANCHOR_REL}
+          className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-center text-[10px] font-semibold text-gray-200"
+        >
+          Solscan
+        </a>
+        {pumpUrl ? (
+          <a
+            href={pumpUrl}
+            target="_blank"
+            rel={EXTERNAL_ANCHOR_REL}
+            className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/[0.07] px-2 py-1.5 text-center text-[10px] font-semibold text-fuchsia-100"
+          >
+            Pump
+          </a>
+        ) : null}
+        {meteoraUrl ? (
+          <a
+            href={meteoraUrl}
+            target="_blank"
+            rel={EXTERNAL_ANCHOR_REL}
+            className="rounded-lg border border-orange-500/25 bg-orange-500/[0.07] px-2 py-1.5 text-center text-[10px] font-semibold text-orange-100"
+          >
+            Meteora pool
+          </a>
+        ) : null}
+      </div>
     </div>
   );
 });

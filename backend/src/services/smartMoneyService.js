@@ -17,6 +17,9 @@ function mapSmartWallet(wallet, signal) {
     realizedPnl: Number(wallet.pnl_30d || 0),
     avgPositionSize: Number(wallet.avg_position_size || 0),
     recentHits: Number(wallet.recent_hits || 0),
+    earlyEntry: Number.isFinite(Number(wallet.early_entry_score)) ? Number(wallet.early_entry_score) : null,
+    cluster: Number.isFinite(Number(wallet.cluster_score)) ? Number(wallet.cluster_score) : null,
+    consistency: Number.isFinite(Number(wallet.consistency_score)) ? Number(wallet.consistency_score) : null,
     lastSeen: wallet.last_seen || null,
     lastAction: signal?.last_action || "unknown",
     confidence,
@@ -46,7 +49,7 @@ async function getLegacySupabaseWallets(tokenAddress) {
       const { data: smartWallets, error: walletsError } = await supabase
         .from("smart_wallets")
         .select(
-          "wallet_address,win_rate,pnl_30d,avg_position_size,recent_hits,last_seen,confidence"
+          "wallet_address,win_rate,pnl_30d,avg_position_size,recent_hits,last_seen,confidence,early_entry_score,cluster_score,consistency_score"
         )
         .in("wallet_address", wallets)
         .gte("win_rate", MIN_WIN_RATE)
@@ -68,7 +71,7 @@ async function getLegacySupabaseWallets(tokenAddress) {
     const { data: smartWallets, error } = await supabase
       .from("smart_wallets")
       .select(
-        "wallet_address,win_rate,pnl_30d,avg_position_size,recent_hits,last_seen,confidence"
+        "wallet_address,win_rate,pnl_30d,avg_position_size,recent_hits,last_seen,confidence,early_entry_score,cluster_score,consistency_score"
       )
       .gte("win_rate", MIN_WIN_RATE)
       .order("win_rate", { ascending: false })

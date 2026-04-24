@@ -12,8 +12,8 @@ function S(en, overrides = {}) {
 
 /** @type {Record<string, Record<string, string>>} */
 export const GRAVEYARD_PAGE_STRINGS = {
-  "graveyard.pageTitle": S("Signal Graveyard — Sentinel Ledger", {
-    es: "Cementerio de señales — Sentinel Ledger",
+  "graveyard.pageTitle": S("Verified Track Record — Sentinel Ledger", {
+    es: "Historial verificado — Sentinel Ledger",
     fr: "Cimetière des signaux — Sentinel Ledger",
     de: "Signal-Friedhof — Sentinel Ledger",
     it: "Cimitero dei segnali — Sentinel Ledger",
@@ -24,8 +24,8 @@ export const GRAVEYARD_PAGE_STRINGS = {
     ar: "مقبرة الإشارات — Sentinel Ledger",
     pt: "Cemitério de sinais — Sentinel Ledger"
   }),
-  "graveyard.pageDescription": S("Public scorecard of historical signals with 4h/24h outcomes.", {
-    es: "Marcador público de señales históricas con resultados a 4h/24h.",
+  "graveyard.pageDescription": S("Ledger-style verified track record of historical signals with 4h/24h outcomes.", {
+    es: "Historial verificado tipo ledger de señales históricas con resultados a 4h/24h.",
     fr: "Tableau public de signaux historiques avec résultats 4h/24h.",
     de: "Öffentliche Auswertung historischer Signale mit 4h/24h-Ergebnissen.",
     it: "Scorecard pubblica di segnali storici con esiti 4h/24h.",
@@ -36,8 +36,8 @@ export const GRAVEYARD_PAGE_STRINGS = {
     ar: "سجل علني لإشارات تاريخية مع نتائج 4س/24س.",
     pt: "Painel público de sinais históricos com resultados 4h/24h."
   }),
-  "graveyard.kicker": S("Public transparency", {
-    es: "Transparencia pública",
+  "graveyard.kicker": S("Verified Track Record", {
+    es: "Historial verificado",
     fr: "Transparence publique",
     de: "Öffentliche Transparenz",
     it: "Trasparenza pubblica",
@@ -48,8 +48,8 @@ export const GRAVEYARD_PAGE_STRINGS = {
     ar: "شفافية عامة",
     pt: "Transparência pública"
   }),
-  "graveyard.h1": S("Signal Graveyard", {
-    es: "Cementerio de señales",
+  "graveyard.h1": S("Signal ledger, not marketing", {
+    es: "Ledger de señales, no marketing",
     fr: "Cimetière des signaux",
     de: "Signal-Friedhof",
     it: "Cimitero dei segnali",
@@ -60,8 +60,8 @@ export const GRAVEYARD_PAGE_STRINGS = {
     ar: "مقبرة الإشارات",
     pt: "Cemitério de sinais"
   }),
-  "graveyard.intro": S("Win rate visible for everyone. Historical outcomes for trust and verification.", {
-    es: "Win rate visible para todos. Resultados históricos para confianza y verificación.",
+  "graveyard.intro": S("Every row is an audit artifact: what fired, what happened after, why it mattered, and where to replay the decision.", {
+    es: "Cada fila es una pieza de auditoría: qué saltó, qué ocurrió después, por qué importó y dónde repetir la decisión.",
     fr: "Taux de réussite visible par tous. Résultats historiques pour confiance et vérification.",
     de: "Trefferquote für alle sichtbar. Historische Ergebnisse zur Verifikation.",
     it: "Win rate visibile a tutti. Esiti storici per fiducia e verifica.",
@@ -124,6 +124,30 @@ export const GRAVEYARD_PAGE_STRINGS = {
     ar: "معدل الفوز:",
     pt: "Taxa de vitória:"
   }),
+  "graveyard.kpiResolved": S("Resolved", { es: "Resueltas", pt: "Resolvidas" }),
+  "graveyard.kpiRows": S("Rows", { es: "Filas", pt: "Linhas" }),
+  "graveyard.whyTitle": S("Why it mattered", { es: "Por qué importó", pt: "Por que importou" }),
+  "graveyard.why.runup": S("The signal created a tradable run-up of {{pct}} from entry before the ledger closed the window.", {
+    es: "La señal generó una subida operable de {{pct}} desde la entrada antes de cerrar la ventana del ledger.",
+    pt: "O sinal gerou uma alta negociável de {{pct}} desde a entrada antes do ledger fechar a janela."
+  }),
+  "graveyard.why.drawdown": S("The signal exposed downside risk: max drawdown reached {{pct}} inside the tracked window.", {
+    es: "La señal expuso riesgo bajista: la caída máxima llegó a {{pct}} dentro de la ventana rastreada.",
+    pt: "O sinal expôs risco de queda: o drawdown máximo chegou a {{pct}} na janela rastreada."
+  }),
+  "graveyard.why.followThrough": S("The 24h follow-through moved {{pct}}, enough to validate whether the setup had real edge.", {
+    es: "El seguimiento a 24 h se movió {{pct}}, suficiente para validar si el setup tenía edge real.",
+    pt: "O follow-through de 24 h moveu {{pct}}, suficiente para validar se o setup tinha edge real."
+  }),
+  "graveyard.why.audit": S("The row still matters because it records a fired signal, entry context, and measured follow-through without hiding weak outcomes.", {
+    es: "La fila importa porque registra una señal emitida, contexto de entrada y seguimiento medido sin ocultar resultados débiles.",
+    pt: "A linha importa porque registra um sinal emitido, contexto de entrada e follow-through medido sem esconder resultados fracos."
+  }),
+  "graveyard.ctaTitle": S("Replay / Desk / Similar", { es: "Replay / Desk / Similar", pt: "Replay / Desk / Similar" }),
+  "graveyard.ctaReplay": S("Replay", { es: "Replay", pt: "Replay" }),
+  "graveyard.ctaDesk": S("Desk", { es: "Desk", pt: "Desk" }),
+  "graveyard.ctaSimilar": S("Similar", { es: "Similar", pt: "Similar" }),
+  "graveyard.invalidMint": S("Invalid mint; CTAs disabled.", { es: "Mint no válido; CTAs desactivadas.", pt: "Mint inválido; CTAs desativadas." }),
   "graveyard.thToken": S("Token", {
     es: "Token",
     fr: "Jeton",

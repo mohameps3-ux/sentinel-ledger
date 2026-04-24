@@ -5,6 +5,8 @@ import { useWalletLabels } from "../../hooks/useWalletLabels";
 import { Activity, Copy, Radio, Shield, Trophy, Wallet, Zap } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatDateTime, formatUsdAmount } from "../../lib/formatStable";
+import { TerminalActionIcons } from "../terminal/TerminalActionIcons";
+import { buildSolscanAccountUrl, EXTERNAL_ANCHOR_REL } from "../../lib/terminalLinks";
 
 function compactWallet(wallet) {
   if (!wallet) return "unknown";
@@ -15,6 +17,11 @@ function tierBadgeClass(tier) {
   if (tier === 1) return "bg-gradient-to-r from-amber-500/25 to-orange-500/20 text-amber-200 border-amber-500/35";
   if (tier === 2) return "bg-cyan-500/15 text-cyan-200 border-cyan-500/30";
   return "bg-white/[0.06] text-gray-300 border-white/10";
+}
+
+function metricValue(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n) : null;
 }
 
 export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
@@ -99,12 +106,19 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
       {meta.metricLabel ? (
         <p className="text-[11px] text-gray-500 leading-relaxed">{meta.metricLabel}</p>
       ) : null}
+      <p className="text-[11px] text-gray-500 leading-relaxed border-l-2 border-cyan-500/35 pl-3">
+        Actor intelligence uses traceable wallet stats when available: consistency, early entry, double-down proxy, and cluster overlap.
+      </p>
 
       <div className="grid grid-cols-1 gap-4">
         {wallets.map((wallet, index) => {
           const tier = wallet.tier ?? 3;
           const tierLabel = wallet.tierLabel || "Scout";
           const flagged = flaggedWallets?.has?.(wallet.wallet);
+          const early = metricValue(wallet.earlyEntry);
+          const cluster = metricValue(wallet.cluster);
+          const consistency = metricValue(wallet.consistency);
+          const doubleDownProxy = Math.min(100, Math.round(Number(wallet.recentHits || 0) * 12));
           return (
             <div
               key={wallet.wallet}
@@ -145,6 +159,30 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
                       Flagged by wallet intel
                     </div>
                   ) : null}
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {[
+                      ["Early", early],
+                      ["Consistency", consistency],
+                      ["Double-down", Number.isFinite(doubleDownProxy) ? doubleDownProxy : null],
+                      ["Cluster", cluster]
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-lg border border-white/[0.07] bg-white/[0.025] px-2 py-1.5">
+                        <p className="text-[8px] uppercase tracking-[0.12em] text-gray-500">{label}</p>
+                        <p className="mt-0.5 font-mono text-[12px] text-gray-200">{value != null ? value : "—"}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <TerminalActionIcons mint={tokenAddress} className="justify-start" />
+                    <a
+                      href={buildSolscanAccountUrl(wallet.wallet)}
+                      target="_blank"
+                      rel={EXTERNAL_ANCHOR_REL}
+                      className="inline-flex h-7 items-center rounded-md border border-white/10 bg-white/[0.04] px-2 text-[11px] font-semibold text-gray-200 hover:text-white"
+                    >
+                      Solscan
+                    </a>
+                  </div>
                 </div>
               </div>
 

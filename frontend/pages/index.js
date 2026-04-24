@@ -396,7 +396,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     try {
       setIsLoggedIn(Boolean(localStorage.getItem("token")));
       const tab = localStorage.getItem(TACTICAL_TAB_LS_KEY);
-      if (tab === "live" || tab === "hot" || tab === "history") setTacticalTab(tab);
+      if (tab === "live" || tab === "hot" || tab === "outlier" || tab === "track") setTacticalTab(tab);
+      if (tab === "history") setTacticalTab("track");
     } catch (_) {
       setIsLoggedIn(false);
     }
@@ -560,7 +561,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   }, []);
 
   useEffect(() => {
-    if (tacticalTab !== "history") return;
+    if (tacticalTab !== "track") return;
     let cancelled = false;
     fetch(`${getPublicApiUrl()}/api/v1/signals/history?limit=30`)
       .then((r) => r.json())
