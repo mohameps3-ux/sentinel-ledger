@@ -34,6 +34,38 @@ function statusFromPct(pct) {
   return "PENDING";
 }
 
+function trackResultFromOutcome(outcome60m) {
+  const n = Number(outcome60m);
+  if (!Number.isFinite(n)) return "PENDING";
+  return n > 0.05 ? "WIN" : "LOSS";
+}
+
+function actionFromOracle(row = {}) {
+  const confidence = Number(row.rule_snapshot?.confidence ?? 0);
+  if (confidence >= 0.75) return "ACCUMULATE";
+  if (confidence >= 0.45) return "WATCH";
+  return "AVOID";
+}
+
+function formatRuleRow(row = {}) {
+  const total = Number(row.total_signals || 0);
+  const wins = Number(row.success_count_60m || 0);
+  const regimePerformance = row.regime_performance && typeof row.regime_performance === "object" ? row.regime_performance : {};
+  const regimes = Object.entries(regimePerformance)
+    .filter(([, v]) => Number(v?.total || 0) > 0)
+    .sort((a, b) => Number(b[1]?.confidence || 0) - Number(a[1]?.confidence || 0));
+  return {
+    rule: row.rule_id,
+    signals: total,
+    winRate: total ? wins / total : null,
+    avgReturn: row.avg_return_60m != null ? Number(row.avg_return_60m) : null,
+    maxDrawdown: row.max_drawdown != null ? Number(row.max_drawdown) : null,
+    regime: regimes[0] ? `${regimes[0][0]} ${(Number(regimes[0][1]?.confidence || 0) * 100).toFixed(0)}%` : "—",
+    confidence: Number(row.confidence_score || 0),
+    hasSample: total >= 10
+  };
+}
+
 /** GET /api/v1/public/stats — onboarding strip */
 router.get("/stats", async (_req, res) => {
   const supabase = safeSupabase();
@@ -83,7 +115,7 @@ router.get("/freshness-export-verification-key", freshnessExportKeyLimiter, (_re
   });
 });
 
-/** GET /api/v1/public/track-record */
+/** GET /api/v1/public/track-record — Validation Oracle public ledger. */
 router.get("/track-record", async (req, res) => {
   const filter = String(req.query.filter || "all").toLowerCase();
   const supabase = safeSupabase();
@@ -91,75 +123,129 @@ router.get("/track-record", async (req, res) => {
     return res.status(503).json({ ok: false, error: "supabase_unconfigured", rows: [] });
   }
   try {
-    let since = null;
-    if (filter === "24h" || filter === "day") {
-      since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    } else if (filter === "week") {
-      since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    }
+    const limit = Math.max(20, Math.min(200, Number(req.query.limit || 80)));
+    const [rulesRes, outcomesRes, countRes, resolvedStatsRes] = await Promise.all([
+      supabase.from("rule_performance").select("*").order("confidence_score", { ascending: false, nullsFirst: false }).limit(100),
+      supabase
+        .from("signal_outcomes")
+        .select(
+          "id,signal_id,mint,rule_id,price_at_signal,wallets_involved,regime,price_5m,price_15m,price_60m,outcome_5m,outcome_15m,outcome_60m,validated,rule_snapshot,min_price_observed,validated_at,created_at"
+        )
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      supabase.from("signal_outcomes").select("id", { count: "exact", head: true }),
+      supabase
+        .from("signal_outcomes")
+        .select("id,mint,outcome_60m,created_at,rule_id,rule_snapshot")
+        .not("outcome_60m", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(5000)
+    ]);
+    if (rulesRes.error) throw rulesRes.error;
+    if (outcomesRes.error) throw outcomesRes.error;
+    if (countRes.error) throw countRes.error;
+    if (resolvedStatsRes.error) throw resolvedStatsRes.error;
 
-    let q = supabase
-      .from("smart_wallet_signals")
-      .select(
-        "id, token_address, wallet_address, confidence, created_at, entry_price_usd, price_1h_usd, price_4h_usd, result_pct"
-      )
-      .order("created_at", { ascending: false })
-      .limit(80);
+    const rawOutcomes = outcomesRes.data || [];
+    const mints = [...new Set(rawOutcomes.map((r) => r.mint).filter(Boolean))].slice(0, 200);
+    const signalIds = rawOutcomes
+      .map((r) => String(r.signal_id || ""))
+      .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
+      .slice(0, 200);
+    const [snapshotsRes, signalsRes] = await Promise.all([
+      mints.length
+        ? supabase.from("market_snapshots").select("mint,symbol,name").in("mint", mints)
+        : Promise.resolve({ data: [], error: null }),
+      signalIds.length
+        ? supabase.from("smart_wallet_signals").select("id,token_address,last_action,confidence,created_at").in("id", signalIds)
+        : Promise.resolve({ data: [], error: null })
+    ]);
+    const snapshotByMint = new Map((snapshotsRes.data || []).map((r) => [r.mint, r]));
+    const signalById = new Map((signalsRes.data || []).map((r) => [String(r.id), r]));
 
-    if (since) q = q.gte("created_at", since);
-
-    const { data: raw, error } = await q;
-    if (error) throw error;
-
-    const rows = (raw || []).map((row) => {
-      let pct =
-        row.result_pct != null ? Number(row.result_pct) : pctFromPrices(row.entry_price_usd, row.price_1h_usd);
-      const status = statusFromPct(pct);
+    const rows = rawOutcomes.map((row) => {
+      const signal = signalById.get(String(row.signal_id || ""));
+      const snap = snapshotByMint.get(row.mint);
       return {
         id: row.id,
-        token: row.token_address,
-        signalAt: row.created_at,
-        entryPrice: row.entry_price_usd != null ? Number(row.entry_price_usd) : null,
-        price1h: row.price_1h_usd != null ? Number(row.price_1h_usd) : null,
-        price4h: row.price_4h_usd != null ? Number(row.price_4h_usd) : null,
-        resultPct: pct,
-        status,
-        confidence: row.confidence
+        signalId: row.signal_id,
+        timestamp: row.created_at,
+        token: row.mint,
+        symbol: snap?.symbol || row.rule_snapshot?.symbol || (row.mint ? `${row.mint.slice(0, 4)}…${row.mint.slice(-4)}` : "—"),
+        rule: row.rule_id,
+        regime: row.regime,
+        signalStrength: Number(row.rule_snapshot?.confidence ?? signal?.confidence ?? 0),
+        suggestedAction: actionFromOracle(row),
+        outcome5m: row.outcome_5m != null ? Number(row.outcome_5m) : null,
+        outcome15m: row.outcome_15m != null ? Number(row.outcome_15m) : null,
+        outcome60m: row.outcome_60m != null ? Number(row.outcome_60m) : null,
+        result: trackResultFromOutcome(row.outcome_60m),
+        validated: Boolean(row.validated),
+        walletsInvolved: Number(row.wallets_involved || 0),
+        minPriceObserved: row.min_price_observed != null ? Number(row.min_price_observed) : null
       };
     });
-
     const filtered =
-      filter === "win"
-        ? rows.filter((r) => r.status === "WIN")
-        : filter === "loss"
-          ? rows.filter((r) => r.status === "LOSS")
-          : rows;
+      filter === "wins" || filter === "win"
+        ? rows.filter((r) => r.result === "WIN")
+        : filter === "losses" || filter === "loss"
+          ? rows.filter((r) => r.result === "LOSS")
+          : filter === "pending"
+            ? rows.filter((r) => r.result === "PENDING")
+            : rows;
 
-    const out = filtered.slice(0, 50);
-
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: weekRows } = await supabase
-      .from("smart_wallet_signals")
-      .select("entry_price_usd, price_1h_usd, result_pct")
-      .gte("created_at", weekAgo)
-      .limit(500);
-
-    let wins = 0;
-    let resolved = 0;
-    (weekRows || []).forEach((r) => {
-      const pct = r.result_pct != null ? Number(r.result_pct) : pctFromPrices(r.entry_price_usd, r.price_1h_usd);
-      if (pct == null || Number.isNaN(pct)) return;
-      resolved += 1;
-      if (pct > 0) wins += 1;
-    });
-    const winRate7d = resolved ? Math.round((wins / resolved) * 1000) / 10 : null;
+    const resolvedStatsRows = resolvedStatsRes.data || [];
+    const resolvedStats = resolvedStatsRows.map((r) => ({
+      id: r.id,
+      token: r.mint,
+      symbol: r.rule_snapshot?.symbol || (r.mint ? `${r.mint.slice(0, 4)}…${r.mint.slice(-4)}` : "—"),
+      rule: r.rule_id,
+      timestamp: r.created_at,
+      suggestedAction: actionFromOracle(r),
+      outcome60m: Number(r.outcome_60m),
+      result: trackResultFromOutcome(r.outcome_60m)
+    }));
+    const wins = resolvedStats.filter((r) => r.result === "WIN");
+    const returns = resolvedStats.map((r) => Number(r.outcome60m)).filter(Number.isFinite);
+    const bestCalls = resolvedStats.slice().sort((a, b) => Number(b.outcome60m || 0) - Number(a.outcome60m || 0)).slice(0, 5);
+    const worstCalls = resolvedStats.slice().sort((a, b) => Number(a.outcome60m || 0) - Number(b.outcome60m || 0)).slice(0, 3);
+    const ruleRows = (rulesRes.data || []).map(formatRuleRow).sort((a, b) => Number(b.confidence || 0) - Number(a.confidence || 0));
+    const totalRuleSignals = (rulesRes.data || []).reduce((sum, r) => sum + Number(r.total_signals || 0), 0);
+    const totalRuleWins = (rulesRes.data || []).reduce((sum, r) => sum + Number(r.success_count_60m || 0), 0);
+    const rulesWithSample = ruleRows.filter((r) => r.hasSample);
+    const winReturns = resolvedStats.filter((r) => r.result === "WIN").map((r) => Number(r.outcome60m)).filter(Number.isFinite);
+    const drawdowns = ruleRows.map((r) => Number(r.maxDrawdown)).filter(Number.isFinite);
 
     return res.json({
       ok: true,
-      rows: out,
-      winRate7d,
-      count7d: resolved,
-      meta: { source: "supabase" }
+      stats: {
+        totalSignals: Math.max(Number(countRes.count || 0), totalRuleSignals),
+        resolvedSignals: resolvedStats.length,
+        winRate: resolvedStats.length ? wins.length / resolvedStats.length : null,
+        avgReturn: returns.length ? returns.reduce((a, b) => a + b, 0) / returns.length : null,
+        bestCall: bestCalls[0] || null,
+        worstCall: worstCalls[0] || null
+      },
+      summary:
+        rulesWithSample.length && totalRuleSignals >= 10
+          ? {
+              winRate60m: totalRuleSignals ? totalRuleWins / totalRuleSignals : null,
+              avgReturnOnWins: winReturns.length ? winReturns.reduce((a, b) => a + b, 0) / winReturns.length : null,
+              maxDrawdown: drawdowns.length ? Math.max(...drawdowns) : null,
+              sampleSize: totalRuleSignals
+            }
+          : null,
+      rules: ruleRows,
+      rows: filtered,
+      bestCalls,
+      worstCalls,
+      meta: {
+        source: "supabase:validation_oracle",
+        filter,
+        count: filtered.length,
+        totalRows: rows.length,
+        hasOracleData: Boolean(rawOutcomes.length || ruleRows.length)
+      }
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message, rows: [] });

@@ -426,29 +426,29 @@ export const WAYFINDING_FLAT_STRINGS = {
     ar: "مسار الترقية",
     pt: "Caminho de upgrade"
   }),
-  "wayfinding.places.graveyard.title": S("Graveyard", {
-    es: "Cementerio",
-    fr: "Cimetière",
-    de: "Friedhof",
-    it: "Cimitero",
-    ru: "Кладбище",
-    zh: "墓地",
-    ko: "무덤",
-    ja: "墓場",
-    ar: "المقبرة",
-    pt: "Cemitério"
+  "wayfinding.places.graveyard.title": S("Verified Track Record", {
+    es: "Historial verificado",
+    fr: "Historique vérifié",
+    de: "Verifizierte Leistungsbilanz",
+    it: "Storico verificato",
+    ru: "Проверенная история",
+    zh: "已验证记录",
+    ko: "검증된 트랙 레코드",
+    ja: "検証済み実績",
+    ar: "السجل الموثق",
+    pt: "Histórico verificado"
   }),
-  "wayfinding.places.graveyard.detail": S("Dead / rugged archive", {
-    es: "Archivo de tokens muertos / rug",
-    fr: "Archive tokens morts / rug",
-    de: "Archiv toter / rug-Pull-Tokens",
-    it: "Archivio token morti / rug",
-    ru: "Архив мёртвых / rug-токенов",
-    zh: "失效 / 跑路归档",
-    ko: "사망·럭풀 아카이브",
-    ja: "死亡・ラグのアーカイブ",
-    ar: "أرشيف الرموز الميتة/المسحوبة",
-    pt: "Arquivo de tokens mortos / rug"
+  "wayfinding.places.graveyard.detail": S("Every signal. Every outcome. Nothing hidden.", {
+    es: "Cada señal. Cada resultado. Nada oculto.",
+    fr: "Chaque signal. Chaque résultat. Rien de caché.",
+    de: "Jedes Signal. Jedes Ergebnis. Nichts verborgen.",
+    it: "Ogni segnale. Ogni esito. Nulla nascosto.",
+    ru: "Каждый сигнал. Каждый результат. Ничего скрытого.",
+    zh: "每个信号。每个结果。毫无隐藏。",
+    ko: "모든 시그널. 모든 결과. 숨김 없음.",
+    ja: "すべてのシグナル。すべての結果。隠し事なし。",
+    ar: "كل إشارة. كل نتيجة. لا شيء مخفي.",
+    pt: "Cada sinal. Cada resultado. Nada escondido."
   }),
   "wayfinding.places.stalker.title": S("Wallet stalker", {
     es: "Wallet stalker",

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
 import { useSignalsFeed } from "../hooks/useSignalsFeed";
 import { useDecisionFeedQuotes } from "../hooks/useDecisionFeedQuotes";
@@ -605,6 +606,18 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           <>
             <HomeOnboarding />
             <WelcomeBanner />
+            <div className="sl-container max-w-full pt-2">
+              <Link
+                href="/graveyard"
+                className="flex flex-col gap-1 rounded-2xl border border-violet-500/25 bg-violet-500/[0.07] px-4 py-3 no-underline transition hover:bg-violet-500/[0.11] sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span>
+                  <span className="block text-xs uppercase tracking-[0.16em] text-violet-200/80 font-semibold">Track Record</span>
+                  <span className="block text-sm text-gray-200">Every signal. Every outcome. Nothing hidden.</span>
+                </span>
+                <span className="text-xs font-semibold text-violet-100">Open verified ledger →</span>
+              </Link>
+            </div>
             <div className="w-full max-w-[100vw] overflow-x-clip">
         <div className="px-2 sm:px-3 pt-1 pb-0 border-b border-cyan-500/20 bg-[#050a0f]/80">
         <p className="px-1 pt-1 pb-2 text-center text-[12px] sm:text-[13px] sm:text-left text-gray-300 leading-snug">

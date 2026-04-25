@@ -605,7 +605,7 @@ export const FLAT_STRINGS = {
   "nav.smart": S("Smart Money", { es: "Smart money", fr: "Smart money", de: "Smart Money", it: "Smart money", ru: "Smart money", zh: "聪明钱", ko: "스마트 머니", ja: "スマートマネー", ar: "الأموال الذكية", pt: "Smart money" }),
   "nav.alerts": S("Alerts", { es: "Alertas", fr: "Alertes", de: "Alerts", it: "Avvisi", ru: "Оповещения", zh: "提醒", ko: "알림", ja: "アラート", ar: "التنبيهات", pt: "Alertas" }),
   "nav.pricing": S("Go PRO", { es: "Ir a PRO", fr: "Passer PRO", de: "PRO werden", it: "Passa a PRO", ru: "PRO", zh: "升级 PRO", ko: "PRO로", ja: "PROへ", ar: "ترقية PRO", pt: "Ir ao PRO" }),
-  "nav.grave": S("Graveyard", { es: "Cementerio", fr: "Cimetière", de: "Friedhof", it: "Cimitero", ru: "Кладбище", zh: "墓地", ko: "무덤", ja: "墓場", ar: "المقبرة", pt: "Cemitério" }),
+  "nav.grave": S("Track Record", { es: "Historial", fr: "Historique", de: "Leistungsbilanz", it: "Storico", ru: "История", zh: "记录", ko: "트랙 레코드", ja: "実績", ar: "السجل", pt: "Histórico" }),
   "nav.stalker": S("Stalker", { es: "Stalker", fr: "Stalker", de: "Stalker", it: "Stalker", ru: "Сталкер", zh: "跟踪", ko: "스토커", ja: "ストーカー", ar: "المُراقب", pt: "Stalker" }),
   "nav.compare": S("Compare", { es: "Comparar", fr: "Comparer", de: "Vergleichen", it: "Confronta", ru: "Сравнить", zh: "对比", ko: "비교", ja: "比較", ar: "مقارنة", pt: "Comparar" }),
   "nav.watch": S("Watchlist", { es: "Watchlist", fr: "Watchlist", de: "Watchlist", it: "Watchlist", ru: "Список наблюдения", zh: "自选", ko: "관심목록", ja: "ウォッチリスト", ar: "قائمة المراقبة", pt: "Watchlist" }),

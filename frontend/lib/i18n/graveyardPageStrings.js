@@ -1,4 +1,4 @@
-/** Signal Graveyard page */
+/** Verified Track Record page */
 
 function S(en, overrides = {}) {
   const codes = ["en", "es", "fr", "de", "it", "ru", "zh", "ko", "ja", "ar", "pt", "nl", "pl", "tr", "hi", "vi"];

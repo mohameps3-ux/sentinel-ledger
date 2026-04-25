@@ -10,7 +10,7 @@ export const APP_NAV_LINKS = [
   { href: "/smart-money", key: "smart", label: "Smart Money" },
   { href: "/alerts", key: "alerts", label: "Alerts" },
   { href: "/pricing", key: "pricing", label: "Go PRO" },
-  { href: "/graveyard", key: "grave", label: "Graveyard" },
+  { href: "/graveyard", key: "grave", label: "Track Record" },
   { href: "/wallet-stalker", key: "stalker", label: "Stalker", isStalker: true },
   { href: "/compare", key: "compare", label: "Compare" },
   { href: "/watchlist", key: "watch", label: "Watchlist" },
