@@ -7,14 +7,15 @@ async function cacheSetJson(key, ttlSeconds, value) {
   return redis.set(key, JSON.stringify(value), { ex: ttlSeconds });
 }
 
-async function getAnalysis(address, marketData) {
+async function getAnalysis(address, marketData, precomputed = {}) {
   const cacheKey = `risk:${address}`;
-  const cached = await redis.get(cacheKey);
+  const shouldCache = precomputed.cache !== false;
+  const cached = shouldCache ? await redis.get(cacheKey) : null;
   if (cached) return cached;
 
   const [security, holders] = await Promise.all([
-    getTokenSecurity(address),
-    getHolderConcentration(address)
+    precomputed.security ? Promise.resolve(precomputed.security) : getTokenSecurity(address),
+    precomputed.holders ? Promise.resolve(precomputed.holders) : getHolderConcentration(address)
   ]);
 
   let score = 100;
@@ -70,7 +71,7 @@ async function getAnalysis(address, marketData) {
   else grade = "F";
 
   const result = { grade, confidence: score, pros, cons, lastChecked: Date.now() };
-  await cacheSetJson(cacheKey, RISK_CACHE_TTL_SECONDS, result);
+  if (shouldCache) await cacheSetJson(cacheKey, RISK_CACHE_TTL_SECONDS, result);
   return result;
 }
 

@@ -1,17 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import dynamic from "next/dynamic";
 import { useTokenData } from "../../hooks/useTokenData";
 import { useProStatus } from "../../hooks/useProStatus";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { TokenSkeleton } from "../../components/token/TokenSkeleton";
 import { ChartPanel } from "../../components/token/ChartPanel";
-import { SmartMoneyPanel } from "../../components/token/SmartMoneyPanel";
-import { HoldersPanel } from "../../components/token/HoldersPanel";
-import { DeployerPanel } from "../../components/token/DeployerPanel";
-import { LiveFlowPanel } from "../../components/token/LiveFlowPanel";
 import { WatchlistButton } from "../../components/token/WatchlistButton";
-import { NotesPanel } from "../../components/token/NotesPanel";
 import { ExpandablePanel } from "../../components/token/ExpandablePanel";
 import { WalletThreatBanner } from "../../components/token/WalletThreatBanner";
 import { CandlestickChart, Radio, ShieldAlert, Users } from "lucide-react";
@@ -27,6 +23,27 @@ import {
   buildSolscanTokenUrl,
   EXTERNAL_ANCHOR_REL
 } from "../../lib/terminalLinks";
+
+const SmartMoneyPanel = dynamic(
+  () => import("../../components/token/SmartMoneyPanel").then((mod) => mod.SmartMoneyPanel),
+  { ssr: false, loading: () => <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-gray-500">Loading smart money…</div> }
+);
+const HoldersPanel = dynamic(
+  () => import("../../components/token/HoldersPanel").then((mod) => mod.HoldersPanel),
+  { ssr: false }
+);
+const DeployerPanel = dynamic(
+  () => import("../../components/token/DeployerPanel").then((mod) => mod.DeployerPanel),
+  { ssr: false }
+);
+const LiveFlowPanel = dynamic(
+  () => import("../../components/token/LiveFlowPanel").then((mod) => mod.LiveFlowPanel),
+  { ssr: false, loading: () => <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-gray-500">Loading live flow…</div> }
+);
+const NotesPanel = dynamic(
+  () => import("../../components/token/NotesPanel").then((mod) => mod.NotesPanel),
+  { ssr: false }
+);
 
 function shortMint(addr) {
   if (!addr || typeof addr !== "string" || addr.length < 12) return addr || "";
@@ -288,8 +305,8 @@ function SentinelIntelligence({ address, analysis, terminal, flaggedWallets }) {
 }
 
 function SecurityReport({ security }) {
-  const mint = tri(security?.mintRenounced === true);
-  const freeze = tri(security?.freezeAuthorityInactive === true);
+  const mint = tri(security?.mintRenounced);
+  const freeze = tri(security?.freezeAuthorityInactive);
   const lp = tri(security?.liquidityLocked === true ? true : security?.liquidityLocked === false ? false : null);
   return (
     <section className="glass-card sl-inset space-y-3">

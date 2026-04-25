@@ -13,6 +13,9 @@ const RETRY_429_MAX = Math.max(1, Math.min(2, Number(process.env.MARKETDATA_RETR
 const RETRY_429_MIN_JITTER_MS = Math.max(50, Number(process.env.MARKETDATA_RETRY_429_MIN_MS || 200));
 const RETRY_429_MAX_JITTER_MS = Math.max(RETRY_429_MIN_JITTER_MS, Number(process.env.MARKETDATA_RETRY_429_MAX_MS || 600));
 const REQUEST_DEDUP_WINDOW_MS = Math.max(250, Number(process.env.MARKETDATA_DEDUP_WINDOW_MS || 1500));
+const DEX_TOKEN_TIMEOUT_MS = Math.max(600, Number(process.env.MARKETDATA_DEX_TOKEN_TIMEOUT_MS || 1000));
+const BIRDEYE_TOKEN_TIMEOUT_MS = Math.max(600, Number(process.env.MARKETDATA_BIRDEYE_TOKEN_TIMEOUT_MS || 1000));
+const COINGECKO_TIMEOUT_MS = Math.max(500, Number(process.env.MARKETDATA_COINGECKO_TIMEOUT_MS || 800));
 const WELL_KNOWN_MINT_TO_CG = {
   So11111111111111111111111111111111111111112: "solana"
 };
@@ -58,6 +61,26 @@ const providerRateStats = {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function firstNonNull(promises) {
+  return new Promise((resolve) => {
+    let pending = promises.length;
+    if (!pending) {
+      resolve(null);
+      return;
+    }
+    promises.forEach((promise) => {
+      Promise.resolve(promise)
+        .then((value) => {
+          if (value) resolve(value);
+          else if (--pending === 0) resolve(null);
+        })
+        .catch(() => {
+          if (--pending === 0) resolve(null);
+        });
+    });
+  });
 }
 
 function toHttpStatus(err) {
@@ -280,7 +303,7 @@ async function fetchBirdeyeTokenOverview(address) {
   const { out, attempts } = await with429Retry(() =>
     BIRDEYE_TOKEN_BREAKER.execute(() =>
       axios.get(`${BIRDEYE_BASE}/defi/token_overview`, {
-        timeout: 5000,
+        timeout: BIRDEYE_TOKEN_TIMEOUT_MS,
         params: { address },
         headers,
         validateStatus: () => true
@@ -384,7 +407,7 @@ async function fetchCoinGeckoMarketCap(assetId) {
   try {
     const { data } = await CG_BREAKER.execute(() =>
       axios.get(COINGECKO_SIMPLE_PRICE, {
-        timeout: 5000,
+        timeout: COINGECKO_TIMEOUT_MS,
         params: {
           ids: assetId,
           vs_currencies: "usd",
@@ -463,38 +486,47 @@ async function getMarketDataUncached(address) {
   let attempts = 0;
   let circuitState = null;
   let bestPair = null;
-  try {
+  const dexPromise = (async () => {
     const dex = await with429Retry(() =>
       DEX_TOKEN_BREAKER.execute(() =>
-        axios.get(`https://api.dexscreener.com/latest/dex/tokens/${address}`, { timeout: 5000 })
+        axios.get(`https://api.dexscreener.com/latest/dex/tokens/${address}`, { timeout: DEX_TOKEN_TIMEOUT_MS })
       ),
       "dex_token"
     );
-    attempts += Number(dex.attempts || 1);
-    circuitState = dex?.out ? DEX_TOKEN_BREAKER.snapshot()?.state : circuitState;
     const parsed = buildMarketDataFromDex(address, dex?.out?.data || {});
-    marketData = parsed.marketData;
-    bestPair = parsed.bestPair;
-    providerUsed = "dex_token";
-  } catch (_) {
-    marketData = null;
-  }
+    return {
+      marketData: parsed.marketData,
+      bestPair: parsed.bestPair,
+      providerUsed: "dex_token",
+      attempts: Number(dex.attempts || 1),
+      circuitState: dex?.out ? DEX_TOKEN_BREAKER.snapshot()?.state : null
+    };
+  })().catch(() => null);
 
-  if (!marketData) {
-    try {
-      const be = await fetchBirdeyeTokenOverview(address);
-      attempts += Number(be.attempts || 1);
-      circuitState = be.circuitState || circuitState;
-      marketData = buildMarketDataFromBirdeye(address, be.data || {});
-      if (marketData) providerUsed = "birdeye_token";
-    } catch (_) {
-      marketData = null;
-    }
-  }
+  const birdeyePromise = (async () => {
+    const be = await fetchBirdeyeTokenOverview(address);
+    return {
+      marketData: buildMarketDataFromBirdeye(address, be.data || {}),
+      bestPair: null,
+      providerUsed: "birdeye_token",
+      attempts: Number(be.attempts || 1),
+      circuitState: be.circuitState || null
+    };
+  })().catch(() => null);
 
-  if (!marketData) {
-    const snap = await getRecentMarketSnapshot(address);
-    if (!snap) return null;
+  const snapshotPromise = getRecentMarketSnapshot(address)
+    .then((snap) => (snap ? { snap } : null))
+    .catch(() => null);
+
+  const marketResult = await firstNonNull([dexPromise, birdeyePromise, snapshotPromise]);
+  if (marketResult?.marketData) {
+    marketData = marketResult.marketData;
+    bestPair = marketResult.bestPair;
+    providerUsed = marketResult.providerUsed;
+    attempts += marketResult.attempts;
+    circuitState = marketResult.circuitState || circuitState;
+  } else if (marketResult?.snap) {
+    const snap = marketResult.snap;
     return {
       price: snap.price,
       priceChange24h: snap.priceChange24h,
@@ -520,6 +552,8 @@ async function getMarketDataUncached(address) {
       _circuitState: circuitState || "UNKNOWN"
     };
   }
+
+  if (!marketData) return null;
 
   // Native mints may have market cap data at token-level providers, not in pair fdv.
   if (!marketData.marketCap) {

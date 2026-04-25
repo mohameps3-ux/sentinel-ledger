@@ -16,6 +16,56 @@ const { pairCreatedRawToUnixMs } = require("../lib/pairTime");
 const router = express.Router();
 const { fetchTrendingList } = require("../services/trendingList");
 
+const TOKEN_ROUTE_FAST_TIMEOUT_MS = Math.max(350, Number(process.env.TOKEN_ROUTE_FAST_TIMEOUT_MS || 650));
+const TOKEN_ROUTE_OPTIONAL_TIMEOUT_MS = Math.max(250, Number(process.env.TOKEN_ROUTE_OPTIONAL_TIMEOUT_MS || 450));
+
+function tokenFallbacks() {
+  return {
+    holders: { top10Percentage: 0, totalHolders: 0, holderCountSource: "timeout", largestAccountsSampled: 0 },
+    largest: { owners: [] },
+    security: { mintEnabled: null, freezeEnabled: null, source: "timeout" },
+    deployer: null,
+    walletIntel: { level: "none", summary: "", signals: [], txSampleSize: 0, method: "timeout_fallback" },
+    smartMoney: { wallets: [], meta: { source: "timeout", count: 0 } },
+    convergence: { detected: false, wallets: [], threshold: 3, windowMinutes: 10 },
+    private: { isWatchlist: false, notes: null }
+  };
+}
+
+async function withTimeout(promise, ms, fallback, label) {
+  let timer = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((resolve) => {
+        timer = setTimeout(() => {
+          console.warn(`token route optional timeout: ${label}`);
+          resolve(fallback);
+        }, ms);
+      })
+    ]);
+  } catch (error) {
+    console.warn(`token route optional failed: ${label}:`, error.message);
+    return fallback;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function getPrivateTokenData(authHeader, address) {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return tokenFallbacks().private;
+  const token = authHeader.split(" ")[1];
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  const supabase = getSupabase();
+  const { data: watch } = await supabase
+    .from("watchlists")
+    .select("note")
+    .eq("user_id", decoded.userId)
+    .eq("token_address", address)
+    .maybeSingle();
+  return watch ? { isWatchlist: true, notes: watch.note } : tokenFallbacks().private;
+}
+
 router.get("/trending", async (_, res) => {
   try {
     const payload = await fetchTrendingList(6);
@@ -30,46 +80,45 @@ router.get("/:address", async (req, res) => {
   try {
     const { address } = req.params;
     const authHeader = req.headers.authorization;
+    const fallback = tokenFallbacks();
 
     if (!address || !isProbableSolanaPubkey(address)) {
       return res.status(400).json({ ok: false, error: "invalid_address" });
     }
 
+    res.set("Cache-Control", authHeader ? "private, max-age=30" : "public, max-age=30, stale-while-revalidate=60");
+
     const marketData = await getMarketData(address);
     if (!marketData)
       return res.status(404).json({ ok: false, error: "Token not found" });
 
-    const [analysis, holdersData, largestData, tokenOnChainSec] = await Promise.all([
-      getAnalysis(address, marketData),
-      getHolderConcentration(address),
-      getLargestTokenAccountOwners(address, 10),
-      getTokenSecurity(address)
+    const [holdersData, largestData, tokenOnChainSec] = await Promise.all([
+      withTimeout(getHolderConcentration(address), TOKEN_ROUTE_FAST_TIMEOUT_MS, fallback.holders, "holders"),
+      withTimeout(getLargestTokenAccountOwners(address, 10), TOKEN_ROUTE_FAST_TIMEOUT_MS, fallback.largest, "largest_accounts"),
+      withTimeout(getTokenSecurity(address), TOKEN_ROUTE_FAST_TIMEOUT_MS, fallback.security, "token_security")
     ]);
+    const analysis = await getAnalysis(address, marketData, {
+      holders: holdersData,
+      security: tokenOnChainSec,
+      cache: holdersData?.holderCountSource !== "timeout" && tokenOnChainSec?.source !== "timeout"
+    });
     sendGradeAlert(address, analysis, marketData).catch((e) =>
       console.error("Telegram alert send failed:", e.message)
     );
 
-    let deployerAddress = marketData.deployerAddress || null;
-    if (!deployerAddress) {
-      try {
-        const supabase = getSupabase();
-        const { data: analyzedToken } = await supabase
-          .from("tokens_analyzed")
-          .select("deployer_wallet")
-          .eq("token_address", address)
-          .maybeSingle();
-        deployerAddress = analyzedToken?.deployer_wallet || null;
-      } catch (e) {
-        // ignore optional lookup failures
-      }
-    }
+    const deployerAddress = marketData.deployerAddress || null;
 
     let deployerData = null;
     if (deployerAddress) {
       updateDeployerReputation(deployerAddress).catch((e) =>
         console.error("Failed enqueue deployer reputation update:", e.message)
       );
-      deployerData = await getDeployerInfo(deployerAddress);
+      deployerData = await withTimeout(
+        getDeployerInfo(deployerAddress),
+        TOKEN_ROUTE_OPTIONAL_TIMEOUT_MS,
+        null,
+        "deployer_info"
+      );
       if (!deployerData) {
         deployerData = {
           address: deployerAddress,
@@ -84,36 +133,39 @@ router.get("/:address", async (req, res) => {
       }
     }
 
-    const [walletIntel, smartTok, convergence] = await Promise.all([
-      getWalletSpamIntel(address, {
-        deployerAddress,
-        deployerHistory: deployerData
-      }),
-      getSmartWalletsForToken(address),
-      getConvergenceState(address)
+    const [walletIntel, smartTok, convergence, privateData] = await Promise.all([
+      withTimeout(
+        getWalletSpamIntel(address, {
+          deployerAddress,
+          deployerHistory: deployerData
+        }),
+        TOKEN_ROUTE_OPTIONAL_TIMEOUT_MS,
+        fallback.walletIntel,
+        "wallet_intel"
+      ),
+      withTimeout(
+        getSmartWalletsForToken(address, { deployerAddress }),
+        TOKEN_ROUTE_OPTIONAL_TIMEOUT_MS,
+        fallback.smartMoney,
+        "smart_money"
+      ),
+      withTimeout(
+        getConvergenceState(address),
+        TOKEN_ROUTE_OPTIONAL_TIMEOUT_MS,
+        fallback.convergence,
+        "convergence"
+      ),
+      withTimeout(
+        getPrivateTokenData(authHeader, address),
+        TOKEN_ROUTE_OPTIONAL_TIMEOUT_MS,
+        fallback.private,
+        "private"
+      )
     ]);
 
     sendWalletThreatAlert(address, walletIntel, marketData).catch((e) =>
       console.error("Telegram wallet-threat alert failed:", e.message)
     );
-
-    let privateData = { isWatchlist: false, notes: null };
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      try {
-        const token = authHeader.split(" ")[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const supabase = getSupabase();
-        const { data: watch } = await supabase
-          .from("watchlists")
-          .select("note")
-          .eq("user_id", decoded.userId)
-          .eq("token_address", address)
-          .maybeSingle();
-        if (watch) privateData = { isWatchlist: true, notes: watch.note };
-      } catch (e) {
-        // ignore optional auth errors
-      }
-    }
 
     const topAccounts = (largestData?.owners || []).slice(0, 10).map((o, i) => ({
       rank: i + 1,
@@ -125,8 +177,8 @@ router.get("/:address", async (req, res) => {
     const security = {
       honeypot: marketData.honeypotHint === "flagged" ? "flagged" : "unknown",
       verifiedListingTag: Boolean(marketData.verifiedListingHint),
-      mintRenounced: !tokenOnChainSec.mintEnabled,
-      freezeAuthorityInactive: !tokenOnChainSec.freezeEnabled,
+      mintRenounced: tokenOnChainSec.mintEnabled == null ? null : !tokenOnChainSec.mintEnabled,
+      freezeAuthorityInactive: tokenOnChainSec.freezeEnabled == null ? null : !tokenOnChainSec.freezeEnabled,
       liquidityLocked: marketData.lpLocked,
       lpLockDetail: marketData.lpLockDetail || null,
       mintAuthorityActive: tokenOnChainSec.mintEnabled,

@@ -89,7 +89,7 @@ async function getLegacySupabaseWallets(tokenAddress) {
  * Returns ranked wallets + meta. Primary source: on-chain (Helius + RPC).
  * Optional DB fallback when SMART_MONEY_DB_FALLBACK=true (demo/curated rows).
  */
-async function getSmartWalletsForToken(tokenAddress) {
+async function getSmartWalletsForToken(tokenAddress, options = {}) {
   const cacheKey = CACHE_PREFIX + tokenAddress;
   try {
     const cached = await redis.get(cacheKey);
@@ -106,10 +106,12 @@ async function getSmartWalletsForToken(tokenAddress) {
     console.warn("smart money cache read:", e.message);
   }
 
-  let deployerAddress = null;
+  let deployerAddress = options.deployerAddress || null;
   try {
-    const md = await getMarketData(tokenAddress);
-    deployerAddress = md?.deployerAddress || null;
+    if (!deployerAddress) {
+      const md = await getMarketData(tokenAddress);
+      deployerAddress = md?.deployerAddress || null;
+    }
   } catch (_) {
     /* optional */
   }
