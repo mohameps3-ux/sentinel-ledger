@@ -64,7 +64,7 @@ async function main() {
       } else console.log(`OK: users.${c}`);
     }
 
-    const swCols = ["total_trades", "smart_score"];
+    const swCols = ["total_trades", "smart_score", "source", "avg_return_pct", "flipside_last_active"];
     for (const c of swCols) {
       const { rows } = await client.query(
         `SELECT 1 FROM information_schema.columns

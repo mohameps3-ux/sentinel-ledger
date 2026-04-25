@@ -68,6 +68,7 @@ const {
   startWalletCoordinationCron,
   getWalletCoordinationCronStatus
 } = require("./jobs/walletCoordinationCron");
+const { startFlipsideSyncCron } = require("./jobs/flipsideSyncCron");
 const { startSolanaPoller } = require("./services/solanaPoller");
 const { startValidationOracle } = require("./workers/validationOracle");
 const publicSurfaceRouter = require("./routes/publicSurface");
@@ -417,6 +418,7 @@ async function bootstrap() {
   startDataFreshnessHistoryCron();
   startWalletBehaviorCron();
   startWalletCoordinationCron();
+  startFlipsideSyncCron();
   startSignalGateTunerCron({ skipInitialTick: tunerWarmed });
   startSubscriptionExpiryCron();
   sentinelOrchestrator.start(io);

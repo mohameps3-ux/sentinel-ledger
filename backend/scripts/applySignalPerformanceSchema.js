@@ -57,7 +57,8 @@ async function main() {
     "015_web_push_subscriptions.sql",
     "016_smart_wallet_signal_window_extrema.sql",
     "017_stalker_double_down_baselines.sql",
-    "018_pro_alert_feed_items.sql"
+    "018_pro_alert_feed_items.sql",
+    "019_flipside_smart_wallet_source.sql"
   ];
 
   let lastErr;

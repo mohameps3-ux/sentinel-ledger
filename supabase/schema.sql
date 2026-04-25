@@ -67,6 +67,9 @@ create table if not exists smart_wallets (
   pnl_30d numeric(18,2) not null default 0,
   avg_position_size numeric(18,2) not null default 0,
   recent_hits int not null default 0,
+  source text not null default 'manual',
+  avg_return_pct numeric(12,4) not null default 0,
+  flipside_last_active timestamptz,
   last_seen timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -326,9 +329,14 @@ ALTER TABLE smart_wallets ADD COLUMN IF NOT EXISTS early_entry_score DECIMAL(5,2
 ALTER TABLE smart_wallets ADD COLUMN IF NOT EXISTS cluster_score DECIMAL(5,2) DEFAULT 0;
 ALTER TABLE smart_wallets ADD COLUMN IF NOT EXISTS consistency_score DECIMAL(5,2) DEFAULT 0;
 ALTER TABLE smart_wallets ADD COLUMN IF NOT EXISTS smart_score DECIMAL(5,2) DEFAULT 0;
+ALTER TABLE smart_wallets ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual';
+ALTER TABLE smart_wallets ADD COLUMN IF NOT EXISTS avg_return_pct NUMERIC(12,4) NOT NULL DEFAULT 0;
+ALTER TABLE smart_wallets ADD COLUMN IF NOT EXISTS flipside_last_active TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_smart_wallets_win_rate ON smart_wallets(win_rate DESC);
 CREATE INDEX IF NOT EXISTS idx_smart_wallets_smart_score ON smart_wallets(smart_score DESC);
+CREATE INDEX IF NOT EXISTS idx_smart_wallets_source ON smart_wallets(source);
+CREATE INDEX IF NOT EXISTS idx_smart_wallets_flipside_rank ON smart_wallets(source, win_rate DESC, total_trades DESC);
 
 CREATE TABLE IF NOT EXISTS wallet_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
