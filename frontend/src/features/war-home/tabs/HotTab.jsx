@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BarChart3, ChevronsDown, ChevronsUp, Flame, TrendingUp, Waves } from "lucide-react";
 import { formatUsdWhole } from "../../../../lib/formatStable";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
-import { WatchedCardShell } from "../../../../components/home/WatchedCardShell";
+import { RealtimeTokenCardShell } from "../../../../components/home/RealtimeTokenCardShell";
 import { TacticalRegimePill } from "../../../../components/home/TacticalRegimePill";
 import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../../lib/terminalLinks";
 import { isProbableSolanaMint } from "../../../../lib/solanaMint.mjs";
@@ -142,9 +142,12 @@ export function HotTab({
             const trendingRank = trendingRankDeltas.get(token?.mint) || { rank: idx + 1, delta: 0, isNew: false };
 
             return (
-              <WatchedCardShell
+              <RealtimeTokenCardShell
                 key={`${token?.mint || "token"}-${idx}`}
                 mint={token?.mint}
+                staticScore={signalStrength}
+                actionKey={actionKey}
+                smartMoneyCount={token?.smartWallets}
                 translate="no"
                 title={token?.mint && isProbableSolanaMint(token.mint) ? t("war.hot.clickDesk") : undefined}
                 onClick={(e) => {
@@ -166,6 +169,8 @@ export function HotTab({
                 }`}
                 watchedClassName="ring-1 ring-emerald-500/50 shadow-[0_0_18px_rgba(16,185,129,0.18)]"
               >
+                {({ displayScore, smartMoneyCount }) => (
+                  <>
                 <div className="flex items-start justify-between gap-1.5">
                   <div className="min-w-0">
                     {token?.mint ? (
@@ -200,10 +205,13 @@ export function HotTab({
                 <div className="rounded border border-white/[0.08] bg-white/[0.02] px-1.5 py-1 space-y-0.5">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="text-[7px] uppercase tracking-wider text-gray-500">{t("war.combat.thScore")}</span>
-                    <span className="text-emerald-300 font-bold font-mono tabular-nums text-[10px]">{signalStrength}/100</span>
+                    <span className="text-emerald-300 font-bold font-mono tabular-nums text-[10px]">
+                      <AnimatedNumber value={displayScore} decimalPlaces={0} />
+                      /100
+                    </span>
                   </div>
                   <div className="h-0.5 sm:h-1 rounded-full bg-gray-900 overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-400" style={{ width: `${signalStrength}%` }} />
+                    <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-400" style={{ width: `${displayScore}%` }} />
                   </div>
                   <div className="flex flex-wrap items-center gap-0.5">
                     <span
@@ -223,6 +231,11 @@ export function HotTab({
                     {confluence ? (
                       <span className="text-[9px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1 py-0.5">
                         🧬
+                      </span>
+                    ) : null}
+                    {smartMoneyCount > 0 ? (
+                      <span className="text-[8px] px-1 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/12 text-indigo-100 font-mono font-bold">
+                        {smartMoneyCount} SM
                       </span>
                     ) : null}
                     {token?.mint ? (
@@ -337,7 +350,9 @@ export function HotTab({
                     </p>
                   )}
                 </div>
-              </WatchedCardShell>
+                  </>
+                )}
+              </RealtimeTokenCardShell>
             );
           })}
         </div>

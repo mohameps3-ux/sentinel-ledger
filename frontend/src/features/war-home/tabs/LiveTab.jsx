@@ -15,8 +15,8 @@ import {
 } from "@/lib/signalUtils";
 import { redFlagsForSignal } from "@/lib/redFlags";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
+import { RealtimeTokenCardShell } from "../../../../components/home/RealtimeTokenCardShell";
 import { TacticalRegimePill } from "../../../../components/home/TacticalRegimePill";
-import { WatchedCardShell } from "../../../../components/home/WatchedCardShell";
 import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../../lib/terminalLinks";
 import { isProbableSolanaMint } from "../../../../lib/solanaMint.mjs";
 import { RankBadge, RankDeltaChip } from "./RankIndicators";
@@ -120,9 +120,12 @@ export function LiveTab({
     const hasPx = Number.isFinite(px) && px > 0;
     const hasChg = Number.isFinite(chg);
     return (
-      <WatchedCardShell
+      <RealtimeTokenCardShell
         data-testid="sl-war-live-card"
         mint={sig.mint}
+        staticScore={sig.signalStrength}
+        actionKey={actionKey}
+        smartMoneyCount={sig.smartWallets}
         title={
           sig.mint && isProbableSolanaMint(sig.mint)
             ? isHeatFill
@@ -153,6 +156,8 @@ export function LiveTab({
             : "!border-emerald-500/35 ring-1 ring-emerald-500/50 shadow-[0_0_18px_rgba(16,185,129,0.18)]"
         }
       >
+        {({ displayScore, smartMoneyCount }) => (
+          <>
         <div className="flex items-start justify-between gap-1.5">
           <div className="min-w-0">
             <div className="flex items-center gap-1 mb-0 flex-wrap">
@@ -210,12 +215,12 @@ export function LiveTab({
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-lg font-black tabular-nums font-mono text-white leading-none tracking-tight">
-              {sig.signalStrength}
+              <AnimatedNumber value={displayScore} decimalPlaces={0} />
             </span>
             <div className="flex-1 h-0.5 sm:h-1 rounded-full bg-gray-900 overflow-hidden ring-1 ring-white/8 mb-0.5 min-w-0">
               <div
                 className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(sig.signalStrength)}`}
-                style={{ width: `${sig.signalStrength}%` }}
+                style={{ width: `${displayScore}%` }}
               />
             </div>
           </div>
@@ -239,6 +244,11 @@ export function LiveTab({
           {!isHeatFill && (sig._api?.confluence || (!sig._api && sig.signalStrength >= 88)) ? (
             <span className="text-[9px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1 py-0.5 font-mono">
               🧬 multi
+            </span>
+          ) : null}
+          {smartMoneyCount > 0 ? (
+            <span className="text-[8px] px-1 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/12 text-indigo-100 font-mono font-bold">
+              {smartMoneyCount} SM
             </span>
           ) : null}
         </div>
@@ -358,7 +368,9 @@ export function LiveTab({
             );
           })}
         </div>
-      </WatchedCardShell>
+          </>
+        )}
+      </RealtimeTokenCardShell>
     );
   }
 
