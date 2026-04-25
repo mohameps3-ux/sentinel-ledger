@@ -19,6 +19,7 @@
     "seed:terminal-home": "node scripts/seedTerminalHome.js",
     "signal-prices-once": "node scripts/runSignalPricesOnce.js",
     "simulate:helius": "node scripts/simulate-helius.js",
+    "helius:list-accounts": "node scripts/listHeliusWebhookAccounts.js",
     "ops:daily": "node scripts/opsDailyReport.js",
     "ops:verify-export-offline": "node scripts/verifyFreshnessSignedExportOffline.js",
     "verify:signal-gate-tuner-regime": "node scripts/verifySignalGateTunerRegimeAware.js",

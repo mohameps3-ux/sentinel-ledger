@@ -14,6 +14,7 @@
  */
 require("dotenv").config();
 const { createClient } = require("@supabase/supabase-js");
+const { isProbableSolanaPubkey } = require("../src/lib/solanaAddress");
 
 const MINTS = {
   bonk: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
@@ -22,17 +23,26 @@ const MINTS = {
   wsol: "So11111111111111111111111111111111111111112"
 };
 
-/** Same demo wallets as supabase/seed_smart_wallets_demo.sql (44-char addresses). */
+/** Real wallets used for non-production seed data; keep in sync with Helius Accounts when reseeding. */
 const W = [
-  "7YqvBxbp5XJvYzX1Q2f7pN8mQ3uQmY9mQb8Qxqj2mT8x",
-  "4g3b6PqvT2n8mM9mQx2sJ1pK8pQ9xY7uV2cR5bN1mX3q",
-  "9mQx2sJ1pK8pQ9xY7uV2cR5bN1mX3q4g3b6PqvT2n8m",
-  "5tK9pQxY7uV2cR5bN1mX3q4g3b6PqvT2n8mM9mQx2sJ",
-  "2cR5bN1mX3q4g3b6PqvT2n8mM9mQx2sJ1pK8pQ9xY7u",
-  "BqvT2n8mM9mQx2sJ1pK8pQ9xY7uV2cR5bN1mX3q4g3b",
-  "C6PqvT2n8mM9mQx2sJ1pK8pQ9xY7uV2cR5bN1mX3q4g",
-  "D2n8mM9mQx2sJ1pK8pQ9xY7uV2cR5bN1mX3q4g3b6Pq"
+  "zeroDbresTUpHKau1vP4jXrkqtN8Dmh8yuEqyn6GMYh",
+  "zeronaXJsbvPZFmzytV4RPXWBHQGMFcRCvoYaDNPiRL",
+  "9QwvmJ6KFkmvraqycNGEZe8yAab2bbmU6pFG8WDRjnSh",
+  "EqS3FuQ1EQs4V5tfmAKw4JmBDwvVJRyJu3x9vCy1vvtA",
+  "DoboLsfYFqhiC7SrcdJ7Fogp7axnnf6spRpa21LBQT9Z",
+  "AdmuNy6KJgYa8GoJXDqCknBte57WQEf8khQG9iu9cY5",
+  "CT5WRRtZxsoVRBHc6art6HWrM4azWo4ofuiT853PtJTc",
+  "327677XqTEwYxo8kaQxAJUWvUvzpVoSjiMXMc8u4wQS6"
 ];
+
+function assertSeedWallets() {
+  const seen = new Set();
+  for (const wallet of W) {
+    if (!isProbableSolanaPubkey(wallet)) throw new Error(`Invalid Solana wallet in W: ${wallet}`);
+    if (seen.has(wallet)) throw new Error(`Duplicate Solana wallet in W: ${wallet}`);
+    seen.add(wallet);
+  }
+}
 
 function isoHoursAgo(h) {
   return new Date(Date.now() - h * 3600 * 1000).toISOString();
@@ -120,6 +130,7 @@ function buildTokensAnalyzed() {
 }
 
 async function main() {
+  assertSeedWallets();
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {

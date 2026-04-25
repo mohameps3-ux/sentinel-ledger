@@ -24,6 +24,7 @@
  *
  *   # Pick an asset (any valid base58 pubkey between 32-44 chars)
  *   ASSET=So11111111111111111111111111111111111111112 \
+ *   SIM_HELIUS_WALLET=zeroDbresTUpHKau1vP4jXrkqtN8Dmh8yuEqyn6GMYh \
  *   HELIUS_WEBHOOK_SECRET=dev node backend/scripts/simulate-helius.js
  *
  *   # Observe LED transitions for 40 seconds without further events
@@ -36,10 +37,24 @@
  *   2  score event not received within the timeout window
  */
 
+const { isProbableSolanaPubkey } = require("../src/lib/solanaAddress");
+
 const BACKEND_URL = (process.env.BACKEND_URL || "http://localhost:3000").replace(/\/$/, "");
 const SECRET = process.env.HELIUS_WEBHOOK_SECRET || "";
 const ASSET =
   process.env.ASSET || "So11111111111111111111111111111111111111112"; // wrapped SOL, valid on-chain mint
+const DEFAULT_TEST_WALLETS = [
+  "zeroDbresTUpHKau1vP4jXrkqtN8Dmh8yuEqyn6GMYh",
+  "zeronaXJsbvPZFmzytV4RPXWBHQGMFcRCvoYaDNPiRL",
+  "9QwvmJ6KFkmvraqycNGEZe8yAab2bbmU6pFG8WDRjnSh",
+  "EqS3FuQ1EQs4V5tfmAKw4JmBDwvVJRyJu3x9vCy1vvtA",
+  "DoboLsfYFqhiC7SrcdJ7Fogp7axnnf6spRpa21LBQT9Z",
+  "AdmuNy6KJgYa8GoJXDqCknBte57WQEf8khQG9iu9cY5",
+  "CT5WRRtZxsoVRBHc6art6HWrM4azWo4ofuiT853PtJTc",
+  "327677XqTEwYxo8kaQxAJUWvUvzpVoSjiMXMc8u4wQS6",
+  "7moqFjvm2MwAiMtCZoqYoTAPzRBxxMRT2ddyHThQuWjr"
+];
+const SIM_WALLET = process.env.SIM_HELIUS_WALLET || DEFAULT_TEST_WALLETS[0];
 const OBSERVE = process.argv.includes("--observe");
 const FLOOD = process.argv.includes("--flood");
 const RECEIVE_TIMEOUT_MS = Number(process.env.RECEIVE_TIMEOUT_MS || 8000);
@@ -73,18 +88,17 @@ function info(msg) {
 function buildSyntheticPayload(asset) {
   // Two transfers → the webhook expands into 2 normalized tx events; one leg
   // will be a "buy" (to without from), which is what triggers most rules.
-  const mockWallet = "BuyerWalletSimulatedForSentinelTesting11111";
   const signature = `sim-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   return [
     {
       signature,
-      feePayer: mockWallet,
+      feePayer: SIM_WALLET,
       timestamp: Math.floor(Date.now() / 1000),
       tokenTransfers: [
         {
           mint: asset,
           tokenAmount: 25_000,
-          toUserAccount: mockWallet,
+          toUserAccount: SIM_WALLET,
           fromUserAccount: null
         }
       ]
@@ -93,7 +107,7 @@ function buildSyntheticPayload(asset) {
 }
 
 function buildFloodPayload(asset, nonce) {
-  const wallet = `FloodWalletSimulated${String(nonce).padStart(6, "0")}`;
+  const wallet = DEFAULT_TEST_WALLETS[nonce % DEFAULT_TEST_WALLETS.length];
   return [
     {
       signature: `flood-${nonce}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
@@ -289,6 +303,11 @@ async function runFloodValidation() {
 
 (async () => {
   if (!SECRET) fail("HELIUS_WEBHOOK_SECRET env var is required");
+  if (!isProbableSolanaPubkey(ASSET)) fail(`ASSET is not a probable Solana pubkey: ${ASSET}`);
+  if (!isProbableSolanaPubkey(SIM_WALLET)) fail(`SIM_HELIUS_WALLET is not a probable Solana pubkey: ${SIM_WALLET}`);
+  for (const wallet of DEFAULT_TEST_WALLETS) {
+    if (!isProbableSolanaPubkey(wallet)) fail(`Invalid default test wallet: ${wallet}`);
+  }
 
   let io;
   try {

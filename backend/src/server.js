@@ -68,6 +68,7 @@ const {
   startWalletCoordinationCron,
   getWalletCoordinationCronStatus
 } = require("./jobs/walletCoordinationCron");
+const { startSolanaPoller } = require("./services/solanaPoller");
 const publicSurfaceRouter = require("./routes/publicSurface");
 const portfolioRouter = require("./routes/portfolio");
 const signalsRouter = require("./routes/signals");
@@ -400,6 +401,7 @@ async function bootstrap() {
     console.log("Background workers disabled via SMART_WORKERS_ENABLED=false");
   }
   startTelegramBot();
+  startSolanaPoller();
   startProAlertCron();
   startTacticalRegimeNotifyCron();
   startSmartWalletSignalPriceCron();
