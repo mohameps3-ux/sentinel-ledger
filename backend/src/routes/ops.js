@@ -48,6 +48,11 @@ const {
   getValidationOracleStatus,
   runValidationOracleTick
 } = require("../workers/validationOracle");
+const {
+  getAutoDiscoveryStatus,
+  listAutoDiscoveryCandidates,
+  runPromotionTick
+} = require("../workers/autoDiscovery");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 
 const router = express.Router();
@@ -287,6 +292,22 @@ router.get("/validation-oracle/status", assertOpsAuth, (_req, res) => {
 router.post("/validation-oracle/run", assertOpsAuth, async (_req, res) => {
   const stats = await runValidationOracleTick();
   return res.json({ ok: true, data: { stats, status: getValidationOracleStatus() } });
+});
+
+router.get("/auto-discovery/status", assertOpsAuth, (_req, res) => {
+  return res.json({ ok: true, data: getAutoDiscoveryStatus() });
+});
+
+router.get("/auto-discovery/candidates", assertOpsAuth, async (req, res) => {
+  const limit = Number(req.query.limit || 50);
+  const out = await listAutoDiscoveryCandidates({ limit });
+  if (!out?.ok) return res.status(503).json({ ok: false, error: out?.reason || "auto_discovery_unavailable" });
+  return res.json({ ok: true, data: out.rows || [], status: out.status || getAutoDiscoveryStatus() });
+});
+
+router.post("/auto-discovery/promote/run", assertOpsAuth, async (_req, res) => {
+  const stats = await runPromotionTick();
+  return res.json({ ok: true, data: { stats, status: getAutoDiscoveryStatus() } });
 });
 
 router.get("/signal-performance/calibration", assertOpsAuth, (_req, res) => {

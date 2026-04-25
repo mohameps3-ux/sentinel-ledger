@@ -71,6 +71,7 @@ const {
 const { startFlipsideSyncCron } = require("./jobs/flipsideSyncCron");
 const { startSolanaPoller } = require("./services/solanaPoller");
 const { startValidationOracle } = require("./workers/validationOracle");
+const { startPromotionCron: startAutoDiscoveryPromotionCron } = require("./workers/autoDiscovery");
 const publicSurfaceRouter = require("./routes/publicSurface");
 const portfolioRouter = require("./routes/portfolio");
 const signalsRouter = require("./routes/signals");
@@ -410,6 +411,7 @@ async function bootstrap() {
   startSmartWalletSignalPriceCron();
   startSignalOutcomeCron();
   startValidationOracle();
+  startAutoDiscoveryPromotionCron();
   startCoordinationOutcomeCron({ skipInitialTick: Boolean(coordOutWarmed) });
   startSignalCalibratorCron({ skipInitialTick: true });
   startOpsHeartbeatCron();

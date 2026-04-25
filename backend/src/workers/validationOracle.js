@@ -2,6 +2,7 @@
 
 const { getSupabase } = require("../lib/supabase");
 const { getMarketData } = require("../services/marketData");
+const autoDiscovery = require("./autoDiscovery");
 
 const RULE_ID_BY_SIGNAL = {
   whale_accumulation: "R01",
@@ -232,6 +233,19 @@ async function validateHorizon(supabase, horizonMin) {
     if (!upErr) {
       updated += 1;
       if (horizonMin === 60 && row.rule_id) rules.add(row.rule_id);
+      if (horizonMin === 60 && outcome > SUCCESS_THRESHOLD_60M && row.mint) {
+        setImmediate(() => {
+          autoDiscovery
+            .discoverFromSignal({
+              mint: row.mint,
+              signal_id: row.id,
+              rule_id: row.rule_id || "unknown",
+              outcome_pct: outcome,
+              timestamp: row.created_at
+            })
+            .catch((err) => console.warn("[grial] discovery silent fail", err?.message || err));
+        });
+      }
     }
   }
   return { examined: (rows || []).length, updated, rules: [...rules], error: null };

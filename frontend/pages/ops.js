@@ -143,6 +143,8 @@ export default function OpsPage() {
   const [walletCoordOutcomesDegraded, setWalletCoordOutcomesDegraded] = useState(false);
   const [validationRules, setValidationRules] = useState([]);
   const [validationOracleStatus, setValidationOracleStatus] = useState(null);
+  const [autoDiscoveryStatus, setAutoDiscoveryStatus] = useState(null);
+  const [autoDiscoveryCandidates, setAutoDiscoveryCandidates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
   const [verifyPaste, setVerifyPaste] = useState("");
@@ -190,7 +192,9 @@ export default function OpsPage() {
         walletCoordStatusRes,
         walletCoordAlertsRes,
         walletCoordOutcomesRes,
-        validationRulesRes
+        validationRulesRes,
+        autoDiscoveryStatusRes,
+        autoDiscoveryCandidatesRes
       ] = await Promise.all([
         withOpsKey("/api/v1/bots/omni/tickets?limit=50", opsKey),
         withOpsKey("/api/v1/bots/omni/events?limit=100", opsKey),
@@ -209,7 +213,9 @@ export default function OpsPage() {
         withOpsKey("/api/v1/ops/wallet-coordination/status", opsKey),
         withOpsKey("/api/v1/ops/wallet-coordination/alerts?limit=50", opsKey),
         withOpsKey("/api/v1/ops/wallet-coordination/outcomes?limit=40", opsKey),
-        withOpsKey("/api/v1/ops/validation-oracle/rules?limit=100", opsKey)
+        withOpsKey("/api/v1/ops/validation-oracle/rules?limit=100", opsKey),
+        withOpsKey("/api/v1/ops/auto-discovery/status", opsKey),
+        withOpsKey("/api/v1/ops/auto-discovery/candidates?limit=25", opsKey)
       ]);
       setTickets(ticketRes.data || []);
       setEvents(eventRes.data || []);
@@ -231,6 +237,8 @@ export default function OpsPage() {
       setWalletCoordOutcomesDegraded(Boolean(walletCoordOutcomesRes.degraded));
       setValidationRules(validationRulesRes.data || []);
       setValidationOracleStatus(validationRulesRes.status || null);
+      setAutoDiscoveryStatus(autoDiscoveryStatusRes.data || null);
+      setAutoDiscoveryCandidates(autoDiscoveryCandidatesRes.data || []);
       toast.success("Ops data refreshed.");
     } catch (error) {
       toast.error(`Load failed: ${error.message}`);
@@ -387,6 +395,19 @@ export default function OpsPage() {
       toast.success("Wallet coordination recompute triggered.");
     } catch (error) {
       toast.error(`Wallet coordination run failed: ${error.message}`);
+    }
+  };
+
+  const runAutoDiscoveryPromotionNow = async () => {
+    if (!hasKey) return toast.error("Set your ops key first.");
+    try {
+      const runRes = await withOpsKey("/api/v1/ops/auto-discovery/promote/run", opsKey, { method: "POST" });
+      setAutoDiscoveryStatus(runRes.data?.status || null);
+      const candidatesRes = await withOpsKey("/api/v1/ops/auto-discovery/candidates?limit=25", opsKey);
+      setAutoDiscoveryCandidates(candidatesRes.data || []);
+      toast.success("Auto-discovery promotion tick executed.");
+    } catch (error) {
+      toast.error(`Auto-discovery promotion failed: ${error.message}`);
     }
   };
 
@@ -1322,6 +1343,89 @@ export default function OpsPage() {
               aria-labelledby="tab-operations"
               className="space-y-5"
             >
+              <div className="rounded-2xl border border-violet-500/15 bg-violet-500/[0.03] p-4 sm:p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">Auto-Discovery</h2>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Validation Oracle winners → candidate wallets → 6h promotion loop.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={runAutoDiscoveryPromotionNow}
+                    className="h-9 px-3 rounded-lg border border-violet-500/30 bg-violet-500/[0.1] text-xs text-violet-100 hover:bg-violet-500/[0.16] transition"
+                  >
+                    Run promotion now
+                  </button>
+                </div>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <Kpi label="Discovery enabled" value={autoDiscoveryStatus ? (autoDiscoveryStatus.enabled ? "yes" : "no") : "—"} />
+                  <Kpi
+                    label="Promotion enabled"
+                    value={autoDiscoveryStatus ? (autoDiscoveryStatus.promotionEnabled ? "yes" : "no") : "—"}
+                  />
+                  <Kpi
+                    label="Last candidates"
+                    value={
+                      autoDiscoveryStatus?.lastDiscoveryStats?.candidates != null
+                        ? formatInteger(autoDiscoveryStatus.lastDiscoveryStats.candidates)
+                        : "—"
+                    }
+                    hint={autoDiscoveryStatus?.lastDiscoveryStats?.mint || "from latest winning signal"}
+                  />
+                  <Kpi
+                    label="Promoted last run"
+                    value={
+                      autoDiscoveryStatus?.lastPromotionStats?.promoted != null
+                        ? formatInteger(autoDiscoveryStatus.lastPromotionStats.promoted)
+                        : "—"
+                    }
+                    tone={Number(autoDiscoveryStatus?.lastPromotionStats?.promoted || 0) > 0 ? "good" : "neutral"}
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Last discovery: {autoDiscoveryStatus?.lastDiscoveryAt ? formatDateTime(autoDiscoveryStatus.lastDiscoveryAt) : "—"} ·
+                  last promotion:{" "}
+                  {autoDiscoveryStatus?.lastPromotionFinishedAt ? formatDateTime(autoDiscoveryStatus.lastPromotionFinishedAt) : "—"} ·
+                  interval {formatInteger(autoDiscoveryStatus?.promotionTickMs || 0)} ms · min score{" "}
+                  {Number(autoDiscoveryStatus?.promotionMinScore || 0).toFixed(2)}
+                </p>
+                {autoDiscoveryStatus?.lastPromotionStats?.error ? (
+                  <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                    Last promotion error: {autoDiscoveryStatus.lastPromotionStats.error}
+                  </p>
+                ) : null}
+                <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                  <div className="text-[11px] text-gray-500 font-semibold mb-3">Top candidates</div>
+                  {!autoDiscoveryCandidates.length ? (
+                    <p className="text-sm text-gray-500">No auto-discovery candidates loaded yet.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                      {autoDiscoveryCandidates.map((row) => (
+                        <div
+                          key={row.id || row.wallet_address}
+                          className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-gray-200"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex px-1.5 py-0.5 rounded border border-violet-500/35 bg-violet-500/10 text-[10px] font-semibold text-violet-200">
+                              {row.status || "candidate"}
+                            </span>
+                            <span className="text-gray-400">score {Number(row.candidate_score || 0).toFixed(3)}</span>
+                            <span className="text-gray-500">closed {formatInteger(row.closed_trades || 0)}</span>
+                          </div>
+                          <p className="font-mono break-all text-cyan-200 mt-1">{row.wallet_address}</p>
+                          <p className="text-gray-500 mt-0.5 break-all">
+                            mint {row.discovered_from_mint || "—"} · rule {row.discovery_rule_id || "—"} · outcome{" "}
+                            {row.discovery_outcome_pct != null ? `${(Number(row.discovery_outcome_pct) * 100).toFixed(1)}%` : "—"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-lg font-semibold text-white">Coordination red alerts (F6)</h2>
