@@ -397,8 +397,10 @@ function startSolanaPoller() {
 }
 
 module.exports = {
+  getParsedTransaction,
   parseTokenBalanceDeltas,
   processWallet,
+  rpcCall,
   runSolanaPollerTick,
   startSolanaPoller
 };
