@@ -35,6 +35,29 @@ function cockpitCardClickTargetIsInteractive(e) {
   return Boolean(el.closest("a, button"));
 }
 
+function narrativeClass(severity) {
+  if (severity === "URGENT") return "border-indigo-300/70 bg-indigo-600/85 text-white shadow-[0_0_18px_rgba(99,102,241,0.35)] animate-pulse";
+  if (severity === "TACTICAL") return "border-amber-300/60 bg-amber-500/85 text-black";
+  if (severity === "ANOMALY") return "border-red-400/80 bg-red-950/90 text-red-50 shadow-[0_0_16px_rgba(248,113,113,0.25)]";
+  return "border-white/15 bg-zinc-950/90 text-zinc-100";
+}
+
+function SentinelNarrativeBanner({ narrative }) {
+  if (!narrative) return null;
+  return (
+    <Link
+      href={`/token/${encodeURIComponent(narrative.mint)}`}
+      className={`mb-1.5 block rounded-md border px-2 py-1.5 text-[10px] font-semibold leading-snug no-underline ${narrativeClass(
+        narrative.severity
+      )}`}
+      title={narrative.cta?.label || "Open token desk"}
+    >
+      <span className="font-mono text-[8px] uppercase tracking-[0.14em] opacity-80">{narrative.severity}</span>
+      <span className="ml-1">{narrative.message}</span>
+    </Link>
+  );
+}
+
 export function LiveTab({
   liveExpanded,
   onToggleLiveExpanded,
@@ -60,6 +83,7 @@ export function LiveTab({
 }) {
   const { t } = useLocale();
   const [stalkerUnread, setStalkerUnread] = useState(0);
+  const [narratives, setNarratives] = useState([]);
 
   const confidenceTr = useCallback(
     (signalStrength) => {
@@ -76,6 +100,43 @@ export function LiveTab({
     refresh();
     window.addEventListener("wallet-stalker-update", refresh);
     return () => window.removeEventListener("wallet-stalker-update", refresh);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    let socket;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { io } = await import("socket.io-client");
+        const { getPublicWsUrl } = await import("../../../../lib/publicRuntime");
+        socket = io(getPublicWsUrl(), { transports: ["websocket", "polling"], autoConnect: true });
+        socket.on("sentinel:narrative", (payload) => {
+          if (cancelled || !payload?.id || !payload?.mint || !payload?.message) return;
+          const expiresAt = payload.expiresAt ? Date.parse(payload.expiresAt) : Date.now() + 30_000;
+          setNarratives((prev) =>
+            [
+              {
+                ...payload,
+                expiresAt: Number.isFinite(expiresAt) ? expiresAt : Date.now() + 30_000
+              },
+              ...prev.filter((n) => n.id !== payload.id && n.mint !== payload.mint)
+            ].slice(0, 3)
+          );
+        });
+      } catch (_) {}
+    })();
+    const sweep = window.setInterval(() => {
+      const now = Date.now();
+      setNarratives((prev) => prev.filter((n) => Number(n.expiresAt) > now).slice(0, 3));
+    }, 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(sweep);
+      try {
+        socket?.disconnect?.();
+      } catch (_) {}
+    };
   }, []);
 
   function renderLiveGridItem(sig, idx) {
@@ -112,6 +173,7 @@ export function LiveTab({
     const hot = idx === signalCursor % Math.max(1, liveSignalsForGrid.length);
     const coordOnCard =
       selectedMint && sig.mint === selectedMint && deskCoordination?.redSignal ? deskCoordination.redSignal : null;
+    const narrative = narratives.find((n) => n.mint === sig.mint) || null;
     const whyLines = whyNowBulletLines(sig);
     const rankInfo = signalsRankDeltas.get(sig.mint) || { rank: idx + 1, delta: 0, isNew: false };
     const tick = sig.mint ? tickerByMint[sig.mint] : null;
@@ -158,6 +220,7 @@ export function LiveTab({
       >
         {({ displayScore, smartMoneyCount }) => (
           <>
+        <SentinelNarrativeBanner narrative={narrative} />
         <div className="flex items-start justify-between gap-1.5">
           <div className="min-w-0">
             <div className="flex items-center gap-1 mb-0 flex-wrap">

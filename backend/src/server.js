@@ -92,6 +92,7 @@ const { getMarketDataCircuitStatus, getMarketDataProviderStats } = require("./se
 const { getDataFreshnessSnapshot } = require("./services/homeTerminalApi");
 const { isVapidKeyMaterialPresent } = require("./services/tacticalRegimeWebPush");
 const { getSignalGateOpsSnapshot } = require("./services/signalEmissionGate");
+const sentinelOrchestrator = require("./orchestrator/sentinelOrchestrator");
 const {
   startSignalGateTunerCron,
   getSignalGateTunerCronStatus,
@@ -416,6 +417,7 @@ async function bootstrap() {
   startWalletCoordinationCron();
   startSignalGateTunerCron({ skipInitialTick: tunerWarmed });
   startSubscriptionExpiryCron();
+  sentinelOrchestrator.start(io);
   return new Promise((resolve, reject) => {
     server.listen(port, () => {
       console.log(
