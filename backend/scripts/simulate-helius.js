@@ -52,7 +52,18 @@ const DEFAULT_TEST_WALLETS = [
   "AdmuNy6KJgYa8GoJXDqCknBte57WQEf8khQG9iu9cY5",
   "CT5WRRtZxsoVRBHc6art6HWrM4azWo4ofuiT853PtJTc",
   "327677XqTEwYxo8kaQxAJUWvUvzpVoSjiMXMc8u4wQS6",
-  "7moqFjvm2MwAiMtCZoqYoTAPzRBxxMRT2ddyHThQuWjr"
+  "7moqFjvm2MwAiMtCZoqYoTAPzRBxxMRT2ddyHThQuWjr",
+  "JESUSL2s5BsffGNNn6wQtHART2iXVGjtGhKAwGw44bL",
+  "8hfoNZCd2bK9aqCBkhg8f2L1AoL7qfHwd9tMv7x64qui",
+  "6uhAy6fCfPurNoiA2zFvRnpXVJfcvHB5Ztjujh4qZAof",
+  "AKfjA7dEpb8783fVkgzKdAQKUEucQixnqXaAEFFwvbaM",
+  "GXRVaUGMUXe4wsF6qjRyMdNvJ57H7Zw9c2Ddzhqc9Y2Q",
+  "628tuaH9DuYK7W36wW6s9aPpwcUcWoropaWWL3HfeS6f",
+  "xDDHb42oFRQ71pWbwCM4Fqj19WHKxTknMReKy8XUNcg",
+  "LASTvjDWkbXM1RwUCiniHqGLSEH5xJinDRs56wNPQr9",
+  "bingo9CZ4v5K4WKVX7oDaBScbzjDwUXfzJwdDaMmYp8",
+  "GRsUN1qXSNDaH7vc3Kj5FfkNncojD54et8Rx6E3XwSng",
+  "4EH92iYK8wua8MyqNExVeiXy5VJUAweXqJPuTWqCvNB8"
 ];
 const SIM_WALLET = process.env.SIM_HELIUS_WALLET || DEFAULT_TEST_WALLETS[0];
 const OBSERVE = process.argv.includes("--observe");
