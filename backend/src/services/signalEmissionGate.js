@@ -6,13 +6,42 @@ function clamp(n, lo, hi) {
   return Math.min(hi, Math.max(lo, v));
 }
 
+function firstEnvNumber(names, fallback) {
+  for (const name of names) {
+    const raw = process.env[name];
+    if (raw == null || raw === "") continue;
+    const n = Number(raw);
+    if (Number.isFinite(n)) return n;
+  }
+  return fallback;
+}
+
+function percentThreshold(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return n > 0 && n <= 1 ? n * 100 : n;
+}
+
+function normalizedThreshold(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return n > 1 ? n / 100 : n;
+}
+
 const BASE_CONFIG = {
   enabled: String(process.env.SIGNAL_GATE_ENABLED || "true").toLowerCase() !== "false",
-  minConfidence: Math.max(1, Number(process.env.SIGNAL_GATE_MIN_CONFIDENCE || 55)),
-  minUnifiedScore: clamp(Number(process.env.SIGNAL_GATE_MIN_UNIFIED_SCORE || 0.58), 0, 1),
+  minConfidence: Math.max(
+    0,
+    percentThreshold(firstEnvNumber(["GATE_MIN_CONFIDENCE", "SIGNAL_GATE_MIN_CONFIDENCE"], 0.25), 25)
+  ),
+  minUnifiedScore: clamp(
+    normalizedThreshold(firstEnvNumber(["GATE_MIN_UNIFIED_SCORE", "SIGNAL_GATE_MIN_UNIFIED_SCORE"], 25), 0.25),
+    0,
+    1
+  ),
   minLiquidityUsd: Math.max(0, Number(process.env.SIGNAL_GATE_MIN_LIQUIDITY_USD || 20_000)),
   maxRiskScore: clamp(Number(process.env.SIGNAL_GATE_MAX_RISK_SCORE || 85), 0, 100),
-  minSignalsFired: Math.max(0, Number(process.env.SIGNAL_GATE_MIN_SIGNALS_FIRED || 1)),
+  minSignalsFired: Math.max(0, firstEnvNumber(["GATE_MIN_SIGNALS", "SIGNAL_GATE_MIN_SIGNALS_FIRED"], 1)),
   historyMax: Math.max(20, Number(process.env.SIGNAL_GATE_HISTORY_MAX || 300))
 };
 
@@ -205,10 +234,10 @@ function activeConfig() {
 function applySignalGateOverrides(overrides = {}, meta = {}) {
   const next = {};
   if (overrides.minConfidence != null) {
-    next.minConfidence = clamp(Number(overrides.minConfidence), 1, 99);
+    next.minConfidence = clamp(percentThreshold(overrides.minConfidence, BASE_CONFIG.minConfidence), 0, 99);
   }
   if (overrides.minUnifiedScore != null) {
-    next.minUnifiedScore = clamp(Number(overrides.minUnifiedScore), 0, 1);
+    next.minUnifiedScore = clamp(normalizedThreshold(overrides.minUnifiedScore, BASE_CONFIG.minUnifiedScore), 0, 1);
   }
   if (overrides.minLiquidityUsd != null) {
     next.minLiquidityUsd = Math.max(0, Number(overrides.minLiquidityUsd));
