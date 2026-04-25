@@ -16,8 +16,9 @@ const {
   parseTokenBalanceDeltas,
   rpcCall
 } = require("../src/services/solanaPoller");
+const { detectInventoryRoundTrips } = require("../src/services/walletRoundTripDetector");
 
-const SIGNATURE_LIMIT = Math.max(1, Math.min(100, Number(process.env.WALLET_BACKFILL_SIGNATURE_LIMIT || 20)));
+const SIGNATURE_LIMIT = Math.max(1, Math.min(100, Number(process.env.WALLET_BACKFILL_SIGNATURE_LIMIT || 50)));
 const TX_DELAY_MS = Math.max(0, Number(process.env.WALLET_BACKFILL_TX_DELAY_MS || 500));
 const WALLET_DELAY_MS = Math.max(0, Number(process.env.WALLET_BACKFILL_WALLET_DELAY_MS || 1500));
 const SIGNAL_DEDUPE_MINUTES = Math.max(1, Number(process.env.WALLET_BACKFILL_DEDUPE_MINUTES || 5));
@@ -139,13 +140,25 @@ async function insertSignals(supabase, rows) {
   return rows.length;
 }
 
-function scoreWallet({ buyCount, sellCount, uniqueTokens }) {
-  const totalTrades = buyCount + sellCount;
-  const profitableTrades = buyCount;
-  const winRate = totalTrades > 0 ? Math.round((profitableTrades / totalTrades) * 10000) / 100 : 0;
-  const breadth = Math.min(20, uniqueTokens.size * 2);
-  const smartScore = Math.max(1, Math.min(100, Math.round(winRate * 0.7 + breadth + Math.min(10, totalTrades))));
-  return { totalTrades, profitableTrades, winRate, smartScore };
+function scoreWallet(roundTrip) {
+  const metrics = roundTrip?.metrics || {};
+  const totalTrades = Number(metrics.closedTrades || 0);
+  const profitableTrades = Number(metrics.wins || 0);
+  const winRate = Math.round(Number(metrics.winRateObserved || 0) * 10000) / 100;
+  const candidateScore = Number(metrics.candidateScore || 0);
+  const smartScore = Math.max(0, Math.min(100, Math.round(candidateScore * 100)));
+  return {
+    totalTrades,
+    profitableTrades,
+    winRate,
+    smartScore,
+    pnl30d: Number(metrics.weightedAvgSolPnl || metrics.avgSolPnl || 0),
+    avgPositionSize: Number(metrics.totalSolMoved || 0) / Math.max(1, totalTrades),
+    recentHits: Math.min(99, profitableTrades),
+    rejectionReason: metrics.rejected ? metrics.reason || "rejected" : null,
+    openPositions: Number(metrics.openPositions || 0),
+    avgCycleDurationHours: Number(metrics.avgCycleDurationHours || 0)
+  };
 }
 
 async function updateWalletStats(supabase, wallet, stats) {
@@ -156,7 +169,9 @@ async function updateWalletStats(supabase, wallet, stats) {
       smart_score: stats.smartScore,
       total_trades: stats.totalTrades,
       profitable_trades: stats.profitableTrades,
-      recent_hits: Math.min(99, stats.totalTrades),
+      pnl_30d: stats.pnl30d,
+      avg_position_size: stats.avgPositionSize,
+      recent_hits: stats.recentHits,
       last_seen: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
@@ -178,21 +193,17 @@ async function backfillWallet(walletRow, index, total) {
   const existingKeys = await loadExistingKeys(supabase, wallet);
   const pending = [];
   const priceByMint = new Map();
-  const uniqueTokens = new Set();
-  let buyCount = 0;
-  let sellCount = 0;
   let parsedTxs = 0;
+  const parsedTransactions = [];
 
   for (const sig of signatures.reverse()) {
     try {
       const parsed = await getParsedTransaction(sig.signature);
       await sleep(TX_DELAY_MS);
+      if (parsed) parsedTransactions.push({ tx: parsed, signature: sig.signature });
       const txs = parseTokenBalanceDeltas(parsed, wallet, sig.signature);
       if (txs.length) parsedTxs += 1;
       for (const tx of txs) {
-        if (tx.type === "buy") buyCount += 1;
-        if (tx.type === "sell") sellCount += 1;
-        uniqueTokens.add(tx.tokenAddress);
         const row = await enrichSignalPrice(buildSignalRow(tx, walletRow), tx, priceByMint);
         const key = signalKey(row);
         if (existingKeys.has(key)) continue;
@@ -206,14 +217,19 @@ async function backfillWallet(walletRow, index, total) {
   }
 
   const inserted = await insertSignals(supabase, pending);
-  const stats = scoreWallet({ buyCount, sellCount, uniqueTokens });
+  const roundTrip = detectInventoryRoundTrips(parsedTransactions, wallet);
+  const stats = scoreWallet(roundTrip);
   await updateWalletStats(supabase, wallet, stats);
-  console.log(`Wallet ${index}/${total}: found ${parsedTxs} transactions (${wallet}) inserted ${inserted}`);
+  const reason = stats.rejectionReason ? ` rejected=${stats.rejectionReason}` : "";
+  console.log(
+    `Wallet ${index}/${total}: found ${parsedTxs} transactions (${wallet}) inserted ${inserted} closed_cycles=${stats.totalTrades} wins=${stats.profitableTrades} open=${stats.openPositions}${reason}`
+  );
   return { wallet, signatures: signatures.length, transactions: parsedTxs, inserted };
 }
 
 async function main() {
   const wallets = await getWallets();
+  console.log("[grial v5.0] SPL inventory round-trip detection active");
   console.log(`[backfill] wallets=${wallets.length} signatureLimit=${SIGNATURE_LIMIT} rpc=${process.env.SOLANA_RPC_URL ? "set" : "default"}`);
   let inserted = 0;
   let transactions = 0;

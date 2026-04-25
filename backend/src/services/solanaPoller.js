@@ -395,6 +395,7 @@ function startSolanaPoller() {
     console.log("[solana-poller] disabled (set HELIUS_CREDITS_EXHAUSTED=true or SOLANA_POLLER_ALWAYS_ON=true)");
     return;
   }
+  console.log("[grial v5.0] SPL inventory round-trip detection active");
   console.log(`[solana-poller] enabled rpc=${rpcUrl()} tickMs=${tickMs()} batchSize=${batchSize()}`);
   runSolanaPollerTick().catch((e) => console.warn("[solana-poller] bootstrap tick:", e?.message || e));
   intervalRef = setInterval(() => {
