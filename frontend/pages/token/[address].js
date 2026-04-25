@@ -4,11 +4,8 @@ import { useRouter } from "next/router";
 import { useTokenData } from "../../hooks/useTokenData";
 import { useProStatus } from "../../hooks/useProStatus";
 import { useWebSocket } from "../../hooks/useWebSocket";
-import { HeroSection } from "../../components/token/HeroSection";
-import { DecisionPanel } from "../../components/token/DecisionPanel";
 import { TokenSkeleton } from "../../components/token/TokenSkeleton";
 import { ChartPanel } from "../../components/token/ChartPanel";
-import { MomentumPanel } from "../../components/token/MomentumPanel";
 import { SmartMoneyPanel } from "../../components/token/SmartMoneyPanel";
 import { HoldersPanel } from "../../components/token/HoldersPanel";
 import { DeployerPanel } from "../../components/token/DeployerPanel";
@@ -16,17 +13,20 @@ import { LiveFlowPanel } from "../../components/token/LiveFlowPanel";
 import { WatchlistButton } from "../../components/token/WatchlistButton";
 import { NotesPanel } from "../../components/token/NotesPanel";
 import { ExpandablePanel } from "../../components/token/ExpandablePanel";
-import { ActionBar } from "../../components/token/ActionBar";
-import { TradeReadinessPanel } from "../../components/token/TradeReadinessPanel";
 import { WalletThreatBanner } from "../../components/token/WalletThreatBanner";
-import { TokenIntelDeck } from "../../components/token/TokenIntelDeck";
-import { ScoreTerminalCard } from "../../components/token/ScoreTerminalCard";
-import { BarChart3, CandlestickChart, Radar, ShieldAlert, Users, Activity } from "lucide-react";
+import { CandlestickChart, Radio, ShieldAlert, Users } from "lucide-react";
 import { formatUsdWhole } from "../../lib/formatStable";
 import { Ticker } from "../../components/layout/Ticker";
 import { FinancialDisclaimer } from "../../components/layout/FinancialDisclaimer";
 import { PageHead } from "../../components/seo/PageHead";
 import { useLocale } from "../../contexts/LocaleContext";
+import {
+  buildDexscreenerSolanaTokenUrl,
+  buildJupiterSwapUrl,
+  buildPumpFunTokenUrl,
+  buildSolscanTokenUrl,
+  EXTERNAL_ANCHOR_REL
+} from "../../lib/terminalLinks";
 
 function shortMint(addr) {
   if (!addr || typeof addr !== "string" || addr.length < 12) return addr || "";
@@ -49,6 +49,222 @@ function usdOrNA(value, naLabel) {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return naLabel;
   return `$${formatUsdWhole(n)}`;
+}
+
+function pct(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
+}
+
+function actionTone(action) {
+  const a = String(action || "WATCH").toUpperCase();
+  if (a === "ACCUMULATE" || a === "ENTER NOW") return "border-indigo-400/50 bg-indigo-500/15 text-indigo-100";
+  if (a === "TOO_LATE" || a === "TOO LATE" || a === "STAY OUT") return "border-red-400/45 bg-red-500/12 text-red-100";
+  return "border-amber-400/45 bg-amber-500/12 text-amber-100";
+}
+
+function tri(v) {
+  if (v === true) return { label: "YES", cls: "border-emerald-500/35 bg-emerald-500/10 text-emerald-200" };
+  if (v === false) return { label: "NO", cls: "border-red-500/35 bg-red-500/10 text-red-200" };
+  return { label: "UNK", cls: "border-white/10 bg-white/[0.04] text-gray-300" };
+}
+
+function hasPumpRoute(market) {
+  const pairs = Array.isArray(market?.dexPairs) ? market.dexPairs : [];
+  const pairUrl = String(market?.pairUrl || "").toLowerCase();
+  return pairUrl.includes("pump.fun") || pairs.some((p) => String(p?.dexId || "").toLowerCase().includes("pump"));
+}
+
+function dedupeDexPairs(pairs) {
+  const seen = new Set();
+  const out = [];
+  for (const p of Array.isArray(pairs) ? pairs : []) {
+    const key = String(p?.pairAddress || p?.url || `${p?.dexId || ""}:${p?.quoteSymbol || ""}`).toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(p);
+  }
+  return out;
+}
+
+function MetricCell({ label, value }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">{label}</p>
+      <p className="mt-1 truncate font-mono text-sm font-semibold text-white">{value}</p>
+    </div>
+  );
+}
+
+function TokenHeroBar({ address, market, analysis, terminal, isConnected, statusTone, statusLabel, soundEnabled, setSoundEnabled, isWatchlisted, proStatusReady, hasToken, hasProAccess }) {
+  const jupiterUrl = buildJupiterSwapUrl(address);
+  const dexUrl = buildDexscreenerSolanaTokenUrl(address);
+  const solscanUrl = buildSolscanTokenUrl(address);
+  const pumpUrl = hasPumpRoute(market) ? buildPumpFunTokenUrl(address) : null;
+  const score = Math.round(Number(terminal?.signalStrength ?? analysis?.confidence ?? 0));
+
+  return (
+    <section className="sticky top-[var(--sl-nav-actual,52px)] z-30 rounded-2xl border border-white/10 bg-[#080b10]/95 p-3 shadow-2xl shadow-black/35 backdrop-blur-xl">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="truncate text-2xl font-black tracking-tight text-white">{market.name || market.symbol || "Token"}</h1>
+            <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-100">SOLANA</span>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-gray-300">{shortMint(address)}</span>
+          </div>
+          <p className="mt-1 text-sm text-gray-500">${market.symbol || "TOKEN"}</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-end">
+          <div className="col-span-2 sm:col-span-1 sm:text-right">
+            <p className="font-mono text-3xl font-black text-white">{usdOrNA(market.price, "$0")}</p>
+            <p className={`font-mono text-sm font-semibold ${Number(market.priceChange24h) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+              {pct(market.priceChange24h)} · 24h
+            </p>
+          </div>
+          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-center">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-emerald-200/80">Grade</p>
+            <p className="text-xl font-black text-emerald-100">{analysis.grade || "—"}</p>
+          </div>
+          <div className="rounded-xl border border-violet-500/25 bg-violet-500/10 px-3 py-2 text-center">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-violet-200/80">Sentinel</p>
+            <p className="text-xl font-black text-violet-100">{score}</p>
+          </div>
+          <a href={jupiterUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="col-span-2 inline-flex h-12 items-center justify-center rounded-xl bg-indigo-500 px-5 text-sm font-black uppercase tracking-[0.16em] text-white shadow-lg shadow-indigo-950/40 hover:bg-indigo-400">
+            TRADE NOW
+          </a>
+          <div className="col-span-2 flex flex-wrap items-center gap-2">
+            <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20">DEX</a>
+            <a href={solscanUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-lg border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-gray-100 hover:bg-white/[0.08]">Solscan</a>
+            {pumpUrl ? <a href={pumpUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/10 px-3 py-1.5 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20">Pump</a> : null}
+            <span className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs">
+              <span className={`h-2.5 w-2.5 rounded-full ${statusTone}`} />
+              {statusLabel}
+            </span>
+            <button type="button" onClick={() => setSoundEnabled((v) => !v)} className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs hover:bg-white/10">
+              {soundEnabled ? "Sound on" : "Sound off"}
+            </button>
+            <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
+            {proStatusReady && hasToken && hasProAccess ? <Link href="/alerts" className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20">Alerts</Link> : null}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function KeyMetricsBar({ market, naLabel }) {
+  return (
+    <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <MetricCell label="Liquidity" value={usdOrNA(market.liquidity, naLabel)} />
+      <MetricCell label="Volume 24h" value={usdOrNA(market.volume24h, naLabel)} />
+      <MetricCell label="FDV" value={usdOrNA(market.fdv || market.fullyDilutedValuation || market.marketCap, naLabel)} />
+      <MetricCell label="Market Cap" value={usdOrNA(market.marketCap, naLabel)} />
+    </section>
+  );
+}
+
+function SentinelIntelligence({ address, analysis, terminal, flaggedWallets }) {
+  const score = Number(terminal?.signalStrength ?? analysis?.confidence ?? 0);
+  const risk = Math.max(0, Math.min(100, Math.round(100 - score)));
+  const smartMoney = Math.max(0, Math.min(100, Math.round(Number(terminal?.smartMoneyScore ?? terminal?.walletScore ?? score))));
+  const momentum = Math.max(0, Math.min(100, Math.round(Number(terminal?.momentumScore ?? score))));
+  const action = String(terminal?.suggestedAction || (score >= 75 ? "ACCUMULATE" : score >= 45 ? "WATCH" : "TOO LATE")).replace(/_/g, " ");
+  const why = [
+    ...(Array.isArray(analysis?.pros) ? analysis.pros : []),
+    terminal?.rationale
+  ].filter(Boolean).slice(0, 3);
+
+  return (
+    <section id="intel" className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+      <div className="glass-card sl-inset xl:col-span-5 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="sl-label">Sentinel Intelligence</p>
+            <h2 className="mt-1 text-xl font-bold text-white">Signal read</h2>
+          </div>
+          <span className={`rounded-xl border px-4 py-2 text-sm font-black uppercase tracking-[0.14em] ${actionTone(action)}`}>{action}</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[["Risk", risk], ["Smart Money", smartMoney], ["Momentum", momentum]].map(([label, value]) => (
+            <div key={label} className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">{label}</p>
+              <p className="mt-1 font-mono text-lg font-bold text-white">{value}</p>
+              <div className="mt-1 h-1 rounded-full bg-white/[0.06]">
+                <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400" style={{ width: `${value}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500">Why</p>
+          <ul className="mt-2 space-y-1.5 text-sm text-gray-200">
+            {(why.length ? why : ["Waiting for stronger indexed evidence."]).map((line) => (
+              <li key={line} className="flex gap-2"><span className="text-violet-300">•</span><span>{line}</span></li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div className="xl:col-span-7">
+        <ExpandablePanel title="Smart wallets on this mint" icon={Radio} defaultOpen={true} badge="PRO intel">
+          <SmartMoneyPanel tokenAddress={address} flaggedWallets={flaggedWallets} />
+        </ExpandablePanel>
+      </div>
+    </section>
+  );
+}
+
+function SecurityReport({ security }) {
+  const mint = tri(security?.mintRenounced === true);
+  const freeze = tri(security?.freezeAuthorityInactive === true);
+  const lp = tri(security?.liquidityLocked === true ? true : security?.liquidityLocked === false ? false : null);
+  return (
+    <section className="glass-card sl-inset space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="sl-label">Security Report</p>
+        <span className="text-[10px] text-gray-500">Compact view</span>
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {[["Mint Renounced", mint], ["Freeze Off", freeze], ["LP Status", lp]].map(([label, v]) => (
+          <div key={label} className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">{label}</p>
+            <span className={`mt-2 inline-flex rounded-lg border px-2 py-1 text-xs font-bold ${v.cls}`}>{v.label}</span>
+          </div>
+        ))}
+      </div>
+      <details className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2 text-xs text-gray-400">
+        <summary className="cursor-pointer text-gray-200">Full security details</summary>
+        <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap text-[11px] text-gray-500">{JSON.stringify(security || {}, null, 2)}</pre>
+      </details>
+    </section>
+  );
+}
+
+function DexVenuesPanel({ address, market }) {
+  const dexPairs = dedupeDexPairs(market?.dexPairs);
+  const dexUrl = buildDexscreenerSolanaTokenUrl(address);
+  const jupiterUrl = buildJupiterSwapUrl(address);
+  return (
+    <div className="space-y-2">
+      {dexPairs.length === 0 ? (
+        <p className="text-sm text-gray-500">No routed pools returned.</p>
+      ) : (
+        dexPairs.map((p) => (
+          <div key={String(p?.pairAddress || p?.url || p?.dexId)} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+            <div className="min-w-0">
+              <div className="text-sm font-medium capitalize text-white">{p.dexId || "DEX"}</div>
+              <div className="truncate font-mono text-[10px] text-gray-500">{p.pairAddress || p.url || "pool"}</div>
+            </div>
+            <div className="flex gap-1.5">
+              <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-gray-200">Chart</a>
+              <a href={jupiterUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[11px] text-indigo-100">Jupiter</a>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
 }
 
 export default function TokenPage() {
@@ -305,141 +521,65 @@ export default function TokenPage() {
           )}
         </div>
       ) : null}
-      <div className="flex flex-wrap justify-between items-start gap-3">
-        <HeroSection
-          symbol={market.symbol}
-          price={market.price}
-          priceChange={market.priceChange24h}
-          grade={analysis.grade}
-          confidence={analysis.confidence}
-          tokenAddress={address}
-          market={market}
-        />
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs">
-            <span className={`h-2.5 w-2.5 rounded-full ${statusTone}`} />
-            {statusLabel}
-          </span>
-          <button
-            type="button"
-            onClick={() => setSoundEnabled((v) => !v)}
-            className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs hover:bg-white/10 transition-transform hover:scale-105"
-          >
-            {soundEnabled ? t("token.soundOn") : t("token.soundOff")}
-          </button>
-          <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
-          {proStatusReady && (
-            <>
-              {hasToken && hasProAccess ? (
-                <Link
-                  href="/alerts"
-                  className="px-2.5 py-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-xs text-cyan-200 hover:bg-cyan-500/20 transition"
-                >
-                  {t("token.link.tgAlerts")}
-                </Link>
-              ) : null}
-              {hasToken && !hasProAccess ? (
-                <Link
-                  href="/pricing"
-                  className="px-2.5 py-1.5 rounded-lg border border-white/15 bg-white/5 text-xs text-gray-200 hover:bg-white/10 transition"
-                >
-                  {t("token.link.proAlerts")}
-                </Link>
-              ) : null}
-              {!hasToken ? (
-                <Link
-                  href="/pricing"
-                  className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs text-gray-400 hover:text-gray-200 hover:bg-white/10 transition"
-                >
-                  {t("token.link.proAlertsShort")}
-                </Link>
-              ) : null}
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
-          <div className="sl-label">{t("token.stat.liq")}</div>
-          <div className="text-lg font-semibold text-white tracking-tight">{usdOrNA(market.liquidity, t("token.stat.na"))}</div>
-        </div>
-        <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
-          <div className="sl-label">{t("token.stat.vol24")}</div>
-          <div className="text-lg font-semibold text-white tracking-tight">{usdOrNA(market.volume24h, t("token.stat.na"))}</div>
-        </div>
-        <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
-          <div className="sl-label">{t("token.stat.fdv")}</div>
-          <div className="text-lg font-semibold text-white tracking-tight">{usdOrNA(market.marketCap, t("token.stat.na"))}</div>
-        </div>
-        <div className="glass-card sl-inset flex flex-col gap-2 min-h-[88px] justify-center">
-          <div className="sl-label inline-flex items-center gap-2">
-            <Activity size={14} className="text-gray-500" />
-            {t("token.stat.liveFeed")}
-          </div>
-          <div className={`text-lg font-semibold ${isConnected ? "text-emerald-300" : "text-amber-300"}`}>
-            {isConnected ? t("token.status.connected") : t("token.status.reconnecting")}
-          </div>
-        </div>
-      </div>
-
-      <ActionBar tokenAddress={address} symbol={market.symbol} market={market} />
-
-      <TradeReadinessPanel
-        analysis={analysis}
-        market={market}
-        holders={token?.holders}
-        deployer={token?.deployer}
-      />
-
-      <ScoreTerminalCard asset={address} />
-
-      <TokenIntelDeck
+      <TokenHeroBar
         address={address}
         market={market}
-        security={token?.security}
+        analysis={analysis}
         terminal={token?.terminal}
-        smartMoneyForToken={token?.smartMoneyForToken}
-        deployer={token?.deployer}
+        isConnected={isConnected}
+        statusTone={statusTone}
+        statusLabel={statusLabel}
+        soundEnabled={soundEnabled}
+        setSoundEnabled={setSoundEnabled}
+        isWatchlisted={isWatchlisted}
+        proStatusReady={proStatusReady}
+        hasToken={hasToken}
+        hasProAccess={hasProAccess}
       />
 
-      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">
-        <section id="chart" className="lg:col-span-2 space-y-6">
-          <ChartPanel address={address} />
-          <DecisionPanel analysis={analysis} />
-          <ExpandablePanel title={t("token.panel.momentum")} icon={BarChart3} defaultOpen={false}>
-            <MomentumPanel market={market} />
-          </ExpandablePanel>
+      <section id="chart" className="scroll-mt-24">
+        <ChartPanel address={address} />
+      </section>
 
-          <ExpandablePanel title={t("token.panel.holders")} icon={Users} defaultOpen={false}>
-            <HoldersPanel holders={token?.holders} />
-          </ExpandablePanel>
+      <KeyMetricsBar market={market} naLabel={t("token.stat.na")} />
 
-          <ExpandablePanel title={t("token.panel.deployer")} icon={ShieldAlert} defaultOpen={false}>
-            <DeployerPanel deployer={token?.deployer} />
-          </ExpandablePanel>
-        </section>
+      <SentinelIntelligence
+        address={address}
+        analysis={analysis}
+        terminal={token?.terminal}
+        flaggedWallets={flaggedWallets}
+      />
 
-        <section id="flow" className="space-y-4">
-          <ExpandablePanel
-            title={t("token.panel.liveTx")}
-            icon={CandlestickChart}
-            defaultOpen={true}
-            badge={recentTransactions.length ? t("token.panel.badgeTx", { n: recentTransactions.length }) : null}
-          >
-            <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={market.price} />
-          </ExpandablePanel>
+      <SecurityReport security={token?.security} />
 
-          <ExpandablePanel
-            title={t("token.panel.smartMoney")}
-            icon={Radar}
-            defaultOpen={true}
-            badge={t("token.panel.badgeIntel")}
-          >
-            <SmartMoneyPanel tokenAddress={address} flaggedWallets={flaggedWallets} />
-          </ExpandablePanel>
-        </section>
-      </div>
+      <section id="flow" className="scroll-mt-24">
+        <ExpandablePanel
+          title={t("token.panel.liveTx")}
+          icon={CandlestickChart}
+          defaultOpen={true}
+          badge={recentTransactions.length ? t("token.panel.badgeTx", { n: recentTransactions.length }) : null}
+        >
+          <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={market.price} />
+        </ExpandablePanel>
+      </section>
+
+      <section className="space-y-4">
+        <p className="sl-label">Details</p>
+        <ExpandablePanel title={t("token.panel.holders")} icon={Users} defaultOpen={false}>
+          <HoldersPanel holders={token?.holders} />
+        </ExpandablePanel>
+        <ExpandablePanel title={t("token.panel.deployer")} icon={ShieldAlert} defaultOpen={false}>
+          <DeployerPanel deployer={token?.deployer} />
+        </ExpandablePanel>
+        <ExpandablePanel title="DEX venues" icon={Radio} defaultOpen={false} badge={`${dedupeDexPairs(market?.dexPairs).length} unique`}>
+          <DexVenuesPanel address={address} market={market} />
+        </ExpandablePanel>
+        <ExpandablePanel title="Full security details" icon={ShieldAlert} defaultOpen={false}>
+          <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-xs text-gray-400">
+            {JSON.stringify(token?.security || {}, null, 2)}
+          </pre>
+        </ExpandablePanel>
+      </section>
       {hasToken && <NotesPanel tokenAddress={address} initialNote={note} />}
 
       <div className="pt-4 pb-8 border-t border-gray-800/60 mt-8">

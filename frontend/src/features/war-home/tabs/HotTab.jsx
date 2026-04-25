@@ -339,14 +339,14 @@ export function HotTab({
                       className="w-full py-1 text-center bg-purple-600/20 rounded border border-purple-500/20 text-[10px] hover:bg-purple-600/40 transition-transform hover:scale-[1.01] inline-flex items-center justify-center gap-1 text-gray-100 no-underline"
                     >
                       <TrendingUp size={11} />
-                      Scout
+                      Token Intel
                     </Link>
                   ) : (
                     <p
                       className="w-full py-1 text-center rounded border border-white/10 bg-white/[0.02] text-[9px] text-gray-500"
                       title="No mint on the card yet — cannot open the token terminal."
                     >
-                      Scout · mint
+                      Token Intel · mint
                     </p>
                   )}
                 </div>

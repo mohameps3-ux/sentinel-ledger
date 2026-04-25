@@ -6,6 +6,7 @@ export const APP_NAV_LINKS = [
   { href: "/", key: "dash", label: "Dashboard" },
   { href: "/results", key: "results", label: "Results" },
   { href: "/scanner", key: "scanner", label: "Scanner" },
+  { href: "/scanner", key: "tokenIntel", label: "Token Intel" },
   { href: "/smart-money", key: "smart", label: "Smart Money" },
   { href: "/alerts", key: "alerts", label: "Alerts" },
   { href: "/pricing", key: "pricing", label: "Go PRO" },

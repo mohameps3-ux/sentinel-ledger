@@ -601,6 +601,7 @@ export const FLAT_STRINGS = {
   "nav.dash": S("Dashboard", { es: "Panel", fr: "Tableau de bord", de: "Dashboard", it: "Cruscotto", ru: "Панель", zh: "控制台", ko: "대시보드", ja: "ダッシュボード", ar: "لوحة التحكم", pt: "Painel" }),
   "nav.results": S("Results", { es: "Resultados", fr: "Résultats", de: "Ergebnisse", it: "Risultati", ru: "Результаты", zh: "结果", ko: "결과", ja: "結果", ar: "النتائج", pt: "Resultados" }),
   "nav.scanner": S("Scanner", { es: "Escáner", fr: "Scanner", de: "Scanner", it: "Scanner", ru: "Сканер", zh: "扫描器", ko: "스캐너", ja: "スキャナ", ar: "الماسح", pt: "Scanner" }),
+  "nav.tokenIntel": S("Token Intel", { es: "Token Intel", fr: "Token Intel", de: "Token Intel", it: "Token Intel", ru: "Token Intel", zh: "Token Intel", ko: "Token Intel", ja: "Token Intel", ar: "Token Intel", pt: "Token Intel" }),
   "nav.smart": S("Smart Money", { es: "Smart money", fr: "Smart money", de: "Smart Money", it: "Smart money", ru: "Smart money", zh: "聪明钱", ko: "스마트 머니", ja: "スマートマネー", ar: "الأموال الذكية", pt: "Smart money" }),
   "nav.alerts": S("Alerts", { es: "Alertas", fr: "Alertes", de: "Alerts", it: "Avvisi", ru: "Оповещения", zh: "提醒", ko: "알림", ja: "アラート", ar: "التنبيهات", pt: "Alertas" }),
   "nav.pricing": S("Go PRO", { es: "Ir a PRO", fr: "Passer PRO", de: "PRO werden", it: "Passa a PRO", ru: "PRO", zh: "升级 PRO", ko: "PRO로", ja: "PROへ", ar: "ترقية PRO", pt: "Ir ao PRO" }),

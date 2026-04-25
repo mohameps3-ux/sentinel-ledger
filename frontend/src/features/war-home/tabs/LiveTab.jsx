@@ -430,6 +430,15 @@ export function LiveTab({
               </a>
             );
           })}
+          {sig.mint && isProbableSolanaMint(sig.mint) ? (
+            <Link
+              href={`/token/${sig.mint}`}
+              className="text-[9px] px-1.5 py-0.5 rounded border border-indigo-500/35 bg-indigo-500/10 text-indigo-100 font-mono hover:bg-indigo-500/20 no-underline"
+              title="Open Token Intel"
+            >
+              Token Intel
+            </Link>
+          ) : null}
         </div>
           </>
         )}
