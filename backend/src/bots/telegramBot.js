@@ -60,7 +60,7 @@ function botMenuMarkup() {
 
 function botMenuText() {
   return [
-    "Sentinel Ledger Bot",
+    "Sentinel Ledger",
     "",
     "Choose a tool below, or type:",
     "/signal WIF",
@@ -73,6 +73,28 @@ function botMenuText() {
 
 async function replyBotMenu(ctx) {
   return ctx.reply(botMenuText(), botMenuMarkup());
+}
+
+function configureTelegramProfile() {
+  if (!bot) return;
+  Promise.allSettled([
+    bot.telegram.setMyName("Sentinel Ledger"),
+    bot.telegram.setMyDescription(
+      "Sentinel Ledger watches Solana signals, smart wallets, prices, and execution alerts."
+    ),
+    bot.telegram.setMyShortDescription("Solana signals, smart wallets, and execution alerts."),
+    bot.telegram.setMyCommands([
+      { command: "start", description: "Open Sentinel Ledger menu" },
+      { command: "signal", description: "Check a token signal" },
+      { command: "wallet", description: "Inspect a wallet" },
+      { command: "price", description: "Get token price" },
+      { command: "scan", description: "Scan a token mint" },
+      { command: "watchlist", description: "Show your watchlist" }
+    ])
+  ]).then((results) => {
+    const failed = results.find((r) => r.status === "rejected");
+    if (failed) console.warn("Telegram profile update skipped:", failed.reason?.message || failed.reason);
+  });
 }
 
 async function sendGradeAlert(tokenAddress, analysis, marketData) {
@@ -164,6 +186,7 @@ function startTelegramBot() {
   bot.catch((err) => {
     console.warn("Telegram bot runtime error:", err?.message || err);
   });
+  configureTelegramProfile();
 
   bot.start(async (ctx) => {
     const supabase = getSupabase();

@@ -49,6 +49,15 @@ function eventTargetInInteractive(t) {
   return Boolean(el.closest("a, button, [data-no-row-expand]"));
 }
 
+function ExpandedWalletNarrativeSection({ wallet, narrativeLang, title }) {
+  return (
+    <section data-testid="smart-money-expanded-wallet-narrative" className="border-b border-white/10 pb-4 mb-4">
+      <p className="text-xs text-violet-200/80 font-semibold mb-2">{title}</p>
+      <WalletNarrativeCard walletAddress={wallet} lang={narrativeLang} />
+    </section>
+  );
+}
+
 export default function SmartMoneyPage() {
   const router = useRouter();
   const { locale, t } = useLocale();
@@ -486,16 +495,17 @@ export default function SmartMoneyPage() {
                         <tr className="border-b border-white/5 bg-white/[0.02]">
                           <td colSpan={11} className="px-3 py-4">
                             <p className="text-xs text-violet-200/80 font-semibold mb-3">{t("smart.detail.title")}</p>
+                            <ExpandedWalletNarrativeSection
+                              wallet={w.wallet}
+                              narrativeLang={narrativeLang}
+                              title={t("smart.narrative.title")}
+                            />
                             <SmartWalletDetailPanel
                               row={w}
                               labelFor={labelFor}
                               titleFor={titleFor}
                               narrativeLang={narrativeLang}
                             />
-                            <div className="mt-4 border-t border-white/10 pt-4">
-                              <p className="text-xs text-violet-200/80 font-semibold mb-2">{t("smart.narrative.title")}</p>
-                              <WalletNarrativeCard walletAddress={w.wallet} lang={narrativeLang} />
-                            </div>
                           </td>
                         </tr>
                       ) : null}
@@ -635,16 +645,17 @@ export default function SmartMoneyPage() {
                   {expandedWallet === w.wallet ? (
                     <div className="pt-2 space-y-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                       <p className="text-xs text-violet-200/80 font-semibold">{t("smart.detail.title")}</p>
+                      <ExpandedWalletNarrativeSection
+                        wallet={w.wallet}
+                        narrativeLang={narrativeLang}
+                        title={t("smart.narrative.title")}
+                      />
                       <SmartWalletDetailPanel
                         row={w}
                         labelFor={labelFor}
                         titleFor={titleFor}
                         narrativeLang={narrativeLang}
                       />
-                      <div className="border-t border-white/10 pt-3">
-                        <p className="text-xs text-violet-200/80 font-semibold mb-2">{t("smart.narrative.title")}</p>
-                        <WalletNarrativeCard walletAddress={w.wallet} lang={narrativeLang} />
-                      </div>
                     </div>
                   ) : null}
                 </article>
