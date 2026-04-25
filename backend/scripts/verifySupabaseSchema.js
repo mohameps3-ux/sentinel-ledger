@@ -178,6 +178,26 @@ async function main() {
         console.log(`OK: table public.${t}`);
       }
     }
+
+    const oracleCols = {
+      rule_performance: ["regime_performance"],
+      signal_outcomes: ["validated", "rule_snapshot", "min_price_observed"]
+    };
+    for (const [table, cols] of Object.entries(oracleCols)) {
+      for (const col of cols) {
+        const { rows } = await client.query(
+          `SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
+          [table, col]
+        );
+        if (rows.length === 0) {
+          console.error(`FAIL: ${table}.${col} — run updated 002_validation_oracle.sql`);
+          failed += 1;
+        } else {
+          console.log(`OK: ${table}.${col}`);
+        }
+      }
+    }
   } finally {
     await client.end();
   }

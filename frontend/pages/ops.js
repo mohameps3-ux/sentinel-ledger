@@ -843,9 +843,22 @@ export default function OpsPage() {
                                 const winRate = total > 0 ? (Number(row.success_count_60m || 0) / total) * 100 : 0;
                                 const avgReturn = Number(row.avg_return_60m || 0) * 100;
                                 const conf = Number(row.confidence_score || 0) * 100;
+                                const regimes = row.regime_performance && typeof row.regime_performance === "object" ? row.regime_performance : {};
+                                const regimeLine = ["bull", "crab", "volatile"]
+                                  .map((key) => {
+                                    const r = regimes[key] || {};
+                                    const n = Number(r.total || 0);
+                                    if (n < 10) return null;
+                                    return `${key} ${Math.round(Number(r.confidence || 0) * 100)}%`;
+                                  })
+                                  .filter(Boolean)
+                                  .join(" · ");
                                 return (
                                   <tr key={row.rule_id}>
-                                    <td className="py-2 pr-3 text-gray-100">{row.rule_id}</td>
+                                    <td className="py-2 pr-3 text-gray-100">
+                                      <div>{row.rule_id}</div>
+                                      {regimeLine ? <div className="mt-0.5 text-[10px] text-gray-500">{regimeLine}</div> : null}
+                                    </td>
                                     <td className="py-2 pr-3 text-right">{formatInteger(total)}</td>
                                     <td className="py-2 pr-3 text-right">{winRate.toFixed(1)}%</td>
                                     <td className={`py-2 pr-3 text-right ${avgReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>

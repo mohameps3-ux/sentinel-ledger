@@ -94,7 +94,31 @@ function formatRulePerfLabel(perf) {
   if (!perf.hasSample) return `${perf.ruleId} · New rule — building track record`;
   const confidence = Math.round(Number(perf.confidenceScore || 0) * 100);
   const avg = Math.round(Number(perf.avgReturn60m || 0) * 100);
-  return `${perf.ruleId} · ${confidence}% historical · ${avg >= 0 ? "+" : ""}${avg}% avg`;
+  return `${perf.ruleId} · ${confidence}% · ${avg >= 0 ? "+" : ""}${avg}% avg${
+    perf.regimeContext ? ` · ⚠ ${perf.regimeContext}` : ""
+  }`;
+}
+
+function formatRegimeLine(perf) {
+  const rp = perf?.regimePerformance;
+  if (!rp || typeof rp !== "object") return null;
+  const bull = rp.bull?.hasSample ? Math.round(Number(rp.bull.confidence || 0) * 100) : null;
+  const crab = rp.crab?.hasSample ? Math.round(Number(rp.crab.confidence || 0) * 100) : null;
+  const vol = rp.volatile?.hasSample ? Math.round(Number(rp.volatile.confidence || 0) * 100) : null;
+  const parts = [];
+  if (bull != null) parts.push(`${bull}% in bull markets`);
+  if (crab != null) parts.push(`${crab}% in ranging markets`);
+  if (vol != null) parts.push(`${vol}% in volatile markets`);
+  return parts.length ? `${perf.ruleId} works ${parts.join(", ")}.` : null;
+}
+
+function formatLatestOutcomeLine(perf) {
+  const latest = perf?.latestOutcome;
+  if (!latest) return null;
+  const out = latest.outcome60m != null ? Number(latest.outcome60m) * 100 : null;
+  const dd = latest.drawdown != null ? Number(latest.drawdown) * 100 : null;
+  if (!Number.isFinite(out) || !Number.isFinite(dd) || dd > -10) return null;
+  return `Signal hit ${out >= 0 ? "+" : ""}${out.toFixed(1)}% but had ${dd.toFixed(1)}% drawdown first.`;
 }
 
 function tri(v) {
@@ -281,6 +305,8 @@ function SentinelIntelligence({ address, analysis, terminal, flaggedWallets, rul
     terminal?.rationale
   ].filter(Boolean).slice(0, 3);
   const ruleLabel = formatRulePerfLabel(rulePerformance);
+  const regimeLine = formatRegimeLine(rulePerformance);
+  const latestOutcomeLine = formatLatestOutcomeLine(rulePerformance);
 
   return (
     <section id="intel" className="grid grid-cols-1 gap-4 xl:grid-cols-12">
@@ -319,6 +345,8 @@ function SentinelIntelligence({ address, analysis, terminal, flaggedWallets, rul
                 ? `This signal type has worked ${Math.round(Number(rulePerformance.confidenceScore || 0) * 100)}% of the time (n=${rulePerformance.totalSignals}). 60m avg return: ${(Number(rulePerformance.avgReturn60m || 0) * 100).toFixed(1)}%.`
                 : "Shadow validation is collecting outcomes before this rule can influence confidence."}
             </p>
+            {regimeLine ? <p className="mt-1 text-[11px] opacity-80">{regimeLine}</p> : null}
+            {latestOutcomeLine ? <p className="mt-1 text-[11px] text-amber-100/90">{latestOutcomeLine}</p> : null}
           </div>
         ) : null}
       </div>

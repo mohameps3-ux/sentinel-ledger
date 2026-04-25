@@ -15,6 +15,7 @@ const SIGNAL_BY_RULE_ID = Object.fromEntries(Object.entries(RULE_ID_BY_SIGNAL).m
 const ORACLE_TICK_MS = Math.max(60_000, Number(process.env.VALIDATION_ORACLE_TICK_MS || 5 * 60 * 1000));
 const ORACLE_BATCH = Math.max(1, Math.min(200, Number(process.env.VALIDATION_ORACLE_BATCH || 80)));
 const SUCCESS_THRESHOLD_60M = Number(process.env.VALIDATION_ORACLE_SUCCESS_60M || 0.05);
+const DRAWDOWN_WARN_THRESHOLD = Number(process.env.VALIDATION_ORACLE_DRAWDOWN_WARN || -0.1);
 
 let intervalRef = null;
 let lastTickStartedAt = null;
@@ -49,6 +50,35 @@ function pctFromPrices(entry, later) {
   return (l - e) / e;
 }
 
+function normalizeRegime(regime) {
+  const r = String(regime || "unknown").toLowerCase();
+  if (["bull", "trending", "trend", "uptrend"].includes(r)) return "bull";
+  if (["crab", "calm", "ranging", "range", "sideways"].includes(r)) return "crab";
+  if (["volatile", "chop", "chaos"].includes(r)) return "volatile";
+  return "crab";
+}
+
+function weightedMovingAverage(previousAvg, outcome, totalSignals) {
+  const total = Number(totalSignals);
+  const oldAvg = Number(previousAvg);
+  const next = Number(outcome);
+  if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(next)) return Number.isFinite(oldAvg) ? oldAvg : 0;
+  if (total === 1 || !Number.isFinite(oldAvg)) return next;
+  return ((oldAvg * (total - 1)) + next) / total;
+}
+
+function weightedAverageFromOrdered(values) {
+  let avg = 0;
+  let total = 0;
+  for (const value of values) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) continue;
+    total += 1;
+    avg = weightedMovingAverage(avg, n, total);
+  }
+  return total ? avg : 0;
+}
+
 function median(values) {
   const nums = values.map(Number).filter(Number.isFinite).sort((a, b) => a - b);
   if (!nums.length) return 0;
@@ -57,9 +87,7 @@ function median(values) {
 }
 
 function average(values) {
-  const nums = values.map(Number).filter(Number.isFinite);
-  if (!nums.length) return 0;
-  return nums.reduce((a, b) => a + b, 0) / nums.length;
+  return weightedAverageFromOrdered(values);
 }
 
 function maxDrawdown(values) {
@@ -94,6 +122,39 @@ async function currentPrice(mint) {
   }
 }
 
+function minObservedPrice(row, nextPrice) {
+  const prices = [
+    row?.price_at_signal,
+    row?.price_5m,
+    row?.price_15m,
+    row?.price_60m,
+    row?.min_price_observed,
+    nextPrice
+  ]
+    .map(Number)
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return prices.length ? Math.min(...prices) : null;
+}
+
+function buildRuleSnapshot(score, ctx, ruleId, price) {
+  return {
+    version: 1,
+    ruleId,
+    signal: SIGNAL_BY_RULE_ID[ruleId] || null,
+    allSignals: Array.isArray(score?.signals) ? score.signals.slice(0, 12) : [],
+    confidence: Number.isFinite(Number(score?.confidence)) ? Number(score.confidence) : null,
+    confidenceLabel: score?.confidenceLabel || null,
+    scores: score?.scores || null,
+    walletsInvolved: Math.max(0, Math.round(Number(score?.meta?.uniqueWalletsInWindow || ctx.walletsInvolved || 0))),
+    regime: normalizeRegime(score?.meta?.emissionGate?.regime?.key || ctx.regime),
+    rawRegime: score?.meta?.emissionGate?.regime?.key || ctx.regime || "unknown",
+    priceAtSignal: price,
+    emissionGate: score?.meta?.emissionGate || null,
+    alphaLayer: score?.meta?.alphaLayer || null,
+    capturedAt: toIso(Date.now())
+  };
+}
+
 async function recordOracleSignal(score, ctx = {}) {
   const ruleId = primaryRuleId(score);
   const mint = String(score?.asset || "").trim();
@@ -106,13 +167,16 @@ async function recordOracleSignal(score, ctx = {}) {
   if (!supabase) return { ok: false, reason: "supabase_unconfigured" };
 
   const signalId = String(score?.meta?.lastEventId || score?.id || "").trim() || null;
+  const regime = normalizeRegime(score?.meta?.emissionGate?.regime?.key || ctx.regime);
   const row = {
     signal_id: signalId,
     mint,
     rule_id: ruleId,
     price_at_signal: price,
+    min_price_observed: price,
     wallets_involved: Math.max(0, Math.round(Number(score?.meta?.uniqueWalletsInWindow || ctx.walletsInvolved || 0))),
-    regime: String(score?.meta?.emissionGate?.regime?.key || ctx.regime || "unknown").slice(0, 20)
+    regime,
+    rule_snapshot: buildRuleSnapshot(score, ctx, ruleId, price)
   };
 
   try {
@@ -139,7 +203,7 @@ async function validateHorizon(supabase, horizonMin) {
   const cutoff = toIso(Date.now() - horizonMin * 60_000);
   const { data: rows, error } = await supabase
     .from("signal_outcomes")
-    .select("id,mint,rule_id,price_at_signal,created_at")
+    .select("id,mint,rule_id,price_at_signal,price_5m,price_15m,price_60m,min_price_observed,created_at")
     .is(priceCol, null)
     .lte("created_at", cutoff)
     .order("created_at", { ascending: true })
@@ -152,11 +216,18 @@ async function validateHorizon(supabase, horizonMin) {
     const price = await currentPrice(row.mint);
     const outcome = pctFromPrices(row.price_at_signal, price);
     if (price == null || outcome == null) continue;
+    const minPrice = minObservedPrice(row, price);
+    const drawdown = pctFromPrices(row.price_at_signal, minPrice);
     const patch = {
       [priceCol]: price,
       [outcomeCol]: outcome,
+      min_price_observed: minPrice,
       validated_at: toIso(Date.now())
     };
+    if (horizonMin === 60) patch.validated = true;
+    if ((horizonMin === 15 || horizonMin === 60) && drawdown != null && drawdown <= DRAWDOWN_WARN_THRESHOLD) {
+      patch.validated_at = toIso(Date.now());
+    }
     const { error: upErr } = await supabase.from("signal_outcomes").update(patch).eq("id", row.id);
     if (!upErr) {
       updated += 1;
@@ -169,7 +240,7 @@ async function validateHorizon(supabase, horizonMin) {
 async function recomputeRulePerformance(supabase, ruleId) {
   const { data: rows, error } = await supabase
     .from("signal_outcomes")
-    .select("rule_id,outcome_5m,outcome_15m,outcome_60m,validated_at")
+    .select("rule_id,regime,outcome_5m,outcome_15m,outcome_60m,min_price_observed,price_at_signal,validated_at")
     .eq("rule_id", ruleId)
     .not("outcome_60m", "is", null)
     .order("created_at", { ascending: true })
@@ -182,6 +253,7 @@ async function recomputeRulePerformance(supabase, ruleId) {
   const returns15 = resolved.map((r) => Number(r.outcome_15m)).filter(Number.isFinite);
   const returns60 = resolved.map((r) => Number(r.outcome_60m)).filter(Number.isFinite);
   const success60 = returns60.filter((n) => n > SUCCESS_THRESHOLD_60M).length;
+  const regimePerformance = buildRegimePerformance(resolved);
   const patch = {
     rule_id: ruleId,
     total_signals: total,
@@ -192,14 +264,36 @@ async function recomputeRulePerformance(supabase, ruleId) {
     avg_return_15m: average(returns15),
     avg_return_60m: average(returns60),
     median_return_60m: median(returns60),
-    max_drawdown: maxDrawdown(returns60),
+    max_drawdown: Math.max(
+      maxDrawdown(returns60),
+      ...resolved.map((r) => Math.abs(Math.min(0, pctFromPrices(r.price_at_signal, r.min_price_observed) || 0)))
+    ),
     confidence_score: total >= 10 ? success60 / total : 0,
+    regime_performance: regimePerformance,
     last_validated: toIso(Date.now()),
     updated_at: toIso(Date.now())
   };
   const { error: upErr } = await supabase.from("rule_performance").upsert(patch, { onConflict: "rule_id" });
   if (upErr) return { ok: false, reason: upErr.message || "upsert_failed" };
   return { ok: true, total };
+}
+
+function buildRegimePerformance(rows) {
+  const out = {};
+  for (const regime of ["bull", "crab", "volatile"]) {
+    const subset = rows.filter((r) => normalizeRegime(r.regime) === regime);
+    const returns = subset.map((r) => Number(r.outcome_60m)).filter(Number.isFinite);
+    const total = returns.length;
+    const success = returns.filter((n) => n > SUCCESS_THRESHOLD_60M).length;
+    out[regime] = {
+      total,
+      success,
+      confidence: total >= 10 ? success / total : 0,
+      avgReturn60m: average(returns),
+      hasSample: total >= 10
+    };
+  }
+  return out;
 }
 
 async function runValidationOracleTick() {
@@ -292,14 +386,15 @@ async function getLatestRulePerformanceForMint(mint) {
   if (!supabase) return null;
   const { data: latest, error } = await supabase
     .from("signal_outcomes")
-    .select("rule_id,created_at")
+    .select("rule_id,created_at,outcome_60m,min_price_observed,price_at_signal,regime")
     .eq("mint", mint)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error || !latest?.rule_id) return null;
   const map = await getRulePerformanceMap([latest.rule_id]);
-  return map.get(latest.rule_id) || formatRulePerformance({ rule_id: latest.rule_id, total_signals: 0 });
+  const perf = map.get(latest.rule_id) || formatRulePerformance({ rule_id: latest.rule_id, total_signals: 0 });
+  return attachLatestOutcome(perf, latest);
 }
 
 function formatRulePerformance(row) {
@@ -307,6 +402,8 @@ function formatRulePerformance(row) {
   const total = Number(row.total_signals || 0);
   const confidence = Number(row.confidence_score || 0);
   const avg60 = Number(row.avg_return_60m || 0);
+  const regimePerformance = row.regime_performance && typeof row.regime_performance === "object" ? row.regime_performance : {};
+  const regimeContext = summarizeRegimeContext(regimePerformance);
   return {
     ruleId: row.rule_id,
     signal: SIGNAL_BY_RULE_ID[row.rule_id] || null,
@@ -316,7 +413,59 @@ function formatRulePerformance(row) {
     avgReturn60m: Number.isFinite(avg60) ? avg60 : 0,
     medianReturn60m: Number(row.median_return_60m || 0),
     maxDrawdown: Number(row.max_drawdown || 0),
+    regimePerformance,
+    regimeContext,
     hasSample: total >= 10
+  };
+}
+
+function summarizeRegimeContext(regimePerformance = {}) {
+  const entries = ["bull", "crab", "volatile"]
+    .map((regime) => {
+      const row = regimePerformance?.[regime] || {};
+      return {
+        regime,
+        total: Number(row.total || 0),
+        confidence: Number(row.confidence || 0),
+        hasSample: Boolean(row.hasSample) || Number(row.total || 0) >= 10
+      };
+    })
+    .filter((r) => r.hasSample);
+  if (!entries.length) return null;
+  entries.sort((a, b) => b.confidence - a.confidence);
+  const best = entries[0];
+  const others = entries.slice(1);
+  if (entries.length === 1) {
+    if (best.regime === "bull") return "Bull market only";
+    if (best.regime === "volatile") return "Volatility only";
+    if (best.regime === "crab") return "Ranging markets only";
+  }
+  if (best.regime === "bull" && best.confidence >= 0.6 && others.some((r) => r.confidence < 0.55)) {
+    return "Bull market only";
+  }
+  if (best.regime === "volatile" && best.confidence >= 0.6 && others.some((r) => r.confidence < 0.55)) {
+    return "Volatility only";
+  }
+  if (best.regime === "crab" && best.confidence >= 0.6 && others.some((r) => r.confidence < 0.55)) {
+    return "Ranging markets only";
+  }
+  return `${best.regime} edge`;
+}
+
+function attachLatestOutcome(perf, latest) {
+  if (!perf) return perf;
+  const drawdown = pctFromPrices(latest?.price_at_signal, latest?.min_price_observed);
+  return {
+    ...perf,
+    currentRegime: normalizeRegime(latest?.regime),
+    latestOutcome:
+      latest?.outcome_60m != null || drawdown != null
+        ? {
+            outcome60m: latest?.outcome_60m != null ? Number(latest.outcome_60m) : null,
+            drawdown: drawdown != null ? drawdown : null,
+            minPriceObserved: latest?.min_price_observed != null ? Number(latest.min_price_observed) : null
+          }
+        : null
   };
 }
 

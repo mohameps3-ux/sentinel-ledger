@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS rule_performance (
   median_return_60m FLOAT DEFAULT 0,
   max_drawdown FLOAT DEFAULT 0,
   confidence_score FLOAT DEFAULT 0,
+  regime_performance JSONB DEFAULT '{}'::jsonb,
   last_validated TIMESTAMP,
   updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -28,9 +29,20 @@ CREATE TABLE IF NOT EXISTS signal_outcomes (
   outcome_5m FLOAT,
   outcome_15m FLOAT,
   outcome_60m FLOAT,
+  validated BOOLEAN DEFAULT FALSE,
+  rule_snapshot JSONB,
+  min_price_observed FLOAT,
   validated_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE rule_performance
+  ADD COLUMN IF NOT EXISTS regime_performance JSONB DEFAULT '{}'::jsonb;
+
+ALTER TABLE signal_outcomes
+  ADD COLUMN IF NOT EXISTS validated BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS rule_snapshot JSONB,
+  ADD COLUMN IF NOT EXISTS min_price_observed FLOAT;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_signal_outcomes_signal_rule
   ON signal_outcomes(signal_id, rule_id)

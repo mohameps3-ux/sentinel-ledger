@@ -10,9 +10,9 @@ export function RulePerformanceBadge({ performance, compact = false }) {
   if (!performance?.ruleId) return null;
   const avg = Math.round(Number(performance.avgReturn60m || 0) * 100);
   const label = performance.hasSample
-    ? `${performance.ruleId} · ${Math.round(Number(performance.confidenceScore || 0) * 100)}% historical · ${
+    ? `${performance.ruleId} · ${Math.round(Number(performance.confidenceScore || 0) * 100)}% · ${
         avg >= 0 ? "+" : ""
-      }${avg}% avg`
+      }${avg}% avg${performance.regimeContext ? ` · ⚠ ${performance.regimeContext}` : ""}`
     : `${performance.ruleId} · New rule — building track record`;
   return (
     <span
