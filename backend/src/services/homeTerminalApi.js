@@ -1,5 +1,6 @@
 const redis = require("../lib/cache");
 const { getMarketData, getMarketDataCircuitStatus } = require("./marketData");
+const { asRuleId, getRulePerformanceMap } = require("../workers/validationOracle");
 const { pctFromPrices } = require("./smartWalletSignalPrices");
 const { fetchTrendingList } = require("./trendingList");
 const { getActiveSignalWeightMap } = require("./signalCalibrator");
@@ -695,6 +696,17 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
     if (!walletsByToken.has(row.token_address)) walletsByToken.set(row.token_address, new Set());
     walletsByToken.get(row.token_address).add(row.wallet_address);
   }
+  const ruleIds = [];
+  for (const row of picks) {
+    for (const tag of Array.isArray(row.signal_tags) ? row.signal_tags : []) {
+      const ruleId = asRuleId(tag);
+      if (ruleId) {
+        ruleIds.push(ruleId);
+        break;
+      }
+    }
+  }
+  const rulePerformanceById = await getRulePerformanceMap(ruleIds);
 
   const out = [];
   for (const row of picks) {
@@ -736,6 +748,8 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
     }
     const baseSentinelScore = sentinelScore;
     const perfW = combinedPerformanceWeight(row.signal_tags, weightMap);
+    const primaryRuleId = (Array.isArray(row.signal_tags) ? row.signal_tags : []).map(asRuleId).find(Boolean) || null;
+    const rulePerformance = primaryRuleId ? rulePerformanceById.get(primaryRuleId) || { ruleId: primaryRuleId, hasSample: false, totalSignals: 0 } : null;
     const recW = recencyMultiplier(row.created_at);
     const stack = clampQualityStack(perfW, recW);
     sentinelScore = Math.round(
@@ -784,7 +798,8 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
         performanceWeight: Math.round(perfW * 10000) / 10000,
         recencyWeight: Math.round(recW * 10000) / 10000,
         stack: Math.round(stack * 10000) / 10000
-      }
+      },
+      rulePerformance
     });
   }
 

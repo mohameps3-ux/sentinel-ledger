@@ -69,6 +69,7 @@ const {
   getWalletCoordinationCronStatus
 } = require("./jobs/walletCoordinationCron");
 const { startSolanaPoller } = require("./services/solanaPoller");
+const { startValidationOracle } = require("./workers/validationOracle");
 const publicSurfaceRouter = require("./routes/publicSurface");
 const portfolioRouter = require("./routes/portfolio");
 const signalsRouter = require("./routes/signals");
@@ -407,6 +408,7 @@ async function bootstrap() {
   startTacticalRegimeNotifyCron();
   startSmartWalletSignalPriceCron();
   startSignalOutcomeCron();
+  startValidationOracle();
   startCoordinationOutcomeCron({ skipInitialTick: Boolean(coordOutWarmed) });
   startSignalCalibratorCron({ skipInitialTick: true });
   startOpsHeartbeatCron();

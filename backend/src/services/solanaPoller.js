@@ -12,6 +12,7 @@ const {
 } = require("../ingestion/ingestionState");
 const { evaluate: evaluateScore } = require("../scoring/engine");
 const { recordSignalEmission } = require("./signalPerformance");
+const { recordOracleSignal } = require("../workers/validationOracle");
 const { getMarketData } = require("./marketData");
 const { evaluateSignalEmission } = require("./signalEmissionGate");
 const { buildAlphaLayer } = require("./signalAlphaLayer");
@@ -230,6 +231,11 @@ async function emitScore(tx, sentinelEvent) {
   };
   global.io.to(tx.tokenAddress).emit("sentinel:score", score);
   recordSignalEmission(score).catch(() => {});
+  recordOracleSignal(score, {
+    priceUsd: ctx?.priceUsd,
+    walletsInvolved: score?.meta?.uniqueWalletsInWindow,
+    regime: gate?.regime?.key
+  }).catch(() => {});
 }
 
 async function emitConvergence(tx) {

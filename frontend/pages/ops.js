@@ -141,6 +141,8 @@ export default function OpsPage() {
   const [walletCoordAlerts, setWalletCoordAlerts] = useState([]);
   const [walletCoordOutcomes, setWalletCoordOutcomes] = useState([]);
   const [walletCoordOutcomesDegraded, setWalletCoordOutcomesDegraded] = useState(false);
+  const [validationRules, setValidationRules] = useState([]);
+  const [validationOracleStatus, setValidationOracleStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
   const [verifyPaste, setVerifyPaste] = useState("");
@@ -187,7 +189,8 @@ export default function OpsPage() {
         telemetryRes,
         walletCoordStatusRes,
         walletCoordAlertsRes,
-        walletCoordOutcomesRes
+        walletCoordOutcomesRes,
+        validationRulesRes
       ] = await Promise.all([
         withOpsKey("/api/v1/bots/omni/tickets?limit=50", opsKey),
         withOpsKey("/api/v1/bots/omni/events?limit=100", opsKey),
@@ -205,7 +208,8 @@ export default function OpsPage() {
         withOpsKey("/api/v1/telemetry/client/summary", opsKey),
         withOpsKey("/api/v1/ops/wallet-coordination/status", opsKey),
         withOpsKey("/api/v1/ops/wallet-coordination/alerts?limit=50", opsKey),
-        withOpsKey("/api/v1/ops/wallet-coordination/outcomes?limit=40", opsKey)
+        withOpsKey("/api/v1/ops/wallet-coordination/outcomes?limit=40", opsKey),
+        withOpsKey("/api/v1/ops/validation-oracle/rules?limit=100", opsKey)
       ]);
       setTickets(ticketRes.data || []);
       setEvents(eventRes.data || []);
@@ -225,6 +229,8 @@ export default function OpsPage() {
       setWalletCoordAlerts(walletCoordAlertsRes.data || []);
       setWalletCoordOutcomes(walletCoordOutcomesRes.data || []);
       setWalletCoordOutcomesDegraded(Boolean(walletCoordOutcomesRes.degraded));
+      setValidationRules(validationRulesRes.data || []);
+      setValidationOracleStatus(validationRulesRes.status || null);
       toast.success("Ops data refreshed.");
     } catch (error) {
       toast.error(`Load failed: ${error.message}`);
@@ -439,6 +445,7 @@ export default function OpsPage() {
   const signalGateBlockedEntries = Object.entries(signalGate?.stats?.blockedByReason || {}).sort(
     (a, b) => Number(b[1] || 0) - Number(a[1] || 0)
   );
+  const oracleRows = Array.isArray(validationRules) ? validationRules : [];
   const ttaAvgMs = telemetrySummary?.tta?.avgMs;
   const freshnessCounts = telemetrySummary?.freshness || {};
   const degradedFreshnessCount = Number(freshnessCounts.DEGRADED || 0) + Number(freshnessCounts.STALE || 0);
@@ -801,6 +808,56 @@ export default function OpsPage() {
                               </span>
                             </div>
                           ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                        <div>
+                          <div className="text-[11px] text-gray-500 font-semibold">Validation Oracle — rule performance</div>
+                          <p className="mt-1 text-[11px] text-gray-600">
+                            Shadow mode. Audit-only; does not affect signal gating.
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-indigo-500/25 bg-indigo-500/10 px-2 py-1 text-[10px] font-semibold text-indigo-200">
+                          {validationOracleStatus?.cronEnabled ? "oracle live" : "oracle off"}
+                        </span>
+                      </div>
+                      {!oracleRows.length ? (
+                        <p className="text-sm text-gray-500">No validation rows yet.</p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full text-left text-xs">
+                            <thead className="text-[10px] uppercase tracking-wide text-gray-500">
+                              <tr className="border-b border-white/[0.06]">
+                                <th className="py-2 pr-3">rule_id</th>
+                                <th className="py-2 pr-3 text-right">total_signals</th>
+                                <th className="py-2 pr-3 text-right">win_rate_60m</th>
+                                <th className="py-2 pr-3 text-right">avg_return</th>
+                                <th className="py-2 pr-3 text-right">confidence_score</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/[0.05] font-mono text-gray-300">
+                              {oracleRows.map((row) => {
+                                const total = Number(row.total_signals || 0);
+                                const winRate = total > 0 ? (Number(row.success_count_60m || 0) / total) * 100 : 0;
+                                const avgReturn = Number(row.avg_return_60m || 0) * 100;
+                                const conf = Number(row.confidence_score || 0) * 100;
+                                return (
+                                  <tr key={row.rule_id}>
+                                    <td className="py-2 pr-3 text-gray-100">{row.rule_id}</td>
+                                    <td className="py-2 pr-3 text-right">{formatInteger(total)}</td>
+                                    <td className="py-2 pr-3 text-right">{winRate.toFixed(1)}%</td>
+                                    <td className={`py-2 pr-3 text-right ${avgReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                                      {avgReturn >= 0 ? "+" : ""}
+                                      {avgReturn.toFixed(1)}%
+                                    </td>
+                                    <td className="py-2 pr-3 text-right">{total >= 10 ? `${conf.toFixed(1)}%` : "n<10"}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         </div>
                       )}
                     </div>

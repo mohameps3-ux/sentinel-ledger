@@ -81,6 +81,22 @@ function actionTone(action) {
   return "border-amber-400/45 bg-amber-500/12 text-amber-100";
 }
 
+function rulePerfTone(perf) {
+  if (!perf?.hasSample) return "border-white/10 bg-white/[0.04] text-gray-300";
+  const c = Number(perf.confidenceScore || 0);
+  if (c > 0.7) return "border-emerald-500/35 bg-emerald-500/10 text-emerald-200";
+  if (c >= 0.5) return "border-amber-500/35 bg-amber-500/10 text-amber-200";
+  return "border-white/10 bg-white/[0.04] text-gray-300";
+}
+
+function formatRulePerfLabel(perf) {
+  if (!perf?.ruleId) return null;
+  if (!perf.hasSample) return `${perf.ruleId} · New rule — building track record`;
+  const confidence = Math.round(Number(perf.confidenceScore || 0) * 100);
+  const avg = Math.round(Number(perf.avgReturn60m || 0) * 100);
+  return `${perf.ruleId} · ${confidence}% historical · ${avg >= 0 ? "+" : ""}${avg}% avg`;
+}
+
 function tri(v) {
   if (v === true) return { label: "YES", cls: "border-emerald-500/35 bg-emerald-500/10 text-emerald-200" };
   if (v === false) return { label: "NO", cls: "border-red-500/35 bg-red-500/10 text-red-200" };
@@ -254,7 +270,7 @@ function KeyMetricsBar({ market, naLabel }) {
   );
 }
 
-function SentinelIntelligence({ address, analysis, terminal, flaggedWallets }) {
+function SentinelIntelligence({ address, analysis, terminal, flaggedWallets, rulePerformance }) {
   const score = Number(terminal?.signalStrength ?? analysis?.confidence ?? 0);
   const risk = Math.max(0, Math.min(100, Math.round(100 - score)));
   const smartMoney = Math.max(0, Math.min(100, Math.round(Number(terminal?.smartMoneyScore ?? terminal?.walletScore ?? score))));
@@ -264,6 +280,7 @@ function SentinelIntelligence({ address, analysis, terminal, flaggedWallets }) {
     ...(Array.isArray(analysis?.pros) ? analysis.pros : []),
     terminal?.rationale
   ].filter(Boolean).slice(0, 3);
+  const ruleLabel = formatRulePerfLabel(rulePerformance);
 
   return (
     <section id="intel" className="grid grid-cols-1 gap-4 xl:grid-cols-12">
@@ -294,6 +311,16 @@ function SentinelIntelligence({ address, analysis, terminal, flaggedWallets }) {
             ))}
           </ul>
         </div>
+        {ruleLabel ? (
+          <div className={`rounded-xl border px-3 py-2 text-xs ${rulePerfTone(rulePerformance)}`}>
+            <p className="font-mono font-semibold">{ruleLabel}</p>
+            <p className="mt-1 text-[11px] opacity-80">
+              {rulePerformance.hasSample
+                ? `This signal type has worked ${Math.round(Number(rulePerformance.confidenceScore || 0) * 100)}% of the time (n=${rulePerformance.totalSignals}). 60m avg return: ${(Number(rulePerformance.avgReturn60m || 0) * 100).toFixed(1)}%.`
+                : "Shadow validation is collecting outcomes before this rule can influence confidence."}
+            </p>
+          </div>
+        ) : null}
       </div>
       <div className="xl:col-span-7">
         <ExpandablePanel title="Smart wallets on this mint" icon={Radio} defaultOpen={true} badge="PRO intel">
@@ -546,6 +573,7 @@ export default function TokenPage() {
         analysis={analysis}
         terminal={token?.terminal}
         flaggedWallets={flaggedWallets}
+        rulePerformance={token?.rulePerformance}
       />
 
       <TokenAlertStack token={token} convergence={convergence} redSig={redSig} coordMeta={coordMeta} t={t} />

@@ -16,6 +16,7 @@ import {
 import { redFlagsForSignal } from "@/lib/redFlags";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
 import { RealtimeTokenCardShell } from "../../../../components/home/RealtimeTokenCardShell";
+import { RulePerformanceBadge } from "../../../../components/signals/RulePerformanceBadge";
 import { TacticalRegimePill } from "../../../../components/home/TacticalRegimePill";
 import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../../lib/terminalLinks";
 import { isProbableSolanaMint } from "../../../../lib/solanaMint.mjs";
@@ -314,6 +315,7 @@ export function LiveTab({
               {smartMoneyCount} SM
             </span>
           ) : null}
+          <RulePerformanceBadge performance={sig._api?.rulePerformance} compact />
         </div>
 
         <div className="rounded border border-white/8 bg-black/30 px-1.5 py-1">

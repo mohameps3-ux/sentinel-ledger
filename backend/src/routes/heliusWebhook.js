@@ -19,6 +19,7 @@ const {
 } = require("../ingestion/entropyGuard");
 const { evaluate: evaluateScore } = require("../scoring/engine");
 const { recordSignalEmission } = require("../services/signalPerformance");
+const { recordOracleSignal } = require("../workers/validationOracle");
 const { getMarketData } = require("../services/marketData");
 const { evaluateSignalEmission } = require("../services/signalEmissionGate");
 const { buildAlphaLayer } = require("../services/signalAlphaLayer");
@@ -326,6 +327,11 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
               // Best-effort archival for outcome backtesting (T+N resolution).
               // Never blocks ingestion.
               recordSignalEmission(score).catch(() => {});
+              recordOracleSignal(score, {
+                priceUsd: ctx?.priceUsd,
+                walletsInvolved: score?.meta?.uniqueWalletsInWindow,
+                regime: gate?.regime?.key
+              }).catch(() => {});
               if (score.confidence > 70 || (score.signals && score.signals.length > 2)) {
                 console.log(
                   `[SCORING_SIGNAL] ${score.asset} - ${score.confidence}% - ${(score.signals || []).join(",")}`

@@ -12,6 +12,7 @@ const { getSmartWalletsForToken } = require("../services/smartMoneyService");
 const { computeTerminalSignal } = require("../lib/tokenTerminalSignal");
 const { getConvergenceState } = require("../services/convergenceService");
 const { pairCreatedRawToUnixMs } = require("../lib/pairTime");
+const { getLatestRulePerformanceForMint } = require("../workers/validationOracle");
 
 const router = express.Router();
 const { fetchTrendingList } = require("../services/trendingList");
@@ -133,7 +134,7 @@ router.get("/:address", async (req, res) => {
       }
     }
 
-    const [walletIntel, smartTok, convergence, privateData] = await Promise.all([
+    const [walletIntel, smartTok, convergence, privateData, rulePerformance] = await Promise.all([
       withTimeout(
         getWalletSpamIntel(address, {
           deployerAddress,
@@ -160,6 +161,12 @@ router.get("/:address", async (req, res) => {
         TOKEN_ROUTE_OPTIONAL_TIMEOUT_MS,
         fallback.private,
         "private"
+      ),
+      withTimeout(
+        getLatestRulePerformanceForMint(address),
+        TOKEN_ROUTE_OPTIONAL_TIMEOUT_MS,
+        null,
+        "rule_performance"
       )
     ]);
 
@@ -219,6 +226,7 @@ router.get("/:address", async (req, res) => {
         },
         security,
         terminal,
+        rulePerformance,
         smartMoneyForToken: (smartTok?.wallets || []).slice(0, 20),
         smartMoneyMeta: smartTok?.meta || {},
         convergence: convergence || { detected: false, wallets: [], threshold: 3, windowMinutes: 10 },

@@ -168,6 +168,16 @@ async function main() {
     } else {
       console.log("SKIP: pro_alert_feed_items (migration 018 not applied — optional until db:ensure-signal-performance)");
     }
+
+    for (const t of ["rule_performance", "signal_outcomes"]) {
+      const { rows } = await client.query("SELECT to_regclass($1) AS r", [`public.${t}`]);
+      if (!rows[0]?.r) {
+        console.error(`FAIL: missing public.${t} — run migration 002_validation_oracle.sql`);
+        failed += 1;
+      } else {
+        console.log(`OK: table public.${t}`);
+      }
+    }
   } finally {
     await client.end();
   }

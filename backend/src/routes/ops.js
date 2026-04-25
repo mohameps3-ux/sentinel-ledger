@@ -43,6 +43,11 @@ const {
 const { previewSignalGateTuner } = require("../services/signalGateTuner");
 const { getTacticalRegimeNotifyCronStatus } = require("../jobs/tacticalRegimeNotifyCron");
 const { previewTacticalRegimeForMint, trySendTacticalRegimeTelegram } = require("../services/tacticalRegimeNotify");
+const {
+  listRulePerformance,
+  getValidationOracleStatus,
+  runValidationOracleTick
+} = require("../workers/validationOracle");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 
 const router = express.Router();
@@ -264,6 +269,24 @@ router.get("/signal-performance/summary", assertOpsAuth, async (req, res) => {
     return res.status(503).json({ ok: false, error: summary?.error || "signal_perf_unavailable" });
   }
   return res.json({ ok: true, data: summary });
+});
+
+router.get("/validation-oracle/rules", assertOpsAuth, async (req, res) => {
+  const limit = Number(req.query.limit || 100);
+  const out = await listRulePerformance({ limit });
+  if (!out?.ok) {
+    return res.status(503).json({ ok: false, error: out?.reason || "validation_oracle_unavailable" });
+  }
+  return res.json({ ok: true, data: out.rows || [], status: out.status || getValidationOracleStatus() });
+});
+
+router.get("/validation-oracle/status", assertOpsAuth, (_req, res) => {
+  return res.json({ ok: true, data: getValidationOracleStatus() });
+});
+
+router.post("/validation-oracle/run", assertOpsAuth, async (_req, res) => {
+  const stats = await runValidationOracleTick();
+  return res.json({ ok: true, data: { stats, status: getValidationOracleStatus() } });
 });
 
 router.get("/signal-performance/calibration", assertOpsAuth, (_req, res) => {

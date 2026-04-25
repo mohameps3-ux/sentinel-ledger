@@ -3,6 +3,7 @@ import { BarChart3, ChevronsDown, ChevronsUp, Flame, TrendingUp, Waves } from "l
 import { formatUsdWhole } from "../../../../lib/formatStable";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
 import { RealtimeTokenCardShell } from "../../../../components/home/RealtimeTokenCardShell";
+import { RulePerformanceBadge } from "../../../../components/signals/RulePerformanceBadge";
 import { TacticalRegimePill } from "../../../../components/home/TacticalRegimePill";
 import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../../lib/terminalLinks";
 import { isProbableSolanaMint } from "../../../../lib/solanaMint.mjs";
@@ -238,6 +239,7 @@ export function HotTab({
                         {smartMoneyCount} SM
                       </span>
                     ) : null}
+                    <RulePerformanceBadge performance={token?.rulePerformance} compact />
                     {token?.mint ? (
                       <TacticalRegimePill
                         signalStrength={signalStrength}

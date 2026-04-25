@@ -95,6 +95,7 @@ function mapHotTrendToLiveFill(row, heatContext) {
         ? row.evidenceChips
         : [String(row.grade || "HEAT").slice(0, 6)],
       contextHistory: heatContext,
+      rulePerformance: row.rulePerformance || null,
       createdAt: row.createdAt || new Date().toISOString(),
       volume24h: Number(row.volume24h || 0),
       change24h: Number(row.change ?? row.change24h ?? 0)
