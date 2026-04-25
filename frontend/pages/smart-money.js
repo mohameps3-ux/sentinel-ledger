@@ -49,10 +49,16 @@ function eventTargetInInteractive(t) {
   return Boolean(el.closest("a, button, [data-no-row-expand]"));
 }
 
-function ExpandedWalletNarrativeSection({ wallet, narrativeLang, title }) {
+function ExpandedWalletNarrativeSection({ wallet, narrativeLang }) {
   return (
-    <section data-testid="smart-money-expanded-wallet-narrative" className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-3">
-      <p className="text-xs text-violet-200/80 font-semibold mb-2">{title}</p>
+    <section
+      data-testid="smart-money-expanded-wallet-narrative"
+      data-wallet={wallet}
+      className="rounded-xl border border-violet-400/40 bg-violet-500/[0.08] p-3 shadow-[0_0_22px_rgba(139,92,246,0.12)]"
+    >
+      <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-violet-100">
+        NARRATIVE SECTION
+      </p>
       <WalletNarrativeCard walletAddress={wallet} lang={narrativeLang} />
     </section>
   );
@@ -495,18 +501,12 @@ export default function SmartMoneyPage() {
                         <tr className="border-b border-white/5 bg-white/[0.02]">
                           <td colSpan={11} className="px-3 py-4">
                             <p className="text-xs text-violet-200/80 font-semibold mb-3">{t("smart.detail.title")}</p>
+                            <ExpandedWalletNarrativeSection wallet={w.wallet} narrativeLang={narrativeLang} />
                             <SmartWalletDetailPanel
                               row={w}
                               labelFor={labelFor}
                               titleFor={titleFor}
                               narrativeLang={narrativeLang}
-                              afterStats={
-                                <ExpandedWalletNarrativeSection
-                                  wallet={w.wallet}
-                                  narrativeLang={narrativeLang}
-                                  title={t("smart.narrative.title")}
-                                />
-                              }
                             />
                           </td>
                         </tr>
@@ -647,18 +647,12 @@ export default function SmartMoneyPage() {
                   {expandedWallet === w.wallet ? (
                     <div className="pt-2 space-y-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                       <p className="text-xs text-violet-200/80 font-semibold">{t("smart.detail.title")}</p>
+                      <ExpandedWalletNarrativeSection wallet={w.wallet} narrativeLang={narrativeLang} />
                       <SmartWalletDetailPanel
                         row={w}
                         labelFor={labelFor}
                         titleFor={titleFor}
                         narrativeLang={narrativeLang}
-                        afterStats={
-                          <ExpandedWalletNarrativeSection
-                            wallet={w.wallet}
-                            narrativeLang={narrativeLang}
-                            title={t("smart.narrative.title")}
-                          />
-                        }
                       />
                     </div>
                   ) : null}

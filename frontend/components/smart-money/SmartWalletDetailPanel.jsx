@@ -18,7 +18,7 @@ function fmtNum(v, d = 1) {
   return Number(v).toFixed(d);
 }
 
-export function SmartWalletDetailPanel({ row, labelFor, titleFor, narrativeLang, afterStats = null }) {
+export function SmartWalletDetailPanel({ row, labelFor, titleFor, narrativeLang }) {
   const w = row;
   const p = w.profile;
 
@@ -104,8 +104,6 @@ export function SmartWalletDetailPanel({ row, labelFor, titleFor, narrativeLang,
           </p>
         </div>
       </div>
-
-      {afterStats}
 
       <div>
         <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Puntuaciones (smart_wallets)</p>
