@@ -56,9 +56,6 @@ function ExpandedWalletNarrativeSection({ wallet, narrativeLang }) {
       data-wallet={wallet}
       className="rounded-xl border border-violet-400/40 bg-violet-500/[0.08] p-3 shadow-[0_0_22px_rgba(139,92,246,0.12)]"
     >
-      <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-violet-100">
-        NARRATIVE SECTION
-      </p>
       <WalletNarrativeCard walletAddress={wallet} lang={narrativeLang} />
     </section>
   );
