@@ -312,7 +312,7 @@ async function getWalletNarrative(walletAddress, options = {}) {
   const supabase = getSupabase();
   const { data: walletRow, error: walletError } = await supabase
     .from("smart_wallets")
-    .select("wallet_address, created_at")
+    .select("wallet_address, last_seen, updated_at")
     .eq("wallet_address", walletAddress)
     .maybeSingle();
   if (walletError) throw walletError;
@@ -340,13 +340,13 @@ async function getWalletNarrative(walletAddress, options = {}) {
 
   function buildNarrative(langCode) {
     if (signals.length < 3) {
-      return fallbackNarrative(langCode, walletAddress, walletRow.created_at);
+      return fallbackNarrative(langCode, walletAddress, walletRow.last_seen || walletRow.updated_at);
     }
     const metrics = buildMetrics(signals, walletTokens);
     const topMetrics = [...metrics].sort((a, b) => b.impact - a.impact).slice(0, 3);
     const sentenceRows = topMetrics.map((m) => sentenceFor(m, langCode)).filter(Boolean);
     if (sentenceRows.length < 2) {
-      return fallbackNarrative(langCode, walletAddress, walletRow.created_at);
+      return fallbackNarrative(langCode, walletAddress, walletRow.last_seen || walletRow.updated_at);
     }
     return {
       headline: headlineFromMetrics(topMetrics, langCode),

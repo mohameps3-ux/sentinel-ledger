@@ -51,7 +51,7 @@ function eventTargetInInteractive(t) {
 
 function ExpandedWalletNarrativeSection({ wallet, narrativeLang, title }) {
   return (
-    <section data-testid="smart-money-expanded-wallet-narrative" className="border-b border-white/10 pb-4 mb-4">
+    <section data-testid="smart-money-expanded-wallet-narrative" className="border-t border-white/10 pt-4 mt-4">
       <p className="text-xs text-violet-200/80 font-semibold mb-2">{title}</p>
       <WalletNarrativeCard walletAddress={wallet} lang={narrativeLang} />
     </section>
@@ -495,16 +495,16 @@ export default function SmartMoneyPage() {
                         <tr className="border-b border-white/5 bg-white/[0.02]">
                           <td colSpan={11} className="px-3 py-4">
                             <p className="text-xs text-violet-200/80 font-semibold mb-3">{t("smart.detail.title")}</p>
-                            <ExpandedWalletNarrativeSection
-                              wallet={w.wallet}
-                              narrativeLang={narrativeLang}
-                              title={t("smart.narrative.title")}
-                            />
                             <SmartWalletDetailPanel
                               row={w}
                               labelFor={labelFor}
                               titleFor={titleFor}
                               narrativeLang={narrativeLang}
+                            />
+                            <ExpandedWalletNarrativeSection
+                              wallet={w.wallet}
+                              narrativeLang={narrativeLang}
+                              title={t("smart.narrative.title")}
                             />
                           </td>
                         </tr>
@@ -645,16 +645,16 @@ export default function SmartMoneyPage() {
                   {expandedWallet === w.wallet ? (
                     <div className="pt-2 space-y-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                       <p className="text-xs text-violet-200/80 font-semibold">{t("smart.detail.title")}</p>
-                      <ExpandedWalletNarrativeSection
-                        wallet={w.wallet}
-                        narrativeLang={narrativeLang}
-                        title={t("smart.narrative.title")}
-                      />
                       <SmartWalletDetailPanel
                         row={w}
                         labelFor={labelFor}
                         titleFor={titleFor}
                         narrativeLang={narrativeLang}
+                      />
+                      <ExpandedWalletNarrativeSection
+                        wallet={w.wallet}
+                        narrativeLang={narrativeLang}
+                        title={t("smart.narrative.title")}
                       />
                     </div>
                   ) : null}
