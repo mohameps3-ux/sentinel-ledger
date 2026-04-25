@@ -41,6 +41,40 @@ function buildScanMessage(address, marketData, analysis) {
     .join("\n");
 }
 
+function botMenuMarkup() {
+  return {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "Signals", callback_data: "menu:signals" },
+          { text: "Wallets", callback_data: "menu:wallets" }
+        ],
+        [
+          { text: "Price", callback_data: "menu:price" },
+          { text: "Help", callback_data: "menu:help" }
+        ]
+      ]
+    }
+  };
+}
+
+function botMenuText() {
+  return [
+    "Sentinel Ledger Bot",
+    "",
+    "Choose a tool below, or type:",
+    "/signal WIF",
+    "/wallet <address>",
+    "/price SOL",
+    "/scan <mint>",
+    "/watchlist"
+  ].join("\n");
+}
+
+async function replyBotMenu(ctx) {
+  return ctx.reply(botMenuText(), botMenuMarkup());
+}
+
 async function sendGradeAlert(tokenAddress, analysis, marketData) {
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!bot || !chatId) return;
@@ -155,9 +189,27 @@ function startTelegramBot() {
       // noop
     }
 
-    return ctx.reply(
-      "Welcome to Sentinel Ledger Bot.\nUse /price SOL, /signal WIF, /wallet <address>, /swap 1 SOL USDC, /scan <mint>, or /watchlist."
-    );
+    return replyBotMenu(ctx);
+  });
+
+  bot.action("menu:signals", async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return ctx.reply("Signals: type /signal WIF or /scan <token_mint_address>.");
+  });
+
+  bot.action("menu:wallets", async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return ctx.reply("Wallets: type /wallet <address> or /watchlist.");
+  });
+
+  bot.action("menu:price", async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return ctx.reply("Price: type /price SOL, /price WIF, or any supported symbol.");
+  });
+
+  bot.action("menu:help", async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return replyBotMenu(ctx);
   });
 
   bot.command("scan", async (ctx) => {

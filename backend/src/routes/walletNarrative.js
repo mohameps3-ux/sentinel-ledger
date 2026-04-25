@@ -12,7 +12,7 @@ const router = express.Router();
 
 const walletNarrativeLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 45,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { ok: false, error: "rate_limit_exceeded" }
