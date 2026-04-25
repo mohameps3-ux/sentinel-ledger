@@ -97,7 +97,7 @@ function MetricCell({ label, value }) {
   );
 }
 
-function TokenHeroBar({ address, market, analysis, terminal, isConnected, statusTone, statusLabel, soundEnabled, setSoundEnabled, isWatchlisted, proStatusReady, hasToken, hasProAccess }) {
+function TokenHeroBar({ address, market, analysis, terminal, statusTone, statusLabel, soundEnabled, setSoundEnabled, isWatchlisted, proStatusReady, hasToken, hasProAccess }) {
   const jupiterUrl = buildJupiterSwapUrl(address);
   const dexUrl = buildDexscreenerSolanaTokenUrl(address);
   const solscanUrl = buildSolscanTokenUrl(address);
@@ -116,7 +116,7 @@ function TokenHeroBar({ address, market, analysis, terminal, isConnected, status
           <p className="mt-1 text-sm text-gray-500">${market.symbol || "TOKEN"}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-end">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-[auto_auto_auto_minmax(14rem,18rem)] sm:items-center sm:justify-end">
           <div className="col-span-2 sm:col-span-1 sm:text-right">
             <p className="font-mono text-3xl font-black text-white">{usdOrNA(market.price, "$0")}</p>
             <p className={`font-mono text-sm font-semibold ${Number(market.priceChange24h) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
@@ -131,25 +131,97 @@ function TokenHeroBar({ address, market, analysis, terminal, isConnected, status
             <p className="text-[10px] uppercase tracking-[0.14em] text-violet-200/80">Sentinel</p>
             <p className="text-xl font-black text-violet-100">{score}</p>
           </div>
-          <a href={jupiterUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="col-span-2 inline-flex h-12 items-center justify-center rounded-xl bg-indigo-500 px-5 text-sm font-black uppercase tracking-[0.16em] text-white shadow-lg shadow-indigo-950/40 hover:bg-indigo-400">
-            TRADE NOW
-          </a>
-          <div className="col-span-2 flex flex-wrap items-center gap-2">
-            <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20">DEX</a>
-            <a href={solscanUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-lg border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-gray-100 hover:bg-white/[0.08]">Solscan</a>
-            {pumpUrl ? <a href={pumpUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/10 px-3 py-1.5 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20">Pump</a> : null}
-            <span className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs">
-              <span className={`h-2.5 w-2.5 rounded-full ${statusTone}`} />
-              {statusLabel}
-            </span>
-            <button type="button" onClick={() => setSoundEnabled((v) => !v)} className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs hover:bg-white/10">
-              {soundEnabled ? "Sound on" : "Sound off"}
-            </button>
-            <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
-            {proStatusReady && hasToken && hasProAccess ? <Link href="/alerts" className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20">Alerts</Link> : null}
+          <div className="col-span-2 sm:col-span-1">
+            <a
+              href={jupiterUrl}
+              target="_blank"
+              rel={EXTERNAL_ANCHOR_REL}
+              className="flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-6 text-sm font-black uppercase tracking-[0.2em] text-white shadow-[0_0_34px_rgba(99,102,241,0.35)] transition hover:scale-[1.01] hover:from-indigo-400 hover:to-fuchsia-400"
+            >
+              TRADE NOW
+            </a>
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+              <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20">DEX</a>
+              <a href={solscanUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-lg border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-gray-100 hover:bg-white/[0.08]">Solscan</a>
+              {pumpUrl ? <a href={pumpUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/10 px-3 py-1.5 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20">Pump</a> : null}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+              <span className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs">
+                <span className={`h-2.5 w-2.5 rounded-full ${statusTone}`} />
+                {statusLabel}
+              </span>
+              <button type="button" onClick={() => setSoundEnabled((v) => !v)} className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs hover:bg-white/10">
+                {soundEnabled ? "Sound on" : "Sound off"}
+              </button>
+              <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
+              {proStatusReady && hasToken && hasProAccess ? <Link href="/alerts" className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20">Alerts</Link> : null}
+            </div>
           </div>
         </div>
       </div>
+    </section>
+  );
+}
+
+function TokenAlertStack({ token, convergence, redSig, coordMeta, t }) {
+  if (!token?.walletIntel && !convergence?.detected && !redSig) return null;
+  return (
+    <section className="space-y-3">
+      <WalletThreatBanner walletIntel={token.walletIntel} />
+      {convergence?.detected ? (
+        <div className="glass-card border border-emerald-500/35 bg-emerald-500/10 px-4 py-3">
+          <p className="text-xs uppercase tracking-wider text-emerald-200 font-semibold">{t("token.conv.title")}</p>
+          <p className="text-sm text-gray-200 mt-1">
+            {t("token.conv.body", {
+              count: Math.max(3, Number(convergence?.wallets?.length || 0)),
+              minutes: Number(convergence?.windowMinutes || 10)
+            })}
+          </p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {(convergence?.wallets || []).slice(0, 8).map((w) => (
+              <span
+                key={w}
+                className="mono text-[11px] px-2 py-1 rounded border border-white/15 bg-white/5 text-emerald-200"
+              >
+                {w.slice(0, 4)}...{w.slice(-4)}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {redSig ? (
+        <div
+          className={`glass-card border px-4 py-3 ${
+            redSig === "RED_CONFIRM"
+              ? "border-red-500/45 bg-red-500/10"
+              : redSig === "RED_PREPARE"
+                ? "border-amber-500/40 bg-amber-500/10"
+                : "border-slate-500/40 bg-slate-500/5"
+          }`}
+        >
+          <p className="text-xs uppercase tracking-wider font-semibold text-gray-200">
+            {t("token.red.walletCoord")} - {redSig.replace(/_/g, " ")}
+          </p>
+          {coordMeta && typeof coordMeta === "object" ? (
+            <p className="text-[12px] text-gray-300 mt-2 leading-relaxed">
+              {coordMeta.priorClusterAlerts != null
+                ? t("token.red.priorIntro", {
+                    a: String(coordMeta.priorClusterAlerts),
+                    suffix:
+                      coordMeta.uniqueMintsWithPriorClusterAlerts != null
+                        ? t("token.red.priorSuffixMints", { m: coordMeta.uniqueMintsWithPriorClusterAlerts })
+                        : ""
+                  })
+                : null}{" "}
+              {coordMeta.meanCoordinationLeadSecPrior != null
+                ? t("token.red.meanLeadPrior", { s: coordMeta.meanCoordinationLeadSecPrior })
+                : null}
+              {coordMeta.coordinationLeadSec != null ? t("token.red.windowLead", { s: coordMeta.coordinationLeadSec }) : null}
+            </p>
+          ) : null}
+          {redSig === "RED_ABORT" ? <p className="text-[12px] text-slate-300 mt-1">{t("token.red.abortNote")}</p> : null}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -431,102 +503,11 @@ export default function TokenPage() {
         description={t("token.pageDescLive", { symbol: market.symbol })}
       />
     <div className="sl-container py-6 space-y-6 pb-28 lg:pb-10">
-      <Ticker />
-      <WalletThreatBanner walletIntel={token.walletIntel} />
-      {convergence?.detected ? (
-        <div className="glass-card border border-emerald-500/35 bg-emerald-500/10 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-emerald-200 font-semibold">{t("token.conv.title")}</p>
-          <p className="text-sm text-gray-200 mt-1">
-            {t("token.conv.body", {
-              count: Math.max(3, Number(convergence?.wallets?.length || 0)),
-              minutes: Number(convergence?.windowMinutes || 10)
-            })}
-          </p>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {(convergence?.wallets || []).slice(0, 8).map((w) => (
-              <span
-                key={w}
-                className="mono text-[11px] px-2 py-1 rounded border border-white/15 bg-white/5 text-emerald-200"
-              >
-                {w.slice(0, 4)}...{w.slice(-4)}
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      {redSig ? (
-        <div
-          className={`glass-card border px-4 py-3 ${
-            redSig === "RED_CONFIRM"
-              ? "border-red-500/45 bg-red-500/10"
-              : redSig === "RED_PREPARE"
-                ? "border-amber-500/40 bg-amber-500/10"
-                : "border-slate-500/40 bg-slate-500/5"
-          }`}
-        >
-          <p className="text-xs uppercase tracking-wider font-semibold text-gray-200">
-            {t("token.red.walletCoord")} — {redSig.replace(/_/g, " ")}
-          </p>
-          {coordMeta && typeof coordMeta === "object" && (
-            <p className="text-[12px] text-gray-300 mt-2 leading-relaxed">
-              {coordMeta.priorClusterAlerts != null
-                ? t("token.red.priorIntro", {
-                    a: String(coordMeta.priorClusterAlerts),
-                    suffix:
-                      coordMeta.uniqueMintsWithPriorClusterAlerts != null
-                        ? t("token.red.priorSuffixMints", { m: coordMeta.uniqueMintsWithPriorClusterAlerts })
-                        : ""
-                  })
-                : null}{" "}
-              {coordMeta.meanCoordinationLeadSecPrior != null
-                ? t("token.red.meanLeadPrior", { s: coordMeta.meanCoordinationLeadSecPrior })
-                : null}
-              {coordMeta.coordinationLeadSec != null
-                ? t("token.red.windowLead", { s: coordMeta.coordinationLeadSec })
-                : null}
-              {coordMeta.meanScorePriorClusterAlerts != null
-                ? t("token.red.priorMeanScore", { s: coordMeta.meanScorePriorClusterAlerts })
-                : null}
-            </p>
-          )}
-          {coordMeta && typeof coordMeta === "object" &&
-            (coordMeta.priorClusterAlertsWithVerifiedPumps != null ||
-              coordMeta.meanSignalOutcomePctPriorVerified != null) && (
-            <p className="text-[12px] text-cyan-200/90 mt-2 leading-relaxed border-t border-white/10 pt-2">
-              {coordMeta.priorClusterAlertsWithVerifiedPumps != null
-                ? t("token.red.verifiedIntro", {
-                    pct:
-                      coordMeta.pumpMinMarketOutcomePct != null
-                        ? coordMeta.pumpMinMarketOutcomePct
-                        : coordMeta.pumpMinOutcomePctThreshold != null
-                          ? coordMeta.pumpMinOutcomePctThreshold
-                          : "…",
-                    pump: coordMeta.priorClusterAlertsWithVerifiedPumps,
-                    mintPart:
-                      coordMeta.uniqueMintsWithVerifiedPumps != null
-                        ? t("token.red.verifiedMints", { n: coordMeta.uniqueMintsWithVerifiedPumps })
-                        : ""
-                  })
-                : ""}
-              {coordMeta.meanSignalOutcomePctPriorVerified != null
-                ? t("token.red.meanOutcome", { v: coordMeta.meanSignalOutcomePctPriorVerified })
-                : null}
-              {coordMeta.meanCoordinationLeadSecPriorVerified != null
-                ? t("token.red.meanLeadVerified", { s: coordMeta.meanCoordinationLeadSecPriorVerified })
-                : null}
-            </p>
-          )}
-          {redSig === "RED_ABORT" && (
-            <p className="text-[12px] text-slate-300 mt-1">{t("token.red.abortNote")}</p>
-          )}
-        </div>
-      ) : null}
       <TokenHeroBar
         address={address}
         market={market}
         analysis={analysis}
         terminal={token?.terminal}
-        isConnected={isConnected}
         statusTone={statusTone}
         statusLabel={statusLabel}
         soundEnabled={soundEnabled}
@@ -538,7 +519,7 @@ export default function TokenPage() {
       />
 
       <section id="chart" className="scroll-mt-24">
-        <ChartPanel address={address} />
+        <ChartPanel address={address} compact />
       </section>
 
       <KeyMetricsBar market={market} naLabel={t("token.stat.na")} />
@@ -549,6 +530,8 @@ export default function TokenPage() {
         terminal={token?.terminal}
         flaggedWallets={flaggedWallets}
       />
+
+      <TokenAlertStack token={token} convergence={convergence} redSig={redSig} coordMeta={coordMeta} t={t} />
 
       <SecurityReport security={token?.security} />
 

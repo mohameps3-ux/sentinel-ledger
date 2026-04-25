@@ -6,7 +6,7 @@ import {
   EXTERNAL_ANCHOR_REL
 } from "../../lib/terminalLinks";
 
-export function ChartPanel({ address }) {
+export function ChartPanel({ address, compact = false }) {
   const [timeframe, setTimeframe] = useState("1h");
   const timeframes = ["1h", "4h", "1d", "1w"];
   const iframeUrl = useMemo(() => {
@@ -50,7 +50,7 @@ export function ChartPanel({ address }) {
       </div>
       <iframe
         src={iframeUrl}
-        className="w-full h-[360px] md:h-[500px] border-0"
+        className={`w-full border-0 ${compact ? "h-[300px] md:h-[380px]" : "h-[360px] md:h-[500px]"}`}
         title="Token Chart"
       />
     </div>
