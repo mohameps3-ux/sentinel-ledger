@@ -51,7 +51,7 @@ function eventTargetInInteractive(t) {
 
 function ExpandedWalletNarrativeSection({ wallet, narrativeLang, title }) {
   return (
-    <section data-testid="smart-money-expanded-wallet-narrative" className="border-t border-white/10 pt-4 mt-4">
+    <section data-testid="smart-money-expanded-wallet-narrative" className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-3">
       <p className="text-xs text-violet-200/80 font-semibold mb-2">{title}</p>
       <WalletNarrativeCard walletAddress={wallet} lang={narrativeLang} />
     </section>
@@ -500,11 +500,13 @@ export default function SmartMoneyPage() {
                               labelFor={labelFor}
                               titleFor={titleFor}
                               narrativeLang={narrativeLang}
-                            />
-                            <ExpandedWalletNarrativeSection
-                              wallet={w.wallet}
-                              narrativeLang={narrativeLang}
-                              title={t("smart.narrative.title")}
+                              afterStats={
+                                <ExpandedWalletNarrativeSection
+                                  wallet={w.wallet}
+                                  narrativeLang={narrativeLang}
+                                  title={t("smart.narrative.title")}
+                                />
+                              }
                             />
                           </td>
                         </tr>
@@ -650,11 +652,13 @@ export default function SmartMoneyPage() {
                         labelFor={labelFor}
                         titleFor={titleFor}
                         narrativeLang={narrativeLang}
-                      />
-                      <ExpandedWalletNarrativeSection
-                        wallet={w.wallet}
-                        narrativeLang={narrativeLang}
-                        title={t("smart.narrative.title")}
+                        afterStats={
+                          <ExpandedWalletNarrativeSection
+                            wallet={w.wallet}
+                            narrativeLang={narrativeLang}
+                            title={t("smart.narrative.title")}
+                          />
+                        }
                       />
                     </div>
                   ) : null}
