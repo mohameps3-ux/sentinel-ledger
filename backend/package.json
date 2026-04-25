@@ -16,6 +16,7 @@
     "db:verify-emission-regime": "node scripts/verifySignalPerformanceEmissionRegimeColumn.js",
     "queue:clean": "node scripts/cleanBullQueues.js",
     "backfill:wallets": "node scripts/backfillWalletHistory.js",
+    "enrich:signals": "node scripts/enrichSignals.js",
     "seed:smart-wallets": "node scripts/seedSmartWallets.js",
     "seed:terminal-home": "node scripts/seedTerminalHome.js",
     "signal-prices-once": "node scripts/runSignalPricesOnce.js",

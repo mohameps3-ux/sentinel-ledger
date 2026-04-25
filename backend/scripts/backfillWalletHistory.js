@@ -8,6 +8,10 @@ const { randomUUID } = require("crypto");
 const { getSupabase } = require("../src/lib/supabase");
 const { isProbableSolanaPubkey } = require("../src/lib/solanaAddress");
 const {
+  fetchDexScreenerTokenPrice,
+  pctFromPrices
+} = require("../src/services/smartWalletSignalPrices");
+const {
   getParsedTransaction,
   parseTokenBalanceDeltas,
   rpcCall
@@ -17,6 +21,7 @@ const SIGNATURE_LIMIT = Math.max(1, Math.min(100, Number(process.env.WALLET_BACK
 const TX_DELAY_MS = Math.max(0, Number(process.env.WALLET_BACKFILL_TX_DELAY_MS || 500));
 const WALLET_DELAY_MS = Math.max(0, Number(process.env.WALLET_BACKFILL_WALLET_DELAY_MS || 1500));
 const SIGNAL_DEDUPE_MINUTES = Math.max(1, Number(process.env.WALLET_BACKFILL_DEDUPE_MINUTES || 5));
+const PRICE_DELAY_MS = Math.max(0, Number(process.env.WALLET_BACKFILL_PRICE_DELAY_MS || 250));
 
 function sleep(ms) {
   if (!ms) return Promise.resolve();
@@ -41,8 +46,30 @@ function dedupeBucket(timestampMs) {
   return Math.floor(sec / (SIGNAL_DEDUPE_MINUTES * 60));
 }
 
-function buildSignalRow(tx, walletRow) {
+async function enrichSignalPrice(row, tx, priceByMint) {
+  if (!tx.tokenAddress) return row;
+  let spot = priceByMint.get(tx.tokenAddress);
+  if (spot === undefined) {
+    try {
+      spot = await fetchDexScreenerTokenPrice(tx.tokenAddress);
+      if (PRICE_DELAY_MS) await sleep(PRICE_DELAY_MS);
+    } catch (_) {
+      spot = null;
+    }
+    priceByMint.set(tx.tokenAddress, spot);
+  }
+  const price = Number(spot?.price);
+  if (!Number.isFinite(price) || price <= 0) return row;
   return {
+    ...row,
+    entry_price_usd: price,
+    price_1h_usd: price,
+    result_pct: pctFromPrices(price, price)
+  };
+}
+
+function buildSignalRow(tx, walletRow) {
+  const row = {
     id: randomUUID(),
     token_address: tx.tokenAddress,
     wallet_address: tx.wallet,
@@ -51,6 +78,7 @@ function buildSignalRow(tx, walletRow) {
     created_minute: createdMinute(tx.timestamp),
     created_at: new Date(Number(tx.timestamp) || Date.now()).toISOString()
   };
+  return row;
 }
 
 async function getWallets() {
@@ -149,6 +177,7 @@ async function backfillWallet(walletRow, index, total) {
 
   const existingKeys = await loadExistingKeys(supabase, wallet);
   const pending = [];
+  const priceByMint = new Map();
   const uniqueTokens = new Set();
   let buyCount = 0;
   let sellCount = 0;
@@ -164,7 +193,7 @@ async function backfillWallet(walletRow, index, total) {
         if (tx.type === "buy") buyCount += 1;
         if (tx.type === "sell") sellCount += 1;
         uniqueTokens.add(tx.tokenAddress);
-        const row = buildSignalRow(tx, walletRow);
+        const row = await enrichSignalPrice(buildSignalRow(tx, walletRow), tx, priceByMint);
         const key = signalKey(row);
         if (existingKeys.has(key)) continue;
         existingKeys.add(key);

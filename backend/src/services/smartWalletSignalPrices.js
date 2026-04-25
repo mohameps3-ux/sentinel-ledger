@@ -1,12 +1,40 @@
 const { getSupabase } = require("../lib/supabase");
 const { isMissingColumnError } = require("../lib/columnMissingError");
-const { getMarketData } = require("./marketData");
+
+const DEXSCREENER_TOKEN_BASE = "https://api.dexscreener.com/latest/dex/tokens";
 
 function pctFromPrices(entry, later) {
   const e = Number(entry);
   const l = Number(later);
   if (!Number.isFinite(e) || e <= 0 || !Number.isFinite(l)) return null;
   return Math.round(((l - e) / e) * 1e6) / 1e4;
+}
+
+function bestDexPair(pairs) {
+  if (!Array.isArray(pairs) || !pairs.length) return null;
+  const solana = pairs.filter((p) => String(p?.chainId || "").toLowerCase() === "solana");
+  const candidates = solana.length ? solana : pairs;
+  return candidates
+    .filter((p) => Number(p?.priceUsd) > 0)
+    .sort((a, b) => Number(b?.liquidity?.usd || 0) - Number(a?.liquidity?.usd || 0))[0] || null;
+}
+
+async function fetchDexScreenerTokenPrice(mint) {
+  const token = String(mint || "").trim();
+  if (!token) return null;
+  const res = await fetch(`${DEXSCREENER_TOKEN_BASE}/${encodeURIComponent(token)}`, {
+    headers: { accept: "application/json" }
+  });
+  if (!res.ok) throw new Error(`dexscreener_${res.status}`);
+  const body = await res.json().catch(() => null);
+  const pair = bestDexPair(body?.pairs);
+  const price = Number(pair?.priceUsd);
+  if (!Number.isFinite(price) || price <= 0) return null;
+  return {
+    price,
+    pairAddress: pair?.pairAddress || null,
+    liquidityUsd: Number(pair?.liquidity?.usd || 0) || null
+  };
 }
 
 function sleep(ms) {
@@ -35,7 +63,7 @@ const SWS_SELECT_NO_WINDOW =
   "result_5m_pct, result_30m_pct, result_2h_pct, result_pct";
 
 /**
- * Enriches smart_wallet_signals with spot USD from DexScreener (via getMarketData).
+ * Enriches smart_wallet_signals with spot USD from DexScreener.
  * Snapshots are taken when the cron runs after the row age crosses 1h / 4h — not exact wall-clock T+1h,
  * but good enough for track-record / win-rate aggregates.
  * Also tracks min/max spot in `min_price_window_usd` / `max_price_window_usd` for ~25h after signal (DEX samples only).
@@ -165,7 +193,7 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
   async function spotForMint(mint) {
     if (!mint || typeof mint !== "string") return null;
     if (priceByMint.has(mint)) return priceByMint.get(mint);
-    const md = await getMarketData(mint);
+    const md = await fetchDexScreenerTokenPrice(mint);
     tokensFetched += 1;
     if (safeDelay) await sleep(safeDelay);
     const p = md && Number.isFinite(Number(md.price)) ? Number(md.price) : null;
@@ -267,4 +295,81 @@ async function runSignalPriceEnrichmentOnce(options = {}) {
   return { examined: rows.length, updated, skipped, errors, tokensFetched: priceByMint.size };
 }
 
-module.exports = { runSignalPriceEnrichmentOnce, pctFromPrices };
+async function runSignalResultEnrichmentOnce(options = {}) {
+  const batch = Number(options.batch || process.env.SIGNAL_RESULT_ENRICH_BATCH || 500);
+  const delayMs = Number(options.delayMs || process.env.SIGNAL_RESULT_ENRICH_DEX_DELAY_MS || 250);
+  const safeBatch = Number.isFinite(batch) ? Math.min(1000, Math.max(1, Math.floor(batch))) : 500;
+  const safeDelay = Number.isFinite(delayMs) ? Math.min(5000, Math.max(0, Math.floor(delayMs))) : 250;
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("smart_wallet_signals")
+    .select("id, token_address, entry_price_usd, result_pct")
+    .is("result_pct", null)
+    .order("created_at", { ascending: false })
+    .limit(safeBatch);
+  if (error) throw error;
+
+  const rows = data || [];
+  const priceByMint = new Map();
+  let updated = 0;
+  let skipped = 0;
+  let errors = 0;
+
+  async function spotForMint(mint) {
+    if (priceByMint.has(mint)) return priceByMint.get(mint);
+    try {
+      const spot = await fetchDexScreenerTokenPrice(mint);
+      priceByMint.set(mint, spot);
+      if (safeDelay) await sleep(safeDelay);
+      return spot;
+    } catch (error) {
+      priceByMint.set(mint, null);
+      throw error;
+    }
+  }
+
+  for (const row of rows) {
+    try {
+      const spot = await spotForMint(row.token_address);
+      const current = Number(spot?.price);
+      if (!Number.isFinite(current) || current <= 0) {
+        skipped += 1;
+        continue;
+      }
+
+      const entry = Number(row.entry_price_usd);
+      const updates = {};
+      if (Number.isFinite(entry) && entry > 0) {
+        updates.result_pct = pctFromPrices(entry, current);
+        updates.price_1h_usd = current;
+      } else {
+        // DexScreener latest has no historical timestamp lookup; initialize a truthful spot baseline.
+        updates.entry_price_usd = current;
+        updates.price_1h_usd = current;
+        updates.result_pct = 0;
+      }
+
+      const { error: upErr } = await supabase.from("smart_wallet_signals").update(updates).eq("id", row.id);
+      if (upErr) {
+        errors += 1;
+        console.warn("[signal-results] update failed:", row.id, upErr.message);
+      } else {
+        updated += 1;
+      }
+    } catch (error) {
+      errors += 1;
+      console.warn("[signal-results] row skipped:", row.id, error?.message || error);
+      if (safeDelay) await sleep(safeDelay * 2);
+    }
+  }
+
+  return { examined: rows.length, updated, skipped, errors, tokensFetched: priceByMint.size };
+}
+
+module.exports = {
+  fetchDexScreenerTokenPrice,
+  pctFromPrices,
+  runSignalPriceEnrichmentOnce,
+  runSignalResultEnrichmentOnce
+};
