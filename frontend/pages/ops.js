@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { formatDateTime, formatInteger } from "../lib/formatStable";
@@ -120,6 +120,8 @@ function TabButton({ active, children, onClick, id }) {
 
 export default function OpsPage() {
   const [opsKey, setOpsKey] = useState("");
+  const [savedOpsKey, setSavedOpsKey] = useState("");
+  const autoLoadedRef = useRef(false);
   const [tab, setTab] = useState("overview");
   const [tickets, setTickets] = useState([]);
   const [events, setEvents] = useState([]);
@@ -148,17 +150,23 @@ export default function OpsPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = localStorage.getItem("sentinel-ops-key");
-    if (saved) setOpsKey(saved);
+    if (saved) {
+      setOpsKey(saved);
+      setSavedOpsKey(saved);
+    }
   }, []);
 
   const hasKey = useMemo(() => opsKey.trim().length > 0, [opsKey]);
 
   const saveKey = () => {
-    localStorage.setItem("sentinel-ops-key", opsKey.trim());
+    const trimmed = opsKey.trim();
+    localStorage.setItem("sentinel-ops-key", trimmed);
+    autoLoadedRef.current = false;
+    setSavedOpsKey(trimmed);
     toast.success("Ops key saved locally.");
   };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!hasKey) return toast.error("Set your ops key first.");
     setLoading(true);
     try {
@@ -223,7 +231,13 @@ export default function OpsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [hasKey, opsKey]);
+
+  useEffect(() => {
+    if (!savedOpsKey || autoLoadedRef.current) return;
+    autoLoadedRef.current = true;
+    loadData();
+  }, [loadData, savedOpsKey]);
 
   const setTicketStatus = async (ticketId, status) => {
     try {
