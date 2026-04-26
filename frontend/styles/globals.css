@@ -12,13 +12,21 @@
   --sl-page-x: 16px;
   --sl-radius-card: 14px;
   --sl-radius-btn: 10px;
+  --sl-violet: #7C3AED;
+  --sl-text: #F8FAFC;
+  --sl-sub: #94A3B8;
+  --sl-muted: #64748B;
+  --sl-color-violet: #7C3AED;
+  --sl-color-text: #F8FAFC;
+  --sl-color-sub: #94A3B8;
+  --sl-color-muted: #64748B;
   --sl-surface: theme('colors.sl-card');
   --sl-surface-2: theme('colors.sl-panel');
   --sl-border: theme('colors.sl-border');
   /* Readable hierarchy on dark graphite (terminal / mobile) */
-  --sl-fg: theme('colors.sl-text');
-  --sl-fg-muted: theme('colors.sl-sub');
-  --sl-fg-soft: theme('colors.sl-muted');
+  --sl-fg: var(--sl-color-text);
+  --sl-fg-muted: var(--sl-color-sub);
+  --sl-fg-soft: var(--sl-color-muted);
   --sl-border-strong: rgba(255, 255, 255, 0.14);
   --sl-footer-bg: rgba(5, 5, 8, 0.94);
   --safe-top: env(safe-area-inset-top, 0px);
@@ -969,8 +977,8 @@ body.war-mode *::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background-color: theme('colors.sl-violet');
-  border: 1px solid theme('colors.sl-violet');
+  background-color: #7C3AED;
+  border: 1px solid #7C3AED;
   color: white;
   cursor: pointer;
   transition: opacity 150ms ease;

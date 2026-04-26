@@ -17,6 +17,24 @@ const PRIMARY_NAV = [
   { href: "/scanner", label: "Scanner", match: "/scanner" }
 ];
 
+const HOME_MENU_PRIMARY = [
+  { href: "/", label: "Home", desc: "Feed + Scanner" },
+  { href: "/scanner", label: "Scanner", desc: "Token analysis" },
+  { href: "/smart-money", label: "Smart Money", desc: "Wallet intelligence" },
+  { href: "/alerts", label: "Alerts PRO", desc: "Signal notifications" },
+  { href: "/graveyard", label: "Track Record", desc: "Verified history" }
+];
+
+const HOME_MENU_SECONDARY = [
+  { href: "/compare", label: "Compare" },
+  { href: "/watchlist", label: "Watchlist" },
+  { href: "/portfolio", label: "Portfolio" },
+  { href: "/wallet-stalker", label: "Wallet Stalker" },
+  { href: "/results", label: "Results" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/contact", label: "Contact" }
+];
+
 export function Navbar() {
   const { t } = useLocale();
   const router = useRouter();
@@ -27,6 +45,7 @@ export function Navbar() {
   const menuRef = useRef(null);
   const [stalkerUnread, setStalkerUnread] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [homeMenuOpen, setHomeMenuOpen] = useState(false);
 
   const clearStalker = () => {
     if (typeof window !== "undefined") {
@@ -45,6 +64,7 @@ export function Navbar() {
 
   useEffect(() => {
     setMenuOpen(false);
+    setHomeMenuOpen(false);
   }, [router.pathname]);
 
   useEffect(() => {
@@ -91,15 +111,71 @@ export function Navbar() {
             <span className="h-5 w-px bg-white/10" aria-hidden />
             {PRIMARY_NAV.map((item) => {
               const active = router.pathname === item.match;
+              const navLinkClass = `rounded-md px-2.5 py-1.5 text-[11px] font-semibold no-underline transition ${
+                active
+                  ? "bg-[var(--sl-indigo-dim)] text-[var(--sl-text-accent)]"
+                  : "text-[var(--sl-text-secondary)] hover:bg-white/[0.04] hover:text-white"
+              }`;
+              if (item.href === "/") {
+                return (
+                  <div
+                    key={item.href}
+                    className="relative"
+                    onMouseEnter={() => setHomeMenuOpen(true)}
+                    onMouseLeave={() => setHomeMenuOpen(false)}
+                  >
+                    <Link
+                      href={item.href}
+                      onClick={() => setHomeMenuOpen((v) => !v)}
+                      className={navLinkClass}
+                      aria-current={active ? "page" : undefined}
+                      aria-expanded={homeMenuOpen}
+                    >
+                      HOME ▾
+                    </Link>
+                    {homeMenuOpen ? (
+                      <div
+                        className="absolute left-0 top-full z-[100] mt-1 min-w-[220px] border border-white/[0.08] bg-[rgba(10,12,20,0.98)] py-2 shadow-2xl backdrop-blur-xl"
+                        style={{ borderRadius: "4px" }}
+                      >
+                        <div className="px-3 py-1">
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500">MAIN</span>
+                        </div>
+                        {HOME_MENU_PRIMARY.map((menuItem) => (
+                          <Link
+                            key={menuItem.href}
+                            href={menuItem.href}
+                            onClick={() => setHomeMenuOpen(false)}
+                            className="flex flex-col px-3 py-2 no-underline transition-colors hover:bg-white/[0.04]"
+                          >
+                            <span className="font-mono text-[11px] font-semibold text-white">{menuItem.label}</span>
+                            <span className="font-mono text-[10px] text-slate-500">{menuItem.desc}</span>
+                          </Link>
+                        ))}
+                        <div className="my-1 border-t border-white/[0.06]" />
+                        <div className="px-3 py-1">
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500">MORE</span>
+                        </div>
+                        {HOME_MENU_SECONDARY.map((menuItem) => (
+                          <Link
+                            key={menuItem.href}
+                            href={menuItem.href}
+                            onClick={() => setHomeMenuOpen(false)}
+                            className="flex px-3 py-1.5 no-underline transition-colors hover:bg-white/[0.04]"
+                          >
+                            <span className="font-mono text-[11px] text-slate-300">{menuItem.label}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              }
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold no-underline transition ${
-                    active
-                      ? "bg-[var(--sl-indigo-dim)] text-[var(--sl-text-accent)]"
-                      : "text-[var(--sl-text-secondary)] hover:bg-white/[0.04] hover:text-white"
-                  }`}
+                  className={navLinkClass}
                   aria-current={active ? "page" : undefined}
                 >
                   {item.label}
@@ -116,6 +192,18 @@ export function Navbar() {
                 <SearchBar compact />
               </div>
             ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("open-support-chat"));
+                }
+              }}
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 font-mono text-[10px] tracking-wider text-gray-400 transition-colors duration-150 hover:bg-white/[0.08] hover:text-white"
+              title="Support"
+            >
+              HELP
+            </button>
             <Link href="/" className="font-mono text-sm font-extrabold tracking-[0.15em] text-white no-underline">
               SENTINEL
             </Link>

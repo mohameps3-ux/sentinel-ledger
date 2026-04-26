@@ -6,9 +6,9 @@
   --sl-bg-overlay: #181a28;
 
   /* Accent colors */
-  --sl-indigo: #6366f1;
-  --sl-indigo-dim: #6366f120;
-  --sl-purple: #8b5cf6;
+  --sl-indigo: #7C3AED;
+  --sl-indigo-dim: #7C3AED20;
+  --sl-purple: #7C3AED;
   --sl-cyan: #06b6d4;
   --sl-cyan-dim: #06b6d415;
 
@@ -22,10 +22,10 @@
   --sl-neutral: #64748b;
 
   /* Text */
-  --sl-text-primary: #e2e8f0;
-  --sl-text-secondary: #94a3b8;
-  --sl-text-muted: #475569;
-  --sl-text-accent: #a5b4fc;
+  --sl-text-primary: #F8FAFC;
+  --sl-text-secondary: #94A3B8;
+  --sl-text-muted: #64748B;
+  --sl-text-accent: #A78BFA;
 
   /* Borders */
   --sl-border: #1e2235;
