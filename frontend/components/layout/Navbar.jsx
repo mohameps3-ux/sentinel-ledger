@@ -6,7 +6,7 @@ import { APP_NAV_LINKS } from "./appNavConfig";
 import { LanguageMenu } from "./LanguageMenu";
 import { useLocale } from "../../contexts/LocaleContext";
 import { useLayoutEffect, useRef, useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ChevronDown } from "lucide-react";
 import { SentinelLogo } from "./SentinelLogo";
 import { useWarMode } from "../../contexts/WarModeContext";
 
@@ -143,7 +143,7 @@ export function Navbar() {
                       aria-current={active ? "page" : undefined}
                       aria-expanded={homeMenuOpen}
                     >
-                      HOME â¾
+                      HOME <ChevronDown size={10} className="inline-block ml-0.5" />
                     </Link>
                     {homeMenuOpen ? (
                       <div
