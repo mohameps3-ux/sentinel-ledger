@@ -112,7 +112,7 @@ export function Navbar() {
 
           <div className="flex items-center justify-end gap-3 min-w-0">
             {showTradingChrome && !isHome ? (
-              <div className="hidden lg:block shrink-0 w-40 min-w-0">
+              <div className="hidden lg:block ml-5 shrink-0 w-40 min-w-0">
                 <SearchBar compact />
               </div>
             ) : null}
