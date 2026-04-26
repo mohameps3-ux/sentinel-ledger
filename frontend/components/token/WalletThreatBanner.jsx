@@ -27,7 +27,7 @@ export function WalletThreatBanner({ walletIntel }) {
         : "border-amber-600/35 bg-[#13171A]";
 
   return (
-    <div className={`rounded-2xl border p-4 ${border}`}>
+    <div className={`border p-4 ${border}`}>
       <div className="flex items-start gap-3">
         <div className="mt-0.5 shrink-0">
           {walletIntel.level === "high" ? (

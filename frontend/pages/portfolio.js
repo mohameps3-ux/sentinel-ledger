@@ -11,8 +11,8 @@ import { TerminalActionIcons } from "../components/terminal/TerminalActionIcons"
 function outcomeTone(outcome) {
   if (outcome === "worked") return "text-emerald-300 border-emerald-500/30 bg-emerald-500/10";
   if (outcome === "failed") return "text-red-300 border-red-500/30 bg-red-500/10";
-  if (outcome === "flat") return "text-gray-300 border-gray-500/30 bg-gray-500/10";
-  return "text-gray-400 border-white/10 bg-white/[0.03]";
+  if (outcome === "flat") return "text-sl-sub border-gray-500/30 bg-sl-card";
+  return "text-sl-sub border-sl-border bg-white/[0.03]";
 }
 
 export default function PortfolioPage() {
@@ -64,8 +64,8 @@ export default function PortfolioPage() {
         <div className="sl-container py-10">
           <section className="terminal-panel p-6 max-w-2xl mx-auto text-center">
             <p className="sl-label">{t("portfolio.label")}</p>
-            <h1 className="sl-h2 text-white mt-1">{t("portfolio.h1SignedOut")}</h1>
-            <p className="text-sm text-gray-400 mt-3">{t("portfolio.pSignedOut")}</p>
+            <h1 className="sl-h2 text-sl-text mt-1">{t("portfolio.h1SignedOut")}</h1>
+            <p className="text-sm text-sl-sub mt-3">{t("portfolio.pSignedOut")}</p>
             <Link href="/" className="btn-primary inline-flex mt-5 no-underline">
               {t("portfolio.goDashboard")}
             </Link>
@@ -143,29 +143,29 @@ export default function PortfolioPage() {
         <section className="terminal-panel px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.22em] text-gray-500 font-semibold">{t("portfolio.realityTitle")}</p>
-              <p className="text-[11px] text-gray-500 mt-1 max-w-3xl">{t("portfolio.realityBody")}</p>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-sl-muted font-semibold">{t("portfolio.realityTitle")}</p>
+              <p className="text-[11px] text-sl-muted mt-1 max-w-3xl">{t("portfolio.realityBody")}</p>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center shrink-0">
               <div className="border border-emerald-500/20 bg-emerald-500/[0.05] px-3 py-2">
-                <p className="text-[9px] text-gray-500 uppercase tracking-wide">{t("portfolio.worked")}</p>
+                <p className="text-[9px] text-sl-muted uppercase tracking-wide">{t("portfolio.worked")}</p>
                 <p className="font-mono text-lg text-emerald-200">{reality.worked}</p>
               </div>
               <div className="border border-red-500/20 bg-red-500/[0.05] px-3 py-2">
-                <p className="text-[9px] text-gray-500 uppercase tracking-wide">{t("portfolio.failed")}</p>
+                <p className="text-[9px] text-sl-muted uppercase tracking-wide">{t("portfolio.failed")}</p>
                 <p className="font-mono text-lg text-red-200">{reality.failed}</p>
               </div>
-              <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                <p className="text-[9px] text-gray-500 uppercase tracking-wide">{t("portfolio.unverified")}</p>
-                <p className="font-mono text-lg text-gray-300">{positions.length}</p>
+              <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                <p className="text-[9px] text-sl-muted uppercase tracking-wide">{t("portfolio.unverified")}</p>
+                <p className="font-mono text-lg text-sl-sub">{positions.length}</p>
               </div>
             </div>
           </div>
-          {meta?.caveat ? <p className="mt-3 text-[10px] text-gray-600 font-mono">{meta.caveat}</p> : null}
+          {meta?.caveat ? <p className="mt-3 text-[10px] text-sl-muted font-mono">{meta.caveat}</p> : null}
         </section>
 
         {loading && !positions.length ? (
-          <p className="text-sm text-gray-400 flex items-center gap-2">
+          <p className="text-sm text-sl-sub flex items-center gap-2">
             <Loader2 className="animate-spin" size={16} />
             {t("portfolio.loadingMarkets")}
           </p>
@@ -196,7 +196,7 @@ export default function PortfolioPage() {
               <tbody>
                 {positions.map((p) => (
                   <tr key={p.tokenAddress}>
-                    <td className="data-td"><span className="text-white">${p.symbol}</span><p className="font-mono text-[11px] text-gray-600">{p.tokenAddress?.slice(0, 6)}…{p.tokenAddress?.slice(-6)}</p></td>
+                    <td className="data-td"><span className="text-sl-text">${p.symbol}</span><p className="font-mono text-[11px] text-sl-muted">{p.tokenAddress?.slice(0, 6)}…{p.tokenAddress?.slice(-6)}</p></td>
                     <td className="data-td">${p.priceUsd != null ? formatTokenPrice(p.priceUsd) : "—"}</td>
                     <td className={`data-td ${p.change24hPct == null ? "data-neutral" : p.change24hPct >= 0 ? "data-pos" : "data-neg"}`}>
                       {p.change24hPct == null ? "—" : `${p.change24hPct >= 0 ? "+" : ""}${Number(p.change24hPct).toFixed(2)}%`}

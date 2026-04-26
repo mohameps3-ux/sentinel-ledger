@@ -84,16 +84,16 @@ export function HotTab({
               <Flame className="text-orange-300" size={18} />
             </div>
             <div>
-              <p className="sl-label text-[9px] !text-gray-500 tracking-[0.14em]">{t("war.hot.label")}</p>
+              <p className="sl-label text-[9px] !text-sl-muted tracking-[0.14em]">{t("war.hot.label")}</p>
               <div className="mt-0.5 flex flex-wrap items-center gap-2.5">
-                <h2 className="text-base sm:text-lg font-semibold text-white tracking-tight leading-tight">Heat</h2>
+                <h2 className="text-base sm:text-lg font-semibold text-sl-text tracking-tight leading-tight">Heat</h2>
                 <button
                   type="button"
                   onClick={onToggleHeatExpanded}
                   aria-expanded={heatExpanded}
                   aria-label={heatExpanded ? t("war.live.collapseAria") : t("war.live.expandAria")}
                   title={heatExpanded ? t("war.live.collapseTitle") : t("war.live.expandTitle")}
-                  className="group relative flex h-9 w-9 shrink-0 items-center justify-center border border-white/[0.12] bg-gradient-to-b from-orange-500/[0.12] to-white/[0.02] text-orange-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all hover:border-orange-400/50 hover:from-orange-500/22 hover:to-amber-950/30 hover:text-orange-50 hover:shadow-[0_0_22px_rgba(251,146,60,0.2)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0806]"
+                  className="group relative flex h-9 w-9 shrink-0 items-center justify-center border border-white/[0.12] bg-gradient-to-b from-orange-500/[0.12] to-sl-card text-orange-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all hover:border-orange-400/50 hover:from-orange-500/22 hover:to-amber-950/30 hover:text-orange-50 hover:shadow-[0_0_22px_rgba(251,146,60,0.2)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0806]"
                 >
                   {heatExpanded ? (
                     <ChevronsUp className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
@@ -102,8 +102,8 @@ export function HotTab({
                   )}
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-1 max-w-xl leading-snug">{t("war.hot.sub")}</p>
-              <p className="text-[10px] text-gray-500 mt-0.5">
+              <p className="text-xs text-sl-muted mt-1 max-w-xl leading-snug">{t("war.hot.sub")}</p>
+              <p className="text-[10px] text-sl-muted mt-0.5">
                 {t("war.hot.visLine", { vis: heatTokensForGrid.length, pool: heatTokenPool.length })}
               </p>
             </div>
@@ -129,7 +129,7 @@ export function HotTab({
               />
               {feedLabelTr}
             </span>
-            <span className="text-[10px] text-gray-500">
+            <span className="text-[10px] text-sl-muted">
               {feedAgeSec === null ? t("war.hot.recently") : t("war.live.secondsAgo", { sec: feedAgeSec })} ·{" "}
               {isWarMode ? t("war.hot.pollHotWar") : t("war.hot.pollHotNormal")} · {t("war.hot.minLiq")} $
               {formatUsdWhole(trendingMinLiquidityUsd || 15000)}
@@ -199,7 +199,7 @@ export function HotTab({
                         <RankDeltaChip delta={trendingRank.delta} isNew={trendingRank.isNew} />
                       </div>
                     ) : null}
-                    <p className="text-xs font-bold text-white tracking-tight truncate leading-tight">{token?.symbol || "Loading"}</p>
+                    <p className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight">{token?.symbol || "Loading"}</p>
                   </div>
                   <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border ${gradeClass(token?.grade || "C")}`}>
                     {token?.grade || "…"}
@@ -207,11 +207,11 @@ export function HotTab({
                 </div>
 
                 <div className="space-y-1">
-                  <div className="h-1 rounded-full bg-gray-900 overflow-hidden">
+                  <div className="h-1 rounded-full bg-sl-card overflow-hidden">
                     <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-400" style={{ width: `${displayScore}%` }} />
                   </div>
                   <div className="flex flex-wrap items-center gap-0.5">
-                    <span className="font-mono text-[11px] font-bold tabular-nums text-white">
+                    <span className="font-mono text-[11px] font-bold tabular-nums text-sl-text">
                       <AnimatedNumber value={displayScore} decimalPlaces={0} />/100
                     </span>
                     <span
@@ -247,7 +247,7 @@ export function HotTab({
                 {token?.mint ? <LiveCardOverlay mint={token.mint} /> : null}
 
                 <div className="flex items-baseline justify-between gap-2 text-[10px] font-mono">
-                  <span className="text-white truncate">
+                  <span className="text-sl-text truncate">
                     <AnimatedNumber value={Number(token?.price || 0)} prefix="$" decimalPlaces={6} />
                   </span>
                   <span className={changeNum >= 0 ? "text-emerald-400" : "text-red-400"}>

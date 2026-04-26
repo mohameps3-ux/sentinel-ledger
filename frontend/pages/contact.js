@@ -13,9 +13,9 @@ export default function ContactPage() {
         </div>
         <section className="terminal-panel px-6 py-6">
           <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("contact.p1")}</p>
-          <div className="border border-white/10 bg-white/[0.02] p-4 text-sm">
+          <div className="border border-sl-border bg-sl-card p-4 text-sm">
             <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("contact.flowTitle")}</p>
-            <ul className="mt-2 space-y-1 text-gray-200">
+            <ul className="mt-2 space-y-1 text-sl-sub">
               <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("contact.flow1")}</li>
               <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("contact.flow2")}</li>
               <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("contact.flow3")}</li>

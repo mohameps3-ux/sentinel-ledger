@@ -10,7 +10,7 @@ import { useLocale } from "../contexts/LocaleContext";
 function Cell({ v, ariaIncluded, ariaNotIncluded }) {
   if (v === true) return <span className="text-sl-green font-bold" aria-label={ariaIncluded}>✓</span>;
   if (v === false) return <span className="text-sl-red" aria-label={ariaNotIncluded}>✗</span>;
-  return <span className="text-xs text-gray-300 font-mono">{v}</span>;
+  return <span className="text-xs text-sl-sub font-mono">{v}</span>;
 }
 
 export default function PricingPage() {
@@ -217,7 +217,7 @@ export default function PricingPage() {
                 <span className="font-display text-3xl font-bold text-sl-text">{plan.priceLine}</span>
                 <p className="font-mono text-2xs text-sl-muted mb-6 mt-2">{plan.blurb}</p>
               </div>
-              <ul className="text-sm text-gray-300 space-y-1.5 flex-1">
+              <ul className="text-sm text-sl-sub space-y-1.5 flex-1">
                 {plan.points.map((point) => (
                   <li key={point} className="flex gap-2">
                     <span className="text-sl-green font-bold shrink-0 mt-0.5">✓</span>
@@ -270,13 +270,13 @@ export default function PricingPage() {
           </table>
         </section>
 
-        <p className="text-xs text-gray-500">{t("pricing.footnote")}</p>
+        <p className="text-xs text-sl-muted">{t("pricing.footnote")}</p>
 
         {mounted && canCheckout ? (
           <div className="terminal-panel px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-white">{t("pricing.portal.title")}</p>
-              <p className="text-xs text-gray-400 mt-1">{t("pricing.portal.sub")}</p>
+              <p className="text-sm font-medium text-sl-text">{t("pricing.portal.title")}</p>
+              <p className="text-xs text-sl-sub mt-1">{t("pricing.portal.sub")}</p>
             </div>
             <button
               type="button"

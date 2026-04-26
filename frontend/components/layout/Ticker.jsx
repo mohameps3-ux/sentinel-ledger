@@ -18,7 +18,7 @@ export function Ticker() {
   }, []);
 
   return (
-    <div className="bg-purple-900/20 border-y border-purple-500/30 py-2 overflow-hidden rounded-xl">
+    <div className="bg-purple-900/20 border-y border-purple-500/30 py-2 overflow-hidden ">
       <div className="animate-pulse text-center text-sm font-mono text-purple-300 px-3">{messages[index]}</div>
     </div>
   );

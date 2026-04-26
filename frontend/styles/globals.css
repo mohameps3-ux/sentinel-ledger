@@ -1313,12 +1313,20 @@ body.war-mode *::after {
   border-color: rgba(220,38,38,0.15);
 }
 
+.war-mode .sl-logo-radar {
+  stroke: #DC2626;
+}
+
+.war-mode .sl-logo-center {
+  fill: #DC2626;
+}
+
 .war-mode .sentinel-icon {
   animation: sentinel-war 1.5s ease-in-out infinite;
 }
 
 .war-mode .live-dot {
-  animation: war-blink 0.8s ease-in-out infinite;
+  animation: war-blink 0.8s ease-in-out infinite !important;
 }
 
 @keyframes war-blink {
@@ -1329,4 +1337,25 @@ body.war-mode *::after {
 @keyframes sentinel-war {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
+}
+
+@media (max-width: 768px) {
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .kpi-block {
+    border-right: 1px solid theme('colors.sl-border');
+    border-bottom: 1px solid theme('colors.sl-border');
+  }
+
+  .kpi-block:nth-child(2n) {
+    border-right: none;
+  }
+
+  .data-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }

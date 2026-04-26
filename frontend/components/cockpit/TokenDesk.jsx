@@ -107,14 +107,14 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
           </span>
           <Link
             href={`/token/${mint}`}
-            className="text-[10px] px-2 py-0.5 rounded-lg border border-emerald-500/25 text-emerald-200/90 hover:text-emerald-100 hover:border-emerald-400/40 font-semibold"
+            className="text-[10px] px-2 py-0.5 border border-emerald-500/25 text-emerald-200/90 hover:text-emerald-100 hover:border-emerald-400/40 font-semibold"
           >
             {t("cockpit.desk.openTerminal")}
           </Link>
           <button
             type="button"
             onClick={() => router.push("/", undefined, { shallow: true })}
-            className="text-[10px] px-2 py-0.5 rounded-lg border border-white/12 text-gray-400 hover:text-gray-200 hover:border-white/20"
+            className="text-[10px] px-2 py-0.5 border border-white/12 text-gray-400 hover:text-gray-200 hover:border-white/20"
           >
             {t("cockpit.desk.clear")}
           </button>
@@ -144,7 +144,7 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
             </span>
           </div>
           {confLabel ? <p className="text-[11px] text-gray-400 truncate">{String(confLabel)}</p> : null}
-          <div className="space-y-2 rounded-lg border border-white/[0.08] bg-black/25 p-2.5">
+          <div className="space-y-2 border border-white/[0.08] bg-black/25 p-2.5">
             <MiniBar label="RSK" value={scores.risk} gradient="from-rose-500 via-red-500 to-orange-400" />
             <MiniBar label="SMT" value={scores.smart} gradient="from-emerald-400 via-lime-400 to-cyan-400" />
             <MiniBar label="MOM" value={scores.momentum} gradient="from-amber-300 via-amber-400 to-orange-400" />
@@ -155,7 +155,7 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
             </p>
           ) : null}
           {regime ? (
-            <div className="space-y-2 rounded-lg border border-cyan-500/20 bg-cyan-500/[0.04] p-2.5">
+            <div className="space-y-2 border border-cyan-500/20 bg-cyan-500/[0.04] p-2.5">
               <div className="flex items-start justify-between gap-2">
                 <p className="text-[9px] uppercase tracking-[0.1em] text-cyan-200/80 font-semibold leading-tight">
                   {t("cockpit.desk.tripleTitle")}
@@ -186,7 +186,7 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
                 {t(`cockpit.desk.tripleContext.${regime.contextLabelId}`) || regime.contextLabelId}
               </p>
               <div
-                className={`w-full text-center text-[10px] sm:text-[11px] font-bold tracking-tight py-1.5 px-2 rounded-lg border ${tripleActionClass(
+                className={`w-full text-center text-[10px] sm:text-[11px] font-bold tracking-tight py-1.5 px-2 border ${tripleActionClass(
                   regime.action
                 )}`}
               >
@@ -200,7 +200,7 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
       <div className="flex flex-col gap-2 pt-1 min-h-0">
         <DeskExecutionScope mint={mint} token={token} regime={regime} />
 
-        <div className="rounded-lg border border-white/[0.08] bg-black/[0.18] px-3 py-2.5 shrink-0">
+        <div className="border border-white/[0.08] bg-black/[0.18] px-3 py-2.5 shrink-0">
           <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 font-semibold mb-2">{t("cockpit.desk.jupiterTitle")}</p>
           <DeskJupiterLinks mint={mint} />
         </div>

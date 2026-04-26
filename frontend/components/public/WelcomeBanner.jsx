@@ -79,7 +79,7 @@ export function WelcomeBanner() {
       role="dialog"
       aria-label="Welcome"
     >
-      <div className="pointer-events-auto rounded-2xl border border-emerald-500/30 bg-[#0f1218]/95 backdrop-blur-md shadow-[0_0_40px_rgba(16,185,129,0.15)] p-5 text-left">
+      <div className="pointer-events-auto border border-emerald-500/30 bg-[#0f1218]/95 backdrop-blur-md shadow-[0_0_40px_rgba(16,185,129,0.15)] p-5 text-left">
         <div className="flex justify-between gap-2">
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-white leading-snug">
@@ -92,20 +92,20 @@ export function WelcomeBanner() {
           <button
             type="button"
             onClick={dismiss}
-            className="shrink-0 h-9 w-9 rounded-lg border border-white/10 text-gray-400 hover:text-white inline-flex items-center justify-center"
+            className="shrink-0 h-9 w-9 border border-white/10 text-gray-400 hover:text-white inline-flex items-center justify-center"
             aria-label="Dismiss welcome"
           >
             <X size={16} />
           </button>
         </div>
         <ul className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono text-gray-200">
-          <li className="rounded-lg bg-white/[0.04] px-3 py-2 border border-white/[0.06]">
+          <li className="bg-white/[0.04] px-3 py-2 border border-white/[0.06]">
             Signals today: <span className="text-emerald-300">{stats.signalsToday}</span>
           </li>
-          <li className="rounded-lg bg-white/[0.04] px-3 py-2 border border-white/[0.06]">
+          <li className="bg-white/[0.04] px-3 py-2 border border-white/[0.06]">
             Top wallet (30d): <span className="text-emerald-300">{stats.topWallet}</span>
           </li>
-          <li className="rounded-lg bg-white/[0.04] px-3 py-2 border border-white/[0.06]">
+          <li className="bg-white/[0.04] px-3 py-2 border border-white/[0.06]">
             Avg entry window: <span className="text-emerald-300">{stats.window} min</span>
           </li>
         </ul>

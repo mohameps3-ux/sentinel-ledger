@@ -114,7 +114,7 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
                       toast.error("Copy failed.");
                     }
                   }}
-                  className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-white/10 bg-white/[0.04] text-[11px] text-gray-200 hover:bg-white/[0.08]"
+                  className="shrink-0 inline-flex items-center gap-1 px-2 py-1 border border-white/10 bg-white/[0.04] text-[11px] text-gray-200 hover:bg-white/[0.08]"
                 >
                   <Copy size={12} />
                   Copy mint

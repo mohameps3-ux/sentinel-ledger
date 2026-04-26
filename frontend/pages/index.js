@@ -59,18 +59,18 @@ function HomeMetricStrip({ signalsToday, activeWallets, avgConfidence, bestSigna
 function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onToggleSound }) {
   return (
     <details className="relative">
-      <summary className="list-none cursor-pointer rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 hover:text-white">
+      <summary className="list-none cursor-pointer rounded-md border border-sl-border bg-white/[0.03] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-sl-sub hover:text-sl-text">
         Settings
       </summary>
-      <div className="absolute right-0 top-[calc(100%+6px)] z-30 w-56 border border-white/10 bg-[#090b12] p-2 shadow-2xl">
-        <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-gray-500">Strategy</p>
+      <div className="absolute right-0 top-[calc(100%+6px)] z-30 w-56 border border-sl-border bg-[#090b12] p-2 shadow-2xl">
+        <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-sl-muted">Strategy</p>
         {["conservative", "balanced", "aggressive"].map((mode) => (
           <button
             key={mode}
             type="button"
             onClick={() => onStrategyModeChange(mode)}
             className={`mb-1 w-full rounded-md border px-2 py-1 text-left text-[11px] capitalize ${
-              strategyMode === mode ? "border-indigo-400/45 bg-indigo-500/15 text-indigo-100" : "border-white/10 bg-white/[0.02] text-gray-400"
+              strategyMode === mode ? "border-indigo-400/45 bg-indigo-500/15 text-indigo-100" : "border-sl-border bg-sl-card text-sl-sub"
             }`}
           >
             {mode}
@@ -79,7 +79,7 @@ function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onTogg
         <button
           type="button"
           onClick={onToggleSound}
-          className="mt-1 w-full rounded-md border border-white/10 bg-white/[0.02] px-2 py-1 text-left text-[11px] text-gray-300"
+          className="mt-1 w-full rounded-md border border-sl-border bg-sl-card px-2 py-1 text-left text-[11px] text-sl-sub"
         >
           Sound alerts: {soundEnabled ? "On" : "Off"}
         </button>
@@ -159,8 +159,8 @@ function RecentAlertsPreview({ alerts }) {
   return (
     <section className="sl-card-elevated p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 className="font-mono text-[12px] font-bold uppercase tracking-[0.16em] text-white">Recent Alerts</h2>
-        <Link href="/alerts" className="text-[11px] font-semibold text-indigo-200 no-underline hover:text-white">
+        <h2 className="font-mono text-[12px] font-bold uppercase tracking-[0.16em] text-sl-text">Recent Alerts</h2>
+        <Link href="/alerts" className="text-[11px] font-semibold text-indigo-200 no-underline hover:text-sl-text">
           View all →
         </Link>
       </div>
@@ -169,13 +169,13 @@ function RecentAlertsPreview({ alerts }) {
           <Link
             key={`${alert.tokenAddress || "alert"}-${idx}`}
             href={alert.tokenAddress ? `/token/${alert.tokenAddress}` : "/alerts"}
-            className="flex items-center justify-between gap-3 border border-white/[0.06] bg-white/[0.02] px-2 py-1.5 text-[11px] no-underline hover:border-indigo-400/25"
+            className="flex items-center justify-between gap-3 border border-white/[0.06] bg-sl-card px-2 py-1.5 text-[11px] no-underline hover:border-indigo-400/25"
           >
-            <span className="font-mono text-gray-200">{alert.tokenAddress ? `${alert.tokenAddress.slice(0, 4)}…${alert.tokenAddress.slice(-4)}` : "Alert"}</span>
-            <span className="truncate text-gray-500">{alert.alertType}</span>
+            <span className="font-mono text-sl-sub">{alert.tokenAddress ? `${alert.tokenAddress.slice(0, 4)}…${alert.tokenAddress.slice(-4)}` : "Alert"}</span>
+            <span className="truncate text-sl-muted">{alert.alertType}</span>
           </Link>
         )) : (
-          <p className="py-3 text-[12px] text-gray-500">No urgent alerts in the latest window.</p>
+          <p className="py-3 text-[12px] text-sl-muted">No urgent alerts in the latest window.</p>
         )}
       </div>
     </section>

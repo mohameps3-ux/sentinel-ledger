@@ -7,7 +7,7 @@ import { useLocale } from "../contexts/LocaleContext";
 function statusBadge(status, t) {
   if (status === "WIN") return <span className="text-emerald-300 font-mono">{t("results.status.win")}</span>;
   if (status === "LOSS") return <span className="text-red-300 font-mono">{t("results.status.loss")}</span>;
-  return <span className="text-gray-400 font-mono">{t("results.status.pending")}</span>;
+  return <span className="text-sl-sub font-mono">{t("results.status.pending")}</span>;
 }
 
 function fmtPrice(v) {
@@ -137,7 +137,7 @@ export default function ResultsPage() {
         </div>
 
         {data.error ? <p className="text-sm text-red-300">{data.error}</p> : null}
-        {data.loading ? <p className="text-sm text-gray-500">{t("results.loading")}</p> : null}
+        {data.loading ? <p className="text-sm text-sl-muted">{t("results.loading")}</p> : null}
 
         <section className="terminal-panel px-4 py-3">
           <span className="section-title">SIGNAL STATUS</span>
@@ -160,14 +160,14 @@ export default function ResultsPage() {
             <tbody>
               {data.rows.length === 0 && !data.loading ? (
                 <tr>
-                  <td colSpan={7} className="data-td text-center text-gray-500">
+                  <td colSpan={7} className="data-td text-center text-sl-muted">
                     {t("results.empty")}
                   </td>
                 </tr>
               ) : (
                 data.rows.map((r) => (
                   <tr key={r.id} className="feed-row">
-                    <td className="data-td font-mono text-xs text-gray-200">{r.token?.slice(0, 8)}…</td>
+                    <td className="data-td font-mono text-xs text-sl-sub">{r.token?.slice(0, 8)}…</td>
                     <td className="data-td font-mono text-xs">
                       {r.signalAt ? new Date(r.signalAt).toLocaleString() : "—"}
                     </td>
@@ -190,10 +190,10 @@ export default function ResultsPage() {
               className="terminal-card-interactive p-4 space-y-2 text-sm font-mono"
             >
               <div className="flex justify-between gap-2">
-                <span className="text-gray-200">{r.token?.slice(0, 6)}…</span>
+                <span className="text-sl-sub">{r.token?.slice(0, 6)}…</span>
                 {statusBadge(r.status, t)}
               </div>
-              <p className="text-xs text-gray-500">{r.signalAt ? new Date(r.signalAt).toLocaleString() : ""}</p>
+              <p className="text-xs text-sl-muted">{r.signalAt ? new Date(r.signalAt).toLocaleString() : ""}</p>
               <p>
                 {t("results.mobile.entryLine", {
                   e: fmtPrice(r.entryPrice),
@@ -206,9 +206,9 @@ export default function ResultsPage() {
           ))}
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0B0B0E]/95 backdrop-blur-md py-3 px-4 safe-bottom-pad">
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-sl-border bg-[#0B0B0E]/95 backdrop-blur-md py-3 px-4 safe-bottom-pad">
           <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-sm">
-            <span className="text-gray-300 text-center sm:text-left">{t("results.stickyLine")}</span>
+            <span className="text-sl-sub text-center sm:text-left">{t("results.stickyLine")}</span>
             <Link href="/pricing" className="btn-pro inline-flex text-center no-underline">
               {t("results.upgradePro")}
             </Link>

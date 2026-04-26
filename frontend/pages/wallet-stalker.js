@@ -135,8 +135,8 @@ export default function WalletStalkerPage() {
       <div className="sl-container py-8 space-y-4">
         <section className="sl-card-elevated sl-inset">
           <p className="sl-label">{t("stalker.label")}</p>
-          <h1 className="text-2xl text-white font-semibold mt-1">Wallet Intelligence</h1>
-          <p className="text-sm text-gray-400 mt-1">{t("stalker.sub")}</p>
+          <h1 className="text-2xl text-sl-text font-semibold mt-1">Wallet Intelligence</h1>
+          <p className="text-sm text-sl-sub mt-1">{t("stalker.sub")}</p>
           <form
             className="mt-4 flex gap-2"
             onSubmit={(e) => {
@@ -164,12 +164,12 @@ export default function WalletStalkerPage() {
             {list.map((row) => (
               <div
                 key={row.stalked_wallet}
-                className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3"
+                className="border border-sl-border bg-white/[0.03] px-3 py-3"
               >
                 <div className="min-w-0 flex items-start justify-between gap-3">
                   <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="mono text-xs text-gray-200">
+                    <span className="mono text-xs text-sl-sub">
                       {row.stalked_wallet?.slice(0, 6)}...{row.stalked_wallet?.slice(-6)}
                     </span>
                     <a
@@ -186,7 +186,7 @@ export default function WalletStalkerPage() {
                     if (!s) return null;
                     const ddRate = s.events ? Math.round((s.doubleDowns / s.events) * 100) : 0;
                     return (
-                      <p className="mt-1 text-[10px] font-mono text-gray-500">
+                      <p className="mt-1 text-[10px] font-mono text-sl-muted">
                         consistency {s.events} events · early tokens {s.tokens.size} · double-down {ddRate}% · cluster overlap {s.clusterOverlaps}
                       </p>
                     );
@@ -203,7 +203,7 @@ export default function WalletStalkerPage() {
                 </button>
               </div>
             ))}
-            {!list.length && !query.isLoading ? <p className="text-sm text-gray-500">{t("stalker.empty")}</p> : null}
+            {!list.length && !query.isLoading ? <p className="text-sm text-sl-muted">{t("stalker.empty")}</p> : null}
           </div>
         </section>
 
@@ -211,22 +211,22 @@ export default function WalletStalkerPage() {
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="sl-label text-violet-200/90">Real-time activity feed</p>
-              <p className="text-sm text-gray-400 mt-1 max-w-2xl leading-snug">{t("stalker.f3Sub")}</p>
-              <p className="text-[10px] text-gray-500 mt-2 max-w-2xl leading-snug">{t("stalker.f4Help")}</p>
+              <p className="text-sm text-sl-sub mt-1 max-w-2xl leading-snug">{t("stalker.f3Sub")}</p>
+              <p className="text-[10px] text-sl-muted mt-2 max-w-2xl leading-snug">{t("stalker.f4Help")}</p>
             </div>
             {rawEvents.length ? (
               <button
                 type="button"
                 onClick={clearActivity}
-                className="text-[11px] px-2.5 py-1 rounded-lg border border-white/15 text-gray-400 hover:text-gray-200 hover:border-white/25 shrink-0"
+                className="text-[11px] px-2.5 py-1 border border-white/15 text-sl-sub hover:text-sl-sub hover:border-white/25 shrink-0"
               >
                 {t("stalker.clearActivity")}
               </button>
             ) : null}
           </div>
-          <p className="text-[11px] font-semibold text-gray-300 mt-4">{t("stalker.activityLabel")}</p>
+          <p className="text-[11px] font-semibold text-sl-sub mt-4">{t("stalker.activityLabel")}</p>
           <div className="mt-2 space-y-2">
-            {!grouped.length ? <p className="text-sm text-gray-500">{t("stalker.activityEmpty")}</p> : null}
+            {!grouped.length ? <p className="text-sm text-sl-muted">{t("stalker.activityEmpty")}</p> : null}
             {grouped.map((item, idx) => {
               if (item.kind === "WOLF_PACK") {
                 const tok = String(item.tokenAddress || "");
@@ -236,7 +236,7 @@ export default function WalletStalkerPage() {
                 return (
                   <div
                     key={`wp-${tok}-${item.windowEndMs}-${idx}`}
-                    className="rounded-lg border border-violet-500/35 bg-gradient-to-r from-violet-950/35 via-violet-950/15 to-transparent px-3 py-2.5"
+                    className="border border-violet-500/35 bg-gradient-to-r from-violet-950/35 via-violet-950/15 to-transparent px-3 py-2.5"
                   >
                     <p className="text-[11px] font-semibold text-violet-100">
                       {t("stalker.wolfPackTitle", { n: String(item.packCount) })}
@@ -247,9 +247,9 @@ export default function WalletStalkerPage() {
                           {shortAddr(tok)}
                         </Link>
                       ) : (
-                        <span className="mono text-xs text-gray-500">{shortAddr(tok)}</span>
+                        <span className="mono text-xs text-sl-muted">{shortAddr(tok)}</span>
                       )}
-                      <span className="text-[10px] text-gray-500">{tEnd}</span>
+                      <span className="text-[10px] text-sl-muted">{tEnd}</span>
                     </div>
                     <p className="text-[10px] text-violet-200/80 font-mono mt-1.5 break-all">{walletLine}</p>
                     <p className="text-[9px] text-violet-300/70 mt-1.5 leading-snug">{t("stalker.wolfPackHint")}</p>
@@ -267,7 +267,7 @@ export default function WalletStalkerPage() {
                   {shortAddr(ev.tokenAddress)}
                 </Link>
               ) : ev.tokenAddress ? (
-                <span className="text-gray-500">{shortAddr(ev.tokenAddress)}</span>
+                <span className="text-sl-muted">{shortAddr(ev.tokenAddress)}</span>
               ) : null;
               const f4 =
                 en.conviction === "DOUBLE_DOWN" &&
@@ -286,10 +286,10 @@ export default function WalletStalkerPage() {
               return (
                 <div
                   key={`at-${sig}-${ev.timestamp}`}
-                  className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-gray-300"
+                  className="border border-sl-border bg-white/[0.03] px-3 py-2 text-[11px] text-sl-sub"
                 >
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="font-mono text-gray-200">{t("stalker.atomicLine", { type: typ, wallet: w })}</span>
+                    <span className="font-mono text-sl-sub">{t("stalker.atomicLine", { type: typ, wallet: w })}</span>
                     {tok ? <span className="inline-flex items-center gap-1">· {tok}</span> : null}
                     {f4 ? (
                       <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-amber-500/50 bg-amber-500/15 text-amber-100">
@@ -297,7 +297,7 @@ export default function WalletStalkerPage() {
                       </span>
                     ) : null}
                   </div>
-                  {poolLine ? <p className="text-[9px] text-gray-500 mt-1 font-mono">{poolLine}</p> : null}
+                  {poolLine ? <p className="text-[9px] text-sl-muted mt-1 font-mono">{poolLine}</p> : null}
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     {ev.tokenAddress && isProbableSolanaMint(String(ev.tokenAddress)) ? (
                       <TerminalActionIcons mint={String(ev.tokenAddress)} className="justify-start" />
@@ -307,7 +307,7 @@ export default function WalletStalkerPage() {
                         href={buildSolscanAccountUrl(ev.wallet)}
                         target="_blank"
                         rel={EXTERNAL_ANCHOR_REL}
-                        className="inline-flex h-7 items-center rounded-md border border-white/10 bg-white/[0.04] px-2 text-[11px] font-semibold text-gray-200 hover:text-white"
+                        className="inline-flex h-7 items-center rounded-md border border-sl-border bg-white/[0.04] px-2 text-[11px] font-semibold text-sl-sub hover:text-sl-text"
                       >
                         Wallet Solscan
                       </a>

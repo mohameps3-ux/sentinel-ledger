@@ -16,12 +16,12 @@ export default function WarHomeIntro({ strategyMode, onStrategyModeChange, sound
   return (
     <>
       <section className="sl-section !mt-0 !mb-1">
-        <div className="sl-glow-info rounded-lg border border-white/[0.08] bg-white/[0.02] h-[1cm] px-2 flex items-center transition-all duration-200 hover:-translate-y-[1px] hover:border-cyan-400/45 hover:shadow-[0_0_14px_rgba(34,211,238,0.16)]">
+        <div className="sl-glow-info border border-white/[0.08] bg-sl-card h-[1cm] px-2 flex items-center transition-all duration-200 hover:-translate-y-[1px] hover:border-cyan-400/45 hover:shadow-[0_0_14px_rgba(34,211,238,0.16)]">
           <p
-            className="text-[11px] sm:text-xs text-gray-300 truncate w-full leading-tight"
+            className="text-[11px] sm:text-xs text-sl-sub truncate w-full leading-tight"
             title={`${t("war.intro.ribbonTitle")} · ${t("war.intro.ribbonBody")}`}
           >
-            <span className="text-white font-semibold">{t("war.intro.ribbonTitle")}</span>
+            <span className="text-sl-text font-semibold">{t("war.intro.ribbonTitle")}</span>
             {" · "}
             {t("war.intro.ribbonBody")}
           </p>
@@ -29,9 +29,9 @@ export default function WarHomeIntro({ strategyMode, onStrategyModeChange, sound
       </section>
 
       <section className="sl-section !mt-0 !pt-0 !pb-0">
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-2 sm:p-2.5">
+        <div className="border border-white/[0.06] bg-sl-card p-2 sm:p-2.5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-            <p className="text-[11px] text-gray-500 leading-snug min-w-0">{t("war.intro.strategyHint")}</p>
+            <p className="text-[11px] text-sl-muted leading-snug min-w-0">{t("war.intro.strategyHint")}</p>
             <div className="flex flex-wrap items-center gap-1.5">
               {strategyOptions.map((mode) => (
                 <button
@@ -41,7 +41,7 @@ export default function WarHomeIntro({ strategyMode, onStrategyModeChange, sound
                   className={`text-[11px] px-2 py-1 rounded-md border ${
                     strategyMode === mode.id
                       ? "border-cyan-400/40 bg-cyan-500/10 text-cyan-100"
-                      : "border-white/10 text-gray-400 hover:text-white hover:border-white/20"
+                      : "border-sl-border text-sl-sub hover:text-sl-text hover:border-white/20"
                   }`}
                 >
                   {mode.label}
@@ -50,7 +50,7 @@ export default function WarHomeIntro({ strategyMode, onStrategyModeChange, sound
               <button
                 type="button"
                 onClick={onToggleSound}
-                className="text-[11px] px-2 py-1 rounded-md border border-white/10 text-gray-400 hover:text-white"
+                className="text-[11px] px-2 py-1 rounded-md border border-sl-border text-sl-sub hover:text-sl-text"
               >
                 {soundEnabled ? (
                   <span className="inline-flex items-center gap-1.5">

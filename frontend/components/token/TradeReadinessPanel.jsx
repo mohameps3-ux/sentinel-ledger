@@ -51,7 +51,7 @@ export function TradeReadinessPanel({ analysis, market, holders, deployer }) {
         {checks.map((item) => {
           const Icon = item.icon;
           return (
-            <div key={item.id} className="bg-[#0E1318] border soft-divider rounded-xl p-3">
+            <div key={item.id} className="bg-[#0E1318] border soft-divider p-3">
               <div className="flex items-center justify-between mb-1">
                 <div className="inline-flex items-center gap-2 text-sm font-medium">
                   <Icon size={14} className="text-gray-400" />

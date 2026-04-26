@@ -92,7 +92,7 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
   const disabled = riskLabel === "AVOID";
 
   return (
-    <div className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/[0.14] via-cyan-500/[0.05] to-black/20 p-3 shadow-[0_0_28px_rgba(16,185,129,0.08)]">
+    <div className="border border-emerald-500/25 bg-gradient-to-br from-emerald-500/[0.14] via-cyan-500/[0.05] to-black/20 p-3 shadow-[0_0_28px_rgba(16,185,129,0.08)]">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[9px] uppercase tracking-[0.18em] text-emerald-200/85 font-semibold">Execution scope</p>
@@ -108,7 +108,7 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
         href={buildJupiterSwapUrl(mint)}
         target="_blank"
         rel={EXTERNAL_ANCHOR_REL}
-        className={`mt-3 flex h-12 w-full items-center justify-center rounded-xl border px-4 text-sm font-black uppercase tracking-[0.14em] transition ${
+        className={`mt-3 flex h-12 w-full items-center justify-center border px-4 text-sm font-black uppercase tracking-[0.14em] transition ${
           disabled
             ? "border-red-500/35 bg-red-500/10 text-red-100"
             : "border-emerald-400/50 bg-emerald-400 text-black hover:bg-emerald-300"
@@ -121,7 +121,7 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
           href={dexUrl}
           target="_blank"
           rel={EXTERNAL_ANCHOR_REL}
-          className="rounded-lg border border-cyan-500/25 bg-cyan-500/[0.07] px-2 py-1.5 text-center text-[10px] font-semibold text-cyan-100"
+          className="border border-cyan-500/25 bg-cyan-500/[0.07] px-2 py-1.5 text-center text-[10px] font-semibold text-cyan-100"
         >
           DEX chart
         </a>
@@ -129,7 +129,7 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
           href={solscanUrl}
           target="_blank"
           rel={EXTERNAL_ANCHOR_REL}
-          className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-center text-[10px] font-semibold text-gray-200"
+          className="border border-white/10 bg-white/[0.04] px-2 py-1.5 text-center text-[10px] font-semibold text-gray-200"
         >
           Solscan
         </a>
@@ -138,7 +138,7 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
             href={pumpUrl}
             target="_blank"
             rel={EXTERNAL_ANCHOR_REL}
-            className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/[0.07] px-2 py-1.5 text-center text-[10px] font-semibold text-fuchsia-100"
+            className="border border-fuchsia-500/25 bg-fuchsia-500/[0.07] px-2 py-1.5 text-center text-[10px] font-semibold text-fuchsia-100"
           >
             Pump
           </a>
@@ -148,7 +148,7 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
             href={meteoraUrl}
             target="_blank"
             rel={EXTERNAL_ANCHOR_REL}
-            className="rounded-lg border border-orange-500/25 bg-orange-500/[0.07] px-2 py-1.5 text-center text-[10px] font-semibold text-orange-100"
+            className="border border-orange-500/25 bg-orange-500/[0.07] px-2 py-1.5 text-center text-[10px] font-semibold text-orange-100"
           >
             Meteora pool
           </a>
@@ -226,7 +226,7 @@ export const DeskQuickScan = memo(function DeskQuickScan({ currentMint }) {
         <button
           type="submit"
           disabled={!canGo}
-          className={`text-[11px] sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg border font-semibold ${
+          className={`text-[11px] sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md sm:border font-semibold ${
             canGo
               ? "border-cyan-500/40 bg-cyan-500/15 text-cyan-100 hover:bg-cyan-500/25"
               : "border-white/10 text-gray-600 cursor-not-allowed"

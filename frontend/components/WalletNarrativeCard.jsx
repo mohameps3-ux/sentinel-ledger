@@ -24,7 +24,7 @@ export function WalletNarrativeCard({ walletAddress, lang = "es" }) {
 
   if (query.isLoading) {
     return (
-      <div className="rounded-xl border border-white/10 bg-[#080b10]/80 px-4 py-4 space-y-3">
+      <div className="border border-white/10 bg-[#080b10]/80 px-4 py-4 space-y-3">
         <div className="inline-flex items-center gap-2 text-sm text-gray-400">
           <Loader2 size={14} className="animate-spin" />
           {tr("wallet.narrative.loading")}
@@ -38,7 +38,7 @@ export function WalletNarrativeCard({ walletAddress, lang = "es" }) {
 
   if (query.isError) {
     return (
-      <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-3 text-xs text-red-200">
+      <div className="border border-red-500/30 bg-red-500/10 px-3 py-3 text-xs text-red-200">
         {tr("wallet.narrative.errorTitle")} ({query.error?.message || "error"}).
       </div>
     );
@@ -59,7 +59,7 @@ export function WalletNarrativeCard({ walletAddress, lang = "es" }) {
   const headline = payload.headline || narrative.headline || tr("wallet.narrative.headlineFallback");
 
   return (
-    <div className="rounded-xl border border-violet-500/25 bg-[#080b10]/90 px-4 py-4 space-y-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+    <div className="border border-violet-500/25 bg-[#080b10]/90 px-4 py-4 space-y-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-base font-semibold text-white tracking-tight">
           {headline}

@@ -168,7 +168,7 @@ export function WalletButton({ navCompact = false }) {
         className={`hidden sm:inline-flex items-center gap-0.5 h-7 pl-1 pr-1 rounded-md border text-[9px] transition max-w-[4.75rem] sm:max-w-[5.5rem] truncate ${
           connected
             ? "bg-sl-card border-emerald-600/30 text-emerald-300"
-            : "bg-sl-card soft-divider text-gray-400"
+            : "bg-sl-card soft-divider text-sl-sub"
         }`}
         aria-expanded={open}
         aria-haspopup="true"
@@ -184,7 +184,7 @@ export function WalletButton({ navCompact = false }) {
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs text-gray-200 hover:bg-white/5 transition"
+            className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs text-sl-sub hover:bg-white/5 transition"
           >
             <LogOut size={13} />
             Disconnect

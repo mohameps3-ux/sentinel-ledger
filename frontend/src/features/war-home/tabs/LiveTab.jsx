@@ -34,7 +34,7 @@ function cockpitCardClickTargetIsInteractive(e) {
 }
 
 function narrativeClass(severity) {
-  if (severity === "URGENT") return "border-indigo-300/70 bg-indigo-600/85 text-white shadow-[0_0_18px_rgba(99,102,241,0.35)] animate-pulse";
+  if (severity === "URGENT") return "border-indigo-300/70 bg-indigo-600/85 text-sl-text shadow-[0_0_18px_rgba(99,102,241,0.35)] animate-pulse";
   if (severity === "TACTICAL") return "border-amber-300/60 bg-amber-500/85 text-black";
   if (severity === "ANOMALY") return "border-red-400/80 bg-red-950/90 text-red-50 shadow-[0_0_16px_rgba(248,113,113,0.25)]";
   return "border-white/15 bg-zinc-950/90 text-zinc-100";
@@ -223,8 +223,8 @@ export function LiveTab({
         }}
         baseClassName={`terminal-card-interactive group mb-2 ${
           isHeatFill
-            ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat border border-amber-500/25 bg-gradient-to-b from-amber-950/25 to-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-amber-400/45 hover:shadow-[0_0_18px_rgba(245,158,11,0.14)]"
-            : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live border border-white/10 bg-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-emerald-400/45 hover:shadow-[0_0_18px_rgba(16,185,129,0.22)]"
+            ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat border border-amber-500/25 bg-gradient-to-b from-amber-950/25 to-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-amber-400/45 hover:shadow-[0_0_18px_rgba(245,158,11,0.14)]"
+            : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live border border-sl-border bg-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-emerald-400/45 hover:shadow-[0_0_18px_rgba(16,185,129,0.22)]"
         } ${hot ? (isHeatFill ? "ring-1 ring-amber-500/30" : "ring-1 ring-emerald-500/35") : ""} ${
           sig.mint && isProbableSolanaMint(sig.mint) ? "cursor-pointer" : ""
         } ${selectedMint && sig.mint === selectedMint ? "ring-2 ring-cyan-500/40" : ""}`}
@@ -253,18 +253,18 @@ export function LiveTab({
                 </span>
               )}
             </div>
-            <p className="text-xs font-bold text-white tracking-tight truncate leading-tight">${sig.symbol}</p>
+            <p className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight">${sig.symbol}</p>
             {hasPx || hasChg ? (
               <div
                 className={`mt-0.5 flex items-baseline justify-between gap-2 text-[10px] font-mono leading-tight ${
                   quotesPricesFetching ? "opacity-90" : ""
                 }`}
               >
-                <span className="text-white/95 tabular-nums truncate min-w-0">
+                <span className="text-sl-text/95 tabular-nums truncate min-w-0">
                   {hasPx ? (
                     <AnimatedNumber value={px} prefix="$" decimalPlaces={px < 0.01 ? 8 : 6} />
                   ) : (
-                    <span className="text-gray-500">—</span>
+                    <span className="text-sl-muted">—</span>
                   )}
                 </span>
                 {hasChg ? (
@@ -284,12 +284,12 @@ export function LiveTab({
         </div>
 
         <div className="space-y-1">
-          <div className="h-1 rounded-full bg-gray-900 overflow-hidden ring-1 ring-white/8">
+          <div className="h-1 rounded-full bg-sl-card overflow-hidden ring-1 ring-white/8">
             <div className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(sig.signalStrength)}`} style={{ width: `${displayScore}%` }} />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-[11px] font-bold tabular-nums text-white">{displayScore}/100</span>
-            <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-gray-500">{confidenceTr(sig.signalStrength)}</span>
+            <span className="font-mono text-[11px] font-bold tabular-nums text-sl-text">{displayScore}/100</span>
+            <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-sl-muted">{confidenceTr(sig.signalStrength)}</span>
           </div>
           <div className="score-track mx-3 mb-2">
             <div
@@ -390,12 +390,12 @@ export function LiveTab({
       <div className="mb-3 space-y-2">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <p className="sl-label text-[9px] inline-flex items-center gap-1.5 !text-gray-500">
+            <p className="sl-label text-[9px] inline-flex items-center gap-1.5 !text-sl-muted">
               <Sparkles size={12} className="text-emerald-400/95 shrink-0" aria-hidden />
               <span className="tracking-[0.14em]">{t("war.live.decisionFeedLabel")}</span>
             </p>
             <div className="mt-0.5 flex flex-wrap items-center gap-2.5">
-              <h2 className="text-base sm:text-lg font-semibold text-white tracking-tight leading-tight">
+              <h2 className="text-base sm:text-lg font-semibold text-sl-text tracking-tight leading-tight">
                 {t("war.live.liveTitle")}
               </h2>
               <button
@@ -404,7 +404,7 @@ export function LiveTab({
                 aria-expanded={liveExpanded}
                 aria-label={liveExpanded ? t("war.live.collapseAria") : t("war.live.expandAria")}
                 title={liveExpanded ? t("war.live.collapseTitle") : t("war.live.expandTitle")}
-                className="group relative flex h-9 w-9 shrink-0 items-center justify-center border border-white/[0.12] bg-gradient-to-b from-white/[0.07] to-white/[0.02] text-cyan-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all hover:border-cyan-400/45 hover:from-cyan-500/18 hover:to-cyan-950/25 hover:text-cyan-50 hover:shadow-[0_0_22px_rgba(34,211,238,0.18)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050a0f]"
+                className="group relative flex h-9 w-9 shrink-0 items-center justify-center border border-white/[0.12] bg-gradient-to-b from-white/[0.07] to-sl-card text-cyan-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all hover:border-cyan-400/45 hover:from-cyan-500/18 hover:to-cyan-950/25 hover:text-cyan-50 hover:shadow-[0_0_22px_rgba(34,211,238,0.18)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050a0f]"
               >
                 {liveExpanded ? (
                   <ChevronsUp className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
@@ -413,7 +413,7 @@ export function LiveTab({
                 )}
               </button>
             </div>
-            <p className="text-[10px] text-gray-500 mt-0.5 leading-snug max-w-[min(100%,28rem)]">
+            <p className="text-[10px] text-sl-muted mt-0.5 leading-snug max-w-[min(100%,28rem)]">
               {t("war.live.poolLine", {
                 db: dbSignalCount,
                 heat: heatFillCount,
@@ -446,7 +446,7 @@ export function LiveTab({
               />
               {signalsFeedIsError || signalsFeedIsDegraded ? t("war.live.statusDegraded") : t("war.live.statusLive")}
             </span>
-            <span className="text-[10px] text-gray-500 inline-flex items-center gap-0.5">
+            <span className="text-[10px] text-sl-muted inline-flex items-center gap-0.5">
               <Info size={11} />
               {signalsAgeSec === null
                 ? t("war.live.syncing")
@@ -459,15 +459,15 @@ export function LiveTab({
           </div>
         </div>
         {liveSignalsForGrid.length === 0 ? (
-          <div className="border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-transparent px-4 py-5 text-[12px] text-gray-300 leading-relaxed max-w-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-transparent px-4 py-5 text-[12px] text-sl-sub leading-relaxed max-w-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             {signalsFeedIsLoading ? (
               <div className="flex items-start gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-cyan-500/25 bg-cyan-500/10">
                   <Loader2 className="h-4 w-4 text-cyan-300 animate-spin" aria-hidden />
                 </span>
                 <div>
-                  <p className="font-semibold text-white/95">{t("war.live.empty.loadingTitle")}</p>
-                  <p className="mt-1 text-gray-400 text-[11px]">{t("war.live.empty.loadingBody")}</p>
+                  <p className="font-semibold text-sl-text/95">{t("war.live.empty.loadingTitle")}</p>
+                  <p className="mt-1 text-sl-sub text-[11px]">{t("war.live.empty.loadingBody")}</p>
                 </div>
               </div>
             ) : signalsFeedIsError ? (
@@ -477,17 +477,17 @@ export function LiveTab({
                 </span>
                 <div>
                   <p className="font-semibold text-amber-100/95">{t("war.live.empty.errorTitle")}</p>
-                  <p className="mt-1 text-gray-400 text-[11px]">{t("war.live.empty.errorBody")}</p>
+                  <p className="mt-1 text-sl-sub text-[11px]">{t("war.live.empty.errorBody")}</p>
                 </div>
               </div>
             ) : (
               <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-white/10 bg-white/[0.03]">
-                  <Inbox className="h-4 w-4 text-gray-400" aria-hidden />
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-sl-border bg-white/[0.03]">
+                  <Inbox className="h-4 w-4 text-sl-sub" aria-hidden />
                 </span>
                 <div>
-                  <p className="font-semibold text-white/90">{t("war.live.empty.inboxTitle")}</p>
-                  <p className="mt-1 text-gray-400 text-[11px]">{t("war.live.empty.inboxBody")}</p>
+                  <p className="font-semibold text-sl-text/90">{t("war.live.empty.inboxTitle")}</p>
+                  <p className="mt-1 text-sl-sub text-[11px]">{t("war.live.empty.inboxBody")}</p>
                 </div>
               </div>
             )}

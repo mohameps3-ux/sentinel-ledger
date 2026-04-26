@@ -68,9 +68,9 @@ export function HealthBar({ onlyBadge = false }) {
 
   if (loading) {
     if (onlyBadge) {
-      return <span className={`${badgeClass} border-white/10 bg-white/5 text-gray-500`}>…</span>;
+      return <span className={`${badgeClass} border-sl-border bg-white/5 text-sl-muted`}>…</span>;
     }
-    return <div className="text-[11px] text-gray-500">Checking plan…</div>;
+    return <div className="text-[11px] text-sl-muted">Checking plan…</div>;
   }
 
   if (label === "lifetime") {
@@ -135,7 +135,7 @@ export function HealthBar({ onlyBadge = false }) {
         <span className="px-2 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 shrink-0">
           {String(plan || "pro").toUpperCase()}
         </span>
-        <span className="text-gray-300 truncate">
+        <span className="text-sl-sub truncate">
           {expiresAt ? `until ${formatDateShort(expiresAt)}` : "active"}
         </span>
         <button
@@ -146,7 +146,7 @@ export function HealthBar({ onlyBadge = false }) {
         >
           {portalLoading ? "…" : "Manage"}
         </button>
-        <Link href="/pricing" className="text-gray-400 hover:text-white shrink-0">
+        <Link href="/pricing" className="text-sl-sub hover:text-sl-text shrink-0">
           Upgrade
         </Link>
       </div>
@@ -154,12 +154,12 @@ export function HealthBar({ onlyBadge = false }) {
   }
 
   if (onlyBadge) {
-    return <span className={`${badgeClass} border-white/10 bg-white/5 text-gray-300`}>Free</span>;
+    return <span className={`${badgeClass} border-sl-border bg-white/5 text-sl-sub`}>Free</span>;
   }
 
   return (
     <div className="flex items-center gap-2 text-[11px]">
-      <span className="px-2 py-1 rounded-full border border-white/10 bg-white/5 text-gray-300">Free</span>
+      <span className="px-2 py-1 rounded-full border border-sl-border bg-white/5 text-sl-sub">Free</span>
       <Link href="/pricing" className="text-purple-300 hover:text-purple-200">
         Upgrade to PRO
       </Link>

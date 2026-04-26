@@ -86,7 +86,7 @@ export function GlobalWayfinding() {
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--sl-fg-soft)] shrink-0">
               {t("wayfinding.youAreHere")}
             </span>
-            <span className="text-sm font-semibold text-white tracking-tight">{placeTitle}</span>
+            <span className="text-sm font-semibold text-sl-text tracking-tight">{placeTitle}</span>
             <span className="text-[var(--sl-fg-soft)] hidden sm:inline opacity-80" aria-hidden>
               ·
             </span>
@@ -130,8 +130,8 @@ export function GlobalWayfinding() {
                 aria-current={active ? "page" : undefined}
                 className={`sl-wayfinding-link inline-flex items-center rounded-md px-2 py-1 border transition-colors duration-150 ${
                   active
-                    ? "border-white/25 bg-white/[0.08] text-white font-semibold"
-                    : "border-transparent text-[var(--sl-fg-muted)] hover:text-white hover:bg-white/[0.05] hover:border-white/10"
+                    ? "border-white/25 bg-white/[0.08] text-sl-text font-semibold"
+                    : "border-transparent text-[var(--sl-fg-muted)] hover:text-sl-text hover:bg-white/[0.05] hover:border-sl-border"
                 }`}
               >
                 <span>{label}</span>
@@ -144,8 +144,8 @@ export function GlobalWayfinding() {
             aria-current={pathname === "/compare" ? "page" : undefined}
             className={`sl-wayfinding-link inline-flex items-center rounded-md px-2 py-1 border transition-colors duration-150 ${
               pathname === "/compare"
-                ? "border-white/25 bg-white/[0.08] text-white font-semibold"
-                : "border-transparent text-[var(--sl-fg-muted)] hover:text-white hover:bg-white/[0.05] hover:border-white/10"
+                ? "border-white/25 bg-white/[0.08] text-sl-text font-semibold"
+                : "border-transparent text-[var(--sl-fg-muted)] hover:text-sl-text hover:bg-white/[0.05] hover:border-sl-border"
             }`}
             title={t("wayfinding.links.compareTitle")}
           >
@@ -156,8 +156,8 @@ export function GlobalWayfinding() {
             aria-current={pathname === "/portfolio" ? "page" : undefined}
             className={`sl-wayfinding-link inline-flex items-center rounded-md px-2 py-1 border transition-colors duration-150 ${
               pathname === "/portfolio"
-                ? "border-white/25 bg-white/[0.08] text-white font-semibold"
-                : "border-transparent text-[var(--sl-fg-muted)] hover:text-white hover:bg-white/[0.05] hover:border-white/10"
+                ? "border-white/25 bg-white/[0.08] text-sl-text font-semibold"
+                : "border-transparent text-[var(--sl-fg-muted)] hover:text-sl-text hover:bg-white/[0.05] hover:border-sl-border"
             }`}
             title={t("wayfinding.links.portfolioTitle")}
           >

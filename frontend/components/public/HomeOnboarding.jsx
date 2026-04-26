@@ -40,7 +40,7 @@ export function HomeOnboarding() {
       aria-modal="true"
       aria-labelledby="sentinel-onboarding-title"
     >
-      <div className="w-full max-w-md rounded-2xl border border-white/12 bg-[#0c0e12] shadow-[0_0_48px_rgba(16,185,129,0.12)] p-6 sm:p-8 space-y-6">
+      <div className="w-full max-w-md border border-white/12 bg-[#0c0e12] shadow-[0_0_48px_rgba(16,185,129,0.12)] p-6 sm:p-8 space-y-6">
         <p className="text-[10px] uppercase tracking-widest text-center text-gray-500">Primera visita</p>
         <div className="space-y-2 text-center">
           <h2 id="sentinel-onboarding-title" className="text-lg sm:text-xl font-bold text-white">
@@ -52,7 +52,7 @@ export function HomeOnboarding() {
           <button
             type="button"
             onClick={dismiss}
-            className="w-full py-3 rounded-xl font-semibold text-[#050508] bg-gradient-to-r from-emerald-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 transition shadow-[0_0_24px_rgba(52,211,153,0.25)]"
+            className="w-full py-3 font-semibold text-[#050508] bg-gradient-to-r from-emerald-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 transition shadow-[0_0_24px_rgba(52,211,153,0.25)]"
           >
             Empezar
           </button>

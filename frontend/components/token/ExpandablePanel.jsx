@@ -20,7 +20,7 @@ export function ExpandablePanel({ title, icon, children, defaultOpen = false, ba
       >
         <span className="flex flex-wrap items-center gap-2 sm:gap-4 min-w-0 flex-1">
           {Icon ? (
-            <span className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-600/25 to-cyan-600/15 border border-purple-500/25 flex items-center justify-center shrink-0">
+            <span className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-600/25 to-cyan-600/15 border border-purple-500/25 flex items-center justify-center shrink-0">
               <Icon size={18} className="text-purple-200" />
             </span>
           ) : null}

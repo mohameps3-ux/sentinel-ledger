@@ -84,7 +84,7 @@ export function DecisionPanel({ analysis }) {
         <div className="mt-5">
           <button
             onClick={() => setOpen(true)}
-            className="h-9 px-3 rounded-lg text-sm border soft-divider hover:bg-white/5 transition"
+            className="h-9 px-3 text-sm border soft-divider hover:bg-white/5 transition"
           >
             More details
           </button>
@@ -102,7 +102,7 @@ export function DecisionPanel({ analysis }) {
             </div>
             <button
               onClick={() => setOpen(false)}
-              className="mt-5 h-9 px-3 rounded-lg text-sm bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 transition"
+              className="mt-5 h-9 px-3 text-sm bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 transition"
             >
               Close
             </button>

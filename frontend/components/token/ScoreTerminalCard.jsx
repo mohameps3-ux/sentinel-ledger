@@ -223,7 +223,7 @@ export function ScoreTerminalCard({ asset }) {
   const ledTooltip = globalReason || (ledKey === "OFFLINE" ? "socket disconnected" : undefined);
 
   return (
-    <section className="rounded-xl border border-white/10 bg-[#0a0d12]/80 backdrop-blur-sm p-3 sm:p-4 space-y-3 font-mono">
+    <section className="border border-white/10 bg-[#0a0d12]/80 backdrop-blur-sm p-3 sm:p-4 space-y-3 font-mono">
       <header className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Radio size={14} className="text-emerald-400 shrink-0" />

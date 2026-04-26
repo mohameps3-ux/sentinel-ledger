@@ -16,7 +16,7 @@ export default function PrivacyPage() {
 
         <section className="space-y-2">
           <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s1h")}</h2>
-          <ul className="list-disc pl-5 text-gray-300 space-y-1">
+          <ul className="list-disc pl-5 text-sl-sub space-y-1">
             <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s1li1")}</li>
             <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s1li2")}</li>
             <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s1li3")}</li>

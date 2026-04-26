@@ -73,7 +73,7 @@ export function ProofOfEdgeBlock({ mint, confidence, regime }) {
 
   return (
     <section
-      className="rounded-lg border border-white/[0.08] bg-black/[0.22] px-3 py-2.5 sm:px-3.5 sm:py-3 shrink-0"
+      className="border border-white/[0.08] bg-black/[0.22] px-3 py-2.5 sm:px-3.5 sm:py-3 shrink-0"
       aria-label={t("cockpit.proof.title")}
     >
       <div className="flex flex-wrap items-start justify-between gap-2 gap-y-1 border-b border-white/[0.06] pb-2 mb-2.5">

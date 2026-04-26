@@ -9,36 +9,36 @@ export default function TermsPage() {
       <div className="sl-container py-10">
         <div className="glass-card sl-inset max-w-4xl mx-auto space-y-6">
         <h1 className="text-3xl font-bold">{t("terms.h1")}</h1>
-        <p className="text-gray-300">{t("terms.lead")}</p>
+        <p className="text-sl-sub">{t("terms.lead")}</p>
 
         <section className="space-y-2">
           <h2 className="text-xl font-semibold">{t("terms.s1h")}</h2>
-          <p className="text-gray-300">{t("terms.s1p")}</p>
+          <p className="text-sl-sub">{t("terms.s1p")}</p>
         </section>
 
         <section className="space-y-2">
           <h2 className="text-xl font-semibold">{t("terms.s2h")}</h2>
-          <p className="text-gray-300">{t("terms.s2p")}</p>
+          <p className="text-sl-sub">{t("terms.s2p")}</p>
         </section>
 
         <section className="space-y-2">
           <h2 className="text-xl font-semibold">{t("terms.s3h")}</h2>
-          <p className="text-gray-300">{t("terms.s3p")}</p>
+          <p className="text-sl-sub">{t("terms.s3p")}</p>
         </section>
 
         <section className="space-y-2">
           <h2 className="text-xl font-semibold">{t("terms.s4h")}</h2>
-          <p className="text-gray-300">{t("terms.s4p")}</p>
+          <p className="text-sl-sub">{t("terms.s4p")}</p>
         </section>
 
         <section className="space-y-2">
           <h2 className="text-xl font-semibold">{t("terms.s5h")}</h2>
-          <p className="text-gray-300">{t("terms.s5p")}</p>
+          <p className="text-sl-sub">{t("terms.s5p")}</p>
         </section>
 
         <section className="space-y-2">
           <h2 className="text-xl font-semibold">{t("terms.s6h")}</h2>
-          <p className="text-gray-300">{t("terms.s6p")}</p>
+          <p className="text-sl-sub">{t("terms.s6p")}</p>
         </section>
         </div>
       </div>

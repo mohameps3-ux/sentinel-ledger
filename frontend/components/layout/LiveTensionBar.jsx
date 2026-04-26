@@ -93,7 +93,7 @@ export function LiveTensionBar() {
       role="status"
       aria-live="polite"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-row flex-wrap items-center justify-between gap-2 sm:gap-3 text-[11px] sm:text-xs font-medium text-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-row flex-wrap items-center justify-between gap-2 sm:gap-3 text-[11px] sm:text-xs font-medium text-sl-sub">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
           <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
             {freshness.state === "LIVE" ? (
@@ -104,16 +104,16 @@ export function LiveTensionBar() {
           <span className={`tracking-wide uppercase shrink-0 ${tone.split(" ")[1]}`}>
             {freshness.label} feed
           </span>
-          <span className="text-gray-600 hidden sm:inline">|</span>
-          <span className="text-gray-300">{freshness.hint}</span>
-          <span className="text-gray-600 hidden sm:inline">|</span>
-          <span className="text-gray-300 inline-flex items-center gap-1 font-mono tabular-nums">
+          <span className="text-sl-muted hidden sm:inline">|</span>
+          <span className="text-sl-sub">{freshness.hint}</span>
+          <span className="text-sl-muted hidden sm:inline">|</span>
+          <span className="text-sl-sub inline-flex items-center gap-1 font-mono tabular-nums">
             {freshness.ageSec != null ? `age ${freshness.ageSec}s` : "age n/a"}
           </span>
         </div>
         <Link
           href="/pricing"
-          className="shrink-0 inline-flex items-center justify-center rounded-lg border border-purple-500/45 bg-purple-500/12 px-3 py-1.5 text-[11px] font-semibold text-purple-100 hover:bg-purple-500/22 hover:border-purple-400/55 transition whitespace-nowrap"
+          className="shrink-0 inline-flex items-center justify-center border border-purple-500/45 bg-purple-500/12 px-3 py-1.5 text-[11px] font-semibold text-purple-100 hover:bg-purple-500/22 hover:border-purple-400/55 transition whitespace-nowrap"
         >
           🔒 Unlock PRO →
         </Link>

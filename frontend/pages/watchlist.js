@@ -72,7 +72,7 @@ export default function WatchlistPage() {
             <span className="section-title">TRACKED TOKENS</span>
             <button type="button" className="btn-ghost-sm">EXPORT</button>
           </div>
-          {loading ? <p className="text-sm text-gray-400">{t("watchlist.loading")}</p> : null}
+          {loading ? <p className="text-sm text-sl-sub">{t("watchlist.loading")}</p> : null}
           {!loading && error ? <p className="text-sm text-red-300">{t("watchlist.error", { err: error })}</p> : null}
           {!loading && !error && !list.length ? (
             <div className="empty-state">

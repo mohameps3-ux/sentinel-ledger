@@ -56,15 +56,15 @@ export default function WarHomeCombatPanels({
           <p className="text-[11px] text-orange-200/80 font-medium">{t("war.combat.bestHighlight")}</p>
           {bestRecentDisplay ? (
             <>
-              <h2 className="text-base sm:text-lg font-semibold text-white mt-1">
+              <h2 className="text-base sm:text-lg font-semibold text-sl-text mt-1">
                 {bestRecentDisplay.headline}{" "}
                 <span className="text-emerald-300">
                   {Number(bestRecentDisplay.outcomePct) >= 0 ? "+" : ""}
                   {bestRecentDisplay.outcomePct}%
                 </span>{" "}
-                <span className="text-gray-500 text-sm">({bestRecentDisplay.horizon})</span>
+                <span className="text-sl-muted text-sm">({bestRecentDisplay.horizon})</span>
               </h2>
-              <p className="text-sm text-gray-400 mt-2">
+              <p className="text-sm text-sl-sub mt-2">
                 {t("war.combat.scoreApprox", { score: bestRecentDisplay.signal })} ·{" "}
                 <Link href={`/token/${bestRecentDisplay.mint}`} className="text-cyan-300/90 hover:underline">
                   {t("war.combat.openToken")}
@@ -72,13 +72,13 @@ export default function WarHomeCombatPanels({
               </p>
             </>
           ) : (
-            <p className="text-sm text-gray-500 mt-2">{t("war.combat.noRecent")}</p>
+            <p className="text-sm text-sl-muted mt-2">{t("war.combat.noRecent")}</p>
           )}
         </div>
         <div className="glass-card sl-inset">
-          <p className="text-[11px] text-gray-500 font-medium">{t("war.combat.summary7d")}</p>
-          <h2 className="text-base font-semibold text-white mt-1">{t("war.combat.hitSummaryTitle")}</h2>
-          <ul className="mt-2 text-sm text-gray-300 space-y-1">
+          <p className="text-[11px] text-sl-muted font-medium">{t("war.combat.summary7d")}</p>
+          <h2 className="text-base font-semibold text-sl-text mt-1">{t("war.combat.hitSummaryTitle")}</h2>
+          <ul className="mt-2 text-sm text-sl-sub space-y-1">
             {outcomesSummary && outcomesSummary.resolved != null ? (
               <>
                 <li>
@@ -104,7 +104,7 @@ export default function WarHomeCombatPanels({
                 </li>
               </>
             ) : (
-              <li className="text-gray-500 text-sm">{t("war.combat.summaryLoading")}</li>
+              <li className="text-sl-muted text-sm">{t("war.combat.summaryLoading")}</li>
             )}
           </ul>
           <Link href="/graveyard" className="mt-3 inline-flex text-xs font-semibold text-cyan-200 no-underline hover:text-cyan-100">
@@ -117,8 +117,8 @@ export default function WarHomeCombatPanels({
         <div className="glass-card sl-inset">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-              <h2 className="text-lg sm:text-xl font-semibold text-white">{t("war.combat.walletsTitle")}</h2>
-              <p className="text-xs text-gray-500 mt-1">
+              <h2 className="text-lg sm:text-xl font-semibold text-sl-text">{t("war.combat.walletsTitle")}</h2>
+              <p className="text-xs text-sl-muted mt-1">
                 {t("war.combat.walletsMeta", { n: rankedWallets.length })}{" "}
                 <Link className="text-cyan-400/90 hover:underline" href="/smart-money?limit=50">
                   {t("war.combat.fullRanking")}
@@ -141,7 +141,7 @@ export default function WarHomeCombatPanels({
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 border-b border-white/10 text-[10px] uppercase tracking-wide">
+                <tr className="text-left text-sl-muted border-b border-sl-border text-[10px] uppercase tracking-wide">
                   <th className="py-2 pr-1 w-8" />
                   <th className="py-2 pr-3">{t("war.combat.thWallet")}</th>
                   <th className="py-2 pr-3">{t("war.combat.thWin")}</th>
@@ -175,7 +175,7 @@ export default function WarHomeCombatPanels({
                           toggleTopWalletRow(rowKey);
                         }}
                       >
-                        <td className="py-3 pr-1 w-8 align-top text-gray-500">
+                        <td className="py-3 pr-1 w-8 align-top text-sl-muted">
                           <span className="inline-block transition-transform" style={{ transform: openTopWallet === rowKey ? "rotate(90deg)" : "none" }}>
                             <ChevronRight size={16} aria-hidden />
                           </span>
@@ -185,10 +185,10 @@ export default function WarHomeCombatPanels({
                         <span className="text-lg" title="Wallet tier">
                           {wIdx % 2 === 0 ? "🐳" : "🧠"}
                         </span>
-                        <span className="text-gray-100 font-medium" title={wallet.address ? topWalletTitle(wallet.address) : wallet.tooltip}>
+                        <span className="text-sl-sub font-medium" title={wallet.address ? topWalletTitle(wallet.address) : wallet.tooltip}>
                           {wallet.address ? topWalletLabel(wallet.address) : wallet.wallet}
                         </span>
-                        <span className="hidden group-hover:block absolute top-full left-0 mt-1 z-20 text-xs bg-[#0f1318] border border-purple-500/30 rounded px-2 py-1 text-gray-200 whitespace-nowrap">
+                        <span className="hidden group-hover:block absolute top-full left-0 mt-1 z-20 text-xs bg-[#0f1318] border border-purple-500/30 rounded px-2 py-1 text-sl-sub whitespace-nowrap">
                           {wallet.tooltip}
                         </span>
                       </div>
@@ -199,7 +199,7 @@ export default function WarHomeCombatPanels({
                     <td className="py-3 pr-3">{wallet.consistency}</td>
                     <td className="py-3 pr-3">{wallet.signalStrength}</td>
                     <td className="py-3 pr-3">
-                      <span className="inline-flex items-center gap-2 text-xs text-gray-300">
+                      <span className="inline-flex items-center gap-2 text-xs text-sl-sub">
                         <span className={`h-2.5 w-2.5 rounded-full ${confidenceDot(wallet.signalStrength)}`} />
                         {confidenceTr(wallet.signalStrength)}
                       </span>
@@ -212,7 +212,7 @@ export default function WarHomeCombatPanels({
                     <td className="py-3 text-emerald-300">+${formatUsdWhole(wallet.pnl30d)}</td>
                   </tr>
                   {openTopWallet === rowKey ? (
-                    <tr className="bg-white/[0.02] border-b border-white/5">
+                    <tr className="bg-sl-card border-b border-white/5">
                       <td colSpan={10} className="px-3 py-3 text-left">
                         <p className="text-xs font-semibold text-violet-200/90 mb-2">{t("war.combat.detail")}</p>
                         {wallet.address ? (
@@ -220,7 +220,7 @@ export default function WarHomeCombatPanels({
                             {wallet.address}
                           </p>
                         ) : null}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-gray-300">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-sl-sub">
                           <span>Win rate {wallet.winRate.toFixed(1)}%</span>
                           <span>Early {wallet.earlyEntry}</span>
                           <span>Cluster {wallet.cluster}</span>
@@ -228,7 +228,7 @@ export default function WarHomeCombatPanels({
                           <span>Sentinel {wallet.signalStrength}</span>
                           <span>30d +${formatUsdWhole(wallet.pnl30d)}</span>
                         </div>
-                        <p className="text-[11px] text-gray-500 mt-2">{wallet.tooltip}</p>
+                        <p className="text-[11px] text-sl-muted mt-2">{wallet.tooltip}</p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {wallet.address ? (
                             <Link
@@ -238,7 +238,7 @@ export default function WarHomeCombatPanels({
                               {t("war.combat.walletSheet")}
                             </Link>
                           ) : null}
-                          <Link href="/smart-money?limit=50" className="text-[11px] px-2 py-1 rounded border border-white/15 text-gray-300 hover:bg-white/10">
+                          <Link href="/smart-money?limit=50" className="text-[11px] px-2 py-1 rounded border border-white/15 text-sl-sub hover:bg-white/10">
                             {t("war.combat.top50")}
                           </Link>
                         </div>
@@ -269,11 +269,11 @@ export default function WarHomeCombatPanels({
                     if (isInteractiveEventTarget(e.target)) return;
                     toggleTopWalletRow(rowKey);
                   }}
-                  className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-2 cursor-pointer hover:border-emerald-500/25"
+                  className="border border-sl-border bg-sl-card p-3 space-y-2 cursor-pointer hover:border-emerald-500/25"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-gray-100 inline-flex items-center gap-2 flex-wrap">
-                      <span className="text-gray-500" aria-hidden>
+                    <p className="text-sl-sub inline-flex items-center gap-2 flex-wrap">
+                      <span className="text-sl-muted" aria-hidden>
                         <span style={{ display: "inline-block", transform: openTopWallet === rowKey ? "rotate(90deg)" : "none" }}>
                           <ChevronRight size={16} />
                         </span>
@@ -285,14 +285,14 @@ export default function WarHomeCombatPanels({
                     </p>
                     <span className="text-emerald-300 text-xs">+${formatUsdWhole(wallet.pnl30d)}</span>
                   </div>
-                  <p className="text-xs text-gray-500">{wallet.tooltip}</p>
-                  <div className="grid grid-cols-3 gap-2 text-xs text-gray-300">
+                  <p className="text-xs text-sl-muted">{wallet.tooltip}</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-sl-sub">
                     <span>WR {wallet.winRate.toFixed(1)}%</span>
                     <span>EE {wallet.earlyEntry}</span>
                     <span>CS {wallet.cluster}</span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-2 text-[11px] text-gray-300">
+                    <span className="inline-flex items-center gap-2 text-[11px] text-sl-sub">
                       <span className={`h-2.5 w-2.5 rounded-full ${confidenceDot(wallet.signalStrength)}`} />
                       {confidenceTr(wallet.signalStrength)}
                     </span>
@@ -302,7 +302,7 @@ export default function WarHomeCombatPanels({
                   </div>
                   {openTopWallet === rowKey ? (
                     <div
-                      className="pt-2 border-t border-white/10 text-left"
+                      className="pt-2 border-t border-sl-border text-left"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {wallet.address ? (
@@ -320,7 +320,7 @@ export default function WarHomeCombatPanels({
                         ) : null}
                         <Link
                           href="/smart-money?limit=50"
-                          className="text-[10px] px-2 py-1 rounded border border-white/15 text-gray-300"
+                          className="text-[10px] px-2 py-1 rounded border border-white/15 text-sl-sub"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {t("war.combat.top50")}
@@ -337,11 +337,11 @@ export default function WarHomeCombatPanels({
 
       <section className="sl-section">
         <div className="glass-card sl-inset">
-          <h2 className="text-base font-semibold text-white mb-1">{t("war.combat.yourStatus")}</h2>
+          <h2 className="text-base font-semibold text-sl-text mb-1">{t("war.combat.yourStatus")}</h2>
           {isLoggedIn ? (
-            <p className="text-sm text-gray-400">{t("war.combat.loggedIn")}</p>
+            <p className="text-sm text-sl-sub">{t("war.combat.loggedIn")}</p>
           ) : (
-            <p className="text-sm text-gray-500">{t("war.combat.loggedOut")}</p>
+            <p className="text-sm text-sl-muted">{t("war.combat.loggedOut")}</p>
           )}
         </div>
       </section>
@@ -356,14 +356,14 @@ export default function WarHomeCombatPanels({
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-gray-400 mt-2">{t("war.combat.riskEmpty")}</p>
+            <p className="text-sm text-sl-sub mt-2">{t("war.combat.riskEmpty")}</p>
           )}
         </div>
       </section>
 
       <section className="sl-section">
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm">
-          <span className="text-gray-500">{t("war.combat.heatTrend")}</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 border border-sl-border bg-sl-card px-3 py-2 text-sm">
+          <span className="text-sl-muted">{t("war.combat.heatTrend")}</span>
           <span className={`${marketMood.className} font-medium`}>{marketMood.label}</span>
         </div>
       </section>
@@ -371,8 +371,8 @@ export default function WarHomeCombatPanels({
       <section className="sl-section">
         <div className="glass-card sl-inset flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-white">{t("war.combat.compareTitle")}</h2>
-            <p className="text-sm text-gray-500 mt-0.5">{t("war.combat.compareSub")}</p>
+            <h2 className="text-base font-semibold text-sl-text">{t("war.combat.compareTitle")}</h2>
+            <p className="text-sm text-sl-muted mt-0.5">{t("war.combat.compareSub")}</p>
           </div>
           <Link href="/compare" prefetch={false} className="text-sm font-medium text-cyan-300/90 hover:underline shrink-0">
             {t("war.combat.compareCta")}
@@ -382,19 +382,19 @@ export default function WarHomeCombatPanels({
 
       <section className="sl-section">
         <div className="glass-card sl-inset">
-          <h2 className="text-base font-semibold text-white">{t("war.combat.alertsTitle")}</h2>
-          <p className="text-sm text-gray-500 mt-0.5">{t("war.combat.alertsSub")}</p>
+          <h2 className="text-base font-semibold text-sl-text">{t("war.combat.alertsTitle")}</h2>
+          <p className="text-sm text-sl-muted mt-0.5">{t("war.combat.alertsSub")}</p>
           {!alerts.length ? (
-            <p className="text-sm text-gray-600 text-center py-6">{t("war.combat.alertsEmpty")}</p>
+            <p className="text-sm text-sl-muted text-center py-6">{t("war.combat.alertsEmpty")}</p>
           ) : (
             <div className="flex flex-col gap-2 mt-3">
               {alerts.map((item, idx) => (
                 <div
                   key={`${item.tokenAddress}-${idx}`}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5"
+                  className="flex flex-wrap items-center justify-between gap-2 border border-sl-border bg-white/[0.03] px-2 py-1.5"
                 >
-                  <span className="font-mono text-sm text-gray-200">{(item.symbol || item.tokenAddress || "").slice(0, 14)}</span>
-                  <span className="text-xs text-gray-500">{item.alertType}</span>
+                  <span className="font-mono text-sm text-sl-sub">{(item.symbol || item.tokenAddress || "").slice(0, 14)}</span>
+                  <span className="text-xs text-sl-muted">{item.alertType}</span>
                 </div>
               ))}
             </div>

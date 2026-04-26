@@ -13,7 +13,7 @@ export function HoldersPanel({ holders }) {
 
   if (!hasData) {
     return (
-      <div className="text-gray-500 text-sm border border-dashed border-gray-700 rounded-xl p-4 text-center">
+      <div className="text-gray-500 text-sm border border-dashed border-gray-700 p-4 text-center">
         Data not available
       </div>
     );
@@ -78,7 +78,7 @@ export function HoldersPanel({ holders }) {
       {topAccounts.length ? (
         <div className="pt-4 border-t border-white/[0.06] space-y-2">
           <div className="text-xs text-gray-400 font-medium">Top 10 holders (% supply)</div>
-          <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+          <div className="border border-white/[0.06] overflow-hidden">
             <table className="w-full text-[11px]">
               <thead>
                 <tr className="text-left text-gray-500 border-b border-white/[0.06] bg-white/[0.02]">

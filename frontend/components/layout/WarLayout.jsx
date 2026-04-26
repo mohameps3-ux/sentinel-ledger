@@ -21,9 +21,9 @@ export function WarLayout({ header, feed, desk }) {
         <div className="min-h-0 min-w-0 overflow-visible lg:overflow-y-auto overflow-x-hidden">
           {feed}
         </div>
-        <div className="hidden min-h-0 min-w-0 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--sl-bg-surface)] lg:block">
+        <div className="hidden min-h-0 min-w-0 overflow-hidden border border-white/[0.08] bg-[var(--sl-bg-surface)] lg:block">
           <div className="flex h-10 items-center justify-between border-b border-white/[0.06] px-3">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-white">Token Intel</span>
+            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-sl-text">Token Intel</span>
             <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300"><span className="sl-pulse-dot" />live</span>
           </div>
           <div className="h-[calc(100%-2.5rem)] overflow-y-auto">{desk}</div>

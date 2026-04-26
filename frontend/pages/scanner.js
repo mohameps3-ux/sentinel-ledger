@@ -67,7 +67,7 @@ export default function ScannerPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="sl-label">{t("scanner.narrativeLabel")}</p>
-              <h2 className="text-white font-semibold text-lg mt-1">{t("scanner.narrativeH2")}</h2>
+              <h2 className="text-sl-text font-semibold text-lg mt-1">{t("scanner.narrativeH2")}</h2>
             </div>
             <select
               value={narrative}
@@ -109,8 +109,8 @@ export default function ScannerPage() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-white">{token.token || token.symbol || "TOKEN"}</p>
-                    <p className="mono text-[11px] text-gray-500 mt-1">
+                    <p className="text-sm font-semibold text-sl-text">{token.token || token.symbol || "TOKEN"}</p>
+                    <p className="mono text-[11px] text-sl-muted mt-1">
                       {String(mint || "").slice(0, 6)}...{String(mint || "").slice(-6)}
                     </p>
                   </div>
@@ -128,9 +128,9 @@ export default function ScannerPage() {
                   />
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
-                  <div><p className="sl-metric-label">Liquidity</p><p className="font-mono text-gray-300">${Number(token.liquidity || 0).toLocaleString()}</p></div>
-                  <div><p className="sl-metric-label">Volume</p><p className="font-mono text-gray-300">${Number(token.volume24h || 0).toLocaleString()}</p></div>
-                  <div><p className="sl-metric-label">Score</p><p className="font-mono text-gray-300">{score}</p></div>
+                  <div><p className="sl-metric-label">Liquidity</p><p className="font-mono text-sl-sub">${Number(token.liquidity || 0).toLocaleString()}</p></div>
+                  <div><p className="sl-metric-label">Volume</p><p className="font-mono text-sl-sub">${Number(token.volume24h || 0).toLocaleString()}</p></div>
+                  <div><p className="sl-metric-label">Score</p><p className="font-mono text-sl-sub">{score}</p></div>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap gap-1.5">

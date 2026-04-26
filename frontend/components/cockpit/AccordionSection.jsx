@@ -22,7 +22,7 @@ export function AccordionSection({ title, summaryTone = "neutral", defaultOpen =
   const toneClass = TONE_SUMMARY[summaryTone] || TONE_SUMMARY.neutral;
 
   return (
-    <div className="rounded-lg border border-white/[0.08] overflow-hidden bg-black/20">
+    <div className="border border-white/[0.08] overflow-hidden bg-black/20">
       <button
         id={btnId}
         type="button"

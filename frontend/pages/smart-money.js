@@ -191,7 +191,7 @@ export default function SmartMoneyPage() {
       <div className="sl-container py-10 space-y-6 pb-24">
         <section className="sl-home-hero sl-inset sm:p-7 ring-1 ring-white/[0.06]">
           <p className="sl-label text-emerald-400/90">{t("smart.label")}</p>
-          <h1 className="sl-h1 text-white mt-2 tracking-tight">
+          <h1 className="sl-h1 text-sl-text mt-2 tracking-tight">
             {soloFavorites
               ? t("smart.hero.h1.favorites", {
                   limit,
@@ -212,7 +212,7 @@ export default function SmartMoneyPage() {
             )}{" "}
             <span>{t("smart.hero.body.tail")}</span>
           </p>
-          <p className="text-xs text-gray-500 mt-3">
+          <p className="text-xs text-sl-muted mt-3">
             {t("smart.hero.trending", {
               state: trending.isError ? t("smart.hero.trending.degraded") : t("smart.hero.trending.connected"),
               fav: favCount > 0 ? String(favCount) : "0"
@@ -226,12 +226,12 @@ export default function SmartMoneyPage() {
         <SmartMoneyKpiStrip rows={displayedRanked} activityRows={actRows} />
 
         <section className="glass-card sl-inset space-y-4">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-300">
-            <SlidersHorizontal size={16} className="text-gray-500" />
-            <span className="sl-label text-gray-400">{t("smart.filters.label")}</span>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-sl-sub">
+            <SlidersHorizontal size={16} className="text-sl-muted" />
+            <span className="sl-label text-sl-sub">{t("smart.filters.label")}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            <label className="space-y-1.5 text-xs text-gray-400">
+            <label className="space-y-1.5 text-xs text-sl-sub">
               <span className="uppercase tracking-wide">{t("smart.filters.apiLimit")}</span>
               <select
                 className="sl-input w-full h-10 px-3"
@@ -250,7 +250,7 @@ export default function SmartMoneyPage() {
                 <option value="100">100</option>
               </select>
             </label>
-            <label className="space-y-1.5 text-xs text-gray-400">
+            <label className="space-y-1.5 text-xs text-sl-sub">
               <span className="uppercase tracking-wide">{t("smart.filters.chain")}</span>
               <select
                 className="sl-input w-full h-10 px-3"
@@ -261,7 +261,7 @@ export default function SmartMoneyPage() {
                 <option value="all">{t("smart.filters.opt.all")}</option>
               </select>
             </label>
-            <label className="space-y-1.5 text-xs text-gray-400">
+            <label className="space-y-1.5 text-xs text-sl-sub">
               <span className="uppercase tracking-wide">{t("smart.filters.minWr")}</span>
               <input
                 type="number"
@@ -273,7 +273,7 @@ export default function SmartMoneyPage() {
                 onChange={(e) => setMinWinRate(Number(e.target.value || 0))}
               />
             </label>
-            <label className="space-y-1.5 text-xs text-gray-400">
+            <label className="space-y-1.5 text-xs text-sl-sub">
               <span className="uppercase tracking-wide">{t("smart.filters.minTrades")}</span>
               <input
                 type="number"
@@ -284,7 +284,7 @@ export default function SmartMoneyPage() {
                 onChange={(e) => setMinTrades(Number(e.target.value || 0))}
               />
             </label>
-            <label className="space-y-1.5 text-xs text-gray-400">
+            <label className="space-y-1.5 text-xs text-sl-sub">
               <span className="uppercase tracking-wide">{t("smart.filters.narrativeLang")}</span>
               <select
                 className="sl-input w-full h-10 px-3"
@@ -298,7 +298,7 @@ export default function SmartMoneyPage() {
                 <option value="en">English</option>
               </select>
             </label>
-            <label className="flex items-end gap-2 pb-1.5 h-full cursor-pointer text-xs text-gray-300">
+            <label className="flex items-end gap-2 pb-1.5 h-full cursor-pointer text-xs text-sl-sub">
               <input
                 type="checkbox"
                 className="rounded border-white/20 h-4 w-4"
@@ -312,11 +312,11 @@ export default function SmartMoneyPage() {
               <span className="select-none">{t("smart.filters.favoritesOnly")}</span>
             </label>
           </div>
-          <p className="text-[11px] text-gray-600">{t("smart.filters.roiNote")}</p>
+          <p className="text-[11px] text-sl-muted">{t("smart.filters.roiNote")}</p>
         </section>
 
         {isLoading ? (
-          <div className="glass-card sl-inset flex items-center justify-center gap-3 py-16 text-gray-400">
+          <div className="glass-card sl-inset flex items-center justify-center gap-3 py-16 text-sl-sub">
             <Loader2 className="animate-spin" size={22} />
             {t("smart.loading")}
           </div>
@@ -330,8 +330,8 @@ export default function SmartMoneyPage() {
 
         {!isLoading && !isError && ranked.length === 0 ? (
           <section className="glass-card sl-inset text-center py-12 space-y-3">
-            <p className="text-gray-300">{t("smart.empty.title")}</p>
-            <p className="text-sm text-gray-500 max-w-lg mx-auto">
+            <p className="text-sl-sub">{t("smart.empty.title")}</p>
+            <p className="text-sm text-sl-muted max-w-lg mx-auto">
               {t("smart.empty.hint")}
             </p>
             <Link href="/pricing" className="btn-pro inline-flex no-underline mt-2">
@@ -342,8 +342,8 @@ export default function SmartMoneyPage() {
 
         {!isLoading && !isError && ranked.length > 0 && displayedRanked.length === 0 && soloFavorites ? (
           <section className="glass-card sl-inset text-center py-12 space-y-3 border border-amber-500/20">
-            <p className="text-gray-200">{t("smart.favEmpty.title", { limit })}</p>
-            <p className="text-sm text-gray-500 max-w-lg mx-auto">{t("smart.favEmpty.hint")}</p>
+            <p className="text-sl-sub">{t("smart.favEmpty.title", { limit })}</p>
+            <p className="text-sm text-sl-muted max-w-lg mx-auto">{t("smart.favEmpty.hint")}</p>
             <button
               type="button"
               className="btn-ghost-sm"
@@ -413,7 +413,7 @@ export default function SmartMoneyPage() {
                             <Star
                               size={16}
                               className={
-                                isFavorite(w.wallet) ? "fill-amber-400/90 text-amber-200" : "text-gray-500"
+                                isFavorite(w.wallet) ? "fill-amber-400/90 text-amber-200" : "text-sl-muted"
                               }
                               strokeWidth={isFavorite(w.wallet) ? 0 : 2}
                             />
@@ -422,9 +422,9 @@ export default function SmartMoneyPage() {
                         <td className="data-td mono text-xs align-top">
                           {soloFavorites ? (
                             <div>
-                              <span className="text-gray-200">#{w.rank}</span>
+                              <span className="text-sl-sub">#{w.rank}</span>
                               <div
-                                className="text-[10px] text-gray-600"
+                                className="text-[10px] text-sl-muted"
                                 title={t("smart.globalRankTitle", { limit })}
                               >
                                 {t("smart.global")} {w.globalRank}
@@ -436,7 +436,7 @@ export default function SmartMoneyPage() {
                         </td>
                         <td className="data-td">
                           <div className="min-w-0">
-                            <div className="text-gray-100 font-medium truncate" title={titleFor(w.wallet)}>
+                            <div className="text-sl-sub font-medium truncate" title={titleFor(w.wallet)}>
                               <Link
                                 className="hover:text-cyan-300"
                                 href={`/wallet/${w.wallet}?lang=${narrativeLang}`}
@@ -445,7 +445,7 @@ export default function SmartMoneyPage() {
                                 {labelFor(w.wallet)}
                               </Link>
                             </div>
-                            <div className="font-mono text-[11px] text-gray-500 truncate">{w.wallet}</div>
+                            <div className="font-mono text-[11px] text-sl-muted truncate">{w.wallet}</div>
                           </div>
                         </td>
                         <td className="data-td"><WinRateBar value={w.winRate} /></td>
@@ -457,7 +457,7 @@ export default function SmartMoneyPage() {
                                 {Number(w.profile.winRateReal30m || 0).toFixed(1)}% · 2h{" "}
                                 {Number(w.profile.winRateReal2h || 0).toFixed(1)}%
                               </div>
-                              <div className="text-gray-500">
+                              <div className="text-sl-muted">
                                 n {w.profile.resolvedSignals5m || 0}/{w.profile.resolvedSignals30m || 0}/
                                 {w.profile.resolvedSignals2h || 0}
                               </div>
@@ -468,7 +468,7 @@ export default function SmartMoneyPage() {
                               ) : null}
                             </div>
                           ) : (
-                            <span className="text-gray-600">{t("smart.pending")}</span>
+                            <span className="text-sl-muted">{t("smart.pending")}</span>
                           )}
                         </td>
                         <td className="data-td text-cyan-200/90 tabular-nums">
@@ -482,12 +482,12 @@ export default function SmartMoneyPage() {
                           {w.bestTradePct != null ? (
                             <span className="text-emerald-300 font-mono">+{w.bestTradePct.toFixed(1)}%</span>
                           ) : (
-                            <span className="text-gray-600">—</span>
+                            <span className="text-sl-muted">—</span>
                           )}
                           {w.bestTradeMint ? (
                             <div className="flex items-center gap-2 mt-1">
                               <Link
-                                className="hover:text-cyan-300 text-[10px] text-gray-600 mono truncate max-w-[120px]"
+                                className="hover:text-cyan-300 text-[10px] text-sl-muted mono truncate max-w-[120px]"
                                 href={`/token/${w.bestTradeMint}`}
                                 onClick={(e) => e.stopPropagation()}
                               >
@@ -518,7 +518,7 @@ export default function SmartMoneyPage() {
                             </button>
                           </div>
                           {w.profile ? (
-                            <p className="text-[10px] text-gray-500 mt-1 max-w-[260px]">
+                            <p className="text-[10px] text-sl-muted mt-1 max-w-[260px]">
                               pre-pump ${formatUsdWhole(w.profile.avgSizePrePumpUsd || 0)} · latency{" "}
                               {w.profile.avgLatencyPostDeployMin != null
                                 ? `${Number(w.profile.avgLatencyPostDeployMin).toFixed(1)}m`
@@ -532,7 +532,7 @@ export default function SmartMoneyPage() {
                         </td>
                       </tr>
                       {expandedWallet === w.wallet ? (
-                        <tr className="border-b border-white/5 bg-white/[0.02]">
+                        <tr className="border-b border-white/5 bg-sl-card">
                           <td colSpan={11} className="px-3 py-4">
                             <p className="text-xs text-violet-200/80 font-semibold mb-3">{t("smart.detail.title")}</p>
                             <ExpandedWalletNarrativeSection wallet={w.wallet} narrativeLang={narrativeLang} />
@@ -572,10 +572,10 @@ export default function SmartMoneyPage() {
                 >
                   <div className="flex justify-between gap-2 items-start">
                     <div className="min-w-0 flex-1">
-                      <p className="text-white font-semibold truncate" title={titleFor(w.wallet)}>
+                      <p className="text-sl-text font-semibold truncate" title={titleFor(w.wallet)}>
                         #{w.rank}
                         {soloFavorites ? (
-                          <span className="text-gray-500 font-normal text-xs ml-1">
+                          <span className="text-sl-muted font-normal text-xs ml-1">
                             ({t("smart.global")} {w.globalRank})
                           </span>
                         ) : null}{" "}
@@ -588,7 +588,7 @@ export default function SmartMoneyPage() {
                           {labelFor(w.wallet)}
                         </Link>
                       </p>
-                      <p className="font-mono text-[11px] text-gray-500 truncate">{w.wallet}</p>
+                      <p className="font-mono text-[11px] text-sl-muted truncate">{w.wallet}</p>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
@@ -604,14 +604,14 @@ export default function SmartMoneyPage() {
                       >
                         <Star
                           size={18}
-                          className={isFavorite(w.wallet) ? "fill-amber-400/90 text-amber-200" : "text-gray-500"}
+                          className={isFavorite(w.wallet) ? "fill-amber-400/90 text-amber-200" : "text-sl-muted"}
                           strokeWidth={isFavorite(w.wallet) ? 0 : 2}
                         />
                       </button>
                       <span className={`text-xs px-2 py-1 border ${w.decision.tone}`}>{w.decision.label}</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-300">
+                  <div className="grid grid-cols-2 gap-2 text-xs text-sl-sub">
                     <span>
                       {t("smart.mobile.win")} {w.winRate.toFixed(1)}%
                     </span>
@@ -621,11 +621,11 @@ export default function SmartMoneyPage() {
                     <span>
                       {t("smart.mobile.trades")} {w.totalTrades ?? "—"}
                     </span>
-                    <span className="text-gray-500">{w.lastSeen ? formatDateTime(w.lastSeen) : "—"}</span>
+                    <span className="text-sl-muted">{w.lastSeen ? formatDateTime(w.lastSeen) : "—"}</span>
                   </div>
                   {w.profile ? (
                     <div className="space-y-1">
-                      <p className="text-[11px] text-gray-400">
+                      <p className="text-[11px] text-sl-sub">
                         WR real: 5m {Number(w.profile.winRateReal5m || 0).toFixed(1)}% · 30m{" "}
                         {Number(w.profile.winRateReal30m || 0).toFixed(1)}% · 2h {Number(w.profile.winRateReal2h || 0).toFixed(1)}%
                       </p>
@@ -657,7 +657,7 @@ export default function SmartMoneyPage() {
                     </div>
                   </div>
                   {w.bestTradePct != null ? (
-                    <div className="text-[11px] text-gray-400">
+                    <div className="text-[11px] text-sl-sub">
                       {t("smart.mobile.bestSignal")}{" "}
                       <span className="text-emerald-300">+{w.bestTradePct.toFixed(1)}%</span>
                       {w.bestTradeMint ? (
@@ -679,7 +679,7 @@ export default function SmartMoneyPage() {
                     </div>
                   ) : null}
                   {expandedWallet === w.wallet ? (
-                    <div className="pt-2 space-y-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
+                    <div className="pt-2 space-y-3 border-t border-sl-border" onClick={(e) => e.stopPropagation()}>
                       <p className="text-xs text-violet-200/80 font-semibold">{t("smart.detail.title")}</p>
                       <ExpandedWalletNarrativeSection wallet={w.wallet} narrativeLang={narrativeLang} />
                       <SmartWalletDetailPanel
@@ -698,7 +698,7 @@ export default function SmartMoneyPage() {
 
         <section className="glass-card sl-inset space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="sl-label inline-flex items-center gap-2 text-gray-200">
+            <p className="sl-label inline-flex items-center gap-2 text-sl-sub">
               <Radio size={14} className="text-purple-300" />
               {t("smart.activity.label")}
             </p>
@@ -711,7 +711,7 @@ export default function SmartMoneyPage() {
             </button>
           </div>
           {activity.isLoading ? (
-            <div className="flex items-center gap-2 text-gray-500 text-sm py-6">
+            <div className="flex items-center gap-2 text-sl-muted text-sm py-6">
               <Loader2 className="animate-spin" size={18} />
               {t("smart.activity.loading")}
             </div>
@@ -720,13 +720,13 @@ export default function SmartMoneyPage() {
             <p className="text-sm text-red-300">{activity.error?.message || t("smart.activity.error")}</p>
           ) : null}
           {!activity.isLoading && !activity.isError && actRows.length === 0 ? (
-            <p className="text-sm text-gray-500">{t("smart.activity.empty")}</p>
+            <p className="text-sm text-sl-muted">{t("smart.activity.empty")}</p>
           ) : null}
           {!activity.isLoading && !activity.isError && actRows.length > 0 ? (
             <ul className="divide-y divide-white/[0.06] border border-white/[0.06] overflow-hidden">
               {actRows.map((r) => (
                 <li key={`${r.wallet}-${r.token}-${r.createdAt}`} className="px-3 py-2.5 flex flex-wrap gap-2 text-sm bg-white/[0.015]">
-                  <span className="mono text-gray-200 text-xs">{r.wallet?.slice(0, 4)}…{r.wallet?.slice(-4)}</span>
+                  <span className="mono text-sl-sub text-xs">{r.wallet?.slice(0, 4)}…{r.wallet?.slice(-4)}</span>
                   <span
                     className={`text-[11px] font-semibold uppercase px-2 py-0.5 border ${
                       String(r.side).toLowerCase().includes("sell")
@@ -742,7 +742,7 @@ export default function SmartMoneyPage() {
                     </Link>
                     <TerminalActionIcons mint={r.token} className="scale-90 origin-left" />
                   </div>
-                  <span className="text-gray-500 text-xs ml-auto tabular-nums">
+                  <span className="text-sl-muted text-xs ml-auto tabular-nums">
                     {r.createdAt ? formatDateTime(r.createdAt) : "—"}
                   </span>
                 </li>

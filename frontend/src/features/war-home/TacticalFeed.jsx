@@ -79,8 +79,8 @@ export default function TacticalFeed({
           <div className="glass-card p-3 sm:p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p className="sl-label text-[9px] !text-gray-500 tracking-[0.14em]">{t("terminal.lexicon.verifiedTrackRecord")}</p>
-                <p className="text-xs text-gray-500 mt-1">{t("war.tactical.trackSub")}</p>
+                <p className="sl-label text-[9px] !text-sl-muted tracking-[0.14em]">{t("terminal.lexicon.verifiedTrackRecord")}</p>
+                <p className="text-xs text-sl-muted mt-1">{t("war.tactical.trackSub")}</p>
               </div>
             </div>
             <HistoryTab historyRows={historyRows} />
@@ -93,7 +93,7 @@ export default function TacticalFeed({
             <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="sl-label text-[9px] !text-violet-200 tracking-[0.16em]">{t("terminal.lexicon.outlierCatch")}</p>
-                <p className="text-xs text-gray-400 mt-1">{t("war.tactical.outlierSub")}</p>
+                <p className="text-xs text-sl-sub mt-1">{t("war.tactical.outlierSub")}</p>
               </div>
               <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[10px] font-mono text-violet-100">
                 {outliers.length}/4
@@ -113,14 +113,14 @@ export default function TacticalFeed({
                         onSelectMint?.(row.mint, { src: row.source === "HOT" ? "hot" : "live", tr: Math.round(row.score), sw: null });
                       }
                     }}
-                    className="rounded-xl border border-white/[0.08] bg-black/25 p-3 text-left hover:border-violet-400/45 hover:bg-violet-500/[0.06] transition"
+                    className="border border-white/[0.08] bg-black/25 p-3 text-left hover:border-violet-400/45 hover:bg-violet-500/[0.06] transition"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-white">{row.label}</p>
-                        <p className="font-mono text-[10px] text-gray-500">{row.mint.slice(0, 5)}…{row.mint.slice(-5)}</p>
+                        <p className="truncate text-sm font-semibold text-sl-text">{row.label}</p>
+                        <p className="font-mono text-[10px] text-sl-muted">{row.mint.slice(0, 5)}…{row.mint.slice(-5)}</p>
                       </div>
-                      <span className="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-mono text-gray-300">
+                      <span className="rounded border border-sl-border bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-mono text-sl-sub">
                         {row.source}
                       </span>
                     </div>
@@ -132,7 +132,7 @@ export default function TacticalFeed({
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">{t("war.tactical.outlierEmpty")}</p>
+              <p className="text-sm text-sl-muted">{t("war.tactical.outlierEmpty")}</p>
             )}
           </div>
         </section>

@@ -64,7 +64,7 @@ export function TokenIntelDeck({ address, market, security, terminal, smartMoney
           <button
             type="button"
             onClick={copyMint}
-            className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-xs text-gray-200 hover:bg-white/[0.08]"
+            className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-white/10 bg-white/[0.04] text-xs text-gray-200 hover:bg-white/[0.08]"
           >
             <Copy size={14} />
             Copy
@@ -94,7 +94,7 @@ export function TokenIntelDeck({ address, market, security, terminal, smartMoney
                 href={u}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/[0.03] text-xs text-cyan-200 hover:bg-white/[0.07]"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-white/10 bg-white/[0.03] text-xs text-cyan-200 hover:bg-white/[0.07]"
               >
                 <Globe size={14} />
                 Website
@@ -106,7 +106,7 @@ export function TokenIntelDeck({ address, market, security, terminal, smartMoney
                 href={soc.twitter}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/[0.03] text-xs text-sky-200 hover:bg-white/[0.07]"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-white/10 bg-white/[0.03] text-xs text-sky-200 hover:bg-white/[0.07]"
               >
                 Twitter
                 <ExternalLink size={12} className="opacity-60" />
@@ -117,7 +117,7 @@ export function TokenIntelDeck({ address, market, security, terminal, smartMoney
                 href={soc.telegram}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/[0.03] text-xs text-sky-200 hover:bg-white/[0.07]"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-white/10 bg-white/[0.03] text-xs text-sky-200 hover:bg-white/[0.07]"
               >
                 Telegram
                 <ExternalLink size={12} className="opacity-60" />
@@ -136,23 +136,23 @@ export function TokenIntelDeck({ address, market, security, terminal, smartMoney
           Security report
         </p>
         <div className="grid grid-cols-2 gap-2 text-[11px]">
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
+          <div className="border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
             <div className="text-gray-500 uppercase tracking-wide">Honeypot (DEX tag)</div>
             <div className={`mt-1 inline-flex px-2 py-0.5 rounded border font-semibold ${hp.cls}`}>{hp.label}</div>
           </div>
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
+          <div className="border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
             <div className="text-gray-500 uppercase tracking-wide">Verified tag</div>
             <div className={`mt-1 inline-flex px-2 py-0.5 rounded border font-semibold ${ver.cls}`}>{ver.label}</div>
           </div>
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
+          <div className="border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
             <div className="text-gray-500 uppercase tracking-wide">Mint renounced</div>
             <div className={`mt-1 inline-flex px-2 py-0.5 rounded border font-semibold ${mint.cls}`}>{mint.label}</div>
           </div>
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
+          <div className="border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
             <div className="text-gray-500 uppercase tracking-wide">Freeze off</div>
             <div className={`mt-1 inline-flex px-2 py-0.5 rounded border font-semibold ${frz.cls}`}>{frz.label}</div>
           </div>
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2 col-span-2">
+          <div className="border border-white/[0.06] bg-white/[0.02] px-2.5 py-2 col-span-2">
             <div className="text-gray-500 uppercase tracking-wide">Liquidity locked</div>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <span className={`inline-flex px-2 py-0.5 rounded border font-semibold ${lp.cls}`}>{lp.label}</span>
@@ -177,7 +177,7 @@ export function TokenIntelDeck({ address, market, security, terminal, smartMoney
           <span className="mono text-sm text-white tabular-nums">{Number(terminal?.signalStrength || 0)}</span>
         </div>
         {pctBar(terminal?.signalStrength)}
-        <div className={`rounded-lg border px-3 py-2.5 ${actionCls}`}>
+        <div className={`border px-3 py-2.5 ${actionCls}`}>
           <div className="text-[10px] uppercase tracking-wide text-gray-300/90">Suggested action</div>
           <div className="text-lg font-bold tracking-tight mt-0.5">{action}</div>
           <p className="text-[11px] text-gray-200/90 mt-2 leading-relaxed">{terminal?.rationale}</p>
@@ -196,7 +196,7 @@ export function TokenIntelDeck({ address, market, security, terminal, smartMoney
             dexPairs.map((p) => (
               <div
                 key={`${p.dexId}-${p.pairAddress || p.url}`}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-2 border border-white/[0.06] bg-white/[0.02] px-3 py-2"
               >
                 <div className="min-w-0">
                   <div className="text-sm text-white font-medium capitalize">{p.dexId}</div>
@@ -234,7 +234,7 @@ export function TokenIntelDeck({ address, market, security, terminal, smartMoney
 
       <section className="glass-card sl-inset xl:col-span-5 space-y-3">
         {deployer ? (
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+          <div className="border border-white/[0.06] bg-white/[0.02] px-3 py-2">
             <p className="text-[11px] text-gray-400 uppercase tracking-wide">Deployer DNA</p>
             <div className="mt-2 flex items-center justify-between gap-2">
               <span className="text-xs text-gray-300">{deployer.deployerLabel || "First Launch"}</span>
@@ -256,7 +256,7 @@ export function TokenIntelDeck({ address, market, security, terminal, smartMoney
             {smartMoneyForToken.slice(0, 8).map((w) => (
               <li
                 key={w.wallet}
-                className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+                className="flex items-center justify-between gap-2 border border-white/[0.06] bg-white/[0.02] px-3 py-2"
               >
                 <Link href={`/smart-money`} className="mono text-[11px] text-cyan-200/90 hover:underline truncate">
                   {w.wallet?.slice(0, 4)}…{w.wallet?.slice(-4)}

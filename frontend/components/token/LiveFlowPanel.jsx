@@ -40,7 +40,7 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
   }, [transactions, tokenPriceUsd]);
 
   return (
-    <div className="rounded-xl border border-[#2a2f36] overflow-hidden">
+    <div className="border border-[#2a2f36] overflow-hidden">
       <div className="px-3 py-2.5 bg-[#0E1318] border-b border-[#2a2f36] flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
           <span>

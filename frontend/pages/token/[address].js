@@ -26,7 +26,7 @@ import {
 
 const SmartMoneyPanel = dynamic(
   () => import("../../components/token/SmartMoneyPanel").then((mod) => mod.SmartMoneyPanel),
-  { ssr: false, loading: () => <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-gray-500">Loading smart money…</div> }
+  { ssr: false, loading: () => <div className="border border-white/[0.06] bg-sl-card p-4 text-sm text-sl-muted">Loading smart money…</div> }
 );
 const HoldersPanel = dynamic(
   () => import("../../components/token/HoldersPanel").then((mod) => mod.HoldersPanel),
@@ -38,7 +38,7 @@ const DeployerPanel = dynamic(
 );
 const LiveFlowPanel = dynamic(
   () => import("../../components/token/LiveFlowPanel").then((mod) => mod.LiveFlowPanel),
-  { ssr: false, loading: () => <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-gray-500">Loading live flow…</div> }
+  { ssr: false, loading: () => <div className="border border-white/[0.06] bg-sl-card p-4 text-sm text-sl-muted">Loading live flow…</div> }
 );
 const NotesPanel = dynamic(
   () => import("../../components/token/NotesPanel").then((mod) => mod.NotesPanel),
@@ -82,11 +82,11 @@ function actionTone(action) {
 }
 
 function rulePerfTone(perf) {
-  if (!perf?.hasSample) return "border-white/10 bg-white/[0.04] text-gray-300";
+  if (!perf?.hasSample) return "border-sl-border bg-white/[0.04] text-sl-sub";
   const c = Number(perf.confidenceScore || 0);
   if (c > 0.7) return "border-emerald-500/35 bg-emerald-500/10 text-emerald-200";
   if (c >= 0.5) return "border-amber-500/35 bg-amber-500/10 text-amber-200";
-  return "border-white/10 bg-white/[0.04] text-gray-300";
+  return "border-sl-border bg-white/[0.04] text-sl-sub";
 }
 
 function formatRulePerfLabel(perf) {
@@ -124,7 +124,7 @@ function formatLatestOutcomeLine(perf) {
 function tri(v) {
   if (v === true) return { label: "YES", cls: "border-emerald-500/35 bg-emerald-500/10 text-emerald-200" };
   if (v === false) return { label: "NO", cls: "border-red-500/35 bg-red-500/10 text-red-200" };
-  return { label: "UNK", cls: "border-white/10 bg-white/[0.04] text-gray-300" };
+  return { label: "UNK", cls: "border-sl-border bg-white/[0.04] text-sl-sub" };
 }
 
 function hasPumpRoute(market) {
@@ -147,9 +147,9 @@ function dedupeDexPairs(pairs) {
 
 function MetricCell({ label, value }) {
   return (
-    <div className="min-w-0 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">{label}</p>
-      <p className="mt-1 truncate font-mono text-sm font-semibold text-white">{value}</p>
+    <div className="min-w-0 border border-white/[0.07] bg-white/[0.025] px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sl-muted">{label}</p>
+      <p className="mt-1 truncate font-mono text-sm font-semibold text-sl-text">{value}</p>
     </div>
   );
 }
@@ -162,29 +162,29 @@ function TokenHeroBar({ address, market, analysis, terminal, statusTone, statusL
   const score = Math.round(Number(terminal?.signalStrength ?? analysis?.confidence ?? 0));
 
   return (
-    <section className="sticky top-[var(--sl-nav-actual,52px)] z-30 rounded-2xl border border-white/10 bg-[#080b10]/95 p-3 shadow-2xl shadow-black/35 backdrop-blur-xl">
+    <section className="sticky top-[var(--sl-nav-actual,52px)] z-30 border border-sl-border bg-[#080b10]/95 p-3 shadow-2xl shadow-black/35 backdrop-blur-xl">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="truncate text-2xl font-black tracking-tight text-white">{market.name || market.symbol || "Token"}</h1>
+            <h1 className="truncate text-2xl font-black tracking-tight text-sl-text">{market.name || market.symbol || "Token"}</h1>
             <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-100">SOLANA</span>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-gray-300">{shortMint(address)}</span>
+            <span className="rounded-full border border-sl-border bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-sl-sub">{shortMint(address)}</span>
           </div>
-          <p className="mt-1 text-sm text-gray-500">${market.symbol || "TOKEN"}</p>
+          <p className="mt-1 text-sm text-sl-muted">${market.symbol || "TOKEN"}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-[auto_auto_auto_minmax(14rem,18rem)] sm:items-center sm:justify-end">
           <div className="col-span-2 sm:col-span-1 sm:text-right">
-            <p className="font-mono text-3xl font-black text-white">{usdOrNA(market.price, "$0")}</p>
+            <p className="font-mono text-3xl font-black text-sl-text">{usdOrNA(market.price, "$0")}</p>
             <p className={`font-mono text-sm font-semibold ${Number(market.priceChange24h) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
               {pct(market.priceChange24h)} · 24h
             </p>
           </div>
-          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-center">
+          <div className="border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-center">
             <p className="text-[10px] uppercase tracking-[0.14em] text-emerald-200/80">Grade</p>
             <p className="text-xl font-black text-emerald-100">{analysis.grade || "—"}</p>
           </div>
-          <div className="rounded-xl border border-violet-500/25 bg-violet-500/10 px-3 py-2 text-center">
+          <div className="border border-violet-500/25 bg-violet-500/10 px-3 py-2 text-center">
             <p className="text-[10px] uppercase tracking-[0.14em] text-violet-200/80">Sentinel</p>
             <p className="text-xl font-black text-violet-100">{score}</p>
           </div>
@@ -193,25 +193,25 @@ function TokenHeroBar({ address, market, analysis, terminal, statusTone, statusL
               href={jupiterUrl}
               target="_blank"
               rel={EXTERNAL_ANCHOR_REL}
-              className="flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-6 text-sm font-black uppercase tracking-[0.2em] text-white shadow-[0_0_34px_rgba(99,102,241,0.35)] transition hover:scale-[1.01] hover:from-indigo-400 hover:to-fuchsia-400"
+              className="flex h-14 w-full items-center justify-center bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-6 text-sm font-black uppercase tracking-[0.2em] text-sl-text shadow-[0_0_34px_rgba(99,102,241,0.35)] transition hover:scale-[1.01] hover:from-indigo-400 hover:to-fuchsia-400"
             >
               TRADE NOW
             </a>
             <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-              <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20">DEX</a>
-              <a href={solscanUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-lg border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-gray-100 hover:bg-white/[0.08]">Solscan</a>
-              {pumpUrl ? <a href={pumpUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/10 px-3 py-1.5 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20">Pump</a> : null}
+              <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20">DEX</a>
+              <a href={solscanUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-sl-sub hover:bg-white/[0.08]">Solscan</a>
+              {pumpUrl ? <a href={pumpUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="border border-fuchsia-500/25 bg-fuchsia-500/10 px-3 py-1.5 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20">Pump</a> : null}
             </div>
             <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-              <span className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs">
+              <span className="inline-flex items-center gap-2 border border-sl-border bg-white/5 px-2.5 py-1.5 text-xs">
                 <span className={`h-2.5 w-2.5 rounded-full ${statusTone}`} />
                 {statusLabel}
               </span>
-              <button type="button" onClick={() => setSoundEnabled((v) => !v)} className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs hover:bg-white/10">
+              <button type="button" onClick={() => setSoundEnabled((v) => !v)} className="border border-sl-border bg-white/5 px-2.5 py-1.5 text-xs hover:bg-white/10">
                 {soundEnabled ? "Sound on" : "Sound off"}
               </button>
               <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
-              {proStatusReady && hasToken && hasProAccess ? <Link href="/alerts" className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20">Alerts</Link> : null}
+              {proStatusReady && hasToken && hasProAccess ? <Link href="/alerts" className="border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20">Alerts</Link> : null}
             </div>
           </div>
         </div>
@@ -228,7 +228,7 @@ function TokenAlertStack({ token, convergence, redSig, coordMeta, t }) {
       {convergence?.detected ? (
         <div className="glass-card border border-emerald-500/35 bg-emerald-500/10 px-4 py-3">
           <p className="text-xs uppercase tracking-wider text-emerald-200 font-semibold">{t("token.conv.title")}</p>
-          <p className="text-sm text-gray-200 mt-1">
+          <p className="text-sm text-sl-sub mt-1">
             {t("token.conv.body", {
               count: Math.max(3, Number(convergence?.wallets?.length || 0)),
               minutes: Number(convergence?.windowMinutes || 10)
@@ -256,11 +256,11 @@ function TokenAlertStack({ token, convergence, redSig, coordMeta, t }) {
                 : "border-slate-500/40 bg-slate-500/5"
           }`}
         >
-          <p className="text-xs uppercase tracking-wider font-semibold text-gray-200">
+          <p className="text-xs uppercase tracking-wider font-semibold text-sl-sub">
             {t("token.red.walletCoord")} - {redSig.replace(/_/g, " ")}
           </p>
           {coordMeta && typeof coordMeta === "object" ? (
-            <p className="text-[12px] text-gray-300 mt-2 leading-relaxed">
+            <p className="text-[12px] text-sl-sub mt-2 leading-relaxed">
               {coordMeta.priorClusterAlerts != null
                 ? t("token.red.priorIntro", {
                     a: String(coordMeta.priorClusterAlerts),
@@ -314,15 +314,15 @@ function SentinelIntelligence({ address, analysis, terminal, flaggedWallets, rul
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="sl-label">Sentinel Intelligence</p>
-            <h2 className="mt-1 text-xl font-bold text-white">Signal read</h2>
+            <h2 className="mt-1 text-xl font-bold text-sl-text">Signal read</h2>
           </div>
-          <span className={`rounded-xl border px-4 py-2 text-sm font-black uppercase tracking-[0.14em] ${actionTone(action)}`}>{action}</span>
+          <span className={`border px-4 py-2 text-sm font-black uppercase tracking-[0.14em] ${actionTone(action)}`}>{action}</span>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {[["Risk", risk], ["Smart Money", smartMoney], ["Momentum", momentum]].map(([label, value]) => (
-            <div key={label} className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">{label}</p>
-              <p className="mt-1 font-mono text-lg font-bold text-white">{value}</p>
+            <div key={label} className="border border-white/[0.07] bg-white/[0.025] px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-sl-muted">{label}</p>
+              <p className="mt-1 font-mono text-lg font-bold text-sl-text">{value}</p>
               <div className="mt-1 h-1 rounded-full bg-white/[0.06]">
                 <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400" style={{ width: `${value}%` }} />
               </div>
@@ -330,15 +330,15 @@ function SentinelIntelligence({ address, analysis, terminal, flaggedWallets, rul
           ))}
         </div>
         <div>
-          <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500">Why</p>
-          <ul className="mt-2 space-y-1.5 text-sm text-gray-200">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-sl-muted">Why</p>
+          <ul className="mt-2 space-y-1.5 text-sm text-sl-sub">
             {(why.length ? why : ["Waiting for stronger indexed evidence."]).map((line) => (
               <li key={line} className="flex gap-2"><span className="text-violet-300">•</span><span>{line}</span></li>
             ))}
           </ul>
         </div>
         {ruleLabel ? (
-          <div className={`rounded-xl border px-3 py-2 text-xs ${rulePerfTone(rulePerformance)}`}>
+          <div className={`border px-3 py-2 text-xs ${rulePerfTone(rulePerformance)}`}>
             <p className="font-mono font-semibold">{ruleLabel}</p>
             <p className="mt-1 text-[11px] opacity-80">
               {rulePerformance.hasSample
@@ -351,7 +351,7 @@ function SentinelIntelligence({ address, analysis, terminal, flaggedWallets, rul
         ) : null}
         <Link
           href="/graveyard"
-          className="inline-flex w-fit items-center rounded-lg border border-cyan-400/25 bg-cyan-400/[0.06] px-3 py-2 text-xs font-semibold text-cyan-100 no-underline hover:bg-cyan-400/[0.12]"
+          className="inline-flex w-fit items-center border border-cyan-400/25 bg-cyan-400/[0.06] px-3 py-2 text-xs font-semibold text-cyan-100 no-underline hover:bg-cyan-400/[0.12]"
         >
           View Sentinel&apos;s historical accuracy →
         </Link>
@@ -373,19 +373,19 @@ function SecurityReport({ security }) {
     <section className="glass-card sl-inset space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="sl-label">Security Report</p>
-        <span className="text-[10px] text-gray-500">Compact view</span>
+        <span className="text-[10px] text-sl-muted">Compact view</span>
       </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {[["Mint Renounced", mint], ["Freeze Off", freeze], ["LP Status", lp]].map(([label, v]) => (
-          <div key={label} className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">{label}</p>
-            <span className={`mt-2 inline-flex rounded-lg border px-2 py-1 text-xs font-bold ${v.cls}`}>{v.label}</span>
+          <div key={label} className="border border-white/[0.07] bg-white/[0.025] px-3 py-2">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-sl-muted">{label}</p>
+            <span className={`mt-2 inline-flex border px-2 py-1 text-xs font-bold ${v.cls}`}>{v.label}</span>
           </div>
         ))}
       </div>
-      <details className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2 text-xs text-gray-400">
-        <summary className="cursor-pointer text-gray-200">Full security details</summary>
-        <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap text-[11px] text-gray-500">{JSON.stringify(security || {}, null, 2)}</pre>
+      <details className="border border-white/[0.07] bg-black/20 px-3 py-2 text-xs text-sl-sub">
+        <summary className="cursor-pointer text-sl-sub">Full security details</summary>
+        <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap text-[11px] text-sl-muted">{JSON.stringify(security || {}, null, 2)}</pre>
       </details>
     </section>
   );
@@ -398,16 +398,16 @@ function DexVenuesPanel({ address, market }) {
   return (
     <div className="space-y-2">
       {dexPairs.length === 0 ? (
-        <p className="text-sm text-gray-500">No routed pools returned.</p>
+        <p className="text-sm text-sl-muted">No routed pools returned.</p>
       ) : (
         dexPairs.map((p) => (
-          <div key={String(p?.pairAddress || p?.url || p?.dexId)} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+          <div key={String(p?.pairAddress || p?.url || p?.dexId)} className="flex flex-wrap items-center justify-between gap-2 border border-white/[0.06] bg-sl-card px-3 py-2">
             <div className="min-w-0">
-              <div className="text-sm font-medium capitalize text-white">{p.dexId || "DEX"}</div>
-              <div className="truncate font-mono text-[10px] text-gray-500">{p.pairAddress || p.url || "pool"}</div>
+              <div className="text-sm font-medium capitalize text-sl-text">{p.dexId || "DEX"}</div>
+              <div className="truncate font-mono text-[10px] text-sl-muted">{p.pairAddress || p.url || "pool"}</div>
             </div>
             <div className="flex gap-1.5">
-              <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-gray-200">Chart</a>
+              <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-md border border-sl-border bg-white/[0.04] px-2 py-1 text-[11px] text-sl-sub">Chart</a>
               <a href={jupiterUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[11px] text-indigo-100">Jupiter</a>
             </div>
           </div>
@@ -493,7 +493,7 @@ export default function TokenPage() {
       <div className="max-w-xl mx-auto px-4 py-20">
         <div className="glass-card p-8 text-center">
           <h2 className="text-xl font-semibold mb-2">{t("token.invalidTitle")}</h2>
-          <p className="text-gray-400 text-sm">{t("token.invalidBody")}</p>
+          <p className="text-sl-sub text-sm">{t("token.invalidBody")}</p>
         </div>
       </div>
       </>
@@ -509,7 +509,7 @@ export default function TokenPage() {
       <div className="max-w-xl mx-auto px-4 py-20">
         <div className="glass-card p-8 text-center">
           <h2 className="text-xl font-semibold text-red-300 mb-2">{t("token.errorTitle")}</h2>
-          <p className="text-gray-400 text-sm">{t("token.errorBody")}</p>
+          <p className="text-sl-sub text-sm">{t("token.errorBody")}</p>
         </div>
       </div>
       </>
@@ -523,7 +523,7 @@ export default function TokenPage() {
       <div className="max-w-xl mx-auto px-4 py-20">
         <div className="glass-card p-8 text-center">
           <h2 className="text-xl font-semibold mb-2">{t("token.noDataTitle")}</h2>
-          <p className="text-gray-400 text-sm">{t("token.noDataBody")}</p>
+          <p className="text-sl-sub text-sm">{t("token.noDataBody")}</p>
         </div>
       </div>
       </>
@@ -537,16 +537,16 @@ export default function TokenPage() {
         <div className="max-w-xl mx-auto px-4 py-20">
           <div className="glass-card p-8 text-center space-y-4">
             <h2 className="text-xl font-semibold text-amber-200">{t("token.incompleteTitle")}</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">{t("token.incompleteBody")}</p>
+            <p className="text-sl-sub text-sm leading-relaxed">{t("token.incompleteBody")}</p>
             <button
               type="button"
               onClick={() => query.refetch()}
               disabled={query.isFetching}
-              className="px-4 py-2.5 rounded-xl border border-white/15 bg-white/[0.06] text-sm text-gray-100 hover:bg-white/10 disabled:opacity-50"
+              className="px-4 py-2.5 border border-white/15 bg-white/[0.06] text-sm text-sl-sub hover:bg-white/10 disabled:opacity-50"
             >
               {query.isFetching ? t("token.retrying") : t("token.retry")}
             </button>
-            <p className="text-[11px] text-gray-600 font-mono break-all">{address}</p>
+            <p className="text-[11px] text-sl-muted font-mono break-all">{address}</p>
           </div>
         </div>
       </>
@@ -637,7 +637,7 @@ export default function TokenPage() {
           <DexVenuesPanel address={address} market={market} />
         </ExpandablePanel>
         <ExpandablePanel title="Full security details" icon={ShieldAlert} defaultOpen={false}>
-          <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-xs text-gray-400">
+          <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-xs text-sl-sub">
             {JSON.stringify(token?.security || {}, null, 2)}
           </pre>
         </ExpandablePanel>
@@ -650,13 +650,13 @@ export default function TokenPage() {
 
       <div className="fixed safe-bottom-offset left-1/2 -translate-x-1/2 z-40 xl:hidden">
         <div className="glass-card px-2 py-1 flex items-center gap-1">
-          <a href="#chart" className="px-3 h-8 rounded-lg text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
+          <a href="#chart" className="px-3 h-8 text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
             {t("token.nav.chart")}
           </a>
-          <a href="#intel" className="px-3 h-8 rounded-lg text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
+          <a href="#intel" className="px-3 h-8 text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
             {t("token.nav.intel")}
           </a>
-          <a href="#flow" className="px-3 h-8 rounded-lg text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
+          <a href="#flow" className="px-3 h-8 text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
             {t("token.nav.flow")}
           </a>
         </div>

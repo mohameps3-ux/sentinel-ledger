@@ -12,7 +12,7 @@ export function RankBadge({ rank }) {
         ? "bg-slate-300/10 text-slate-100 border-slate-300/30"
         : rank === 3
           ? "bg-orange-500/15 text-orange-200 border-orange-500/30"
-          : "bg-white/[0.03] text-gray-400 border-white/10";
+          : "bg-white/[0.03] text-sl-sub border-sl-border";
   return (
     <span className={`${base} ${tone}`} title={`Rank #${rank}`}>
       #{rank}

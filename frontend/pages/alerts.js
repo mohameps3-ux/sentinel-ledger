@@ -334,10 +334,10 @@ export default function ProAlertsPage() {
           <section className="terminal-panel">
             <div className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-2.5 border-b border-white/[0.06]">
               <div>
-                <p className="text-[10px] font-semibold tracking-[0.22em] text-gray-500 uppercase">
+                <p className="text-[10px] font-semibold tracking-[0.22em] text-sl-muted uppercase">
                   Active Alerts Feed
                 </p>
-                <p className="text-[9px] text-gray-600 font-mono mt-0.5">{t("alerts.dispatchSubtitle")}</p>
+                <p className="text-[9px] text-sl-muted font-mono mt-0.5">{t("alerts.dispatchSubtitle")}</p>
               </div>
             </div>
             {!priorityFeed.items.length ? (
@@ -373,7 +373,7 @@ export default function ProAlertsPage() {
                 })}
               </div>
             )}
-            <p className="px-4 py-2 text-[9px] text-gray-600 font-mono border-t border-white/[0.05] leading-relaxed">
+            <p className="px-4 py-2 text-[9px] text-sl-muted font-mono border-t border-white/[0.05] leading-relaxed">
               {t("alerts.dispatchFoot")}
             </p>
           </section>
@@ -398,7 +398,7 @@ export default function ProAlertsPage() {
             ) : null}
 
             {token && loading ? (
-              <div className="flex items-center gap-2 text-gray-400">
+              <div className="flex items-center gap-2 text-sl-sub">
                 <Loader2 className="animate-spin" size={18} />
                 {t("alerts.loading")}
               </div>
@@ -406,8 +406,8 @@ export default function ProAlertsPage() {
 
             {token && !loading && !pro ? (
               <div className="border border-purple-500/25 bg-purple-500/10 px-4 py-4">
-                <p className="text-gray-200 font-medium mb-2">{t("alerts.upgradeTitle")}</p>
-                <p className="text-sm text-gray-400 mb-4">{t("alerts.upgradeBody")}</p>
+                <p className="text-sl-sub font-medium mb-2">{t("alerts.upgradeTitle")}</p>
+                <p className="text-sm text-sl-sub mb-4">{t("alerts.upgradeBody")}</p>
                 <Link href="/pricing" className="btn-ghost-sm">
                   {t("alerts.viewPricing")}
                 </Link>
@@ -417,13 +417,13 @@ export default function ProAlertsPage() {
             {token && !loading && pro ? (
               <>
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-white">{t("alerts.step1Title")}</p>
+                  <p className="text-sm font-semibold text-sl-text">{t("alerts.step1Title")}</p>
                   {!BOT ? (
                     <p className="text-sm text-amber-200 leading-relaxed">
                       {t("alerts.botEnvHint")}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-400">{t("alerts.widgetHint")}</p>
+                    <p className="text-sm text-sl-sub">{t("alerts.widgetHint")}</p>
                   )}
                   <div id="tg-login-widget" className="min-h-[44px]" />
                   {settings.linked ? (
@@ -435,9 +435,9 @@ export default function ProAlertsPage() {
                 </div>
 
                 {isWebPushEnvironmentSupported() ? (
-                  <div className="space-y-2 border-t border-white/10 pt-6">
-                    <p className="text-sm font-semibold text-white">{t("alerts.browserSectionTitle")}</p>
-                    <p className="text-xs text-gray-500">{t("alerts.browserSectionBody")}</p>
+                  <div className="space-y-2 border-t border-sl-border pt-6">
+                    <p className="text-sm font-semibold text-sl-text">{t("alerts.browserSectionTitle")}</p>
+                    <p className="text-xs text-sl-muted">{t("alerts.browserSectionBody")}</p>
                     <div className="flex flex-wrap items-center gap-2">
                       {!thisBrowserSubscribed ? (
                         <button
@@ -462,8 +462,8 @@ export default function ProAlertsPage() {
                   </div>
                 ) : null}
 
-                <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-6">
-                  <p className="text-sm font-semibold text-white w-full sm:w-auto">{t("alerts.step2Title")}</p>
+                <div className="flex flex-wrap items-center gap-3 border-t border-sl-border pt-6">
+                  <p className="text-sm font-semibold text-sl-text w-full sm:w-auto">{t("alerts.step2Title")}</p>
                   <button
                     type="button"
                     disabled={!hasDeliveryChannel || toggling}
@@ -471,25 +471,25 @@ export default function ProAlertsPage() {
                     className={`btn-ghost-sm ${
                       settings.enabled
                         ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
-                        : "border-white/15 bg-white/5 text-gray-300"
+                        : "border-white/15 bg-white/5 text-sl-sub"
                     } disabled:opacity-40`}
                   >
                     {toggling ? t("alerts.saving") : settings.enabled ? t("alerts.alertsOnBtn") : t("alerts.alertsOffBtn")}
                   </button>
-                  {!hasDeliveryChannel ? <span className="text-xs text-gray-500">{t("alerts.deliveryOrBrowser")}</span> : null}
+                  {!hasDeliveryChannel ? <span className="text-xs text-sl-muted">{t("alerts.deliveryOrBrowser")}</span> : null}
                 </div>
 
                 {canConfigurePrefs ? (
-                  <div className="space-y-3 border-t border-white/10 pt-6">
-                    <p className="text-sm font-semibold text-white">{t("alerts.step3Title")}</p>
-                    <p className="text-xs text-gray-500">{t("alerts.sensitivityHelp")}</p>
+                  <div className="space-y-3 border-t border-sl-border pt-6">
+                    <p className="text-sm font-semibold text-sl-text">{t("alerts.step3Title")}</p>
+                    <p className="text-xs text-sl-muted">{t("alerts.sensitivityHelp")}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <label className="block text-xs text-gray-400">
+                      <label className="block text-xs text-sl-sub">
                         {t("alerts.labelStrategy")}
                         <select
                           value={p.strategy}
                           onChange={(e) => setPref("strategy", e.target.value)}
-                          className="mt-1 w-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                          className="mt-1 w-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-sl-text"
                         >
                           {settings.strategies.map((s) => (
                             <option key={s} value={s}>
@@ -498,12 +498,12 @@ export default function ProAlertsPage() {
                           ))}
                         </select>
                       </label>
-                      <label className="block text-xs text-gray-400">
+                      <label className="block text-xs text-sl-sub">
                         {t("alerts.labelDirection")}
                         <select
                           value={p.direction}
                           onChange={(e) => setPref("direction", e.target.value)}
-                          className="mt-1 w-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                          className="mt-1 w-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-sl-text"
                         >
                           <option value="any">{t("alerts.directionAny")}</option>
                           <option value="up">{t("alerts.directionUp")}</option>
@@ -511,7 +511,7 @@ export default function ProAlertsPage() {
                         </select>
                       </label>
                     </div>
-                    <label className="flex items-start gap-2 text-xs text-gray-300">
+                    <label className="flex items-start gap-2 text-xs text-sl-sub">
                       <input
                         type="checkbox"
                         className="mt-0.5 border-white/20"
@@ -519,11 +519,11 @@ export default function ProAlertsPage() {
                         onChange={(e) => setPref("tacticalRegime", e.target.checked)}
                       />
                       <span>
-                        <span className="block text-gray-200 font-medium">{t("alerts.tacticalRegimeLabel")}</span>
-                        <span className="block text-gray-500 mt-0.5">{t("alerts.tacticalRegimeHelp")}</span>
+                        <span className="block text-sl-sub font-medium">{t("alerts.tacticalRegimeLabel")}</span>
+                        <span className="block text-sl-muted mt-0.5">{t("alerts.tacticalRegimeHelp")}</span>
                       </span>
                     </label>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-sl-sub">
                       <span>
                         {t("alerts.resolvedLine", { minMovePct: p.minMovePct, dedupHours: p.dedupHours })}
                       </span>
@@ -539,7 +539,7 @@ export default function ProAlertsPage() {
                   </div>
                 ) : null}
 
-                <p className="text-xs text-gray-500">{t("alerts.footerHint")}</p>
+                <p className="text-xs text-sl-muted">{t("alerts.footerHint")}</p>
               </>
             ) : null}
           </div>

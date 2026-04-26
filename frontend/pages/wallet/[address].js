@@ -51,7 +51,7 @@ export default function WalletDetailPage() {
   if (!router.isReady) {
     return (
       <div className="sl-container py-10">
-        <div className="glass-card sl-inset inline-flex items-center gap-2 text-gray-400">
+        <div className="glass-card sl-inset inline-flex items-center gap-2 text-sl-sub">
           <Loader2 size={16} className="animate-spin" />
           {t("wallet.page.loadingWallet")}
         </div>
@@ -113,7 +113,7 @@ export default function WalletDetailPage() {
           </div>
 
           {summary.isLoading ? (
-            <div className="mt-4 inline-flex items-center gap-2 text-sm text-gray-400">
+            <div className="mt-4 inline-flex items-center gap-2 text-sm text-sl-sub">
               <Loader2 size={14} className="animate-spin" />
               {t("wallet.summary.loading")}
             </div>
@@ -160,7 +160,7 @@ export default function WalletDetailPage() {
             <span className="section-title">TRADE HISTORY</span>
           </div>
           {behavior.isLoading ? (
-            <div className="inline-flex items-center gap-2 text-sm text-gray-400">
+            <div className="inline-flex items-center gap-2 text-sm text-sl-sub">
               <Loader2 size={14} className="animate-spin" />
               Loading behavior stats...
             </div>
@@ -175,77 +175,77 @@ export default function WalletDetailPage() {
           {behaviorRow ? (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-gray-500 text-xs">Win rate real</p>
+                <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                  <p className="text-sl-muted text-xs">Win rate real</p>
                   <p className="text-emerald-300 font-semibold">{Number(behaviorRow.win_rate_real || 0).toFixed(1)}%</p>
                 </div>
-                <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-gray-500 text-xs">Win rate real (5m)</p>
+                <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                  <p className="text-sl-muted text-xs">Win rate real (5m)</p>
                   <p className="text-emerald-200 font-semibold">{Number(behaviorRow.win_rate_real_5m || 0).toFixed(1)}%</p>
                 </div>
-                <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-gray-500 text-xs">Win rate real (30m)</p>
+                <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                  <p className="text-sl-muted text-xs">Win rate real (30m)</p>
                   <p className="text-emerald-200 font-semibold">{Number(behaviorRow.win_rate_real_30m || 0).toFixed(1)}%</p>
                 </div>
-                <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-gray-500 text-xs">Win rate real (2h)</p>
+                <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                  <p className="text-sl-muted text-xs">Win rate real (2h)</p>
                   <p className="text-emerald-200 font-semibold">{Number(behaviorRow.win_rate_real_2h || 0).toFixed(1)}%</p>
                 </div>
-                <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-gray-500 text-xs">Resolved</p>
-                  <p className="text-white font-semibold">{formatInteger(behaviorRow.resolved_signals || 0)}</p>
+                <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                  <p className="text-sl-muted text-xs">Resolved</p>
+                  <p className="text-sl-text font-semibold">{formatInteger(behaviorRow.resolved_signals || 0)}</p>
                 </div>
-                <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-gray-500 text-xs">Resolved (5m/30m/2h)</p>
-                  <p className="text-white font-semibold">
+                <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                  <p className="text-sl-muted text-xs">Resolved (5m/30m/2h)</p>
+                  <p className="text-sl-text font-semibold">
                     {formatInteger(behaviorRow.resolved_signals_5m || 0)}/{formatInteger(behaviorRow.resolved_signals_30m || 0)}/
                     {formatInteger(behaviorRow.resolved_signals_2h || 0)}
                   </p>
                 </div>
-                <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-gray-500 text-xs">Avg pre-pump size</p>
+                <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                  <p className="text-sl-muted text-xs">Avg pre-pump size</p>
                   <p className="text-cyan-200 font-semibold">${formatUsdAmount(behaviorRow.avg_size_pre_pump_usd || 0)}</p>
                 </div>
-                <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-gray-500 text-xs">Style</p>
+                <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                  <p className="text-sl-muted text-xs">Style</p>
                   <p className="text-violet-200 font-semibold">{behaviorRow.style_label || "—"}</p>
                 </div>
-                <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-gray-500 text-xs">Latency post-deploy</p>
-                  <p className="text-white font-semibold">
+                <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                  <p className="text-sl-muted text-xs">Latency post-deploy</p>
+                  <p className="text-sl-text font-semibold">
                     {behaviorRow.avg_latency_post_deploy_min != null
                       ? `${Number(behaviorRow.avg_latency_post_deploy_min).toFixed(1)} min`
                       : "—"}
                   </p>
                 </div>
-                <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-gray-500 text-xs">Solo / Group</p>
-                  <p className="text-white font-semibold">
+                <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                  <p className="text-sl-muted text-xs">Solo / Group</p>
+                  <p className="text-sl-text font-semibold">
                     {(Number(behaviorRow.solo_buy_ratio || 0) * 100).toFixed(0)}% /{" "}
                     {(Number(behaviorRow.group_buy_ratio || 0) * 100).toFixed(0)}%
                   </p>
                 </div>
-                <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-gray-500 text-xs">Anticipatory</p>
+                <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                  <p className="text-sl-muted text-xs">Anticipatory</p>
                   <p className="text-emerald-200 font-semibold">
                     {(Number(behaviorRow.anticipatory_buy_ratio || 0) * 100).toFixed(0)}%
                   </p>
                 </div>
-                <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
-                  <p className="text-gray-500 text-xs">Breakout</p>
+                <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
+                  <p className="text-sl-muted text-xs">Breakout</p>
                   <p className="text-amber-200 font-semibold">
                     {(Number(behaviorRow.breakout_buy_ratio || 0) * 100).toFixed(0)}%
                   </p>
                 </div>
               </div>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-sl-muted">
                 Computed {behaviorRow.computed_at ? formatDateTime(behaviorRow.computed_at) : "—"} · lookback{" "}
                 {formatInteger(behaviorRow.lookback_days || 0)}d
               </p>
-              <div className="border border-white/10 bg-white/[0.02] p-3">
-                <p className="text-xs text-gray-400 mb-2">Top wallet-token footprints</p>
+              <div className="border border-sl-border bg-sl-card p-3">
+                <p className="text-xs text-sl-sub mb-2">Top wallet-token footprints</p>
                 {!behaviorTokenRows.length ? (
-                  <p className="text-xs text-gray-500">No token features yet.</p>
+                  <p className="text-xs text-sl-muted">No token features yet.</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="data-table">

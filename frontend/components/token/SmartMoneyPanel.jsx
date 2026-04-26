@@ -40,7 +40,7 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
   }
   if (!token) {
     return (
-      <div className="text-gray-400 text-sm text-center py-6 border border-dashed border-gray-700 rounded-xl">
+      <div className="text-gray-400 text-sm text-center py-6 border border-dashed border-gray-700 ">
         Connect wallet and sign in to view PRO smart wallets.
       </div>
     );
@@ -48,7 +48,7 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-dashed border-[#2a2f36] px-4 py-10 text-center space-y-2">
+      <div className="border border-dashed border-[#2a2f36] px-4 py-10 text-center space-y-2">
         <div className="inline-flex h-8 w-8 border-2 border-purple-500/40 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm text-gray-400">Ranking wallets for this mint…</p>
       </div>
@@ -61,8 +61,8 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
 
   if (!wallets.length) {
     return (
-      <div className="text-gray-500 text-sm text-center py-8 border border-dashed border-gray-700 rounded-xl space-y-3 px-4">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.08] mx-auto">
+      <div className="text-gray-500 text-sm text-center py-8 border border-dashed border-gray-700 space-y-3 px-4">
+        <div className="inline-flex items-center justify-center w-12 h-12 bg-white/[0.04] border border-white/[0.08] mx-auto">
           <Radio size={22} className="text-purple-400" />
         </div>
         <p className="text-gray-300 font-medium">No wallet snapshot yet</p>
@@ -166,7 +166,7 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
                       ["Double-down", Number.isFinite(doubleDownProxy) ? doubleDownProxy : null],
                       ["Cluster", cluster]
                     ].map(([label, value]) => (
-                      <div key={label} className="rounded-lg border border-white/[0.07] bg-white/[0.025] px-2 py-1.5">
+                      <div key={label} className="border border-white/[0.07] bg-white/[0.025] px-2 py-1.5">
                         <p className="text-[8px] uppercase tracking-[0.12em] text-gray-500">{label}</p>
                         <p className="mt-0.5 font-mono text-[12px] text-gray-200">{value != null ? value : "—"}</p>
                       </div>

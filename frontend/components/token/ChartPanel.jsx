@@ -59,7 +59,7 @@ export function ChartPanel({ address, compact = false }) {
             <button
               key={tf}
               onClick={() => setTimeframe(tf)}
-              className={`px-2.5 h-7 rounded-lg text-xs transition ${
+              className={`px-2.5 h-7 text-xs transition ${
                 timeframe === tf
                   ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
                   : "bg-[#0D1216] text-gray-400 hover:text-gray-200"
@@ -72,7 +72,7 @@ export function ChartPanel({ address, compact = false }) {
             href={dexUrl}
             target="_blank"
             rel={EXTERNAL_ANCHOR_REL}
-            className="h-7 px-2 rounded-lg text-xs inline-flex items-center gap-1 bg-[#0D1216] text-gray-300 hover:text-white transition"
+            className="h-7 px-2 text-xs inline-flex items-center gap-1 bg-[#0D1216] text-gray-300 hover:text-white transition"
           >
             Open <ExternalLink size={12} />
           </a>
@@ -81,7 +81,7 @@ export function ChartPanel({ address, compact = false }) {
       <div className={`relative ${heightClass} bg-[#080b10]`}>
         {!shouldLoad ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.16),transparent_46%),#080b10] px-4 text-center">
-            <div className="h-16 w-16 rounded-2xl border border-indigo-400/25 bg-indigo-500/10 shadow-[0_0_30px_rgba(99,102,241,0.16)]" />
+            <div className="h-16 w-16 border border-indigo-400/25 bg-indigo-500/10 shadow-[0_0_30px_rgba(99,102,241,0.16)]" />
             <div>
               <p className="text-sm font-semibold text-white">DexScreener chart paused</p>
               <p className="mt-1 max-w-md text-xs leading-relaxed text-gray-500">
@@ -91,7 +91,7 @@ export function ChartPanel({ address, compact = false }) {
             <button
               type="button"
               onClick={() => setShouldLoad(true)}
-              className="h-10 rounded-xl bg-indigo-500 px-4 text-xs font-black uppercase tracking-[0.14em] text-white hover:bg-indigo-400"
+              className="h-10 bg-indigo-500 px-4 text-xs font-black uppercase tracking-[0.14em] text-white hover:bg-indigo-400"
             >
               Load chart
             </button>

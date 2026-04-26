@@ -91,9 +91,9 @@ function Kpi({ label, value, hint, tone = "neutral" }) {
           : "border-white/[0.08]";
   return (
     <div className={` border ${border} bg-[#0b0f13]/80 p-3 min-w-0`}>
-      <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500 font-semibold truncate">{label}</div>
-      <div className="text-lg font-semibold text-gray-100 mt-1 tabular-nums truncate">{value}</div>
-      {hint ? <div className="text-[11px] text-gray-500 mt-0.5 leading-snug">{hint}</div> : null}
+      <div className="text-[10px] uppercase tracking-[0.14em] text-sl-muted font-semibold truncate">{label}</div>
+      <div className="text-lg font-semibold text-sl-sub mt-1 tabular-nums truncate">{value}</div>
+      {hint ? <div className="text-[11px] text-sl-muted mt-0.5 leading-snug">{hint}</div> : null}
     </div>
   );
 }
@@ -110,7 +110,7 @@ function TabButton({ active, children, onClick, id }) {
       className={`shrink-0 px-3 py-2  text-xs font-semibold border transition whitespace-nowrap ${
         active
           ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,0.08)]"
-          : "border-white/[0.08] bg-white/[0.02] text-gray-400 hover:text-gray-200 hover:border-white/15"
+          : "border-white/[0.08] bg-sl-card text-sl-sub hover:text-sl-sub hover:border-white/15"
       }`}
     >
       {children}
@@ -477,9 +477,9 @@ export default function OpsPage() {
       <PageHead title="Ops Console — Sentinel Ledger" description="Internal operations and observability." />
       <div className="min-h-[70vh] w-full max-w-6xl mx-auto px-4 sm:px-5 py-8 sm:py-10 font-mono">
         <header className="mb-8 sl-card-elevated sl-inset space-y-2">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Internal</p>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">System Health Dashboard</h1>
-          <p className="text-sm text-gray-500 max-w-2xl leading-relaxed">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-sl-muted font-semibold">Internal</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-sl-text tracking-tight">System Health Dashboard</h1>
+          <p className="text-sm text-sl-muted max-w-2xl leading-relaxed">
             Authenticate once for Ops APIs. Signed export integrity checks use a separate public endpoint (no ops key,
             rate-limited) so third parties can validate evidence you share.
           </p>
@@ -494,8 +494,8 @@ export default function OpsPage() {
         <section className="glass-card sl-inset space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-end gap-3 min-w-0">
             <div className="flex-1 min-w-0 space-y-1.5">
-              <label htmlFor="ops-key" className="text-[11px] text-gray-500 font-medium">
-                Ops key <span className="text-gray-600">(stored only in this browser)</span>
+              <label htmlFor="ops-key" className="text-[11px] text-sl-muted font-medium">
+                Ops key <span className="text-sl-muted">(stored only in this browser)</span>
               </label>
               <input
                 id="ops-key"
@@ -504,14 +504,14 @@ export default function OpsPage() {
                 value={opsKey}
                 onChange={(e) => setOpsKey(e.target.value)}
                 placeholder="OMNI_BOT_OPS_KEY"
-                className="w-full h-11  bg-[#0E1318] border border-white/[0.08] px-3 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/40"
+                className="w-full h-11  bg-[#0E1318] border border-white/[0.08] px-3 text-sm text-sl-sub placeholder:text-sl-muted focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/40"
               />
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
               <button
                 type="button"
                 onClick={saveKey}
-                className="h-11 px-4  border border-white/[0.1] bg-white/[0.03] text-sm text-gray-200 hover:bg-white/[0.06] transition"
+                className="h-11 px-4  border border-white/[0.1] bg-white/[0.03] text-sm text-sl-sub hover:bg-white/[0.06] transition"
               >
                 Save locally
               </button>
@@ -519,7 +519,7 @@ export default function OpsPage() {
                 type="button"
                 onClick={loadData}
                 disabled={loading || !hasKey}
-                className="h-11 px-5  bg-gradient-to-r from-violet-600 to-cyan-600 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="h-11 px-5  bg-gradient-to-r from-violet-600 to-cyan-600 text-sm font-semibold text-sl-text hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
                 {loading ? "Loading…" : "Refresh data"}
               </button>
@@ -626,39 +626,39 @@ export default function OpsPage() {
                 />
               </div>
 
-              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5">
-                <h2 className="text-sm font-semibold text-white mb-3">At a glance</h2>
-                <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300">
+              <div className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5">
+                <h2 className="text-sm font-semibold text-sl-text mb-3">At a glance</h2>
+                <div className="grid md:grid-cols-2 gap-4 text-sm text-sl-sub">
                   <div className="space-y-2 min-w-0">
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Entropy guard</p>
+                    <p className="text-[11px] uppercase tracking-wide text-sl-muted font-semibold">Entropy guard</p>
                     <ul className="space-y-1 text-[13px] leading-relaxed">
                       <li>
-                        <span className="text-gray-500">Tracked mints:</span>{" "}
+                        <span className="text-sl-muted">Tracked mints:</span>{" "}
                         {guard ? formatInteger(guard.metrics?.trackedMints || 0) : "—"}
                       </li>
                       <li>
-                        <span className="text-gray-500">Memory:</span>{" "}
+                        <span className="text-sl-muted">Memory:</span>{" "}
                         {guard ? formatBytes(guard.metrics?.memoryUsageBytes || 0) : "—"}
                       </li>
-                      <li className="text-gray-500 break-words">
+                      <li className="text-sl-muted break-words">
                         Flags: sustained {String(sustained)} · memory {String(memAlert)} · pressure{" "}
                         {String(guardPressure)}
                       </li>
                     </ul>
                   </div>
                   <div className="space-y-2 min-w-0">
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Signals</p>
+                    <p className="text-[11px] uppercase tracking-wide text-sl-muted font-semibold">Signals</p>
                     <ul className="space-y-1 text-[13px] leading-relaxed">
                       <li>
-                        <span className="text-gray-500">Pending rows:</span>{" "}
+                        <span className="text-sl-muted">Pending rows:</span>{" "}
                         {perf ? formatInteger(perf.pendingRows || 0) : "—"}
                       </li>
                       <li>
-                        <span className="text-gray-500">Avg outcome:</span>{" "}
+                        <span className="text-sl-muted">Avg outcome:</span>{" "}
                         {perf?.metrics?.avgOutcomePct != null ? `${perf.metrics.avgOutcomePct}%` : "—"}
                       </li>
                       <li>
-                        <span className="text-gray-500">Calibrator:</span>{" "}
+                        <span className="text-sl-muted">Calibrator:</span>{" "}
                         {calib?.lastCalibration?.at ? formatDateTime(calib.lastCalibration.at) : "No run yet"}
                       </li>
                     </ul>
@@ -666,9 +666,9 @@ export default function OpsPage() {
                 </div>
               </div>
 
-              <p className="text-xs text-gray-600">
-                Use <strong className="text-gray-400">Ingestion</strong> and <strong className="text-gray-400">Signals</strong>{" "}
-                tabs for full tables. Support queues live under <strong className="text-gray-400">Operations</strong>.
+              <p className="text-xs text-sl-muted">
+                Use <strong className="text-sl-sub">Ingestion</strong> and <strong className="text-sl-sub">Signals</strong>{" "}
+                tabs for full tables. Support queues live under <strong className="text-sl-sub">Operations</strong>.
               </p>
             </section>
           )}
@@ -678,10 +678,10 @@ export default function OpsPage() {
               id="panel-ingestion"
               role="tabpanel"
               aria-labelledby="tab-ingestion"
-              className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-5"
+              className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5 space-y-5"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold text-white">Entropy guard</h2>
+                <h2 className="text-lg font-semibold text-sl-text">Entropy guard</h2>
                 <span
                   className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${
                     guardPressure
@@ -694,7 +694,7 @@ export default function OpsPage() {
               </div>
 
               {!guard ? (
-                <p className="text-sm text-gray-500">No guard snapshot yet — authenticate and refresh.</p>
+                <p className="text-sm text-sl-muted">No guard snapshot yet — authenticate and refresh.</p>
               ) : (
                 <>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -709,29 +709,29 @@ export default function OpsPage() {
 
                   <div className="grid lg:grid-cols-2 gap-4">
                     <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4 min-w-0">
-                      <div className="text-[11px] text-gray-500 font-semibold mb-2">Top offender</div>
+                      <div className="text-[11px] text-sl-muted font-semibold mb-2">Top offender</div>
                       {guard.topOffenders?.[0] ? (
-                        <p className="text-sm text-gray-200 break-all font-mono leading-relaxed">
+                        <p className="text-sm text-sl-sub break-all font-mono leading-relaxed">
                           {guard.topOffenders[0].mint}
-                          <span className="text-gray-500 font-sans"> · {formatInteger(guard.topOffenders[0].drops)} drops</span>
+                          <span className="text-sl-muted font-sans"> · {formatInteger(guard.topOffenders[0].drops)} drops</span>
                         </p>
                       ) : (
-                        <p className="text-sm text-gray-500">None recorded.</p>
+                        <p className="text-sm text-sl-muted">None recorded.</p>
                       )}
                     </div>
                     <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4 min-w-0">
-                      <div className="text-[11px] text-gray-500 font-semibold mb-2">Drop reasons</div>
+                      <div className="text-[11px] text-sl-muted font-semibold mb-2">Drop reasons</div>
                       {!guard.metrics?.dropsByReason || !Object.keys(guard.metrics.dropsByReason).length ? (
-                        <p className="text-sm text-gray-500">No drops.</p>
+                        <p className="text-sm text-sl-muted">No drops.</p>
                       ) : (
-                        <ul className="space-y-2 text-sm text-gray-200">
+                        <ul className="space-y-2 text-sm text-sl-sub">
                           {Object.entries(guard.metrics.dropsByReason)
                             .sort((a, b) => Number(b[1]) - Number(a[1]))
                             .slice(0, 8)
                             .map(([reason, count]) => (
                               <li key={reason} className="flex justify-between gap-3">
-                                <span className="text-gray-300 break-all min-w-0">{reason}</span>
-                                <span className="tabular-nums text-gray-500 shrink-0">{formatInteger(count)}</span>
+                                <span className="text-sl-sub break-all min-w-0">{reason}</span>
+                                <span className="tabular-nums text-sl-muted shrink-0">{formatInteger(count)}</span>
                               </li>
                             ))}
                         </ul>
@@ -750,10 +750,10 @@ export default function OpsPage() {
               aria-labelledby="tab-signals"
               className="space-y-5"
             >
-              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-5">
-                <h2 className="text-lg font-semibold text-white">Signal performance (48h)</h2>
+              <div className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5 space-y-5">
+                <h2 className="text-lg font-semibold text-sl-text">Signal performance (48h)</h2>
                 {!perf ? (
-                  <p className="text-sm text-gray-500">No performance bundle loaded.</p>
+                  <p className="text-sm text-sl-muted">No performance bundle loaded.</p>
                 ) : (
                   <>
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -773,18 +773,18 @@ export default function OpsPage() {
                     </div>
                     {perf.diagnostics ? (
                       <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4 space-y-3">
-                        <div className="text-[11px] text-gray-500 font-semibold">Why resolved might look low</div>
-                        <p className="text-xs text-gray-400 leading-relaxed">
-                          <strong className="text-gray-300">Resolved rows</strong> here means resolved with a numeric{" "}
-                          <code className="text-gray-500">outcome_pct</code> (used for win rate).{" "}
-                          <strong className="text-gray-300">Sampled</strong> is capped at{" "}
-                          <code className="text-gray-500">maxRows</code>; if you hit the cap, older rows in the window
+                        <div className="text-[11px] text-sl-muted font-semibold">Why resolved might look low</div>
+                        <p className="text-xs text-sl-sub leading-relaxed">
+                          <strong className="text-sl-sub">Resolved rows</strong> here means resolved with a numeric{" "}
+                          <code className="text-sl-muted">outcome_pct</code> (used for win rate).{" "}
+                          <strong className="text-sl-sub">Sampled</strong> is capped at{" "}
+                          <code className="text-sl-muted">maxRows</code>; if you hit the cap, older rows in the window
                           are omitted.
                         </p>
                         <div className="grid sm:grid-cols-2 gap-3 text-sm">
                           <div className="space-y-1">
-                            <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Status (sample)</p>
-                            <ul className="text-gray-300 space-y-0.5 font-mono text-[12px]">
+                            <p className="text-[10px] uppercase tracking-wide text-sl-muted font-semibold">Status (sample)</p>
+                            <ul className="text-sl-sub space-y-0.5 font-mono text-[12px]">
                               <li>pending: {formatInteger(perf.diagnostics.statusBreakdown?.pending ?? 0)}</li>
                               <li>resolved: {formatInteger(perf.diagnostics.statusBreakdown?.resolved ?? 0)}</li>
                               <li>failed: {formatInteger(perf.diagnostics.statusBreakdown?.failed ?? 0)}</li>
@@ -792,8 +792,8 @@ export default function OpsPage() {
                             </ul>
                           </div>
                           <div className="space-y-1">
-                            <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Pipeline hints</p>
-                            <ul className="text-gray-300 space-y-0.5 font-mono text-[12px]">
+                            <p className="text-[10px] uppercase tracking-wide text-sl-muted font-semibold">Pipeline hints</p>
+                            <ul className="text-sl-sub space-y-0.5 font-mono text-[12px]">
                               <li>sample cap hit: {perf.diagnostics.hitSampleLimit ? "yes" : "no"}</li>
                               <li>pending w/o entry price: {formatInteger(perf.diagnostics.pendingMissingEntryPrice ?? 0)}</li>
                               <li>resolved w/o outcome: {formatInteger(perf.diagnostics.resolvedIncompleteOutcome ?? 0)}</li>
@@ -803,14 +803,14 @@ export default function OpsPage() {
                         </div>
                         {perf.diagnostics.failedReasonTop?.length ? (
                           <div>
-                            <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-2">
+                            <p className="text-[10px] uppercase tracking-wide text-sl-muted font-semibold mb-2">
                               Top failure reasons
                             </p>
-                            <ul className="space-y-1 text-sm text-gray-200">
+                            <ul className="space-y-1 text-sm text-sl-sub">
                               {perf.diagnostics.failedReasonTop.map((row) => (
                                 <li key={row.reason} className="flex justify-between gap-3">
-                                  <span className="text-gray-300 break-all min-w-0">{row.reason}</span>
-                                  <span className="tabular-nums text-gray-500 shrink-0">{formatInteger(row.count)}</span>
+                                  <span className="text-sl-sub break-all min-w-0">{row.reason}</span>
+                                  <span className="tabular-nums text-sl-muted shrink-0">{formatInteger(row.count)}</span>
                                 </li>
                               ))}
                             </ul>
@@ -819,18 +819,18 @@ export default function OpsPage() {
                       </div>
                     ) : null}
                     <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
-                      <div className="text-[11px] text-gray-500 font-semibold mb-3">Top signal combos</div>
+                      <div className="text-[11px] text-sl-muted font-semibold mb-3">Top signal combos</div>
                       {!perf.combos?.length ? (
-                        <p className="text-sm text-gray-500">No combo data yet.</p>
+                        <p className="text-sm text-sl-muted">No combo data yet.</p>
                       ) : (
                         <div className="divide-y divide-white/[0.06]">
                           {perf.combos.slice(0, 8).map((c) => (
                             <div
                               key={c.combo}
-                              className="py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm text-gray-200"
+                              className="py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm text-sl-sub"
                             >
                               <span className="font-mono text-[13px] break-all">{c.combo}</span>
-                              <span className="text-[12px] text-gray-500 shrink-0">
+                              <span className="text-[12px] text-sl-muted shrink-0">
                                 WR {c.winRatePct}% · AVG {c.avgOutcomePct}% · n={c.total}
                               </span>
                             </div>
@@ -841,8 +841,8 @@ export default function OpsPage() {
                     <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                         <div>
-                          <div className="text-[11px] text-gray-500 font-semibold">Validation Oracle — rule performance</div>
-                          <p className="mt-1 text-[11px] text-gray-600">
+                          <div className="text-[11px] text-sl-muted font-semibold">Validation Oracle — rule performance</div>
+                          <p className="mt-1 text-[11px] text-sl-muted">
                             Shadow mode. Audit-only; does not affect signal gating.
                           </p>
                         </div>
@@ -851,11 +851,11 @@ export default function OpsPage() {
                         </span>
                       </div>
                       {!oracleRows.length ? (
-                        <p className="text-sm text-gray-500">No validation rows yet.</p>
+                        <p className="text-sm text-sl-muted">No validation rows yet.</p>
                       ) : (
                         <div className="overflow-x-auto">
                           <table className="data-table min-w-full text-left text-xs">
-                            <thead className="text-[10px] uppercase tracking-wide text-gray-500">
+                            <thead className="text-[10px] uppercase tracking-wide text-sl-muted">
                               <tr className="border-b border-white/[0.06]">
                                 <th className="data-th py-2 pr-3">rule_id</th>
                                 <th className="data-th py-2 pr-3 text-right">total_signals</th>
@@ -864,7 +864,7 @@ export default function OpsPage() {
                                 <th className="data-th py-2 pr-3 text-right">confidence_score</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/[0.05] font-mono text-gray-300">
+                            <tbody className="divide-y divide-white/[0.05] font-mono text-sl-sub">
                               {oracleRows.map((row) => {
                                 const total = Number(row.total_signals || 0);
                                 const winRate = total > 0 ? (Number(row.success_count_60m || 0) / total) * 100 : 0;
@@ -882,9 +882,9 @@ export default function OpsPage() {
                                   .join(" · ");
                                 return (
                                   <tr key={row.rule_id}>
-                                    <td className="data-td py-2 pr-3 text-gray-100">
+                                    <td className="data-td py-2 pr-3 text-sl-sub">
                                       <div>{row.rule_id}</div>
-                                      {regimeLine ? <div className="mt-0.5 text-[10px] text-gray-500">{regimeLine}</div> : null}
+                                      {regimeLine ? <div className="mt-0.5 text-[10px] text-sl-muted">{regimeLine}</div> : null}
                                     </td>
                                     <td className="data-td py-2 pr-3 text-right">{formatInteger(total)}</td>
                                     <td className="data-td py-2 pr-3 text-right">{winRate.toFixed(1)}%</td>
@@ -902,22 +902,22 @@ export default function OpsPage() {
                       )}
                     </div>
                     <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
-                      <div className="text-[11px] text-gray-500 font-semibold mb-1">Outcomes by emission regime</div>
-                      <p className="text-[11px] text-gray-600 mb-3">
-                        Resolved rows only. <span className="text-gray-500">legacy</span> = archived before regime
+                      <div className="text-[11px] text-sl-muted font-semibold mb-1">Outcomes by emission regime</div>
+                      <p className="text-[11px] text-sl-muted mb-3">
+                        Resolved rows only. <span className="text-sl-muted">legacy</span> = archived before regime
                         metadata or missing gate meta.
                       </p>
                       {!perf.regimes?.length ? (
-                        <p className="text-sm text-gray-500">No regime-stratified resolved rows in this window.</p>
+                        <p className="text-sm text-sl-muted">No regime-stratified resolved rows in this window.</p>
                       ) : (
                         <div className="divide-y divide-white/[0.06]">
                           {perf.regimes.slice(0, 8).map((r) => (
                             <div
                               key={r.regime}
-                              className="py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm text-gray-200"
+                              className="py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm text-sl-sub"
                             >
                               <span className="font-mono text-[13px] capitalize">{r.regime}</span>
-                              <span className="text-[12px] text-gray-500 shrink-0">
+                              <span className="text-[12px] text-sl-muted shrink-0">
                                 WR {r.winRatePct}% · PF {r.profitFactor ?? "—"} · DD {r.maxDrawdownPct ?? "—"}% · AVG{" "}
                                 {r.avgOutcomePct}% · n={r.total}
                               </span>
@@ -930,8 +930,8 @@ export default function OpsPage() {
                 )}
               </div>
 
-              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
-                <h2 className="text-lg font-semibold text-white">Signal emission gate (Phase A)</h2>
+              <div className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5 space-y-4">
+                <h2 className="text-lg font-semibold text-sl-text">Signal emission gate (Phase A)</h2>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <Kpi label="Gate enabled" value={signalGate?.config ? (signalGate.config.enabled ? "yes" : "no") : "—"} />
                   <Kpi
@@ -949,7 +949,7 @@ export default function OpsPage() {
                     tone={Number(signalGate?.stats?.blocked || 0) > 0 ? "warn" : "neutral"}
                   />
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-sl-muted">
                   Emit rate:{" "}
                   {signalGate?.stats?.emitRate != null ? `${(Number(signalGate.stats.emitRate) * 100).toFixed(1)}%` : "—"} · last
                   decision {signalGate?.stats?.lastDecisionAt ? formatDateTime(signalGate.stats.lastDecisionAt) : "—"}
@@ -980,28 +980,28 @@ export default function OpsPage() {
                 </div>
                 {signalGate?.alpha ? (
                   <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
-                    <div className="text-[11px] text-gray-500 font-semibold mb-2">Alpha layer (Fase A.1 / A.2)</div>
-                    <p className="text-xs text-gray-400 leading-relaxed">
+                    <div className="text-[11px] text-sl-muted font-semibold mb-2">Alpha layer (Fase A.1 / A.2)</div>
+                    <p className="text-xs text-sl-sub leading-relaxed">
                       Gated on calibrated conf: {signalGate.alpha.useCalibratedConfidence ? "yes" : "no"} · min EV (0=off){" "}
                       {signalGate.alpha.minEvProxy != null ? String(signalGate.alpha.minEvProxy) : "—"} · max slip (1=off){" "}
                       {signalGate.alpha.maxSlippageRisk != null ? String(signalGate.alpha.maxSlippageRisk) : "—"} ·
                       block meta skip: {String(signalGate.alpha.blockMetaLabelSkip || false)} · block caution:{" "}
                       {String(signalGate.alpha.blockMetaLabelCaution || false)}. EV/slippage/labels in{" "}
-                      <span className="text-gray-500">score.meta.alphaLayer</span> and archived in{" "}
-                      <span className="text-gray-500">emission_gate</span>.
+                      <span className="text-sl-muted">score.meta.alphaLayer</span> and archived in{" "}
+                      <span className="text-sl-muted">emission_gate</span>.
                     </p>
                   </div>
                 ) : null}
                 {signalGate?.regime?.byRegime ? (
                   <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
-                    <div className="text-[11px] text-gray-500 font-semibold mb-3">Emissions by regime</div>
-                    <ul className="space-y-1.5 text-sm text-gray-200">
+                    <div className="text-[11px] text-sl-muted font-semibold mb-3">Emissions by regime</div>
+                    <ul className="space-y-1.5 text-sm text-sl-sub">
                       {["calm", "trending", "volatile", "unknown"].map((k) => {
                         const r = signalGate.regime.byRegime[k] || {};
                         return (
                           <li key={k} className="flex flex-wrap justify-between gap-2">
-                            <span className="text-gray-300 capitalize">{k}</span>
-                            <span className="tabular-nums text-gray-500 text-xs">
+                            <span className="text-sl-sub capitalize">{k}</span>
+                            <span className="tabular-nums text-sl-muted text-xs">
                               d={formatInteger(r.decisions || 0)} · ok={formatInteger(r.emitted || 0)} · block=
                               {formatInteger(r.blocked || 0)}
                             </span>
@@ -1012,15 +1012,15 @@ export default function OpsPage() {
                   </div>
                 ) : null}
                 <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
-                  <div className="text-[11px] text-gray-500 font-semibold mb-3">Blocked reasons</div>
+                  <div className="text-[11px] text-sl-muted font-semibold mb-3">Blocked reasons</div>
                   {!signalGateBlockedEntries.length ? (
-                    <p className="text-sm text-gray-500">No blocked reasons recorded yet.</p>
+                    <p className="text-sm text-sl-muted">No blocked reasons recorded yet.</p>
                   ) : (
-                    <ul className="space-y-1 text-sm text-gray-200">
+                    <ul className="space-y-1 text-sm text-sl-sub">
                       {signalGateBlockedEntries.slice(0, 8).map(([reason, count]) => (
                         <li key={reason} className="flex justify-between gap-3">
-                          <span className="text-gray-300 break-all min-w-0">{reason}</span>
-                          <span className="tabular-nums text-gray-500 shrink-0">{formatInteger(count)}</span>
+                          <span className="text-sl-sub break-all min-w-0">{reason}</span>
+                          <span className="tabular-nums text-sl-muted shrink-0">{formatInteger(count)}</span>
                         </li>
                       ))}
                     </ul>
@@ -1028,7 +1028,7 @@ export default function OpsPage() {
                 </div>
                 <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4 space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-[11px] text-gray-500 font-semibold">Adaptive tuner (no extra cost)</div>
+                    <div className="text-[11px] text-sl-muted font-semibold">Adaptive tuner (no extra cost)</div>
                     <button
                       type="button"
                       onClick={runSignalGateTunerNow}
@@ -1037,7 +1037,7 @@ export default function OpsPage() {
                       Run tuner now
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-sl-muted">
                     Adaptive enabled:{" "}
                     {signalGateTuner?.tuner?.adaptiveEnabled == null
                       ? "—"
@@ -1047,7 +1047,7 @@ export default function OpsPage() {
                     · last run{" "}
                     {signalGateTuner?.tuner?.lastRunAt ? formatDateTime(signalGateTuner.tuner.lastRunAt) : "—"}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-sl-muted">
                     Lookback {formatInteger(signalGateTuner?.tuner?.lookbackHours || 0)}h · min resolved{" "}
                     {formatInteger(signalGateTuner?.tuner?.minResolvedRows || 0)}
                     {" · "}
@@ -1060,9 +1060,9 @@ export default function OpsPage() {
                     (min n/regime {formatInteger(signalGateTuner?.tuner?.minPerRegime || 0)})
                   </p>
                   {signalGateTuner?.tuner?.lastSuggestion?.regimeTuning?.worstQualified ? (
-                    <p className="text-xs text-gray-500 break-all">
+                    <p className="text-xs text-sl-muted break-all">
                       Worst bucket (tuner):{" "}
-                      <span className="text-gray-300">
+                      <span className="text-sl-sub">
                         {String(signalGateTuner.tuner.lastSuggestion.regimeTuning.worstQualified.regime || "—")}
                       </span>
                       {" · "}
@@ -1070,23 +1070,23 @@ export default function OpsPage() {
                       {signalGateTuner?.tuner?.lastSuggestion?.suggestion?.evidence?.regimeBranch || "—"}
                     </p>
                   ) : signalGateTuner?.tuner?.lastSuggestion?.regimeTuning?.skipReason ? (
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-sl-muted">
                       Regime branch skipped: {signalGateTuner.tuner.lastSuggestion.regimeTuning.skipReason}
                     </p>
                   ) : null}
-                  <p className="text-xs text-gray-400 break-all">
+                  <p className="text-xs text-sl-sub break-all">
                     Last reason: {signalGateTuner?.tuner?.lastSuggestion?.reason || signalGateTuner?.tuner?.lastError || "—"}
                   </p>
                   {signalGateTuner?.tuner?.lastApplied?.regimeBranch ? (
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-sl-muted">
                       Last applied branch: {signalGateTuner.tuner.lastApplied.regimeBranch}
                     </p>
                   ) : null}
                 </div>
               </div>
 
-              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
-                <h2 className="text-lg font-semibold text-white">Freshness trend (signalsLatest)</h2>
+              <div className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5 space-y-4">
+                <h2 className="text-lg font-semibold text-sl-text">Freshness trend (signalsLatest)</h2>
                 <div className="grid sm:grid-cols-3 gap-3">
                   <Kpi
                     label="Supabase rate (24h)"
@@ -1109,19 +1109,19 @@ export default function OpsPage() {
                 </div>
                 <div className="grid lg:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">
+                    <p className="text-[11px] uppercase tracking-wide text-sl-muted font-semibold">
                       Last 24h ({formatInteger(supabaseSeries24h.length)} points)
                     </p>
                     <Sparkline points={supabaseSeries24h} stroke="#22d3ee" />
                   </div>
                   <div className="space-y-2">
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">
+                    <p className="text-[11px] uppercase tracking-wide text-sl-muted font-semibold">
                       Last 7d ({formatInteger(supabaseSeries7d.length)} points)
                     </p>
                     <Sparkline points={supabaseSeries7d} stroke="#a78bfa" />
                   </div>
                 </div>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-sl-muted">
                   SLO alert engine: {sloSnapshot?.status || "n/a"} · history cron{" "}
                   {historyStatus?.cronEnabled ? "enabled" : "disabled"} · retention{" "}
                   {formatInteger(historyStatus?.retentionDays || 0)}d
@@ -1152,14 +1152,14 @@ export default function OpsPage() {
                   <button
                     type="button"
                     onClick={() => downloadHistoryCsv(24)}
-                    className="btn-ghost-sm h-9 px-3  border border-white/[0.1] bg-white/[0.03] text-xs text-gray-200 hover:bg-white/[0.06] transition"
+                    className="btn-ghost-sm h-9 px-3  border border-white/[0.1] bg-white/[0.03] text-xs text-sl-sub hover:bg-white/[0.06] transition"
                   >
                     Export CSV (24h)
                   </button>
                   <button
                     type="button"
                     onClick={() => downloadHistoryCsv(168)}
-                    className="btn-ghost-sm h-9 px-3  border border-white/[0.1] bg-white/[0.03] text-xs text-gray-200 hover:bg-white/[0.06] transition"
+                    className="btn-ghost-sm h-9 px-3  border border-white/[0.1] bg-white/[0.03] text-xs text-sl-sub hover:bg-white/[0.06] transition"
                   >
                     Export CSV (7d)
                   </button>
@@ -1180,17 +1180,17 @@ export default function OpsPage() {
                 </div>
 
                 <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-3 sm:p-4 space-y-2">
-                  <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">
+                  <div className="text-[11px] uppercase tracking-wide text-sl-muted font-semibold">
                     Third-party verify (F4.7)
                   </div>
-                  <p className="text-[11px] text-gray-500 leading-relaxed">
+                  <p className="text-[11px] text-sl-muted leading-relaxed">
                     POST full signed JSON to{" "}
-                    <code className="text-gray-400 break-all">
+                    <code className="text-sl-sub break-all">
                       {getPublicApiUrl()}/api/v1/ops/verify-signed-export
                     </code>
                     . No secrets in the body; server returns PASS/FAIL only. Ed25519 exports can also be checked offline
                     using{" "}
-                    <code className="text-gray-400 break-all">
+                    <code className="text-sl-sub break-all">
                       {getPublicApiUrl()}/api/v1/public/freshness-export-verification-key
                     </code>{" "}
                     (when configured).
@@ -1201,7 +1201,7 @@ export default function OpsPage() {
                     rows={4}
                     spellCheck={false}
                     placeholder='Paste entire signed export JSON here (starts with {"ok":true,"type":"ops_data_freshness_history_signed_export"…})'
-                    className="w-full min-h-[88px]  bg-[#0E1318] border border-white/[0.08] px-2.5 py-2 text-xs text-gray-200 font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/25"
+                    className="w-full min-h-[88px]  bg-[#0E1318] border border-white/[0.08] px-2.5 py-2 text-xs text-sl-sub font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/25"
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     <button
@@ -1226,13 +1226,13 @@ export default function OpsPage() {
                 </div>
               </div>
 
-              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
-                <h2 className="text-lg font-semibold text-white">Calibrator (advisory)</h2>
+              <div className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5 space-y-4">
+                <h2 className="text-lg font-semibold text-sl-text">Calibrator (advisory)</h2>
                 {!calib?.lastCalibration ? (
-                  <p className="text-sm text-gray-500">No calibration snapshot yet.</p>
+                  <p className="text-sm text-sl-muted">No calibration snapshot yet.</p>
                 ) : (
                   <>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-sl-muted">
                       Last run {formatDateTime(calib.lastCalibration.at)} · lookback {calib.lastCalibration.lookbackHours}
                       h
                     </p>
@@ -1245,9 +1245,9 @@ export default function OpsPage() {
                             key={p.signal}
                             className=" border border-white/[0.08] bg-[#0b0f13]/80 px-3 py-2.5 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 min-w-0"
                           >
-                            <span className="font-mono text-gray-200 break-all">{p.signal}</span>
-                            <span className="text-gray-500 text-[13px] shrink-0">
-                              suggested <span className="text-gray-300">{p.suggestedWeight}</span> · Δ{" "}
+                            <span className="font-mono text-sl-sub break-all">{p.signal}</span>
+                            <span className="text-sl-muted text-[13px] shrink-0">
+                              suggested <span className="text-sl-sub">{p.suggestedWeight}</span> · Δ{" "}
                               {Math.round(p.deltaPct * 10000) / 100}%
                             </span>
                           </div>
@@ -1257,9 +1257,9 @@ export default function OpsPage() {
                 )}
               </div>
 
-              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
+              <div className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-lg font-semibold text-white">Wallet behavior memory (F5)</h2>
+                  <h2 className="text-lg font-semibold text-sl-text">Wallet behavior memory (F5)</h2>
                   <button
                     type="button"
                     onClick={runWalletBehaviorNow}
@@ -1288,7 +1288,7 @@ export default function OpsPage() {
                     }
                   />
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-sl-muted">
                   Last tick: {walletBehaviorStatus?.lastTickFinishedAt ? formatDateTime(walletBehaviorStatus.lastTickFinishedAt) : "—"} ·
                   interval {formatInteger(walletBehaviorStatus?.tickIntervalMs || 0)} ms · lookback{" "}
                   {formatInteger(walletBehaviorStatus?.lookbackDays || 0)}d
@@ -1305,22 +1305,22 @@ export default function OpsPage() {
                     : `Horizon sample healthy: all top wallets meet n>=${MIN_HORIZON_SAMPLE} on 5m/30m/2h.`}
                 </div>
                 <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
-                  <div className="text-[11px] text-gray-500 font-semibold mb-3">Top wallets by real win rate</div>
+                  <div className="text-[11px] text-sl-muted font-semibold mb-3">Top wallets by real win rate</div>
                   {!walletBehaviorTop.length ? (
-                    <p className="text-sm text-gray-500">No wallet behavior rows loaded.</p>
+                    <p className="text-sm text-sl-muted">No wallet behavior rows loaded.</p>
                   ) : (
                     <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
                       {walletBehaviorTop.slice(0, 20).map((row) => (
                         <div
                           key={row.wallet_address}
-                          className=" border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-gray-200"
+                          className=" border border-white/[0.07] bg-sl-card px-3 py-2 text-xs text-sl-sub"
                         >
                           <p className="font-mono break-all text-cyan-200">{row.wallet_address}</p>
-                          <p className="text-gray-400 mt-0.5">
+                          <p className="text-sl-sub mt-0.5">
                             WR {Number(row.win_rate_real || 0).toFixed(1)}% · resolved {formatInteger(row.resolved_signals || 0)} · style{" "}
                             {row.style_label || "—"}
                           </p>
-                          <p className="text-gray-500 mt-0.5">
+                          <p className="text-sl-muted mt-0.5">
                             5m/30m/2h WR {Number(row.win_rate_real_5m || 0).toFixed(1)}% /{" "}
                             {Number(row.win_rate_real_30m || 0).toFixed(1)}% / {Number(row.win_rate_real_2h || 0).toFixed(1)}%
                             {" · "}n {formatInteger(row.resolved_signals_5m || 0)}/{formatInteger(row.resolved_signals_30m || 0)}/
@@ -1352,8 +1352,8 @@ export default function OpsPage() {
               <div className=" border border-violet-500/15 bg-violet-500/[0.03] p-4 sm:p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Auto-Discovery</h2>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <h2 className="text-lg font-semibold text-sl-text">Auto-Discovery</h2>
+                    <p className="text-xs text-sl-muted mt-1">
                       Validation Oracle winners → candidate wallets → 6h promotion loop.
                     </p>
                   </div>
@@ -1390,7 +1390,7 @@ export default function OpsPage() {
                     tone={Number(autoDiscoveryStatus?.lastPromotionStats?.promoted || 0) > 0 ? "good" : "neutral"}
                   />
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-sl-muted">
                   Last discovery: {autoDiscoveryStatus?.lastDiscoveryAt ? formatDateTime(autoDiscoveryStatus.lastDiscoveryAt) : "—"} ·
                   last promotion:{" "}
                   {autoDiscoveryStatus?.lastPromotionFinishedAt ? formatDateTime(autoDiscoveryStatus.lastPromotionFinishedAt) : "—"} ·
@@ -1403,25 +1403,25 @@ export default function OpsPage() {
                   </p>
                 ) : null}
                 <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
-                  <div className="text-[11px] text-gray-500 font-semibold mb-3">Top candidates</div>
+                  <div className="text-[11px] text-sl-muted font-semibold mb-3">Top candidates</div>
                   {!autoDiscoveryCandidates.length ? (
-                    <p className="text-sm text-gray-500">No auto-discovery candidates loaded yet.</p>
+                    <p className="text-sm text-sl-muted">No auto-discovery candidates loaded yet.</p>
                   ) : (
                     <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
                       {autoDiscoveryCandidates.map((row) => (
                         <div
                           key={row.id || row.wallet_address}
-                          className=" border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-gray-200"
+                          className=" border border-white/[0.07] bg-sl-card px-3 py-2 text-xs text-sl-sub"
                         >
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="inline-flex px-1.5 py-0.5 rounded border border-violet-500/35 bg-violet-500/10 text-[10px] font-semibold text-violet-200">
                               {row.status || "candidate"}
                             </span>
-                            <span className="text-gray-400">score {Number(row.candidate_score || 0).toFixed(3)}</span>
-                            <span className="text-gray-500">closed {formatInteger(row.closed_trades || 0)}</span>
+                            <span className="text-sl-sub">score {Number(row.candidate_score || 0).toFixed(3)}</span>
+                            <span className="text-sl-muted">closed {formatInteger(row.closed_trades || 0)}</span>
                           </div>
                           <p className="font-mono break-all text-cyan-200 mt-1">{row.wallet_address}</p>
-                          <p className="text-gray-500 mt-0.5 break-all">
+                          <p className="text-sl-muted mt-0.5 break-all">
                             mint {row.discovered_from_mint || "—"} · rule {row.discovery_rule_id || "—"} · outcome{" "}
                             {row.discovery_outcome_pct != null ? `${(Number(row.discovery_outcome_pct) * 100).toFixed(1)}%` : "—"}
                           </p>
@@ -1432,9 +1432,9 @@ export default function OpsPage() {
                 </div>
               </div>
 
-              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
+              <div className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-lg font-semibold text-white">Coordination red alerts (F6)</h2>
+                  <h2 className="text-lg font-semibold text-sl-text">Coordination red alerts (F6)</h2>
                   <button
                     type="button"
                     onClick={runWalletCoordinationNow}
@@ -1464,21 +1464,21 @@ export default function OpsPage() {
                     tone={highScoreCoordRows.length > 0 ? "bad" : "good"}
                   />
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-sl-muted">
                   Last tick: {walletCoordStatus?.lastTickFinishedAt ? formatDateTime(walletCoordStatus.lastTickFinishedAt) : "—"} ·
                   interval {formatInteger(walletCoordStatus?.tickIntervalMs || 0)} ms · lookback{" "}
                   {formatInteger(walletCoordStatus?.lookbackDays || 0)}d
                 </p>
                 <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
-                  <div className="text-[11px] text-gray-500 font-semibold mb-3">Recent coordination alerts</div>
+                  <div className="text-[11px] text-sl-muted font-semibold mb-3">Recent coordination alerts</div>
                   {!coordRows.length ? (
-                    <p className="text-sm text-gray-500">No coordination alerts loaded.</p>
+                    <p className="text-sm text-sl-muted">No coordination alerts loaded.</p>
                   ) : (
                     <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
                       {coordRows.map((row) => (
                         <div
                           key={row.id || `${row.mint}-${row.detected_at}-${row.cluster_key}`}
-                          className=" border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-gray-200"
+                          className=" border border-white/[0.07] bg-sl-card px-3 py-2 text-xs text-sl-sub"
                         >
                           <div className="flex flex-wrap items-center gap-2">
                             <span
@@ -1490,33 +1490,33 @@ export default function OpsPage() {
                             >
                               {String(row.severity || "N/A").toUpperCase()}
                             </span>
-                            <span className="text-gray-400">score {Number(row.score || 0).toFixed(3)}</span>
-                            <span className="text-gray-500">{row.detected_at ? formatDateTime(row.detected_at) : "—"}</span>
+                            <span className="text-sl-sub">score {Number(row.score || 0).toFixed(3)}</span>
+                            <span className="text-sl-muted">{row.detected_at ? formatDateTime(row.detected_at) : "—"}</span>
                           </div>
                           <p className="font-mono break-all text-cyan-200 mt-1">{row.mint || "—"}</p>
-                          <p className="text-gray-400 mt-0.5">
+                          <p className="text-sl-sub mt-0.5">
                             wallets {formatInteger(row.wallet_count || 0)} · spread {formatInteger(row.spread_sec || 0)}s · latency{" "}
                             {row.latency_from_deploy_min != null ? `${Number(row.latency_from_deploy_min).toFixed(1)}m` : "—"}
                           </p>
-                          <p className="text-gray-500 mt-0.5 break-all">{row.reason || "—"}</p>
+                          <p className="text-sl-muted mt-0.5 break-all">{row.reason || "—"}</p>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
                 <div className=" border border-cyan-500/15 bg-[#0b0f13]/80 p-4 mt-4">
-                  <div className="text-[11px] text-gray-500 font-semibold mb-1">T+N market outcomes (coordination_outcomes)</div>
+                  <div className="text-[11px] text-sl-muted font-semibold mb-1">T+N market outcomes (coordination_outcomes)</div>
                   {walletCoordOutcomesDegraded ? (
                     <p className="text-xs text-amber-300/90 mb-2">Degraded: table missing or not migrated — apply `012`–`014` / `npm run db:ensure-signal-performance --prefix backend`, luego `npm run db:verify-schema --prefix backend` y Security Advisor.</p>
                   ) : null}
                   {!outcomeRows.length ? (
-                    <p className="text-sm text-gray-500">No outcome rows yet (or all pending before first resolve tick).</p>
+                    <p className="text-sm text-sl-muted">No outcome rows yet (or all pending before first resolve tick).</p>
                   ) : (
                     <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1 text-xs">
                       {outcomeRows.map((o) => (
                         <div
                           key={o.id || o.alert_id}
-                          className=" border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-gray-200"
+                          className=" border border-white/[0.07] bg-sl-card px-3 py-2 text-sl-sub"
                         >
                           <div className="flex flex-wrap gap-2 items-center">
                             <span
@@ -1532,11 +1532,11 @@ export default function OpsPage() {
                             >
                               {String(o.status || "—")}
                             </span>
-                            <span className="text-gray-400">T+N {o.horizon_min != null ? `${o.horizon_min}m` : "—"}</span>
+                            <span className="text-sl-sub">T+N {o.horizon_min != null ? `${o.horizon_min}m` : "—"}</span>
                             {o.outcome_pct != null && Number.isFinite(Number(o.outcome_pct)) ? (
                               <span className="text-emerald-200/90">Δ {Number(o.outcome_pct).toFixed(2)}%</span>
                             ) : null}
-                            <span className="text-gray-500">
+                            <span className="text-sl-muted">
                               {o.resolved_at ? formatDateTime(o.resolved_at) : o.resolve_after ? `due ${formatDateTime(o.resolve_after)}` : "—"}
                             </span>
                           </div>
@@ -1549,8 +1549,8 @@ export default function OpsPage() {
                 </div>
               </div>
 
-              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5">
-                <h2 className="text-lg font-semibold text-white mb-3">Broadcast</h2>
+              <div className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5">
+                <h2 className="text-lg font-semibold text-sl-text mb-3">Broadcast</h2>
                 <div className="flex flex-col sm:flex-row gap-2 min-w-0">
                   <input
                     value={broadcastMsg}
@@ -1561,29 +1561,29 @@ export default function OpsPage() {
                   <button
                     type="button"
                     onClick={sendBroadcast}
-                    className="btn-ghost-sm h-11 px-5  border border-white/[0.1] bg-white/[0.04] text-sm font-medium text-gray-100 hover:bg-white/[0.08] shrink-0"
+                    className="btn-ghost-sm h-11 px-5  border border-white/[0.1] bg-white/[0.04] text-sm font-medium text-sl-sub hover:bg-white/[0.08] shrink-0"
                   >
                     Send
                   </button>
                 </div>
-                <p className="text-[11px] text-gray-600 mt-2">Requires a valid ops key and server-side routing to Telegram.</p>
+                <p className="text-[11px] text-sl-muted mt-2">Requires a valid ops key and server-side routing to Telegram.</p>
               </div>
 
               <div className="grid xl:grid-cols-2 gap-4">
-                <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 flex flex-col min-h-0">
-                  <h2 className="text-lg font-semibold text-white mb-3">Support tickets</h2>
+                <div className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5 flex flex-col min-h-0">
+                  <h2 className="text-lg font-semibold text-sl-text mb-3">Support tickets</h2>
                   {!tickets.length ? (
-                    <p className="text-sm text-gray-500">No tickets loaded.</p>
+                    <p className="text-sm text-sl-muted">No tickets loaded.</p>
                   ) : (
                     <div className="space-y-2 max-h-[min(420px,55vh)] overflow-y-auto pr-1 overscroll-contain">
                       {tickets.map((t) => (
                         <div key={t.id} className=" border border-white/[0.08] bg-[#0b0f13]/80 p-3">
-                          <div className="flex justify-between gap-3 text-[11px] text-gray-500 mb-1">
+                          <div className="flex justify-between gap-3 text-[11px] text-sl-muted mb-1">
                             <span>{t.channel}</span>
                             <span className="shrink-0">{formatDateTime(t.created_at)}</span>
                           </div>
-                          <p className="text-sm text-gray-200 break-words">{t.user_message}</p>
-                          <p className="text-[11px] text-gray-500 mt-1">Intent: {t.intent}</p>
+                          <p className="text-sm text-sl-sub break-words">{t.user_message}</p>
+                          <p className="text-[11px] text-sl-muted mt-1">Intent: {t.intent}</p>
                           <div className="flex flex-wrap gap-2 mt-2">
                             <button
                               type="button"
@@ -1591,7 +1591,7 @@ export default function OpsPage() {
                               className={`px-2.5 py-1  text-xs border ${
                                 t.status === "open"
                                   ? "bg-amber-500/12 border-amber-500/35 text-amber-200"
-                                  : "border-white/[0.08] text-gray-400 hover:bg-white/[0.04]"
+                                  : "border-white/[0.08] text-sl-sub hover:bg-white/[0.04]"
                               }`}
                             >
                               Open
@@ -1602,7 +1602,7 @@ export default function OpsPage() {
                               className={`px-2.5 py-1  text-xs border ${
                                 t.status === "resolved"
                                   ? "bg-emerald-500/12 border-emerald-500/35 text-emerald-200"
-                                  : "border-white/[0.08] text-gray-400 hover:bg-white/[0.04]"
+                                  : "border-white/[0.08] text-sl-sub hover:bg-white/[0.04]"
                               }`}
                             >
                               Resolved
@@ -1614,20 +1614,20 @@ export default function OpsPage() {
                   )}
                 </div>
 
-                <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 flex flex-col min-h-0">
-                  <h2 className="text-lg font-semibold text-white mb-3">Bot events</h2>
+                <div className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5 flex flex-col min-h-0">
+                  <h2 className="text-lg font-semibold text-sl-text mb-3">Bot events</h2>
                   {!events.length ? (
-                    <p className="text-sm text-gray-500">No events loaded.</p>
+                    <p className="text-sm text-sl-muted">No events loaded.</p>
                   ) : (
                     <div className="space-y-2 max-h-[min(420px,55vh)] overflow-y-auto pr-1 overscroll-contain">
                       {events.map((ev) => (
                         <div key={ev.id} className=" border border-white/[0.08] bg-[#0b0f13]/80 p-3">
-                          <div className="flex justify-between gap-3 text-[11px] text-gray-500 mb-1">
+                          <div className="flex justify-between gap-3 text-[11px] text-sl-muted mb-1">
                             <span>{ev.channel}</span>
                             <span className="shrink-0">{formatDateTime(ev.created_at)}</span>
                           </div>
-                          <p className="text-sm text-gray-200 break-words">{ev.message}</p>
-                          <p className="text-[11px] text-gray-500 mt-1">Intent: {ev.intent}</p>
+                          <p className="text-sm text-sl-sub break-words">{ev.message}</p>
+                          <p className="text-[11px] text-sl-muted mt-1">Intent: {ev.intent}</p>
                         </div>
                       ))}
                     </div>

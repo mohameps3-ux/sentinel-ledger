@@ -19,13 +19,13 @@ export function NotesPanel({ tokenAddress, initialNote }) {
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Your thoughts on this token..."
-        className="w-full bg-[#0E1318] border soft-divider rounded-xl p-3 text-sm"
+        className="w-full bg-[#0E1318] border soft-divider p-3 text-sm"
         rows="3"
       />
       <button
         onClick={handleSave}
         disabled={isLoading}
-        className="mt-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 rounded-xl text-sm transition"
+        className="mt-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 text-sm transition"
       >
         {saved ? "✓ Saved" : "Save Note"}
       </button>

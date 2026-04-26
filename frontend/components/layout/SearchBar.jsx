@@ -72,10 +72,10 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
       ? "Mint (32–44 chars)…"
       : "Paste Solana token address...";
   const inputCls = headerMicro
-    ? "bg-transparent border-none outline-none w-full min-w-0 text-[10px] text-gray-100 placeholder:text-gray-500"
+    ? "bg-transparent border-none outline-none w-full min-w-0 text-[10px] text-sl-sub placeholder:text-sl-muted"
     : compact
       ? "bg-transparent border-none outline-none w-full font-mono text-xs text-sl-text placeholder:text-sl-muted"
-      : "bg-transparent border-none outline-none w-full text-sm text-gray-100 placeholder:text-gray-500";
+      : "bg-transparent border-none outline-none w-full text-sm text-sl-sub placeholder:text-sl-muted";
 
   if (navCommand) {
     return (
@@ -101,7 +101,7 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
       <div className="w-full min-w-0 max-w-[5.5rem] sm:max-w-[6.25rem]">
         <form onSubmit={onSearch} className="w-full flex items-center gap-0.5">
           <div className={`sl-input ${h} pl-1 pr-0.5 flex items-center gap-0.5 flex-1 min-w-0`}>
-            <Search size={icon} className="text-gray-500 shrink-0" aria-hidden />
+            <Search size={icon} className="text-sl-muted shrink-0" aria-hidden />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -122,7 +122,7 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
         </form>
         {withRecents && recents.length > 0 ? (
           <div className="mt-0.5 flex flex-wrap items-center gap-0.5 max-w-full">
-            <span className="text-[6px] uppercase text-gray-600 shrink-0">R</span>
+            <span className="text-[6px] uppercase text-sl-muted shrink-0">R</span>
             {recents.slice(0, 3).map((mint) => {
               const ok = isProbableSolanaMint(mint);
               return (
@@ -134,7 +134,7 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
                     if (!ok) return;
                     router.push(`/token/${encodeURIComponent(mint)}`);
                   }}
-                  className="font-mono text-[6px] px-0.5 py-0 rounded border border-white/[0.08] bg-white/[0.03] text-gray-500 hover:text-white"
+                  className="font-mono text-[6px] px-0.5 py-0 rounded border border-white/[0.08] bg-white/[0.03] text-sl-muted hover:text-sl-text"
                 >
                   {mint.slice(0, 3)}…{mint.slice(-2)}
                 </button>
@@ -150,7 +150,7 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
     <div className="w-full min-w-0">
       <form onSubmit={onSearch} className="w-full flex items-center gap-1.5 sm:gap-2">
         <div className={`sl-input ${h} px-2.5 sm:px-3 flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0`}>
-          <Search size={icon} className="text-gray-500 shrink-0" aria-hidden />
+          <Search size={icon} className="text-sl-muted shrink-0" aria-hidden />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -169,7 +169,7 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
       </form>
       {withRecents && recents.length > 0 ? (
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          <span className="text-[8px] uppercase tracking-wider text-gray-500 shrink-0">Rec.</span>
+          <span className="text-[8px] uppercase tracking-wider text-sl-muted shrink-0">Rec.</span>
           {recents.map((mint) => {
             const ok = isProbableSolanaMint(mint);
             return (
@@ -181,7 +181,7 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
                   if (!ok) return;
                   router.push(`/token/${encodeURIComponent(mint)}`);
                 }}
-                className="font-mono text-[9px] px-1.5 py-0.5 rounded border border-white/[0.08] bg-white/[0.03] text-gray-400 hover:text-white hover:border-emerald-500/35 disabled:opacity-40"
+                className="font-mono text-[9px] px-1.5 py-0.5 rounded border border-white/[0.08] bg-white/[0.03] text-sl-sub hover:text-sl-text hover:border-emerald-500/35 disabled:opacity-40"
               >
                 {mint.slice(0, 4)}…{mint.slice(-4)}
               </button>

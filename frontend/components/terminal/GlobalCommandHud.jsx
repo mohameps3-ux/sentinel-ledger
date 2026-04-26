@@ -149,7 +149,7 @@ export function GlobalCommandHud() {
         href={jupUrl}
         target="_blank"
         rel={EXTERNAL_ANCHOR_REL}
-        className={`inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-500/35 bg-emerald-500/[0.08] px-2.5 text-[11px] font-semibold text-emerald-100 ${!targetIsMint ? "pointer-events-none opacity-35" : ""}`}
+        className={`inline-flex h-8 items-center gap-1.5 border border-emerald-500/35 bg-emerald-500/[0.08] px-2.5 text-[11px] font-semibold text-emerald-100 ${!targetIsMint ? "pointer-events-none opacity-35" : ""}`}
       >
         <Bolt size={13} /> JUP
       </a>
@@ -157,13 +157,13 @@ export function GlobalCommandHud() {
         href={dexUrl}
         target="_blank"
         rel={EXTERNAL_ANCHOR_REL}
-        className={`inline-flex h-8 items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/[0.07] px-2.5 text-[11px] font-semibold text-cyan-100 ${!targetIsMint ? "pointer-events-none opacity-35" : ""}`}
+        className={`inline-flex h-8 items-center gap-1.5 border border-cyan-500/30 bg-cyan-500/[0.07] px-2.5 text-[11px] font-semibold text-cyan-100 ${!targetIsMint ? "pointer-events-none opacity-35" : ""}`}
       >
         <LineChart size={13} /> DEX
       </a>
       <Link
         href={deskUrl}
-        className={`inline-flex h-8 items-center gap-1.5 rounded-lg border border-violet-500/35 bg-violet-500/[0.08] px-2.5 text-[11px] font-semibold text-violet-100 no-underline ${!targetIsMint ? "pointer-events-none opacity-35" : ""}`}
+        className={`inline-flex h-8 items-center gap-1.5 border border-violet-500/35 bg-violet-500/[0.08] px-2.5 text-[11px] font-semibold text-violet-100 no-underline ${!targetIsMint ? "pointer-events-none opacity-35" : ""}`}
         onClick={() => setPaletteOpen(false)}
       >
         <Crosshair size={13} /> DESK
@@ -172,7 +172,7 @@ export function GlobalCommandHud() {
         type="button"
         onClick={follow}
         disabled={!targetIsMint}
-        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-[11px] font-semibold text-gray-200 disabled:opacity-35 disabled:cursor-not-allowed"
+        className="inline-flex h-8 items-center gap-1.5 border border-white/10 bg-white/[0.04] px-2.5 text-[11px] font-semibold text-gray-200 disabled:opacity-35 disabled:cursor-not-allowed"
       >
         <Star size={13} /> {isFollowing ? "Following" : "Follow"}
       </button>
@@ -182,12 +182,12 @@ export function GlobalCommandHud() {
   return (
     <>
       <div className="fixed inset-x-2 bottom-2 z-[210] pointer-events-none hidden md:block">
-        <div className="pointer-events-auto mx-auto max-w-4xl rounded-2xl border border-white/[0.09] bg-[#07090d]/94 px-2.5 py-2 shadow-[0_18px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+        <div className="pointer-events-auto mx-auto max-w-4xl border border-white/[0.09] bg-[#07090d]/94 px-2.5 py-2 shadow-[0_18px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-500/[0.08] px-2 text-[11px] font-semibold text-cyan-100"
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 border border-cyan-500/25 bg-cyan-500/[0.08] px-2 text-[11px] font-semibold text-cyan-100"
             >
               <Command size={13} /> Ctrl+K
             </button>
@@ -205,16 +205,16 @@ export function GlobalCommandHud() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={t("terminal.hud.placeholder")}
-                  className="h-8 w-full rounded-lg border border-white/[0.08] bg-black/30 pl-7 pr-2 font-mono text-[11px] text-gray-100 placeholder:text-gray-600 outline-none focus:border-cyan-500/40"
+                  className="h-8 w-full border border-white/[0.08] bg-black/30 pl-7 pr-2 font-mono text-[11px] text-gray-100 placeholder:text-gray-600 outline-none focus:border-cyan-500/40"
                   spellCheck={false}
                 />
               </div>
-              <button type="submit" className="h-8 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-[11px] font-semibold text-gray-200">
+              <button type="submit" className="h-8 border border-white/10 bg-white/[0.04] px-2.5 text-[11px] font-semibold text-gray-200">
                 {mode === "wallet" ? t("terminal.hud.modeWallet") : t("terminal.hud.modeToken")}
               </button>
             </form>
             {!isControlRoom ? triage : null}
-            <div className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+            <div className="ml-auto inline-flex shrink-0 items-center gap-1.5 border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">
               <span className={`h-2 w-2 rounded-full ${freshnessTone}`} />
               {freshness.label}
               <span className="font-mono normal-case tracking-normal text-gray-500">{freshness.hint}</span>
@@ -238,13 +238,13 @@ export function GlobalCommandHud() {
 
       {paletteOpen ? (
         <div className="fixed inset-0 z-[260] bg-black/65 p-3 backdrop-blur-sm" role="dialog" aria-modal="true">
-          <div className="mx-auto mt-[12vh] max-w-2xl rounded-2xl border border-white/10 bg-[#090b10] p-4 shadow-2xl shadow-black/70">
+          <div className="mx-auto mt-[12vh] max-w-2xl border border-white/10 bg-[#090b10] p-4 shadow-2xl shadow-black/70">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-white">{t("terminal.palette.title")}</p>
                 <p className="text-xs text-gray-500">{t("terminal.palette.subtitle")}</p>
               </div>
-              <button type="button" onClick={() => setPaletteOpen(false)} className="rounded-lg p-1 text-gray-400 hover:bg-white/[0.06] hover:text-white">
+              <button type="button" onClick={() => setPaletteOpen(false)} className="p-1 text-gray-400 hover:bg-white/[0.06] hover:text-white">
                 <X size={18} />
               </button>
             </div>
@@ -259,7 +259,7 @@ export function GlobalCommandHud() {
                 <button
                   type="button"
                   onClick={() => setMode(mode === "wallet" ? "token" : "wallet")}
-                  className="h-11 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-gray-200"
+                  className="h-11 border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-gray-200"
                 >
                   {mode === "wallet" ? t("terminal.hud.modeWallet") : t("terminal.hud.modeToken")}
                 </button>
@@ -268,14 +268,14 @@ export function GlobalCommandHud() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={t("terminal.hud.placeholder")}
-                  className="h-11 min-w-0 flex-1 rounded-xl border border-white/[0.1] bg-black/35 px-3 font-mono text-sm text-gray-100 placeholder:text-gray-600 outline-none focus:border-cyan-500/45"
+                  className="h-11 min-w-0 flex-1 border border-white/[0.1] bg-black/35 px-3 font-mono text-sm text-gray-100 placeholder:text-gray-600 outline-none focus:border-cyan-500/45"
                   spellCheck={false}
                 />
-                <button type="submit" className="h-11 rounded-xl bg-cyan-500 px-4 text-sm font-bold text-black">
+                <button type="submit" className="h-11 bg-cyan-500 px-4 text-sm font-bold text-black">
                   {t("terminal.hud.open")}
                 </button>
               </div>
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-3">
+              <div className="border border-white/[0.08] bg-white/[0.025] p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">Mini-Triage</p>
                   <p className="font-mono text-[10px] text-gray-500">{target ? shortAddress(target) : "no target"}</p>

@@ -3,7 +3,7 @@ import { buildSolscanAccountUrl, EXTERNAL_ANCHOR_REL } from "../../lib/terminalL
 export function DeployerPanel({ deployer }) {
   if (!deployer) {
     return (
-      <div className="text-gray-500 text-sm border border-dashed border-gray-700 rounded-xl p-4 text-center">
+      <div className="text-gray-500 text-sm border border-dashed border-gray-700 p-4 text-center">
         Data not available
       </div>
     );

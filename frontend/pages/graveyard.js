@@ -57,10 +57,10 @@ function ruleTone(winRate) {
 
 function Stat({ label, value, hint }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-black/25 px-3 py-2">
-      <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500 font-semibold">{label}</p>
-      <p className="mt-1 font-mono text-lg font-semibold text-white">{value}</p>
-      {hint ? <p className="mt-0.5 text-[11px] text-gray-500">{hint}</p> : null}
+    <div className="border border-white/[0.08] bg-black/25 px-3 py-2">
+      <p className="text-[10px] uppercase tracking-[0.14em] text-sl-muted font-semibold">{label}</p>
+      <p className="mt-1 font-mono text-lg font-semibold text-sl-text">{value}</p>
+      {hint ? <p className="mt-0.5 text-[11px] text-sl-muted">{hint}</p> : null}
     </div>
   );
 }
@@ -89,7 +89,7 @@ function resultLabel(row) {
 
 function EmptyState({ children }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-5 text-sm text-gray-400">
+    <div className="border border-white/[0.08] bg-white/[0.025] px-4 py-5 text-sm text-sl-sub">
       {children}
     </div>
   );
@@ -121,15 +121,15 @@ export default function VerifiedTrackRecordPage() {
       <div className="sl-container py-8 space-y-6">
         <section className="glass-card sl-inset border-violet-500/20 bg-violet-500/[0.025]">
           <p className="sl-label">{t("terminal.lexicon.verifiedTrackRecord")}</p>
-          <h1 className="text-3xl font-semibold text-white mt-1">Sentinel Verified Track Record</h1>
-          <p className="text-sm text-gray-400 mt-2 max-w-3xl leading-relaxed">
+          <h1 className="text-3xl font-semibold text-sl-text mt-1">Sentinel Verified Track Record</h1>
+          <p className="text-sm text-sl-sub mt-2 max-w-3xl leading-relaxed">
             Every signal. Every outcome. Nothing hidden.
           </p>
           <p className="mt-1 text-xs text-cyan-100/70">
             Data sourced directly from on-chain events and Sentinel Oracle validation.
           </p>
           {totalSignals < 10 ? (
-            <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 text-sm text-amber-100">
+            <div className="mt-4 border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 text-sm text-amber-100">
               Oracle is accumulating validated signals — {int(totalSignals)} signals recorded, {Math.max(0, 10 - totalSignals)} until first metrics.
             </div>
           ) : null}
@@ -154,14 +154,14 @@ export default function VerifiedTrackRecordPage() {
               <EmptyState>Building track record — metrics appear after 10 validated signals.</EmptyState>
             </div>
           )}
-          <div className="lg:col-span-3 text-[11px] text-gray-500">Last updated: {time(data.last_updated)}</div>
+          <div className="lg:col-span-3 text-[11px] text-sl-muted">Last updated: {time(data.last_updated)}</div>
         </section>
 
         <section className="glass-card sl-inset border-white/[0.08] bg-[#080a0d]/90">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
               <p className="sl-label">Rule Performance</p>
-              <h2 className="text-xl font-semibold text-white">Rules ranked by verified confidence</h2>
+              <h2 className="text-xl font-semibold text-sl-text">Rules ranked by verified confidence</h2>
             </div>
           </div>
           {!rules.length ? (
@@ -169,7 +169,7 @@ export default function VerifiedTrackRecordPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="text-[10px] uppercase tracking-[0.14em] text-gray-500">
+                <thead className="text-[10px] uppercase tracking-[0.14em] text-sl-muted">
                   <tr className="border-b border-white/[0.08]">
                     <th className="text-left py-2 pr-3">Rule ID</th>
                     <th className="text-right py-2 px-3">Total Signals</th>
@@ -183,12 +183,12 @@ export default function VerifiedTrackRecordPage() {
                   {rules.map((r) => (
                     <tr key={r.rule_id} className={`border-b ${ruleTone(r.win_rate)} border-white/[0.06]`}>
                       <td className="py-3 pr-3 font-mono text-cyan-200">{r.rule_id}</td>
-                      <td className="py-3 px-3 text-right font-mono text-gray-200">{int(r.total_signals)}</td>
-                      <td className="py-3 px-3 text-right font-mono text-gray-200">{r.win_rate != null ? pct(r.win_rate) : "—"}</td>
-                      <td className="py-3 px-3 text-right font-mono text-gray-200">{r.avg_return != null ? pct(r.avg_return) : "—"}</td>
-                      <td className="py-3 px-3 text-gray-400">{r.best_regime || "—"}</td>
+                      <td className="py-3 px-3 text-right font-mono text-sl-sub">{int(r.total_signals)}</td>
+                      <td className="py-3 px-3 text-right font-mono text-sl-sub">{r.win_rate != null ? pct(r.win_rate) : "—"}</td>
+                      <td className="py-3 px-3 text-right font-mono text-sl-sub">{r.avg_return != null ? pct(r.avg_return) : "—"}</td>
+                      <td className="py-3 px-3 text-sl-sub">{r.best_regime || "—"}</td>
                       <td className="py-3 pl-3 text-right">
-                        <span className={`inline-flex rounded-lg border px-2 py-1 text-[10px] font-bold ${confidenceTone(r.confidence_badge)}`}>
+                        <span className={`inline-flex border px-2 py-1 text-[10px] font-bold ${confidenceTone(r.confidence_badge)}`}>
                           {r.confidence_badge}
                         </span>
                       </td>
@@ -204,7 +204,7 @@ export default function VerifiedTrackRecordPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div>
               <p className="sl-label">Complete Signal History</p>
-              <h2 className="text-xl font-semibold text-white">Every call we made. Unedited.</h2>
+              <h2 className="text-xl font-semibold text-sl-text">Every call we made. Unedited.</h2>
             </div>
             <div className="flex flex-wrap gap-2">
               {FILTERS.map((f) => (
@@ -212,10 +212,10 @@ export default function VerifiedTrackRecordPage() {
                   key={f.id}
                   type="button"
                   onClick={() => setFilter(f.id)}
-                  className={`h-9 px-3 rounded-lg border text-xs font-semibold transition ${
+                  className={`h-9 px-3 border text-xs font-semibold transition ${
                     filter === f.id
                       ? "border-violet-500/40 bg-violet-500/15 text-violet-100"
-                      : "border-white/[0.08] bg-white/[0.03] text-gray-400 hover:text-gray-200"
+                      : "border-white/[0.08] bg-white/[0.03] text-sl-sub hover:text-sl-sub"
                   }`}
                 >
                   {f.label}
@@ -227,23 +227,23 @@ export default function VerifiedTrackRecordPage() {
             <EmptyState>{hasData ? "No signals match this filter." : "Oracle is validating signals — first results in 24-48h."}</EmptyState>
           ) : (
             <div className="space-y-2">
-              <div className="hidden lg:grid grid-cols-[1.1fr_1.1fr_0.9fr_0.75fr_0.8fr_0.7fr_0.7fr_0.7fr_0.9fr] gap-2 px-3 text-[10px] uppercase tracking-[0.14em] text-gray-500">
+              <div className="hidden lg:grid grid-cols-[1.1fr_1.1fr_0.9fr_0.75fr_0.8fr_0.7fr_0.7fr_0.7fr_0.9fr] gap-2 px-3 text-[10px] uppercase tracking-[0.14em] text-sl-muted">
                 <span>Time</span><span>Token</span><span>Symbol</span><span>Strength</span><span>Action</span><span>5m</span><span>15m</span><span>60m</span><span>Result</span>
               </div>
               {rows.map((r) => (
-                <div key={r.id} className={`rounded-xl border px-3 py-3 ${rowTone(r.result)}`}>
+                <div key={r.id} className={`border px-3 py-3 ${rowTone(r.result)}`}>
                   <div className="grid lg:grid-cols-[1.1fr_1.1fr_0.9fr_0.75fr_0.8fr_0.7fr_0.7fr_0.7fr_0.9fr] gap-2 items-center text-xs">
-                    <span className="text-gray-500">{time(r.time)}</span>
+                    <span className="text-sl-muted">{time(r.time)}</span>
                     <Link href={`/token/${encodeURIComponent(r.token || "")}`} className="font-mono text-cyan-200 no-underline break-all">
                       {r.token_name || r.token || "—"}
                     </Link>
-                    <span className="font-mono text-gray-300">{r.symbol || "—"}</span>
-                    <span className="font-mono text-gray-300">{Number(r.strength || 0).toFixed(2)}</span>
-                    <span className="text-gray-200">{r.action || "—"}</span>
+                    <span className="font-mono text-sl-sub">{r.symbol || "—"}</span>
+                    <span className="font-mono text-sl-sub">{Number(r.strength || 0).toFixed(2)}</span>
+                    <span className="text-sl-sub">{r.action || "—"}</span>
                     <span className={`font-mono ${outcomeTone(r.outcome_5m)}`}>{r.outcome_5m != null ? pct(r.outcome_5m) : "Validating..."}</span>
                     <span className={`font-mono ${outcomeTone(r.outcome_15m)}`}>{r.outcome_15m != null ? pct(r.outcome_15m) : "Validating..."}</span>
                     <span className={`font-mono ${outcomeTone(r.outcome_60m)}`}>{r.outcome_60m != null ? pct(r.outcome_60m) : "Validating..."}</span>
-                    <span className="font-semibold text-gray-100">{resultLabel(r)}</span>
+                    <span className="font-semibold text-sl-sub">{resultLabel(r)}</span>
                   </div>
                 </div>
               ))}
@@ -254,19 +254,19 @@ export default function VerifiedTrackRecordPage() {
         <div className="grid lg:grid-cols-2 gap-4">
           <section className="glass-card sl-inset border-emerald-500/20 bg-emerald-500/[0.025]">
             <p className="sl-label">Sentinel&apos;s Best Calls</p>
-            <h2 className="text-xl font-semibold text-white">When the Oracle was right.</h2>
-            <p className="mt-1 text-sm text-gray-500">This is what Sentinel caught before the market moved.</p>
+            <h2 className="text-xl font-semibold text-sl-text">When the Oracle was right.</h2>
+            <p className="mt-1 text-sm text-sl-muted">This is what Sentinel caught before the market moved.</p>
             {!bestCalls.length ? (
-              <p className="text-sm text-gray-500 mt-4">Accumulating verified wins. Showing {bestCalls.length} of 5 available calls.</p>
+              <p className="text-sm text-sl-muted mt-4">Accumulating verified wins. Showing {bestCalls.length} of 5 available calls.</p>
             ) : (
               <div className="mt-4 space-y-2">
                 {bestCalls.map((r) => (
-                  <Link key={r.id} href={`/token/${encodeURIComponent(r.token || "")}`} className="block rounded-xl border border-white/[0.08] bg-black/20 px-3 py-2 no-underline">
+                  <Link key={r.id} href={`/token/${encodeURIComponent(r.token || "")}`} className="block border border-white/[0.08] bg-black/20 px-3 py-2 no-underline">
                     <div className="flex justify-between gap-3 text-sm">
                       <span className="font-mono text-cyan-200 break-all">{r.token_name || r.symbol || r.token}</span>
                       <span className="font-mono text-emerald-300">{pct(r.outcome_60m)}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{time(r.time)} · suggested {r.action} · Smart money was early by {r.smart_money_early_min || "—"}min</p>
+                    <p className="text-xs text-sl-muted mt-1">{time(r.time)} · suggested {r.action} · Smart money was early by {r.smart_money_early_min || "—"}min</p>
                   </Link>
                 ))}
               </div>
@@ -274,18 +274,18 @@ export default function VerifiedTrackRecordPage() {
           </section>
           <section className="glass-card sl-inset border-red-500/20 bg-red-500/[0.02]">
             <p className="sl-label">Where Sentinel Was Wrong</p>
-            <h2 className="text-xl font-semibold text-white">We show our mistakes. That&apos;s what makes this different from every other platform.</h2>
+            <h2 className="text-xl font-semibold text-sl-text">We show our mistakes. That&apos;s what makes this different from every other platform.</h2>
             {!worstCalls.length ? (
-              <p className="text-sm text-gray-500 mt-4">No resolved losses yet — accumulating history.</p>
+              <p className="text-sm text-sl-muted mt-4">No resolved losses yet — accumulating history.</p>
             ) : (
               <div className="mt-4 space-y-2">
                 {worstCalls.map((r) => (
-                  <Link key={r.id} href={`/token/${encodeURIComponent(r.token || "")}`} className="block rounded-xl border border-white/[0.08] bg-black/20 px-3 py-2 no-underline">
+                  <Link key={r.id} href={`/token/${encodeURIComponent(r.token || "")}`} className="block border border-white/[0.08] bg-black/20 px-3 py-2 no-underline">
                     <div className="flex justify-between gap-3 text-sm">
                       <span className="font-mono text-cyan-200 break-all">{r.token_name || r.symbol || r.token}</span>
                       <span className="font-mono text-red-300">{pct(r.outcome_60m)}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{time(r.time)} · suggested {r.action} · Why this happens: regime mismatch / thin liquidity / low sample rule.</p>
+                    <p className="text-xs text-sl-muted mt-1">{time(r.time)} · suggested {r.action} · Why this happens: regime mismatch / thin liquidity / low sample rule.</p>
                   </Link>
                 ))}
               </div>
@@ -293,14 +293,14 @@ export default function VerifiedTrackRecordPage() {
           </section>
         </div>
 
-        <section className="glass-card sl-inset border-white/[0.08] bg-white/[0.02]">
+        <section className="glass-card sl-inset border-white/[0.08] bg-sl-card">
           <p className="sl-label">How Oracle Validates</p>
-          <div className="mt-2 grid md:grid-cols-3 gap-3 text-sm text-gray-400 leading-relaxed">
+          <div className="mt-2 grid md:grid-cols-3 gap-3 text-sm text-sl-sub leading-relaxed">
             <p>Signals are validated at 5, 15, and 60 minutes after emission.</p>
             <p>Win = price increased &gt;5% within 60 minutes.</p>
             <p>All outcomes are calculated from on-chain price data, not manually curated.</p>
           </div>
-          <p className="mt-4 text-sm font-semibold text-gray-200">Nothing is cherry-picked. Nothing is deleted. This page updates automatically.</p>
+          <p className="mt-4 text-sm font-semibold text-sl-sub">Nothing is cherry-picked. Nothing is deleted. This page updates automatically.</p>
         </section>
       </div>
     </>

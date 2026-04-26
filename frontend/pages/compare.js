@@ -214,8 +214,8 @@ export default function ComparePage() {
       <section className="terminal-panel">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06]">
           <div>
-            <p className="text-[10px] font-semibold tracking-[0.22em] uppercase text-gray-500">{t("compare.decision.title")}</p>
-            <p className="text-[11px] text-gray-500 mt-1">{t("compare.decision.body")}</p>
+            <p className="text-[10px] font-semibold tracking-[0.22em] uppercase text-sl-muted">{t("compare.decision.title")}</p>
+            <p className="text-[11px] text-sl-muted mt-1">{t("compare.decision.body")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {chosen?.mint ? (
@@ -240,7 +240,7 @@ export default function ComparePage() {
         </div>
 
         {!loaded.length ? (
-          <div className="px-4 py-8 text-sm text-gray-500">{t("compare.decision.empty")}</div>
+          <div className="px-4 py-8 text-sm text-sl-muted">{t("compare.decision.empty")}</div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
             {ranked.map((row, idx) => {
@@ -255,13 +255,13 @@ export default function ComparePage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[10px] text-gray-500 font-mono">#{idx + 1}</p>
-                      <h2 className="text-lg font-semibold text-white truncate mt-1">{symbol}</h2>
-                      <p className="text-[10px] text-gray-500 font-mono mt-1">{compactMint(row.mint)}</p>
+                      <p className="text-[10px] text-sl-muted font-mono">#{idx + 1}</p>
+                      <h2 className="text-lg font-semibold text-sl-text truncate mt-1">{symbol}</h2>
+                      <p className="text-[10px] text-sl-muted font-mono mt-1">{compactMint(row.mint)}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-[9px] uppercase tracking-wider text-gray-500">{t("compare.card.score")}</p>
-                      <p className="text-3xl font-black font-mono text-white">{row.score}</p>
+                      <p className="text-[9px] uppercase tracking-wider text-sl-muted">{t("compare.card.score")}</p>
+                      <p className="text-3xl font-black font-mono text-sl-text">{row.score}</p>
                       {recommended?.mint === row.mint ? <span className="badge-live mt-1">SENTINEL PICK</span> : null}
                     </div>
                   </div>
@@ -270,20 +270,20 @@ export default function ComparePage() {
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
                     <div className="border border-white/[0.07] bg-black/25 px-2 py-1.5">
-                      <p className="text-gray-500">{t("compare.card.grade")}</p>
-                      <p className="font-mono text-gray-100">{token.analysis?.grade || "—"}</p>
+                      <p className="text-sl-muted">{t("compare.card.grade")}</p>
+                      <p className="font-mono text-sl-sub">{token.analysis?.grade || "—"}</p>
                     </div>
                     <div className="border border-white/[0.07] bg-black/25 px-2 py-1.5">
-                      <p className="text-gray-500">{t("compare.card.confidence")}</p>
-                      <p className="font-mono text-gray-100">{safeNum(token.analysis?.confidence)}%</p>
+                      <p className="text-sl-muted">{t("compare.card.confidence")}</p>
+                      <p className="font-mono text-sl-sub">{safeNum(token.analysis?.confidence)}%</p>
                     </div>
                     <div className="border border-white/[0.07] bg-black/25 px-2 py-1.5">
-                      <p className="text-gray-500">{t("compare.metric.liquidity")}</p>
-                      <p className="font-mono text-gray-100">${formatUsdWhole(safeNum(token.market?.liquidity))}</p>
+                      <p className="text-sl-muted">{t("compare.metric.liquidity")}</p>
+                      <p className="font-mono text-sl-sub">${formatUsdWhole(safeNum(token.market?.liquidity))}</p>
                     </div>
                     <div className="border border-white/[0.07] bg-black/25 px-2 py-1.5">
-                      <p className="text-gray-500">{t("compare.metric.top10")}</p>
-                      <p className="font-mono text-gray-100">{safeNum(token.holders?.top10Percentage).toFixed(1)}%</p>
+                      <p className="text-sl-muted">{t("compare.metric.top10")}</p>
+                      <p className="font-mono text-sl-sub">{safeNum(token.holders?.top10Percentage).toFixed(1)}%</p>
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -293,7 +293,7 @@ export default function ComparePage() {
                       className={`btn-ghost-sm ${
                         chosenNow
                           ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-100"
-                          : "border-white/12 bg-white/[0.03] text-gray-300 hover:text-white"
+                          : "border-white/12 bg-white/[0.03] text-sl-sub hover:text-sl-text"
                       }`}
                     >
                       {chosenNow ? t("compare.cta.chosen") : t("compare.cta.choose")}
@@ -317,10 +317,10 @@ export default function ComparePage() {
       <section className="terminal-panel p-4">
         <div className="flex items-center gap-3 mb-5">
           <Star size={18} className="text-purple-300" />
-          <h2 className="sl-h2 text-white">{t("compare.watchlist.h2")}</h2>
+          <h2 className="sl-h2 text-sl-text">{t("compare.watchlist.h2")}</h2>
         </div>
         {!watchlistLocal.length ? (
-          <div className="text-sm text-gray-500">{t("compare.watchlist.empty")}</div>
+          <div className="text-sm text-sl-muted">{t("compare.watchlist.empty")}</div>
         ) : (
           <div className="flex flex-wrap gap-2">
             {watchlistLocal.map((mint) => (
@@ -340,10 +340,10 @@ export default function ComparePage() {
       <section className="terminal-panel overflow-x-auto">
         <div className="flex items-center gap-2 mb-5">
           <Radio size={16} className="text-cyan-300" />
-          <h2 className="sl-h2 text-white">{t("compare.metrics.h2")}</h2>
+          <h2 className="sl-h2 text-sl-text">{t("compare.metrics.h2")}</h2>
         </div>
         {ranked.length < 2 ? (
-          <div className="text-sm text-gray-500">{t("compare.metrics.loadBoth")}</div>
+          <div className="text-sm text-sl-muted">{t("compare.metrics.loadBoth")}</div>
         ) : (
           <table className="data-table min-w-[560px]">
             <thead>
@@ -366,7 +366,7 @@ export default function ComparePage() {
               const best = lowerBetter ? Math.min(...values) : Math.max(...values);
               return (
                 <tr key={key} className="feed-row">
-                  <td className="data-td text-sm text-gray-400">{label}</td>
+                  <td className="data-td text-sm text-sl-sub">{label}</td>
                   {ranked.map((row) => {
                     const v = metricValue(row.token, key);
                     return (
@@ -386,7 +386,7 @@ export default function ComparePage() {
       <section className="terminal-panel p-5">
         <h2 className="text-lg font-semibold mb-2">{t("compare.ranking.h2")}</h2>
         {!recommended ? (
-          <div className="text-sm text-gray-500">{t("compare.ranking.wait")}</div>
+          <div className="text-sm text-sl-muted">{t("compare.ranking.wait")}</div>
         ) : (
           <div className="space-y-2">
             <div className="text-sm text-emerald-300 inline-flex items-center gap-2">
@@ -395,11 +395,11 @@ export default function ComparePage() {
               <strong translate="no">{recommended.token.market?.symbol || compactMint(recommended.mint)}</strong>{" "}
               {t("compare.ranking.preferAfter")}
             </div>
-            <div className="text-sm text-gray-300 inline-flex items-center gap-2">
+            <div className="text-sm text-sl-sub inline-flex items-center gap-2">
               <TrendingUp size={14} />
               {t("compare.ranking.weaker")}
             </div>
-            <div className="text-sm text-gray-400 inline-flex items-center gap-2">
+            <div className="text-sm text-sl-sub inline-flex items-center gap-2">
               <Eye size={14} />
               {t("compare.ranking.watchRest")}
             </div>
