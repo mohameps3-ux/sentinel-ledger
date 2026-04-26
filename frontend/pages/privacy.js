@@ -6,44 +6,47 @@ export default function PrivacyPage() {
   return (
     <>
       <PageHead title={t("privacy.pageTitle")} description={t("privacy.lead")} />
-      <div className="sl-container py-10">
-        <div className="glass-card sl-inset max-w-4xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold">{t("privacy.h1")}</h1>
-        <p className="text-gray-300">{t("privacy.lead")}</p>
+      <div className="max-w-3xl mx-auto px-6 pt-[76px] pb-12">
+        <div className="terminal-panel px-6 py-4 mb-8">
+          <span className="section-title">PRIVACY</span>
+          <h1 className="font-display text-2xl font-bold text-sl-text mt-1">{t("privacy.h1")}</h1>
+        </div>
+        <div className="terminal-panel px-6 py-6">
+        <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.lead")}</p>
 
         <section className="space-y-2">
-          <h2 className="text-xl font-semibold">{t("privacy.s1h")}</h2>
+          <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s1h")}</h2>
           <ul className="list-disc pl-5 text-gray-300 space-y-1">
-            <li>{t("privacy.s1li1")}</li>
-            <li>{t("privacy.s1li2")}</li>
-            <li>{t("privacy.s1li3")}</li>
-            <li>{t("privacy.s1li4")}</li>
+            <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s1li1")}</li>
+            <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s1li2")}</li>
+            <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s1li3")}</li>
+            <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s1li4")}</li>
           </ul>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-xl font-semibold">{t("privacy.s2h")}</h2>
-          <p className="text-gray-300">{t("privacy.s2p")}</p>
+          <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s2h")}</h2>
+          <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s2p")}</p>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-xl font-semibold">{t("privacy.s3h")}</h2>
-          <p className="text-gray-300">{t("privacy.s3p")}</p>
+          <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s3h")}</h2>
+          <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s3p")}</p>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-xl font-semibold">{t("privacy.s4h")}</h2>
-          <p className="text-gray-300">{t("privacy.s4p")}</p>
+          <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s4h")}</h2>
+          <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s4p")}</p>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-xl font-semibold">{t("privacy.s5h")}</h2>
-          <p className="text-gray-300">{t("privacy.s5p")}</p>
+          <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s5h")}</h2>
+          <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s5p")}</p>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-xl font-semibold">{t("privacy.s6h")}</h2>
-          <p className="text-gray-300">{t("privacy.s6p")}</p>
+          <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s6h")}</h2>
+          <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s6p")}</p>
         </section>
         </div>
       </div>

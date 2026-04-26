@@ -6,17 +6,19 @@ export default function ContactPage() {
   return (
     <>
       <PageHead title={t("contact.pageTitle")} description={t("contact.p1")} />
-      <div className="sl-container py-10">
-        <section className="glass-card sl-inset max-w-3xl mx-auto space-y-4">
-          <p className="sl-label">{t("contact.label")}</p>
-          <h1 className="sl-h2 text-white">{t("contact.title")}</h1>
-          <p className="text-sm text-gray-300">{t("contact.p1")}</p>
-          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm">
-            <p className="text-gray-400">{t("contact.flowTitle")}</p>
+      <div className="max-w-3xl mx-auto px-6 pt-[76px] pb-12">
+        <div className="terminal-panel px-6 py-4 mb-8">
+          <span className="section-title">CONTACT</span>
+          <h1 className="font-display text-2xl font-bold text-sl-text mt-1">{t("contact.title")}</h1>
+        </div>
+        <section className="terminal-panel px-6 py-6">
+          <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("contact.p1")}</p>
+          <div className="border border-white/10 bg-white/[0.02] p-4 text-sm">
+            <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("contact.flowTitle")}</p>
             <ul className="mt-2 space-y-1 text-gray-200">
-              <li>• {t("contact.flow1")}</li>
-              <li>• {t("contact.flow2")}</li>
-              <li>• {t("contact.flow3")}</li>
+              <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("contact.flow1")}</li>
+              <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("contact.flow2")}</li>
+              <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("contact.flow3")}</li>
             </ul>
           </div>
         </section>
