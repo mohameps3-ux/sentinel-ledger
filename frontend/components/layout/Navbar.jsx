@@ -2,30 +2,46 @@ import Link from "next/link";
 import { WalletButton } from "./WalletButton";
 import { useRouter } from "next/router";
 import { SearchBar } from "./SearchBar";
+import { APP_NAV_LINKS } from "./appNavConfig";
 import { LanguageMenu } from "./LanguageMenu";
 import { useLocale } from "../../contexts/LocaleContext";
 import { useLayoutEffect, useRef, useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { SentinelLogo } from "./SentinelLogo";
-import { useWarMode } from "../../contexts/WarModeContext";
 
 const PRIMARY_NAV = [
   { href: "/", label: "Home", match: "/" },
-  { href: "/scanner", label: "Scanner", match: "/scanner" },
-  { href: "/smart-money", label: "Smart Money", match: "/smart-money" },
   { href: "/alerts", label: "Alerts", match: "/alerts" },
-  { href: "/graveyard", label: "Track Record", match: "/graveyard" }
+  { href: "/graveyard", label: "Track Record", match: "/graveyard" },
+  { href: "/smart-money", label: "Smart Money", match: "/smart-money" },
+  { href: "/scanner", label: "Scanner", match: "/scanner" }
 ];
 
 export function Navbar() {
   const { t } = useLocale();
-  const { isWarMode, toggleWarMode } = useWarMode();
   const router = useRouter();
+  const isHome = router.pathname === "/";
   const isControlRoom = ["/ops", "/pricing", "/legal", "/privacy", "/terms", "/contact"].includes(router.pathname);
   const showTradingChrome = !isControlRoom;
   const navRef = useRef(null);
   const menuRef = useRef(null);
+  const [stalkerUnread, setStalkerUnread] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const clearStalker = () => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("walletStalkerUnread", "0");
+      setStalkerUnread(0);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const refresh = () => setStalkerUnread(Number(localStorage.getItem("walletStalkerUnread") || 0));
+    refresh();
+    window.addEventListener("wallet-stalker-update", refresh);
+    return () => window.removeEventListener("wallet-stalker-update", refresh);
+  }, []);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -62,119 +78,147 @@ export function Navbar() {
       data-sl-nav="slim"
       data-sl-ui="home-compact-v2"
       data-sentinel-build={process.env.NEXT_PUBLIC_GIT_SHA}
-      className="fixed top-0 left-0 right-0 z-50 w-full border-b border-sl-border bg-sl-panel"
+      className="fixed top-0 left-0 right-0 w-full z-50 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(8,9,15,0.95)] backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
     >
-      <div ref={menuRef} className="relative w-full">
-        <div className="hidden h-13 min-w-0 items-center gap-0 px-4 md:flex">
-          <div className="flex flex-shrink-0 items-center gap-6">
-            <SentinelLogo />
-            <div className="mx-3 h-5 w-px flex-shrink-0 self-stretch bg-sl-border" aria-hidden />
-            <div className="flex items-center gap-0">
+      <div ref={menuRef} className="max-w-7xl mx-auto px-2 sm:px-4 relative">
+        <div className="hidden sm:flex items-center justify-between gap-3 min-h-12 h-12 min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <WalletButton navCompact />
+            <span className="inline-flex h-7 items-center rounded-full border border-indigo-400/30 bg-indigo-500/15 px-2.5 font-mono text-[10px] font-bold tracking-[0.12em] text-indigo-100">
+              FREE
+            </span>
+            <LanguageMenu compact />
+            <span className="h-5 w-px bg-white/10" aria-hidden />
             {PRIMARY_NAV.map((item) => {
               const active = router.pathname === item.match;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                    className={`flex h-13 items-center border-b-2 px-4 font-mono text-xs uppercase tracking-wider no-underline transition-colors duration-150 ${
+                  className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold no-underline transition ${
                     active
-                        ? "border-sl-violet text-sl-text"
-                        : "border-transparent text-sl-muted hover:text-sl-sub"
+                      ? "bg-[var(--sl-indigo-dim)] text-[var(--sl-text-accent)]"
+                      : "text-[var(--sl-text-secondary)] hover:bg-white/[0.04] hover:text-white"
                   }`}
                   aria-current={active ? "page" : undefined}
                 >
-                    {item.label.toUpperCase()}
+                  {item.label}
                 </Link>
               );
             })}
-            </div>
+            <span className="h-5 w-px bg-white/10" aria-hidden />
+            <span className="sl-badge border-white/10 bg-white/[0.03] text-gray-500">v1.0 BETA</span>
           </div>
 
-          <div className="flex flex-1 justify-center px-6">
-            {showTradingChrome ? (
-              <SearchBar compact navCommand formId="navbar-token-search" />
+          <div className="flex items-center justify-end gap-3 min-w-0">
+            {showTradingChrome && !isHome ? (
+              <div className="hidden lg:block shrink-0 w-40 min-w-0">
+                <SearchBar compact />
+              </div>
             ) : null}
-          </div>
-
-          <div className="flex flex-shrink-0 items-center gap-2">
-            {showTradingChrome ? (
-              <button type="submit" form="navbar-token-search" className="btn-primary">
-                ANALYZE
-              </button>
-            ) : null}
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isWarMode}
-              aria-label={isWarMode ? "Disable war mode" : "Enable war mode"}
-              onClick={toggleWarMode}
-              className={isWarMode ? "btn-war-active" : "btn-war"}
-            >
-              WAR
-            </button>
-            <span className="badge-free">FREE</span>
-            <LanguageMenu compact />
-            <WalletButton navCompact />
+            <Link href="/" className="font-mono text-sm font-extrabold tracking-[0.15em] text-white no-underline">
+              SENTINEL
+            </Link>
+            <SentinelLogo />
           </div>
         </div>
 
-        <div className="flex h-13 items-center justify-between px-4 md:hidden">
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            className="text-sl-sub"
-            aria-expanded={menuOpen}
-            aria-haspopup="true"
-            aria-label={t("layout.menu")}
-            title={t("layout.menu")}
-          >
-            {menuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-          <span className="font-mono text-xs uppercase text-sl-text">SENTINEL LEDGER</span>
-          <div className="w-6 overflow-hidden [&>div>span]:hidden">
-            <SentinelLogo size={24} />
-          </div>
+        <div className="sm:hidden flex h-12 items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1 shrink-0 min-w-0">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="h-7 px-1.5 rounded-md border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] text-gray-200 inline-flex items-center gap-1"
+                aria-expanded={menuOpen}
+                aria-haspopup="true"
+                aria-label={t("layout.menu")}
+                title={t("layout.menu")}
+              >
+                {menuOpen ? <X size={12} /> : <Menu size={12} />}
+              </button>
+            </div>
+            <span className="font-mono text-sm font-extrabold tracking-[0.15em] text-white">SENTINEL</span>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <SentinelLogo />
+            </div>
         </div>
 
         {menuOpen ? (
           <>
             <div
-              className="fixed inset-0 z-[90] bg-sl-root md:hidden"
+              className="sm:hidden fixed inset-0 z-[210] bg-black/55 backdrop-blur-[1px]"
               onClick={() => setMenuOpen(false)}
               aria-hidden
             />
-            <div className="fixed inset-0 z-[100] bg-sl-root p-6 md:hidden">
-              <div className="mb-6 flex items-center justify-between">
-                <span className="font-mono text-xs uppercase text-sl-text">SENTINEL LEDGER</span>
-                <button type="button" onClick={() => setMenuOpen(false)} className="btn-ghost-sm">
-                  X
+            <div className="sm:hidden fixed inset-0 z-[220] bg-[#08090f]/98 backdrop-blur-xl p-4">
+              <div className="mb-5 flex items-center justify-between">
+                <span className="font-mono text-sm font-extrabold tracking-[0.15em] text-white">SENTINEL</span>
+                <button type="button" onClick={() => setMenuOpen(false)} className="h-8 w-8 rounded-md border border-white/10 text-gray-300">
+                  <X size={16} className="mx-auto" />
                 </button>
               </div>
-              <div className="flex flex-col">
-                {PRIMARY_NAV.map((item) => {
-                  const active = router.pathname === item.match;
+              {showTradingChrome ? <SearchBar compact /> : null}
+              <div className="mt-4 flex flex-col gap-1">
+                {APP_NAV_LINKS.map((item) => {
+                  const active = item.key === "pricing" ? router.pathname === "/pricing" : router.pathname === item.href;
                   return (
                     <Link
-                      key={item.href}
+                      key={item.key}
                       href={item.href}
                       onClick={() => {
+                        if (item.isStalker) clearStalker();
                         setMenuOpen(false);
                       }}
-                      className={`flex w-full border-b-2 px-0 py-4 font-mono text-xs uppercase tracking-wider no-underline ${
+                      className={`text-xs px-2.5 py-2 rounded-md border no-underline inline-flex items-center justify-between gap-2 ${
                         active
-                          ? "border-sl-violet text-sl-text"
-                          : "border-transparent text-sl-muted hover:text-sl-sub"
+                          ? "text-white border-white/20 bg-white/[0.08]"
+                          : "text-gray-300 border-transparent hover:border-white/10 hover:bg-white/[0.05]"
                       }`}
                       aria-current={active ? "page" : undefined}
                     >
-                      {item.label.toUpperCase()}
+                      <span className="truncate">{t(`nav.${item.key}`)}</span>
+                      {item.isStalker && stalkerUnread > 0 ? (
+                        <span className="inline-flex min-w-[16px] h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[9px] items-center justify-center px-0.5">
+                          {Math.min(stalkerUnread, 99)}
+                        </span>
+                      ) : null}
                     </Link>
                   );
                 })}
               </div>
-              <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between border-t border-sl-border pt-4">
-                <WalletButton navCompact />
-                <span className="badge-free">FREE</span>
+            </div>
+
+            <div className="hidden sm:block absolute left-2 sm:left-4 top-[calc(100%-0.25rem)] z-[220] w-[min(15rem,calc(100vw-1rem))] rounded-xl border border-white/10 bg-[#0a0c0f]/98 backdrop-blur-xl shadow-2xl shadow-black/50 p-2">
+              <p className="text-[9px] uppercase tracking-wider text-gray-500 font-semibold px-2 pb-1">
+                {t("layout.menu")}
+              </p>
+              <div className="flex flex-col gap-1">
+                {APP_NAV_LINKS.map((item) => {
+                  const active = item.key === "pricing" ? router.pathname === "/pricing" : router.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      onClick={() => {
+                        if (item.isStalker) clearStalker();
+                        setMenuOpen(false);
+                      }}
+                      className={`text-xs px-2 py-1.5 rounded-md border no-underline inline-flex items-center justify-between gap-2 ${
+                        active
+                          ? "text-white border-white/20 bg-white/[0.08]"
+                          : "text-gray-300 border-transparent hover:border-white/10 hover:bg-white/[0.05]"
+                      }`}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      <span className="truncate">{t(`nav.${item.key}`)}</span>
+                      {item.isStalker && stalkerUnread > 0 ? (
+                        <span className="inline-flex min-w-[16px] h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[9px] items-center justify-center px-0.5">
+                          {Math.min(stalkerUnread, 99)}
+                        </span>
+                      ) : null}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </>
