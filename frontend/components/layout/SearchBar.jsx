@@ -30,8 +30,10 @@ function saveRecent(mint) {
  * @param {boolean} [opts.compact]
  * @param {boolean} [opts.withRecents] — show recent mint chips (home header)
  * @param {boolean} [opts.headerMicro] — ~2cm strip on home: tiny field + icon submit
+ * @param {boolean} [opts.navCommand] — navbar command input; submit button can live outside via form attr
+ * @param {string} [opts.formId]
  */
-export function SearchBar({ compact = false, withRecents = false, headerMicro = false } = {}) {
+export function SearchBar({ compact = false, withRecents = false, headerMicro = false, navCommand = false, formId = "navbar-token-search" } = {}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [recents, setRecents] = useState([]);
@@ -72,10 +74,27 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
   const inputCls = headerMicro
     ? "bg-transparent border-none outline-none w-full min-w-0 text-[10px] text-gray-100 placeholder:text-gray-500"
     : compact
-      ? "bg-transparent border-none outline-none w-full text-xs sm:text-sm text-gray-100 placeholder:text-gray-500"
+      ? "bg-transparent border-none outline-none w-full font-mono text-xs text-sl-text placeholder:text-sl-muted"
       : "bg-transparent border-none outline-none w-full text-sm text-gray-100 placeholder:text-gray-500";
-  const navGoldButtonClass =
-    "h-8 min-w-[6.75rem] rounded-[4px] border border-[#B8860B] bg-[#0D0E1A] px-3 font-mono text-[11px] font-semibold text-[#D4A017] transition hover:border-[#D4A017] hover:bg-[#1A1508] hover:text-[#FFD700]";
+
+  if (navCommand) {
+    return (
+      <form id={formId} onSubmit={onSearch} className="relative flex w-full max-w-[380px] items-center">
+        <Search size={14} className="absolute left-2.5 text-sl-muted" aria-hidden />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={ph}
+          autoComplete="off"
+          spellCheck={false}
+          className="h-8 w-full border border-sl-border bg-sl-root pl-8 pr-16 font-mono text-xs text-sl-text outline-none transition-colors duration-150 placeholder:text-sl-muted focus:border-sl-violet focus:ring-0"
+        />
+        <span className="absolute right-2 border border-sl-border bg-sl-card px-1.5 py-0.5 font-mono text-2xs text-sl-muted">
+          Ctrl+K
+        </span>
+      </form>
+    );
+  }
 
   if (headerMicro) {
     return (
@@ -143,9 +162,9 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
         </div>
         <button
           type="submit"
-          className={`shrink-0 ${compact ? navGoldButtonClass : "btn-pro btn-pro-sm h-11 px-4"}`}
+          className={`shrink-0 ${compact ? "btn-primary" : "btn-pro btn-pro-sm h-11 px-4"}`}
         >
-          {withRecents ? "Ir" : "Analyze"}
+          {withRecents ? "Ir" : "ANALYZE"}
         </button>
       </form>
       {withRecents && recents.length > 0 ? (

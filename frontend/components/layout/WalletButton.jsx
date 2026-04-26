@@ -7,9 +7,9 @@ import toast from "react-hot-toast";
 import { getPublicApiUrl } from "../../lib/publicRuntime";
 
 const walletMultiButtonClass =
-  "!bg-gradient-to-r !from-[#6c5ce7] !to-[#00cec9] hover:!opacity-95 !rounded-md !h-7 !min-h-0 !text-[9px] !min-w-0 !max-w-[5.25rem] !justify-center !truncate !px-1.5 !py-0 !leading-tight !font-semibold";
-const navGoldWalletClass =
-  "!h-8 !min-h-0 !min-w-[6.75rem] !rounded-[4px] !border !border-[#B8860B] !bg-[#0D0E1A] hover:!border-[#D4A017] hover:!bg-[#1A1508] !px-3 !py-0 !font-mono !text-[11px] !font-semibold !text-[#D4A017] hover:!text-[#FFD700] !shadow-none";
+  "!bg-sl-violet hover:!opacity-95 !rounded-[2px] !h-7 !min-h-0 !text-[9px] !min-w-0 !max-w-[5.25rem] !justify-center !truncate !px-1.5 !py-0 !leading-tight !font-semibold";
+const navWalletClass =
+  "!btn-ghost-sm !h-7 !min-h-0 !rounded-[2px] !border !border-sl-border !bg-transparent hover:!border-sl-hover !px-3 !py-0 !font-mono !text-2xs !font-medium !uppercase !tracking-[0.08em] !text-sl-muted hover:!text-sl-sub !shadow-none";
 
 export function WalletButton({ navCompact = false }) {
   const { publicKey, signMessage, connected, disconnect } = useWallet();
@@ -135,18 +135,21 @@ export function WalletButton({ navCompact = false }) {
   };
 
   return (
-    <div ref={wrapRef} className="relative z-[200] flex items-center justify-end gap-0.5 min-w-0 shrink-0">
+    <div ref={wrapRef} className="relative z-[200] flex items-center justify-end gap-1 min-w-0 shrink-0">
       {navCompact && connected ? (
         <button
           type="button"
           onClick={handleLogout}
-          className="h-8 min-w-[6.75rem] rounded-[4px] border border-[#B8860B] bg-[#0D0E1A] px-3 font-mono text-[11px] font-semibold text-[#D4A017] transition hover:border-[#D4A017] hover:bg-[#1A1508] hover:text-[#FFD700]"
+          className="inline-flex h-7 items-center gap-2 border border-sl-border bg-transparent px-2 font-mono text-2xs font-medium uppercase tracking-[0.08em] text-sl-sub transition-colors hover:border-sl-hover hover:text-sl-text"
           title={shortWallet}
         >
-          Wallet
+          <span className="flex h-7 w-7 items-center justify-center border border-sl-border bg-sl-card font-mono text-2xs text-sl-sub">
+            {publicKey?.toBase58()?.slice(0, 2) || "SL"}
+          </span>
+          <span>{shortWallet}</span>
         </button>
       ) : navCompact && walletUiReady ? (
-        <WalletMultiButton className={navGoldWalletClass} />
+        <WalletMultiButton className={navWalletClass} />
       ) : walletUiReady ? (
         <WalletMultiButton className={walletMultiButtonClass} />
       ) : (
@@ -164,8 +167,8 @@ export function WalletButton({ navCompact = false }) {
         onClick={() => setOpen((v) => !v)}
         className={`hidden sm:inline-flex items-center gap-0.5 h-7 pl-1 pr-1 rounded-md border text-[9px] transition max-w-[4.75rem] sm:max-w-[5.5rem] truncate ${
           connected
-            ? "bg-[#13171A] border-emerald-600/30 text-emerald-300"
-            : "bg-[#13171A] soft-divider text-gray-400"
+            ? "bg-sl-card border-emerald-600/30 text-emerald-300"
+            : "bg-sl-card soft-divider text-gray-400"
         }`}
         aria-expanded={open}
         aria-haspopup="true"
@@ -177,7 +180,7 @@ export function WalletButton({ navCompact = false }) {
       </button> : null}
 
       {open && connected && (
-        <div className="absolute right-0 top-[calc(100%+4px)] z-[500] w-40 rounded-lg border border-white/10 bg-[#0d1014] p-1 shadow-2xl">
+        <div className="absolute right-0 top-[calc(100%+4px)] z-[500] w-40 rounded-[2px] border border-sl-border bg-sl-card p-1 shadow-2xl">
           <button
             type="button"
             onClick={handleLogout}
