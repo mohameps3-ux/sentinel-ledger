@@ -158,7 +158,7 @@ export function HotTab({
                     sw: Math.max(0, Math.round(Number(token?.smartWallets || 0)))
                   });
                 }}
-                baseClassName={`sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat glass-card p-1.5 sm:p-2 rounded-lg border-l-[3px] border-l-amber-400 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
+                baseClassName={`terminal-card-interactive group mb-2 sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat glass-card p-1.5 sm:p-2 border-l-[3px] border-l-amber-400 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
                   token?.mint
                     ? "hover:-translate-y-[1px] hover:border-violet-400/45 hover:shadow-[0_0_16px_rgba(139,92,246,0.32)]"
                     : "opacity-75"
@@ -213,6 +213,12 @@ export function HotTab({
                       </span>
                     ) : null}
                     <RulePerformanceBadge performance={token?.rulePerformance} compact />
+                  </div>
+                  <div className="score-track mx-3 mb-2">
+                    <div
+                      className={displayScore >= 60 ? "score-fill-high" : displayScore >= 40 ? "score-fill-mid" : "score-fill-low"}
+                      style={{ width: `${Math.min(displayScore, 100)}%` }}
+                    />
                   </div>
                 </div>
 
