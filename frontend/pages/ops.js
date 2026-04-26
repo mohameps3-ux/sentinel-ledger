@@ -50,7 +50,7 @@ const MIN_COORD_ALERT_SCORE = 0.68;
 
 function Sparkline({ points = [], stroke = "#22d3ee" }) {
   if (!Array.isArray(points) || points.length < 2) {
-    return <div className="h-12 rounded-lg border border-white/[0.08] bg-[#0b0f13]/80" />;
+    return <div className="h-12  border border-white/[0.08] bg-[#0b0f13]/80" />;
   }
   const w = 260;
   const h = 46;
@@ -65,7 +65,7 @@ function Sparkline({ points = [], stroke = "#22d3ee" }) {
     })
     .join(" ");
   return (
-    <div className="h-12 rounded-lg border border-white/[0.08] bg-[#0b0f13]/80 px-2 py-1">
+    <div className="h-12  border border-white/[0.08] bg-[#0b0f13]/80 px-2 py-1">
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full" role="img" aria-label="sparkline">
         <path d={path} fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
       </svg>
@@ -90,7 +90,7 @@ function Kpi({ label, value, hint, tone = "neutral" }) {
           ? "border-red-500/25"
           : "border-white/[0.08]";
   return (
-    <div className={`rounded-xl border ${border} bg-[#0b0f13]/80 p-3 min-w-0`}>
+    <div className={` border ${border} bg-[#0b0f13]/80 p-3 min-w-0`}>
       <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500 font-semibold truncate">{label}</div>
       <div className="text-lg font-semibold text-gray-100 mt-1 tabular-nums truncate">{value}</div>
       {hint ? <div className="text-[11px] text-gray-500 mt-0.5 leading-snug">{hint}</div> : null}
@@ -107,7 +107,7 @@ function TabButton({ active, children, onClick, id }) {
       aria-selected={active}
       aria-controls={`panel-${id}`}
       onClick={onClick}
-      className={`shrink-0 px-3 py-2 rounded-lg text-xs font-semibold border transition whitespace-nowrap ${
+      className={`shrink-0 px-3 py-2  text-xs font-semibold border transition whitespace-nowrap ${
         active
           ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,0.08)]"
           : "border-white/[0.08] bg-white/[0.02] text-gray-400 hover:text-gray-200 hover:border-white/15"
@@ -504,14 +504,14 @@ export default function OpsPage() {
                 value={opsKey}
                 onChange={(e) => setOpsKey(e.target.value)}
                 placeholder="OMNI_BOT_OPS_KEY"
-                className="w-full h-11 rounded-xl bg-[#0E1318] border border-white/[0.08] px-3 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/40"
+                className="w-full h-11  bg-[#0E1318] border border-white/[0.08] px-3 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/40"
               />
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
               <button
                 type="button"
                 onClick={saveKey}
-                className="h-11 px-4 rounded-xl border border-white/[0.1] bg-white/[0.03] text-sm text-gray-200 hover:bg-white/[0.06] transition"
+                className="h-11 px-4  border border-white/[0.1] bg-white/[0.03] text-sm text-gray-200 hover:bg-white/[0.06] transition"
               >
                 Save locally
               </button>
@@ -519,7 +519,7 @@ export default function OpsPage() {
                 type="button"
                 onClick={loadData}
                 disabled={loading || !hasKey}
-                className="h-11 px-5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="h-11 px-5  bg-gradient-to-r from-violet-600 to-cyan-600 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
                 {loading ? "Loading…" : "Refresh data"}
               </button>
@@ -626,7 +626,7 @@ export default function OpsPage() {
                 />
               </div>
 
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5">
+              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5">
                 <h2 className="text-sm font-semibold text-white mb-3">At a glance</h2>
                 <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300">
                   <div className="space-y-2 min-w-0">
@@ -678,7 +678,7 @@ export default function OpsPage() {
               id="panel-ingestion"
               role="tabpanel"
               aria-labelledby="tab-ingestion"
-              className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-5"
+              className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-5"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold text-white">Entropy guard</h2>
@@ -708,7 +708,7 @@ export default function OpsPage() {
                   </div>
 
                   <div className="grid lg:grid-cols-2 gap-4">
-                    <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4 min-w-0">
+                    <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4 min-w-0">
                       <div className="text-[11px] text-gray-500 font-semibold mb-2">Top offender</div>
                       {guard.topOffenders?.[0] ? (
                         <p className="text-sm text-gray-200 break-all font-mono leading-relaxed">
@@ -719,7 +719,7 @@ export default function OpsPage() {
                         <p className="text-sm text-gray-500">None recorded.</p>
                       )}
                     </div>
-                    <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4 min-w-0">
+                    <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4 min-w-0">
                       <div className="text-[11px] text-gray-500 font-semibold mb-2">Drop reasons</div>
                       {!guard.metrics?.dropsByReason || !Object.keys(guard.metrics.dropsByReason).length ? (
                         <p className="text-sm text-gray-500">No drops.</p>
@@ -750,7 +750,7 @@ export default function OpsPage() {
               aria-labelledby="tab-signals"
               className="space-y-5"
             >
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-5">
+              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-5">
                 <h2 className="text-lg font-semibold text-white">Signal performance (48h)</h2>
                 {!perf ? (
                   <p className="text-sm text-gray-500">No performance bundle loaded.</p>
@@ -772,7 +772,7 @@ export default function OpsPage() {
                       <Kpi label="Max drawdown" value={`${perf.metrics?.maxDrawdownPct ?? 0}%`} />
                     </div>
                     {perf.diagnostics ? (
-                      <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4 space-y-3">
+                      <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4 space-y-3">
                         <div className="text-[11px] text-gray-500 font-semibold">Why resolved might look low</div>
                         <p className="text-xs text-gray-400 leading-relaxed">
                           <strong className="text-gray-300">Resolved rows</strong> here means resolved with a numeric{" "}
@@ -818,7 +818,7 @@ export default function OpsPage() {
                         ) : null}
                       </div>
                     ) : null}
-                    <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                    <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                       <div className="text-[11px] text-gray-500 font-semibold mb-3">Top signal combos</div>
                       {!perf.combos?.length ? (
                         <p className="text-sm text-gray-500">No combo data yet.</p>
@@ -838,7 +838,7 @@ export default function OpsPage() {
                         </div>
                       )}
                     </div>
-                    <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                    <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                         <div>
                           <div className="text-[11px] text-gray-500 font-semibold">Validation Oracle — rule performance</div>
@@ -901,7 +901,7 @@ export default function OpsPage() {
                         </div>
                       )}
                     </div>
-                    <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                    <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                       <div className="text-[11px] text-gray-500 font-semibold mb-1">Outcomes by emission regime</div>
                       <p className="text-[11px] text-gray-600 mb-3">
                         Resolved rows only. <span className="text-gray-500">legacy</span> = archived before regime
@@ -930,7 +930,7 @@ export default function OpsPage() {
                 )}
               </div>
 
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
+              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
                 <h2 className="text-lg font-semibold text-white">Signal emission gate (Phase A)</h2>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <Kpi label="Gate enabled" value={signalGate?.config ? (signalGate.config.enabled ? "yes" : "no") : "—"} />
@@ -979,7 +979,7 @@ export default function OpsPage() {
                   />
                 </div>
                 {signalGate?.alpha ? (
-                  <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                  <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                     <div className="text-[11px] text-gray-500 font-semibold mb-2">Alpha layer (Fase A.1 / A.2)</div>
                     <p className="text-xs text-gray-400 leading-relaxed">
                       Gated on calibrated conf: {signalGate.alpha.useCalibratedConfidence ? "yes" : "no"} · min EV (0=off){" "}
@@ -993,7 +993,7 @@ export default function OpsPage() {
                   </div>
                 ) : null}
                 {signalGate?.regime?.byRegime ? (
-                  <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                  <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                     <div className="text-[11px] text-gray-500 font-semibold mb-3">Emissions by regime</div>
                     <ul className="space-y-1.5 text-sm text-gray-200">
                       {["calm", "trending", "volatile", "unknown"].map((k) => {
@@ -1011,7 +1011,7 @@ export default function OpsPage() {
                     </ul>
                   </div>
                 ) : null}
-                <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                   <div className="text-[11px] text-gray-500 font-semibold mb-3">Blocked reasons</div>
                   {!signalGateBlockedEntries.length ? (
                     <p className="text-sm text-gray-500">No blocked reasons recorded yet.</p>
@@ -1026,13 +1026,13 @@ export default function OpsPage() {
                     </ul>
                   )}
                 </div>
-                <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4 space-y-3">
+                <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4 space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-[11px] text-gray-500 font-semibold">Adaptive tuner (no extra cost)</div>
                     <button
                       type="button"
                       onClick={runSignalGateTunerNow}
-                      className="h-8 px-3 rounded-lg border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
+                      className="h-8 px-3  border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
                     >
                       Run tuner now
                     </button>
@@ -1085,7 +1085,7 @@ export default function OpsPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
+              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
                 <h2 className="text-lg font-semibold text-white">Freshness trend (signalsLatest)</h2>
                 <div className="grid sm:grid-cols-3 gap-3">
                   <Kpi
@@ -1152,34 +1152,34 @@ export default function OpsPage() {
                   <button
                     type="button"
                     onClick={() => downloadHistoryCsv(24)}
-                    className="h-9 px-3 rounded-lg border border-white/[0.1] bg-white/[0.03] text-xs text-gray-200 hover:bg-white/[0.06] transition"
+                    className="h-9 px-3  border border-white/[0.1] bg-white/[0.03] text-xs text-gray-200 hover:bg-white/[0.06] transition"
                   >
                     Export CSV (24h)
                   </button>
                   <button
                     type="button"
                     onClick={() => downloadHistoryCsv(168)}
-                    className="h-9 px-3 rounded-lg border border-white/[0.1] bg-white/[0.03] text-xs text-gray-200 hover:bg-white/[0.06] transition"
+                    className="h-9 px-3  border border-white/[0.1] bg-white/[0.03] text-xs text-gray-200 hover:bg-white/[0.06] transition"
                   >
                     Export CSV (7d)
                   </button>
                   <button
                     type="button"
                     onClick={() => downloadHistorySignedJson(24)}
-                    className="h-9 px-3 rounded-lg border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
+                    className="h-9 px-3  border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
                   >
                     Export Signed JSON (24h)
                   </button>
                   <button
                     type="button"
                     onClick={() => downloadHistorySignedJson(168)}
-                    className="h-9 px-3 rounded-lg border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
+                    className="h-9 px-3  border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
                   >
                     Export Signed JSON (7d)
                   </button>
                 </div>
 
-                <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-3 sm:p-4 space-y-2">
+                <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-3 sm:p-4 space-y-2">
                   <div className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">
                     Third-party verify (F4.7)
                   </div>
@@ -1201,14 +1201,14 @@ export default function OpsPage() {
                     rows={4}
                     spellCheck={false}
                     placeholder='Paste entire signed export JSON here (starts with {"ok":true,"type":"ops_data_freshness_history_signed_export"…})'
-                    className="w-full min-h-[88px] rounded-lg bg-[#0E1318] border border-white/[0.08] px-2.5 py-2 text-xs text-gray-200 font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/25"
+                    className="w-full min-h-[88px]  bg-[#0E1318] border border-white/[0.08] px-2.5 py-2 text-xs text-gray-200 font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/25"
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={verifyPublicSignedExport}
                       disabled={verifyBusy}
-                      className="h-9 px-3 rounded-lg border border-emerald-500/35 bg-emerald-500/10 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/15 disabled:opacity-40 transition"
+                      className="h-9 px-3  border border-emerald-500/35 bg-emerald-500/10 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/15 disabled:opacity-40 transition"
                     >
                       {verifyBusy ? "Verifying…" : "Verify integrity (public)"}
                     </button>
@@ -1226,7 +1226,7 @@ export default function OpsPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
+              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
                 <h2 className="text-lg font-semibold text-white">Calibrator (advisory)</h2>
                 {!calib?.lastCalibration ? (
                   <p className="text-sm text-gray-500">No calibration snapshot yet.</p>
@@ -1243,7 +1243,7 @@ export default function OpsPage() {
                         .map((p) => (
                           <div
                             key={p.signal}
-                            className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 px-3 py-2.5 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 min-w-0"
+                            className=" border border-white/[0.08] bg-[#0b0f13]/80 px-3 py-2.5 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 min-w-0"
                           >
                             <span className="font-mono text-gray-200 break-all">{p.signal}</span>
                             <span className="text-gray-500 text-[13px] shrink-0">
@@ -1257,13 +1257,13 @@ export default function OpsPage() {
                 )}
               </div>
 
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
+              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-lg font-semibold text-white">Wallet behavior memory (F5)</h2>
                   <button
                     type="button"
                     onClick={runWalletBehaviorNow}
-                    className="h-9 px-3 rounded-lg border border-violet-500/30 bg-violet-500/[0.08] text-xs text-violet-100 hover:bg-violet-500/[0.14] transition"
+                    className="h-9 px-3  border border-violet-500/30 bg-violet-500/[0.08] text-xs text-violet-100 hover:bg-violet-500/[0.14] transition"
                   >
                     Run now
                   </button>
@@ -1294,7 +1294,7 @@ export default function OpsPage() {
                   {formatInteger(walletBehaviorStatus?.lookbackDays || 0)}d
                 </p>
                 <div
-                  className={`rounded-lg border px-3 py-2 text-xs ${
+                  className={` border px-3 py-2 text-xs ${
                     lowSampleRows.length > 0
                       ? "border-amber-500/35 bg-amber-500/10 text-amber-100"
                       : "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
@@ -1304,7 +1304,7 @@ export default function OpsPage() {
                     ? `Low horizon sample alert: ${formatInteger(lowSampleRows.length)} wallet(s) in top list have n<${MIN_HORIZON_SAMPLE} on 5m/30m/2h.`
                     : `Horizon sample healthy: all top wallets meet n>=${MIN_HORIZON_SAMPLE} on 5m/30m/2h.`}
                 </div>
-                <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                   <div className="text-[11px] text-gray-500 font-semibold mb-3">Top wallets by real win rate</div>
                   {!walletBehaviorTop.length ? (
                     <p className="text-sm text-gray-500">No wallet behavior rows loaded.</p>
@@ -1313,7 +1313,7 @@ export default function OpsPage() {
                       {walletBehaviorTop.slice(0, 20).map((row) => (
                         <div
                           key={row.wallet_address}
-                          className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-gray-200"
+                          className=" border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-gray-200"
                         >
                           <p className="font-mono break-all text-cyan-200">{row.wallet_address}</p>
                           <p className="text-gray-400 mt-0.5">
@@ -1349,7 +1349,7 @@ export default function OpsPage() {
               aria-labelledby="tab-operations"
               className="space-y-5"
             >
-              <div className="rounded-2xl border border-violet-500/15 bg-violet-500/[0.03] p-4 sm:p-5 space-y-4">
+              <div className=" border border-violet-500/15 bg-violet-500/[0.03] p-4 sm:p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <h2 className="text-lg font-semibold text-white">Auto-Discovery</h2>
@@ -1360,7 +1360,7 @@ export default function OpsPage() {
                   <button
                     type="button"
                     onClick={runAutoDiscoveryPromotionNow}
-                    className="h-9 px-3 rounded-lg border border-violet-500/30 bg-violet-500/[0.1] text-xs text-violet-100 hover:bg-violet-500/[0.16] transition"
+                    className="h-9 px-3  border border-violet-500/30 bg-violet-500/[0.1] text-xs text-violet-100 hover:bg-violet-500/[0.16] transition"
                   >
                     Run promotion now
                   </button>
@@ -1398,11 +1398,11 @@ export default function OpsPage() {
                   {Number(autoDiscoveryStatus?.promotionMinScore || 0).toFixed(2)}
                 </p>
                 {autoDiscoveryStatus?.lastPromotionStats?.error ? (
-                  <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                  <p className=" border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
                     Last promotion error: {autoDiscoveryStatus.lastPromotionStats.error}
                   </p>
                 ) : null}
-                <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                   <div className="text-[11px] text-gray-500 font-semibold mb-3">Top candidates</div>
                   {!autoDiscoveryCandidates.length ? (
                     <p className="text-sm text-gray-500">No auto-discovery candidates loaded yet.</p>
@@ -1411,7 +1411,7 @@ export default function OpsPage() {
                       {autoDiscoveryCandidates.map((row) => (
                         <div
                           key={row.id || row.wallet_address}
-                          className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-gray-200"
+                          className=" border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-gray-200"
                         >
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="inline-flex px-1.5 py-0.5 rounded border border-violet-500/35 bg-violet-500/10 text-[10px] font-semibold text-violet-200">
@@ -1432,13 +1432,13 @@ export default function OpsPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
+              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-lg font-semibold text-white">Coordination red alerts (F6)</h2>
                   <button
                     type="button"
                     onClick={runWalletCoordinationNow}
-                    className="h-9 px-3 rounded-lg border border-red-500/35 bg-red-500/[0.12] text-xs text-red-100 hover:bg-red-500/[0.2] transition"
+                    className="h-9 px-3  border border-red-500/35 bg-red-500/[0.12] text-xs text-red-100 hover:bg-red-500/[0.2] transition"
                   >
                     Rebuild now
                   </button>
@@ -1469,7 +1469,7 @@ export default function OpsPage() {
                   interval {formatInteger(walletCoordStatus?.tickIntervalMs || 0)} ms · lookback{" "}
                   {formatInteger(walletCoordStatus?.lookbackDays || 0)}d
                 </p>
-                <div className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-4">
+                <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4">
                   <div className="text-[11px] text-gray-500 font-semibold mb-3">Recent coordination alerts</div>
                   {!coordRows.length ? (
                     <p className="text-sm text-gray-500">No coordination alerts loaded.</p>
@@ -1478,7 +1478,7 @@ export default function OpsPage() {
                       {coordRows.map((row) => (
                         <div
                           key={row.id || `${row.mint}-${row.detected_at}-${row.cluster_key}`}
-                          className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-gray-200"
+                          className=" border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-xs text-gray-200"
                         >
                           <div className="flex flex-wrap items-center gap-2">
                             <span
@@ -1504,7 +1504,7 @@ export default function OpsPage() {
                     </div>
                   )}
                 </div>
-                <div className="rounded-xl border border-cyan-500/15 bg-[#0b0f13]/80 p-4 mt-4">
+                <div className=" border border-cyan-500/15 bg-[#0b0f13]/80 p-4 mt-4">
                   <div className="text-[11px] text-gray-500 font-semibold mb-1">T+N market outcomes (coordination_outcomes)</div>
                   {walletCoordOutcomesDegraded ? (
                     <p className="text-xs text-amber-300/90 mb-2">Degraded: table missing or not migrated — apply `012`–`014` / `npm run db:ensure-signal-performance --prefix backend`, luego `npm run db:verify-schema --prefix backend` y Security Advisor.</p>
@@ -1516,7 +1516,7 @@ export default function OpsPage() {
                       {outcomeRows.map((o) => (
                         <div
                           key={o.id || o.alert_id}
-                          className="rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-gray-200"
+                          className=" border border-white/[0.07] bg-white/[0.02] px-3 py-2 text-gray-200"
                         >
                           <div className="flex flex-wrap gap-2 items-center">
                             <span
@@ -1549,19 +1549,19 @@ export default function OpsPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5">
+              <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5">
                 <h2 className="text-lg font-semibold text-white mb-3">Broadcast</h2>
                 <div className="flex flex-col sm:flex-row gap-2 min-w-0">
                   <input
                     value={broadcastMsg}
                     onChange={(e) => setBroadcastMsg(e.target.value)}
                     placeholder="Message to omni channels (Telegram)…"
-                    className="flex-1 min-w-0 h-11 rounded-xl bg-[#0E1318] border border-white/[0.08] px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/25"
+                    className="flex-1 min-w-0 h-11  bg-[#0E1318] border border-white/[0.08] px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/25"
                   />
                   <button
                     type="button"
                     onClick={sendBroadcast}
-                    className="h-11 px-5 rounded-xl border border-white/[0.1] bg-white/[0.04] text-sm font-medium text-gray-100 hover:bg-white/[0.08] shrink-0"
+                    className="h-11 px-5  border border-white/[0.1] bg-white/[0.04] text-sm font-medium text-gray-100 hover:bg-white/[0.08] shrink-0"
                   >
                     Send
                   </button>
@@ -1570,14 +1570,14 @@ export default function OpsPage() {
               </div>
 
               <div className="grid xl:grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 flex flex-col min-h-0">
+                <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 flex flex-col min-h-0">
                   <h2 className="text-lg font-semibold text-white mb-3">Support tickets</h2>
                   {!tickets.length ? (
                     <p className="text-sm text-gray-500">No tickets loaded.</p>
                   ) : (
                     <div className="space-y-2 max-h-[min(420px,55vh)] overflow-y-auto pr-1 overscroll-contain">
                       {tickets.map((t) => (
-                        <div key={t.id} className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-3">
+                        <div key={t.id} className=" border border-white/[0.08] bg-[#0b0f13]/80 p-3">
                           <div className="flex justify-between gap-3 text-[11px] text-gray-500 mb-1">
                             <span>{t.channel}</span>
                             <span className="shrink-0">{formatDateTime(t.created_at)}</span>
@@ -1588,7 +1588,7 @@ export default function OpsPage() {
                             <button
                               type="button"
                               onClick={() => setTicketStatus(t.id, "open")}
-                              className={`px-2.5 py-1 rounded-lg text-xs border ${
+                              className={`px-2.5 py-1  text-xs border ${
                                 t.status === "open"
                                   ? "bg-amber-500/12 border-amber-500/35 text-amber-200"
                                   : "border-white/[0.08] text-gray-400 hover:bg-white/[0.04]"
@@ -1599,7 +1599,7 @@ export default function OpsPage() {
                             <button
                               type="button"
                               onClick={() => setTicketStatus(t.id, "resolved")}
-                              className={`px-2.5 py-1 rounded-lg text-xs border ${
+                              className={`px-2.5 py-1  text-xs border ${
                                 t.status === "resolved"
                                   ? "bg-emerald-500/12 border-emerald-500/35 text-emerald-200"
                                   : "border-white/[0.08] text-gray-400 hover:bg-white/[0.04]"
@@ -1614,14 +1614,14 @@ export default function OpsPage() {
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 flex flex-col min-h-0">
+                <div className=" border border-white/[0.07] bg-white/[0.02] p-4 sm:p-5 flex flex-col min-h-0">
                   <h2 className="text-lg font-semibold text-white mb-3">Bot events</h2>
                   {!events.length ? (
                     <p className="text-sm text-gray-500">No events loaded.</p>
                   ) : (
                     <div className="space-y-2 max-h-[min(420px,55vh)] overflow-y-auto pr-1 overscroll-contain">
                       {events.map((ev) => (
-                        <div key={ev.id} className="rounded-xl border border-white/[0.08] bg-[#0b0f13]/80 p-3">
+                        <div key={ev.id} className=" border border-white/[0.08] bg-[#0b0f13]/80 p-3">
                           <div className="flex justify-between gap-3 text-[11px] text-gray-500 mb-1">
                             <span>{ev.channel}</span>
                             <span className="shrink-0">{formatDateTime(ev.created_at)}</span>
