@@ -8,6 +8,8 @@ import { getPublicApiUrl } from "../../lib/publicRuntime";
 
 const walletMultiButtonClass =
   "!bg-gradient-to-r !from-[#6c5ce7] !to-[#00cec9] hover:!opacity-95 !rounded-md !h-7 !min-h-0 !text-[9px] !min-w-0 !max-w-[5.25rem] !justify-center !truncate !px-1.5 !py-0 !leading-tight !font-semibold";
+const navGoldWalletClass =
+  "!h-8 !min-h-0 !min-w-[6.75rem] !rounded-[4px] !border !border-[#B8860B] !bg-[#0D0E1A] hover:!border-[#D4A017] hover:!bg-[#1A1508] !px-3 !py-0 !font-mono !text-[11px] !font-semibold !text-[#D4A017] hover:!text-[#FFD700] !shadow-none";
 
 export function WalletButton({ navCompact = false }) {
   const { publicKey, signMessage, connected, disconnect } = useWallet();
@@ -138,13 +140,13 @@ export function WalletButton({ navCompact = false }) {
         <button
           type="button"
           onClick={handleLogout}
-          className="h-7 rounded-md border border-white/10 bg-white/[0.03] px-2.5 text-[11px] font-semibold text-gray-300 hover:border-red-400/35 hover:bg-red-500/10 hover:text-red-100"
+          className="h-8 min-w-[6.75rem] rounded-[4px] border border-[#B8860B] bg-[#0D0E1A] px-3 font-mono text-[11px] font-semibold text-[#D4A017] transition hover:border-[#D4A017] hover:bg-[#1A1508] hover:text-[#FFD700]"
           title={shortWallet}
         >
-          Disconnect Wallet
+          Wallet
         </button>
       ) : navCompact && walletUiReady ? (
-        <WalletMultiButton className="!h-7 !min-h-0 !rounded-md !border !border-white/10 !bg-white/[0.03] hover:!bg-white/[0.07] !px-2.5 !py-0 !text-[11px] !font-semibold !text-gray-300 !shadow-none" />
+        <WalletMultiButton className={navGoldWalletClass} />
       ) : walletUiReady ? (
         <WalletMultiButton className={walletMultiButtonClass} />
       ) : (

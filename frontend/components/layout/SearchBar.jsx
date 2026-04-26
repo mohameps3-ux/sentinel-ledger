@@ -74,6 +74,8 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
     : compact
       ? "bg-transparent border-none outline-none w-full text-xs sm:text-sm text-gray-100 placeholder:text-gray-500"
       : "bg-transparent border-none outline-none w-full text-sm text-gray-100 placeholder:text-gray-500";
+  const navGoldButtonClass =
+    "h-8 min-w-[6.75rem] rounded-[4px] border border-[#B8860B] bg-[#0D0E1A] px-3 font-mono text-[11px] font-semibold text-[#D4A017] transition hover:border-[#D4A017] hover:bg-[#1A1508] hover:text-[#FFD700]";
 
   if (headerMicro) {
     return (
@@ -141,7 +143,7 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
         </div>
         <button
           type="submit"
-          className={`btn-pro btn-pro-sm shrink-0 ${compact ? "h-9 px-3 text-xs" : "h-11 px-4"}`}
+          className={`shrink-0 ${compact ? navGoldButtonClass : "btn-pro btn-pro-sm h-11 px-4"}`}
         >
           {withRecents ? "Ir" : "Analyze"}
         </button>
