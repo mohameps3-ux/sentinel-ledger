@@ -854,14 +854,14 @@ export default function OpsPage() {
                         <p className="text-sm text-gray-500">No validation rows yet.</p>
                       ) : (
                         <div className="overflow-x-auto">
-                          <table className="min-w-full text-left text-xs">
+                          <table className="data-table min-w-full text-left text-xs">
                             <thead className="text-[10px] uppercase tracking-wide text-gray-500">
                               <tr className="border-b border-white/[0.06]">
-                                <th className="py-2 pr-3">rule_id</th>
-                                <th className="py-2 pr-3 text-right">total_signals</th>
-                                <th className="py-2 pr-3 text-right">win_rate_60m</th>
-                                <th className="py-2 pr-3 text-right">avg_return</th>
-                                <th className="py-2 pr-3 text-right">confidence_score</th>
+                                <th className="data-th py-2 pr-3">rule_id</th>
+                                <th className="data-th py-2 pr-3 text-right">total_signals</th>
+                                <th className="data-th py-2 pr-3 text-right">win_rate_60m</th>
+                                <th className="data-th py-2 pr-3 text-right">avg_return</th>
+                                <th className="data-th py-2 pr-3 text-right">confidence_score</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-white/[0.05] font-mono text-gray-300">
@@ -882,17 +882,17 @@ export default function OpsPage() {
                                   .join(" · ");
                                 return (
                                   <tr key={row.rule_id}>
-                                    <td className="py-2 pr-3 text-gray-100">
+                                    <td className="data-td py-2 pr-3 text-gray-100">
                                       <div>{row.rule_id}</div>
                                       {regimeLine ? <div className="mt-0.5 text-[10px] text-gray-500">{regimeLine}</div> : null}
                                     </td>
-                                    <td className="py-2 pr-3 text-right">{formatInteger(total)}</td>
-                                    <td className="py-2 pr-3 text-right">{winRate.toFixed(1)}%</td>
-                                    <td className={`py-2 pr-3 text-right ${avgReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                                    <td className="data-td py-2 pr-3 text-right">{formatInteger(total)}</td>
+                                    <td className="data-td py-2 pr-3 text-right">{winRate.toFixed(1)}%</td>
+                                    <td className={`data-td py-2 pr-3 text-right ${avgReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
                                       {avgReturn >= 0 ? "+" : ""}
                                       {avgReturn.toFixed(1)}%
                                     </td>
-                                    <td className="py-2 pr-3 text-right">{total >= 10 ? `${conf.toFixed(1)}%` : "n<10"}</td>
+                                    <td className="data-td py-2 pr-3 text-right">{total >= 10 ? `${conf.toFixed(1)}%` : "n<10"}</td>
                                   </tr>
                                 );
                               })}
