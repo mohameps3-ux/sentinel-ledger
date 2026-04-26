@@ -32,135 +32,15 @@ export const WAYFINDING_FLAT_STRINGS = {
     hi: "आप यहाँ हैं",
     vi: "Bạn đang ở"
   }),
-  "wayfinding.goTo": S("Go to", {
-    es: "Ir a",
-    fr: "Aller à",
-    de: "Gehe zu",
-    it: "Vai a",
-    ru: "Перейти к",
-    zh: "前往",
-    ko: "이동",
-    ja: "移動",
-    ar: "انتقل إلى",
-    pt: "Ir para",
-    nl: "Ga naar",
-    pl: "Przejdź do",
-    tr: "Git",
-    hi: "यहाँ जाएँ",
-    vi: "Đi tới"
-  }),
-  "wayfinding.stayInFlow": S("Stay in flow:", {
-    es: "Mantén el flujo:",
-    fr: "Restez dans le flux :",
-    de: "Bleiben Sie im Flow:",
-    it: "Resta nel flusso:",
-    ru: "Не теряйте ритм:",
-    zh: "保持节奏：",
-    ko: "흐름 유지:",
-    ja: "フローを維持:",
-    ar: "حافظ على الإيقاع:",
-    pt: "Mantenha o fluxo:",
-    nl: "Blijf in de flow:",
-    pl: "Zachowaj płynność:",
-    tr: "Akışta kalın:",
-    hi: "प्रवाह में रहें:",
-    vi: "Giữ nhịp:"
-  }),
-  "wayfinding.nextStep": S("Next suggested step:", {
-    es: "Siguiente paso sugerido:",
-    fr: "Prochaine étape suggérée :",
-    de: "Nächster empfohlener Schritt:",
-    it: "Passo successivo suggerito:",
-    ru: "Следующий шаг:",
-    zh: "建议下一步：",
-    ko: "다음 권장 단계:",
-    ja: "次の推奨ステップ:",
-    ar: "الخطوة التالية المقترحة:",
-    pt: "Próximo passo sugerido:",
-    nl: "Volgende suggestie:",
-    pl: "Sugerowany następny krok:",
-    tr: "Önerilen sonraki adım:",
-    hi: "अगला सुझाया गया कदम:",
-    vi: "Bước tiếp theo gợi ý:"
-  }),
-  "wayfinding.jumpAria": S("Jump to any tool", {
-    es: "Saltar a cualquier herramienta",
-    fr: "Accéder à un outil",
-    de: "Zu einem Tool springen",
-    it: "Vai a uno strumento",
-    ru: "Перейти к инструменту",
-    zh: "跳转到任意工具",
-    ko: "도구로 이동",
-    ja: "ツールへジャンプ",
-    ar: "انتقل إلى أي أداة",
-    pt: "Ir para qualquer ferramenta",
-    nl: "Spring naar een tool",
-    pl: "Przejdź do narzędzia",
-    tr: "Herhangi bir araca git",
-    hi: "किसी भी टूल पर जाएँ",
-    vi: "Chuyển tới công cụ"
-  }),
+  "wayfinding.goTo": S(""),
+  "wayfinding.stayInFlow": S(""),
+  "wayfinding.nextStep": S(""),
+  "wayfinding.jumpAria": S(""),
 
-  "wayfinding.fomo.0": S(
-    "The live strip above keeps moving — refresh or you only see a snapshot.",
-    {
-      es: "La franja en vivo no para — recarga o solo verás una foto fija.",
-      fr: "La bande live bouge en continu — actualisez ou vous ne voyez qu’un instantané.",
-      de: "Der Live-Streifen bewegt sich — aktualisieren Sie, sonst nur ein Standbild.",
-      it: "La striscia live si aggiorna — ricarica o vedi solo un’istantanea.",
-      ru: "Живая полоса меняется — обновите страницу, иначе увидите снимок.",
-      zh: "上方实时条会持续变化 — 请刷新，否则只是快照。",
-      ko: "상단 라이브 줄은 계속 바뀝니다 — 새로고침하지 않으면 스냅샷만 보입니다.",
-      ja: "上のライブ帯は動き続けます — 更新しないとスナップショットのままです。",
-      ar: "الشريط الحي أعلاه يتحرك — حدّث وإلا ترى لقطة فقط.",
-      pt: "A faixa ao vivo muda — atualize ou verá só um instantâneo."
-    }
-  ),
-  "wayfinding.fomo.1": S(
-    "Next wallet cluster pass may surface a new ENTER before you come back.",
-    {
-      es: "El próximo barrido de clusters puede sacar un ENTER antes de que vuelvas.",
-      fr: "Le prochain passage de clusters peut révéler un nouvel ENTER avant votre retour.",
-      de: "Der nächste Wallet-Cluster-Durchlauf kann ein neues ENTER zeigen, bevor Sie zurück sind.",
-      it: "Il prossimo passaggio cluster può mostrare un nuovo ENTER prima del tuo ritorno.",
-      ru: "Следующий проход по кластерам может показать новый ENTER до вашего возврата.",
-      zh: "下一轮钱包簇扫描可能在你返回前出现新的入场信号。",
-      ko: "다음 클러스터 패스에서 돌아오기 전 새 ENTER가 뜰 수 있습니다.",
-      ja: "次のクラスター走査で戻る前に新しいENTERが出ることがあります。",
-      ar: "قد يمر المسح التالي للعناقيد ويظهر ENTER جديد قبل عودتك.",
-      pt: "A próxima varredura de clusters pode mostrar um ENTER novo antes de você voltar."
-    }
-  ),
-  "wayfinding.fomo.2": S(
-    "If you leave now, you miss the countdown on open entry windows.",
-    {
-      es: "Si te vas ahora, pierdes la cuenta atrás de las ventanas de entrada abiertas.",
-      fr: "Si vous partez maintenant, vous manquez le compte à rebours des fenêtres d’entrée.",
-      de: "Wenn Sie jetzt gehen, verpassen Sie den Countdown offener Einstiegsfenster.",
-      it: "Se esci ora, perdi il conto alla rovescia sulle finestre di ingresso aperte.",
-      ru: "Если уйдёте сейчас — пропустите отсчёт по открытым окнам входа.",
-      zh: "若现在离开，会错过开放入场窗口的倒计时。",
-      ko: "지금 나가면 열린 진입 창의 카운트다운을 놓칩니다.",
-      ja: "今離れると、開いているエントリー枠のカウントダウンを逃します。",
-      ar: "إن غادرت الآن ستفوت العد التنازلي لنوافذ الدخول المفتوحة.",
-      pt: "Se sair agora, perde a contagem regressiva das janelas de entrada abertas."
-    }
-  ),
-  "wayfinding.fomo.3": S(
-    "Smart-money ranks reorder as 24h PnL updates — stale view = stale decisions.",
-    {
-      es: "Los rankings de smart money se reordenan con el PnL 24h — vista vieja, decisión vieja.",
-      fr: "Les classements smart-money se réordonnent avec le PnL 24h — vue obsolète = décision obsolète.",
-      de: "Smart-Money-Rankings ändern sich mit 24h-PnL — veraltete Ansicht, veraltete Entscheidung.",
-      it: "Le classifiche smart-money si riordinano col PnL 24h — vista vecchia = decisione vecchia.",
-      ru: "Рейтинги smart money пересчитываются с PnL за 24ч — устаревший вид = устаревшее решение.",
-      zh: "聪明钱排名随24小时盈亏重排 — 视图旧则判断旧。",
-      ko: "24시간 손익으로 스마트 머니 순위가 바뀝니다 — 오래된 화면은 오래된 판단입니다.",
-      ja: "24時間PnLでスマートマネー順位が入れ替わります — 古い画面は古い判断。",
-      ar: "ترتيب أموال الأذكياء يتغير مع تحديثات ربح 24س — عرض قديم = قرار قديم.",
-      pt: "Os rankings de smart money mudam com o PnL 24h — visão velha = decisão velha."
-    }
-  ),
+  "wayfinding.fomo.0": S(""),
+  "wayfinding.fomo.1": S(""),
+  "wayfinding.fomo.2": S(""),
+  "wayfinding.fomo.3": S(""),
 
   "wayfinding.places.home.title": S("Home", {
     es: "Inicio",
@@ -246,18 +126,7 @@ export const WAYFINDING_FLAT_STRINGS = {
     ar: "الماسح",
     pt: "Scanner"
   }),
-  "wayfinding.places.scanner.detail": S("Paste a mint to open token", {
-    es: "Pega un mint y abre el token",
-    fr: "Collez un mint pour ouvrir le jeton",
-    de: "Mint einfügen, um Token zu öffnen",
-    it: "Incolla un mint per aprire il token",
-    ru: "Вставьте mint, чтобы открыть токен",
-    zh: "粘贴 mint 打开代币",
-    ko: "민트를 붙여넣어 토큰 열기",
-    ja: "ミントを貼り付けてトークンを開く",
-    ar: "الصق mint لفتح الرمز",
-    pt: "Cole um mint para abrir o token"
-  }),
+  "wayfinding.places.scanner.detail": S(""),
   "wayfinding.places.smartMoney.title": S("Smart money", {
     es: "Smart money",
     fr: "Smart money",
@@ -462,18 +331,7 @@ export const WAYFINDING_FLAT_STRINGS = {
     ar: "مُراقب المحافظ",
     pt: "Wallet stalker"
   }),
-  "wayfinding.places.stalker.detail": S("Follow wallets", {
-    es: "Sigue wallets",
-    fr: "Suivre des wallets",
-    de: "Wallets folgen",
-    it: "Segui i wallet",
-    ru: "Следить за кошельками",
-    zh: "跟踪钱包",
-    ko: "지갑 팔로우",
-    ja: "ウォレットを追跡",
-    ar: "تتبع المحافظ",
-    pt: "Seguir carteiras"
-  }),
+  "wayfinding.places.stalker.detail": S(""),
   "wayfinding.places.ops.title": S("Ops", {
     es: "Ops",
     fr: "Ops",
@@ -534,18 +392,7 @@ export const WAYFINDING_FLAT_STRINGS = {
     ar: "Sentinel",
     pt: "Sentinel"
   }),
-  "wayfinding.places.unknown.detail": S("Use the links below to switch screen", {
-    es: "Usa los enlaces para cambiar de pantalla",
-    fr: "Utilisez les liens ci-dessous pour changer d’écran",
-    de: "Nutzen Sie die Links unten, um die Ansicht zu wechseln",
-    it: "Usa i link sotto per cambiare schermata",
-    ru: "Используйте ссылки ниже для перехода",
-    zh: "使用下方链接切换界面",
-    ko: "아래 링크로 화면 전환",
-    ja: "下のリンクで画面を切り替え",
-    ar: "استخدم الروابط أدناه للتنقل",
-    pt: "Use os links abaixo para mudar de ecrã"
-  }),
+  "wayfinding.places.unknown.detail": S(""),
 
   "wayfinding.links.home": S("Home", {
     es: "Inicio",
@@ -740,79 +587,9 @@ export const WAYFINDING_FLAT_STRINGS = {
     pt: "Mercados da watchlist"
   }),
 
-  "wayfinding.steps.smartMoney": S(
-    "Open a wallet row for its profile (ES/EN narrative), or use Scanner if you already have a mint.",
-    {
-      es: "Abre la fila de una wallet para ver su perfil (narrativa ES/EN), o usa el Escáner si ya tienes un mint.",
-      fr: "Ouvrez une ligne wallet pour son profil (récit ES/EN), ou le Scanner si vous avez déjà un mint.",
-      de: "Öffnen Sie eine Wallet-Zeile für das Profil (ES/EN-Erzählung) oder den Scanner, wenn Sie bereits einen Mint haben.",
-      it: "Apri una riga wallet per il profilo (narrativa ES/EN), o Scanner se hai già un mint.",
-      ru: "Откройте строку кошелька для профиля (нарратив ES/EN) или Сканер, если уже есть mint.",
-      zh: "打开钱包行查看档案（中/英叙事），若已有 mint 请用扫描器。",
-      ko: "지갑 행을 열어 프로필(ES/EN 내러티브)을 보거나, 민트가 있으면 스캐너를 쓰세요.",
-      ja: "ウォレット行を開いてプロフィール（日英ナラティブ）、mintがあるならスキャナへ。",
-      ar: "افتح صف محفظة للملف (سرد ES/EN)، أو استخدم الماسح إن كان لديك mint.",
-      pt: "Abra uma linha de carteira para o perfil (narrativa ES/EN), ou o Scanner se já tiver um mint."
-    }
-  ),
-  "wayfinding.steps.scanner": S(
-    "Paste a Solana mint (32–44 characters), then Analyze to open the full token terminal.",
-    {
-      es: "Pega un mint de Solana (32–44 caracteres) y pulsa Analyze para abrir el terminal del token.",
-      fr: "Collez un mint Solana (32–44 caractères), puis Analyser pour ouvrir le terminal complet.",
-      de: "Solana-Mint einfügen (32–44 Zeichen), dann Analysieren für das vollständige Token-Terminal.",
-      it: "Incolla un mint Solana (32–44 caratteri), poi Analizza per aprire il terminale token.",
-      ru: "Вставьте mint Solana (32–44 символа), затем Analyze для полного терминала токена.",
-      zh: "粘贴 Solana mint（32–44 字符），点分析打开完整代币终端。",
-      ko: "솔라나 민트(32–44자)를 붙여넣고 Analyze로 전체 토큰 터미널을 여세요.",
-      ja: "Solanaミント（32〜44文字）を貼り付け、Analyzeでトークン端末を開く。",
-      ar: "الصق mint سولانا (32–44 حرفًا) ثم Analyze لفتح طرفية الرمز الكاملة.",
-      pt: "Cole um mint Solana (32–44 caracteres) e Analyze para abrir o terminal completo do token."
-    }
-  ),
-  "wayfinding.steps.watchlist": S(
-    "Add mints from Home or Scanner, then open Portfolio for watchlist markets or Compare for two tokens side by side.",
-    {
-      es: "Añade mints desde Inicio o el Escáner; luego abre Cartera para mercados o Comparar para dos tokens.",
-      fr: "Ajoutez des mints depuis l’accueil ou le Scanner, puis Portefeuille pour les marchés ou Comparer pour deux jetons.",
-      de: "Mints von Start oder Scanner hinzufügen, dann Portfolio für Märkte oder Vergleichen für zwei Token.",
-      it: "Aggiungi mint da Home o Scanner, poi Portfolio per i mercati o Confronta per due token affiancati.",
-      ru: "Добавьте mint с главной или сканера, затем Портфель для рынков или Сравнение для двух токенов.",
-      zh: "从首页或扫描器添加 mint，再打开投资组合看自选市场，或对比两个代币。",
-      ko: "홈 또는 스캐너에서 민트를 추가한 뒤, 포트폴리오로 시장을 보거나 비교로 두 토큰을 나란히 보세요.",
-      ja: "ホームまたはスキャナでミントを追加し、ポートフォリオで市場か、比較で2トークンを並べて表示。",
-      ar: "أضف mint من الرئيسية أو الماسح، ثم المحفظة لأسواق القائمة أو المقارنة لرمزين جنبًا إلى جنب.",
-      pt: "Adicione mints na Home ou no Scanner; depois Carteira para mercados ou Comparar para dois tokens."
-    }
-  ),
-  "wayfinding.steps.token": S(
-    "Add this mint to Watchlist to track it, check Smart money for wallets in flow, or Compare it against another token.",
-    {
-      es: "Añade este mint a la Watchlist para seguirlo, mira Smart money por wallets activas o compáralo con otro token.",
-      fr: "Ajoutez ce mint à la watchlist, consultez Smart money pour les wallets actifs, ou comparez à un autre jeton.",
-      de: "Mint zur Watchlist hinzufügen, Smart Money für aktive Wallets prüfen oder mit einem anderen Token vergleichen.",
-      it: "Aggiungi il mint alla watchlist, controlla Smart money per wallet attive o confrontalo con un altro token.",
-      ru: "Добавьте mint в watchlist, посмотрите Smart money по активным кошелькам или сравните с другим токеном.",
-      zh: "将此 mint 加入自选跟踪，在聪明钱中查看活跃钱包，或与其他代币对比。",
-      ko: "이 민트를 관심목록에 추가하고, 스마트 머니에서 활성 지갑을 보거나 다른 토큰과 비교하세요.",
-      ja: "このミントをウォッチリストに追加し、スマートマネーでアクティブウォレットを確認するか別トークンと比較。",
-      ar: "أضف هذا الmint إلى قائمة المراقبة، راجع الأموال الذكية للمحافظ النشطة، أو قارنه برمز آخر.",
-      pt: "Adicione este mint à watchlist, veja Smart money por carteiras ativas ou compare com outro token."
-    }
-  ),
-  "wayfinding.steps.wallet": S(
-    "Return to Smart money for the full leaderboard, or Scanner if you want to pivot to a specific mint.",
-    {
-      es: "Vuelve a Smart money para el ranking completo, o al Escáner si quieres saltar a un mint concreto.",
-      fr: "Retournez à Smart money pour le classement complet, ou Scanner pour cibler un mint précis.",
-      de: "Zurück zu Smart Money für die volle Rangliste, oder Scanner für einen bestimmten Mint.",
-      it: "Torna a Smart money per la classifica completa, o Scanner per passare a un mint specifico.",
-      ru: "Вернитесь в Smart money за полной таблицей или в Сканер для конкретного mint.",
-      zh: "返回聪明钱查看完整榜单，或用扫描器跳转到指定 mint。",
-      ko: "전체 순위는 스마트 머니로, 특정 민트로 전환하려면 스캐너로 가세요.",
-      ja: "全体ランキングはスマートマネーへ、特定ミントへはスキャナへ。",
-      ar: "ارجع إلى الأموال الذكية للترتيب الكامل، أو الماسح للانتقال إلى mint محدد.",
-      pt: "Volte ao Smart money para o ranking completo, ou ao Scanner para um mint específico."
-    }
-  )
+  "wayfinding.steps.smartMoney": S(""),
+  "wayfinding.steps.scanner": S(""),
+  "wayfinding.steps.watchlist": S(""),
+  "wayfinding.steps.token": S(""),
+  "wayfinding.steps.wallet": S("")
 };
