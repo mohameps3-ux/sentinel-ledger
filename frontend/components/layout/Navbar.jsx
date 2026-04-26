@@ -8,6 +8,7 @@ import { useLocale } from "../../contexts/LocaleContext";
 import { useLayoutEffect, useRef, useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { SentinelLogo } from "./SentinelLogo";
+import { useWarMode } from "../../contexts/WarModeContext";
 
 const PRIMARY_NAV = [
   { href: "/", label: "Home", match: "/" },
@@ -46,6 +47,7 @@ export function Navbar() {
   const [stalkerUnread, setStalkerUnread] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [homeMenuOpen, setHomeMenuOpen] = useState(false);
+  const { isWarMode, toggleWarMode } = useWarMode();
 
   const clearStalker = () => {
     if (typeof window !== "undefined") {
@@ -108,6 +110,16 @@ export function Navbar() {
               FREE
             </span>
             <LanguageMenu compact />
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isWarMode}
+              aria-label={isWarMode ? "Disable WAR mode" : "Enable WAR mode"}
+              onClick={toggleWarMode}
+              className={isWarMode ? "inline-flex h-7 items-center rounded-md border border-red-500/50 bg-red-500/20 px-2 font-mono text-[10px] tracking-wider text-red-300 transition-colors duration-150 hover:bg-red-500/30" : "inline-flex h-7 items-center rounded-md border border-white/10 bg-white/[0.04] px-2 font-mono text-[10px] tracking-wider text-gray-400 transition-colors duration-150 hover:bg-white/[0.08] hover:text-white"}
+            >
+              WAR
+            </button>
             <span className="h-5 w-px bg-white/10" aria-hidden />
             {PRIMARY_NAV.map((item) => {
               const active = router.pathname === item.match;
@@ -131,7 +143,7 @@ export function Navbar() {
                       aria-current={active ? "page" : undefined}
                       aria-expanded={homeMenuOpen}
                     >
-                      HOME ▾
+                      HOME â¾
                     </Link>
                     {homeMenuOpen ? (
                       <div
@@ -187,7 +199,7 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center justify-end gap-3 min-w-0">
-            {showTradingChrome && !isHome ? (
+            {showTradingChrome ? (
               <div className="hidden lg:block shrink-0 w-40 min-w-0">
                 <SearchBar compact />
               </div>
@@ -204,9 +216,6 @@ export function Navbar() {
             >
               HELP
             </button>
-            <Link href="/" className="font-mono text-sm font-extrabold tracking-[0.15em] text-white no-underline">
-              SENTINEL
-            </Link>
             <SentinelLogo />
           </div>
         </div>
@@ -225,7 +234,6 @@ export function Navbar() {
                 {menuOpen ? <X size={12} /> : <Menu size={12} />}
               </button>
             </div>
-            <span className="font-mono text-sm font-extrabold tracking-[0.15em] text-white">SENTINEL</span>
             <div className="flex items-center gap-0.5 shrink-0">
               <SentinelLogo />
             </div>
