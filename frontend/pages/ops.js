@@ -1032,7 +1032,7 @@ export default function OpsPage() {
                     <button
                       type="button"
                       onClick={runSignalGateTunerNow}
-                      className="h-8 px-3  border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
+                      className="btn-ghost-sm h-8 px-3  border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
                     >
                       Run tuner now
                     </button>
@@ -1152,28 +1152,28 @@ export default function OpsPage() {
                   <button
                     type="button"
                     onClick={() => downloadHistoryCsv(24)}
-                    className="h-9 px-3  border border-white/[0.1] bg-white/[0.03] text-xs text-gray-200 hover:bg-white/[0.06] transition"
+                    className="btn-ghost-sm h-9 px-3  border border-white/[0.1] bg-white/[0.03] text-xs text-gray-200 hover:bg-white/[0.06] transition"
                   >
                     Export CSV (24h)
                   </button>
                   <button
                     type="button"
                     onClick={() => downloadHistoryCsv(168)}
-                    className="h-9 px-3  border border-white/[0.1] bg-white/[0.03] text-xs text-gray-200 hover:bg-white/[0.06] transition"
+                    className="btn-ghost-sm h-9 px-3  border border-white/[0.1] bg-white/[0.03] text-xs text-gray-200 hover:bg-white/[0.06] transition"
                   >
                     Export CSV (7d)
                   </button>
                   <button
                     type="button"
                     onClick={() => downloadHistorySignedJson(24)}
-                    className="h-9 px-3  border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
+                    className="btn-ghost-sm h-9 px-3  border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
                   >
                     Export Signed JSON (24h)
                   </button>
                   <button
                     type="button"
                     onClick={() => downloadHistorySignedJson(168)}
-                    className="h-9 px-3  border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
+                    className="btn-ghost-sm h-9 px-3  border border-cyan-500/30 bg-cyan-500/[0.08] text-xs text-cyan-100 hover:bg-cyan-500/[0.14] transition"
                   >
                     Export Signed JSON (7d)
                   </button>
@@ -1208,7 +1208,7 @@ export default function OpsPage() {
                       type="button"
                       onClick={verifyPublicSignedExport}
                       disabled={verifyBusy}
-                      className="h-9 px-3  border border-emerald-500/35 bg-emerald-500/10 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/15 disabled:opacity-40 transition"
+                      className="btn-ghost-sm h-9 px-3  border border-emerald-500/35 bg-emerald-500/10 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/15 disabled:opacity-40 transition"
                     >
                       {verifyBusy ? "Verifying…" : "Verify integrity (public)"}
                     </button>
@@ -1263,7 +1263,7 @@ export default function OpsPage() {
                   <button
                     type="button"
                     onClick={runWalletBehaviorNow}
-                    className="h-9 px-3  border border-violet-500/30 bg-violet-500/[0.08] text-xs text-violet-100 hover:bg-violet-500/[0.14] transition"
+                    className="btn-ghost-sm h-9 px-3  border border-violet-500/30 bg-violet-500/[0.08] text-xs text-violet-100 hover:bg-violet-500/[0.14] transition"
                   >
                     Run now
                   </button>
@@ -1360,7 +1360,7 @@ export default function OpsPage() {
                   <button
                     type="button"
                     onClick={runAutoDiscoveryPromotionNow}
-                    className="h-9 px-3  border border-violet-500/30 bg-violet-500/[0.1] text-xs text-violet-100 hover:bg-violet-500/[0.16] transition"
+                    className="btn-ghost-sm h-9 px-3  border border-violet-500/30 bg-violet-500/[0.1] text-xs text-violet-100 hover:bg-violet-500/[0.16] transition"
                   >
                     Run promotion now
                   </button>
@@ -1438,7 +1438,7 @@ export default function OpsPage() {
                   <button
                     type="button"
                     onClick={runWalletCoordinationNow}
-                    className="h-9 px-3  border border-red-500/35 bg-red-500/[0.12] text-xs text-red-100 hover:bg-red-500/[0.2] transition"
+                    className="btn-ghost-sm h-9 px-3  border border-red-500/35 bg-red-500/[0.12] text-xs text-red-100 hover:bg-red-500/[0.2] transition"
                   >
                     Rebuild now
                   </button>
@@ -1561,7 +1561,7 @@ export default function OpsPage() {
                   <button
                     type="button"
                     onClick={sendBroadcast}
-                    className="h-11 px-5  border border-white/[0.1] bg-white/[0.04] text-sm font-medium text-gray-100 hover:bg-white/[0.08] shrink-0"
+                    className="btn-ghost-sm h-11 px-5  border border-white/[0.1] bg-white/[0.04] text-sm font-medium text-gray-100 hover:bg-white/[0.08] shrink-0"
                   >
                     Send
                   </button>
