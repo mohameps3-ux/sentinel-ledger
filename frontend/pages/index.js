@@ -9,8 +9,6 @@ import { getPublicApiUrl } from "../lib/publicRuntime";
 import { AnimatedNumber } from "../components/ui/AnimatedNumber";
 import { useLiveFeedSocket } from "../hooks/useLiveFeedSocket";
 import { PageHead } from "../components/seo/PageHead";
-import { WelcomeBanner } from "../components/public/WelcomeBanner";
-import { HomeOnboarding } from "../components/public/HomeOnboarding";
 import { useWalletLabels } from "../hooks/useWalletLabels";
 import { WarLayout } from "../components/layout/WarLayout";
 import { TokenDesk } from "../components/cockpit/TokenDesk";
@@ -22,10 +20,6 @@ import {
   parseDeskRadarHintFromQuery,
   scrubDeskRadarParamsFromQuery
 } from "../lib/deskRadarCtx.mjs";
-import WarHeader from "@/features/war-home/WarHeader";
-import WarHomeCombatPanels from "@/features/war-home/WarHomeCombatPanels";
-import WarHomeIntro from "@/features/war-home/WarHomeIntro";
-import WarHomeUtilityRail from "@/features/war-home/WarHomeUtilityRail";
 import TacticalFeed from "@/features/war-home/TacticalFeed";
 import {
   TACTICAL_TAB_LS_KEY,
@@ -41,6 +35,7 @@ import { useWarMode } from "../contexts/WarModeContext";
 import { useLocale } from "../contexts/LocaleContext";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useLastGoodArray } from "../hooks/useLastGoodArray";
+import { formatUsdWhole } from "../lib/formatStable";
 
 function HomeMetricStrip({ signalsToday, activeWallets, avgConfidence, bestSignal }) {
   const metrics = [
@@ -50,16 +45,108 @@ function HomeMetricStrip({ signalsToday, activeWallets, avgConfidence, bestSigna
     ["Best Signal", bestSignal != null ? `${Math.round(bestSignal)}%` : "—"]
   ];
   return (
-    <div className="sl-container max-w-full pt-2">
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {metrics.map(([label, value]) => (
-          <div key={label} className="sl-card-elevated px-3 py-2">
+          <div key={label} className="sl-card-elevated flex h-20 flex-col justify-center px-3 py-2">
             <p className="sl-metric-label">{label}</p>
-            <p className="sl-metric mt-1 text-lg md:text-xl">{value}</p>
+            <p className="sl-metric mt-1 text-lg md:text-xl">
+              {typeof value === "number" ? <AnimatedNumber value={value} decimalPlaces={0} /> : value}
+            </p>
           </div>
         ))}
-      </div>
     </div>
+  );
+}
+
+function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onToggleSound }) {
+  return (
+    <details className="relative">
+      <summary className="list-none cursor-pointer rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 hover:text-white">
+        Settings
+      </summary>
+      <div className="absolute right-0 top-[calc(100%+6px)] z-30 w-56 rounded-xl border border-white/10 bg-[#090b12] p-2 shadow-2xl">
+        <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-gray-500">Strategy</p>
+        {["conservative", "balanced", "aggressive"].map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => onStrategyModeChange(mode)}
+            className={`mb-1 w-full rounded-md border px-2 py-1 text-left text-[11px] capitalize ${
+              strategyMode === mode ? "border-indigo-400/45 bg-indigo-500/15 text-indigo-100" : "border-white/10 bg-white/[0.02] text-gray-400"
+            }`}
+          >
+            {mode}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={onToggleSound}
+          className="mt-1 w-full rounded-md border border-white/10 bg-white/[0.02] px-2 py-1 text-left text-[11px] text-gray-300"
+        >
+          Sound alerts: {soundEnabled ? "On" : "Off"}
+        </button>
+      </div>
+    </details>
+  );
+}
+
+function SmartWalletsPreview({ wallets, labelFor, titleFor }) {
+  const rows = wallets.slice(0, 5);
+  return (
+    <section className="sl-card-elevated p-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h2 className="font-mono text-[12px] font-bold uppercase tracking-[0.16em] text-white">Smart Wallets</h2>
+        <Link href="/smart-money?limit=50" className="text-[11px] font-semibold text-indigo-200 no-underline hover:text-white">
+          View all →
+        </Link>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="sl-table text-[11px]">
+          <tbody>
+            {rows.length ? rows.map((wallet, idx) => (
+              <tr key={wallet.address || wallet.wallet || idx}>
+                <td className="py-2 pr-2 text-gray-500">#{idx + 1}</td>
+                <td className="py-2 pr-2 font-mono text-gray-200" title={wallet.address ? titleFor(wallet.address) : wallet.tooltip}>
+                  {wallet.address ? labelFor(wallet.address) : wallet.wallet}
+                </td>
+                <td className="py-2 pr-2 text-emerald-300">{Number(wallet.winRate || 0).toFixed(1)}%</td>
+                <td className="py-2 text-right text-gray-400">${formatUsdWhole(wallet.pnl30d || 0)}</td>
+              </tr>
+            )) : (
+              <tr><td className="py-3 text-gray-500">Accumulating verified wallet data.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function RecentAlertsPreview({ alerts }) {
+  const rows = alerts.slice(0, 5);
+  return (
+    <section className="sl-card-elevated p-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h2 className="font-mono text-[12px] font-bold uppercase tracking-[0.16em] text-white">Recent Alerts</h2>
+        <Link href="/alerts" className="text-[11px] font-semibold text-indigo-200 no-underline hover:text-white">
+          View all →
+        </Link>
+      </div>
+      <div className="space-y-1.5">
+        {rows.length ? rows.map((alert, idx) => (
+          <Link
+            key={`${alert.tokenAddress || "alert"}-${idx}`}
+            href={alert.tokenAddress ? `/token/${alert.tokenAddress}` : "/alerts"}
+            className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-1.5 text-[11px] no-underline hover:border-indigo-400/25"
+          >
+            <span className="font-mono text-gray-200">{alert.tokenAddress ? `${alert.tokenAddress.slice(0, 4)}…${alert.tokenAddress.slice(-4)}` : "Alert"}</span>
+            <span className="truncate text-gray-500">{alert.alertType}</span>
+          </Link>
+        )) : (
+          <p className="py-3 text-[12px] text-gray-500">No urgent alerts in the latest window.</p>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -147,11 +234,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const [signalCursor, setSignalCursor] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [strategyMode, setStrategyMode] = useState("balanced");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [tacticalTab, setTacticalTab] = useState("live");
   const [historyRows, setHistoryRows] = useState([]);
   const [outcomesSummary, setOutcomesSummary] = useState(null);
-  const [bestRecentFromApi, setBestRecentFromApi] = useState(null);
   const [topWalletsApi, setTopWalletsApi] = useState([]);
   const [entryCountdownByMint, setEntryCountdownByMint] = useState({});
   const [liveExpanded, setLiveExpanded] = useState(false);
@@ -251,17 +336,6 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       .sort((a, b) => b.smartScore - a.smartScore);
   }, [topWalletsApi]);
 
-  const bestRecentDisplay = useMemo(() => {
-    if (!bestRecentFromApi?.token) return null;
-    const conf = bestRecentFromApi.confidence != null ? Number(bestRecentFromApi.confidence) : null;
-    return {
-      headline: `${bestRecentFromApi.token.slice(0, 6)}…${bestRecentFromApi.token.slice(-4)}`,
-      outcomePct: Number(bestRecentFromApi.outcomePct),
-      horizon: t("home.best.horizon"),
-      signal: conf != null && Number.isFinite(conf) ? Math.round(Math.min(100, Math.max(1, conf))) : 78,
-      mint: bestRecentFromApi.token
-    };
-  }, [bestRecentFromApi, t]);
   const topWalletLabelAddrs = useMemo(() => rankedWallets.map((w) => w.address).filter(Boolean), [rankedWallets]);
   const { labelFor: topWalletLabel, titleFor: topWalletTitle } = useWalletLabels(topWalletLabelAddrs);
   const interpretedSignalsRaw = useMemo(() => {
@@ -410,19 +484,13 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   // badges when the live ordering moves. Pure client-side; no extra network.
   const signalsRankDeltas = useRankDeltas(interpretedSignals, (s) => s?.mint);
   const trendingRankDeltas = useRankDeltas(heatTokenPool, (t) => t?.mint);
-  const liveSignal = interpretedSignals[signalCursor % Math.max(1, interpretedSignals.length)];
-
- 
-
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      setIsLoggedIn(Boolean(localStorage.getItem("token")));
       const tab = localStorage.getItem(TACTICAL_TAB_LS_KEY);
       if (tab === "live" || tab === "hot" || tab === "outlier" || tab === "track") setTacticalTab(tab);
       if (tab === "history") setTacticalTab("track");
     } catch (_) {
-      setIsLoggedIn(false);
     }
   }, []);
 
@@ -532,12 +600,10 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           summary.resolved = (Number(summary.wins) || 0) + (Number(summary.losses) || 0);
         }
         setOutcomesSummary(Object.keys(summary).length ? summary : null);
-        setBestRecentFromApi(j?.bestRecent && typeof j.bestRecent === "object" ? j.bestRecent : null);
       })
       .catch(() => {
         if (!cancelled) {
           setOutcomesSummary(null);
-          setBestRecentFromApi(null);
         }
       });
     return () => {
@@ -610,14 +676,6 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     };
   }, [tacticalTab]);
 
-  const marketMood = useMemo(() => {
-    if (!trending.length) return { label: "—", className: "text-gray-400" };
-    const avg = trending.reduce((acc, t) => acc + Number(t.change || 0), 0) / trending.length;
-    if (avg > 5) return { label: "Favorable", className: "text-emerald-300" };
-    if (avg > 0) return { label: "Templado", className: "text-amber-300" };
-    return { label: "A la defensiva", className: "text-red-300" };
-  }, [trending]);
-
   const homeMetrics = useMemo(() => {
     const scores = interpretedSignals.map((s) => Number(s.signalStrength)).filter(Number.isFinite);
     const avgConfidence = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
@@ -635,34 +693,23 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     <>
       <PageHead title={t("home.pageTitle")} description={t("home.pageDesc")} />
       <WarLayout
-        header={<WarHeader />}
+        header={null}
         feed={
-          <>
-            <HomeOnboarding />
-            <WelcomeBanner />
+          <div className="space-y-3">
             <HomeMetricStrip
               signalsToday={homeMetrics.signalsToday}
               activeWallets={homeMetrics.activeWallets}
               avgConfidence={homeMetrics.avgConfidence}
               bestSignal={homeMetrics.bestSignal}
             />
-            <div className="sl-container max-w-full pt-2">
-              <Link
-                href="/graveyard"
-                className="flex flex-col gap-1 rounded-2xl border border-violet-500/25 bg-violet-500/[0.07] px-4 py-3 no-underline transition hover:bg-violet-500/[0.11] sm:flex-row sm:items-center sm:justify-between"
-              >
-                <span>
-                  <span className="block text-xs uppercase tracking-[0.16em] text-violet-200/80 font-semibold">Track Record</span>
-                  <span className="block text-sm text-gray-200">Every signal. Every outcome. Nothing hidden.</span>
-                </span>
-                <span className="text-xs font-semibold text-violet-100">Open verified ledger →</span>
-              </Link>
+            <div className="flex items-center justify-end">
+              <HomeSettings
+                strategyMode={strategyMode}
+                onStrategyModeChange={setStrategyMode}
+                soundEnabled={soundEnabled}
+                onToggleSound={() => setSoundEnabled((v) => !v)}
+              />
             </div>
-            <div className="w-full max-w-[100vw] overflow-x-clip">
-        <div className="px-2 sm:px-3 pt-1 pb-0 border-b border-cyan-500/20 bg-[#050a0f]/80">
-        <p className="px-1 pt-1 pb-2 text-center text-[12px] sm:text-[13px] sm:text-left text-gray-300 leading-snug">
-          {t("home.step1.line")}
-        </p>
         <TacticalFeed
           tacticalTab={tacticalTab}
           onTabChange={setTacticalTab}
@@ -698,36 +745,11 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           trendingMinLiquidityUsd={trendingMeta.minLiquidityUsd}
           trendingRankDeltas={trendingRankDeltas}
         />
-
-        </div>
-        <div className="sl-container py-2 sm:py-4 md:py-6 max-w-full">
-        <WarHomeIntro
-          strategyMode={strategyMode}
-          onStrategyModeChange={setStrategyMode}
-          soundEnabled={soundEnabled}
-          onToggleSound={() => setSoundEnabled((v) => !v)}
-        />
-
-        <WarHomeUtilityRail />
-        </div>
-
-        <div className="sl-container max-w-full pb-3 sm:pb-5">
-        <WarHomeCombatPanels
-          bestRecentDisplay={bestRecentDisplay}
-          outcomesSummary={outcomesSummary}
-          rankedWallets={rankedWallets}
-          topWalletsFromApi={topWalletsApi.length > 0}
-          topWalletTitle={topWalletTitle}
-          topWalletLabel={topWalletLabel}
-          strategyMode={strategyMode}
-          isLoggedIn={isLoggedIn}
-          liveSignal={liveSignal}
-          marketMood={marketMood}
-          alerts={alerts}
-        />
-        </div>
-      </div>
-          </>
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+              <SmartWalletsPreview wallets={rankedWallets} labelFor={topWalletLabel} titleFor={topWalletTitle} />
+              <RecentAlertsPreview alerts={alerts} />
+            </div>
+          </div>
         }
         desk={<TokenDesk key={selectedMint ?? "__desk_none__"} mint={selectedMint} deskRadarHint={deskRadarHint} />}
       />

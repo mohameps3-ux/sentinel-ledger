@@ -13,9 +13,9 @@ export function TacticalTabs({ activeTab, onTabChange, panelLive, panelHot, pane
   ];
 
   return (
-    <div className="space-y-2 sm:space-y-3">
+    <div className="space-y-2">
       <div
-        className="sl-tactical-tabs-strip sticky top-1 z-20 -mx-1 px-1 py-1 rounded-xl border border-white/[0.08] bg-[#07090d]/86 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.35)] flex flex-nowrap gap-1.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:static md:mx-0 md:px-0 md:py-0 md:rounded-none md:border-0 md:bg-transparent md:backdrop-blur-0 md:shadow-none md:border-b md:border-white/10 md:pb-2"
+        className="sl-tactical-tabs-strip sticky top-1 z-20 -mx-1 flex flex-nowrap gap-4 overflow-x-auto border-b border-white/[0.08] bg-[var(--sl-bg-base)]/90 px-1 pt-1 backdrop-blur-md [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:static md:mx-0 md:bg-transparent md:backdrop-blur-0"
         role="tablist"
         aria-label={t("war.tactical.aria")}
       >
@@ -28,18 +28,12 @@ export function TacticalTabs({ activeTab, onTabChange, panelLive, panelHot, pane
             aria-selected={activeTab === tab.id}
             aria-controls={`tactical-panel-${tab.id}`}
             onClick={() => onTabChange(tab.id)}
-            className={`shrink-0 inline-flex items-center gap-1 text-[11px] sm:text-xs px-2.5 sm:px-3 py-1.5 rounded-md sm:rounded-lg border font-semibold transition-all duration-200 ${tab.order} ${
+            className={`relative shrink-0 inline-flex items-center gap-1 pb-2 pt-1 text-[11px] sm:text-xs font-bold uppercase tracking-[0.14em] transition-all duration-200 ${tab.order} ${
               activeTab === tab.id
-                ? "border-cyan-400/55 bg-cyan-500/14 text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.18)]"
-                : "border-white/10 bg-white/[0.03] text-gray-400 hover:text-gray-200 hover:border-white/18 hover:bg-white/[0.06]"
+                ? "text-indigo-100 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-indigo-400"
+                : "text-gray-500 hover:text-gray-200"
             }`}
           >
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                activeTab === tab.id ? "bg-cyan-300" : "bg-gray-600"
-              }`}
-              aria-hidden
-            />
             {tab.label}
           </button>
         ))}

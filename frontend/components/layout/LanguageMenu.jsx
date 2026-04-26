@@ -6,7 +6,7 @@ import { useLocale } from "../../contexts/LocaleContext";
 import { LANGUAGE_MENU } from "../../lib/i18n";
 
 /** Trigger label is always English via `layout.language` (flat string). */
-export function LanguageMenu({ className = "" }) {
+export function LanguageMenu({ className = "", compact = false }) {
   const { locale, setLocale, t } = useLocale();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -38,13 +38,15 @@ export function LanguageMenu({ className = "" }) {
         aria-haspopup="listbox"
         aria-label={t("layout.language_aria")}
         title={t("layout.language_aria")}
-        className="h-8 sm:h-9 min-w-[6.75rem] sm:min-w-[7.25rem] pl-2.5 pr-2 rounded-lg border border-cyan-500/25 bg-[#0a1018]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-cyan-400/40 hover:bg-[#0c121c]/95 text-gray-100 inline-flex items-center justify-between gap-1.5 text-[11px] sm:text-xs font-semibold tracking-wide shrink-0 transition-colors"
+        className={compact
+          ? "h-7 min-w-[3.5rem] px-2 rounded-md border border-white/10 bg-white/[0.03] text-gray-300 inline-flex items-center justify-between gap-1 text-[11px] font-semibold tracking-wide shrink-0 transition-colors hover:border-indigo-400/35 hover:text-white"
+          : "h-8 sm:h-9 min-w-[6.75rem] sm:min-w-[7.25rem] pl-2.5 pr-2 rounded-lg border border-cyan-500/25 bg-[#0a1018]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-cyan-400/40 hover:bg-[#0c121c]/95 text-gray-100 inline-flex items-center justify-between gap-1.5 text-[11px] sm:text-xs font-semibold tracking-wide shrink-0 transition-colors"}
       >
         <span className="text-gray-100 select-none" translate="no">
-          {t("layout.language")}
+          {compact ? String(locale || "en").toUpperCase() : t("layout.language")}
         </span>
         <ChevronDown
-          size={16}
+          size={compact ? 12 : 16}
           className={`text-cyan-300/90 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           aria-hidden
         />

@@ -67,9 +67,9 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
   if (!mint) {
     return (
       <div className="flex h-full min-h-[8.25rem] sm:min-h-[12rem] flex-col items-center justify-center gap-2 px-3 sm:px-4 py-4 sm:py-8 text-center">
-        <p className="text-[12px] sm:text-sm font-semibold text-gray-300">{t("cockpit.desk.selectTitle")}</p>
+        <p className="text-sm font-semibold text-gray-200">Select any token from the feed →</p>
         <p className="text-[11px] sm:text-xs text-gray-500 max-w-xs leading-snug sm:leading-relaxed">
-          {t("cockpit.desk.selectBody")}
+          Token Intel opens here with score, execution links and wallet context.
         </p>
         <div className="w-full max-w-xs sm:max-w-sm text-left">
           <AccordionSection title={t("cockpit.desk.quickScan")} summaryTone="neutral" defaultOpen={false}>

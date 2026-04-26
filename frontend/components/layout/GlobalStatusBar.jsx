@@ -74,7 +74,14 @@ export function GlobalStatusBar() {
   }, [state.health, state.sync]);
 
   const signalsToday = Number(state.stats?.signalsToday || 0);
-  const walletsText = state.health?.smartWorkersEnabled ? "workers online" : "workers standby";
+  const walletCount = Number(
+    state.stats?.activeWallets ??
+      state.stats?.smartWallets ??
+      state.ingestion?.walletsTracked ??
+      state.ingestion?.walletCount ??
+      state.health?.smartWallets ??
+      0
+  );
   const live = state.ingestion?.status === "LIVE" || state.sync?.status === "LIVE";
   const solPrice = Number(state.sol?.price);
 
@@ -87,9 +94,9 @@ export function GlobalStatusBar() {
           <span className="truncate text-[var(--sl-text-muted)]">last event {timeAgo(state.ingestion?.lastEventAt)}</span>
         </div>
         <div className="sl-status-bar__center truncate text-center">
-          Monitoring {walletsText} · {signalsToday} signals today · Oracle active
+          Monitoring {Number.isFinite(walletCount) ? walletCount : 0} wallets · {signalsToday} signals today · Oracle active
         </div>
-        <div className="flex items-center justify-end gap-3 overflow-hidden">
+        <div className="sl-status-bar__right flex items-center justify-end gap-3 overflow-hidden">
           <span className="hidden sm:inline text-[var(--sl-text-muted)]">
             SOL {Number.isFinite(solPrice) ? `$${solPrice.toFixed(2)}` : "—"}
           </span>

@@ -9,7 +9,7 @@ import { getPublicApiUrl } from "../../lib/publicRuntime";
 const walletMultiButtonClass =
   "!bg-gradient-to-r !from-[#6c5ce7] !to-[#00cec9] hover:!opacity-95 !rounded-md !h-7 !min-h-0 !text-[9px] !min-w-0 !max-w-[5.25rem] !justify-center !truncate !px-1.5 !py-0 !leading-tight !font-semibold";
 
-export function WalletButton() {
+export function WalletButton({ navCompact = false }) {
   const { publicKey, signMessage, connected, disconnect } = useWallet();
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -134,7 +134,18 @@ export function WalletButton() {
 
   return (
     <div ref={wrapRef} className="relative z-[200] flex items-center justify-end gap-0.5 min-w-0 shrink-0">
-      {walletUiReady ? (
+      {navCompact && connected ? (
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="h-7 rounded-md border border-white/10 bg-white/[0.03] px-2.5 text-[11px] font-semibold text-gray-300 hover:border-red-400/35 hover:bg-red-500/10 hover:text-red-100"
+          title={shortWallet}
+        >
+          Disconnect Wallet
+        </button>
+      ) : navCompact && walletUiReady ? (
+        <WalletMultiButton className="!h-7 !min-h-0 !rounded-md !border !border-white/10 !bg-white/[0.03] hover:!bg-white/[0.07] !px-2.5 !py-0 !text-[11px] !font-semibold !text-gray-300 !shadow-none" />
+      ) : walletUiReady ? (
         <WalletMultiButton className={walletMultiButtonClass} />
       ) : (
         <button
@@ -146,7 +157,7 @@ export function WalletButton() {
           Select Wallet
         </button>
       )}
-      <button
+      {!navCompact ? <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`hidden sm:inline-flex items-center gap-0.5 h-7 pl-1 pr-1 rounded-md border text-[9px] transition max-w-[4.75rem] sm:max-w-[5.5rem] truncate ${
@@ -161,7 +172,7 @@ export function WalletButton() {
         <ShieldCheck size={11} className="shrink-0" />
         <span className="truncate min-w-0">{shortWallet}</span>
         <ChevronDown size={11} className={`shrink-0 transition ${open ? "rotate-180" : ""}`} />
-      </button>
+      </button> : null}
 
       {open && connected && (
         <div className="absolute right-0 top-[calc(100%+4px)] z-[500] w-40 rounded-lg border border-white/10 bg-[#0d1014] p-1 shadow-2xl">

@@ -61,7 +61,7 @@
 
 @media (min-width: 640px) {
   :root {
-    --sl-nav-h: 52px;
+    --sl-nav-h: 48px;
     --sl-safe-gap: 12px;
   }
 }

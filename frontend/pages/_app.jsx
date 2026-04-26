@@ -15,7 +15,6 @@ import { AppErrorBoundary } from "../components/layout/AppErrorBoundary";
 import { Navbar } from "../components/layout/Navbar";
 import { GlobalStatusBar } from "../components/layout/GlobalStatusBar";
 import { GlobalWayfinding } from "../components/layout/GlobalWayfinding";
-import { LiveTensionBar } from "../components/layout/LiveTensionBar";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { GlobalCommandHud } from "../components/terminal/GlobalCommandHud";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
@@ -44,7 +43,6 @@ const queryClient = new QueryClient();
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
-  const isHome = router.pathname === "/";
   const showDevUiBadge = process.env.NODE_ENV !== "production";
   const devUiStamp = "home-compact-v2";
   const buildStamp = process.env.NEXT_PUBLIC_GIT_SHA || "local";
@@ -105,7 +103,6 @@ export default function App({ Component, pageProps }) {
             >
               <Navbar />
               <GlobalStatusBar />
-              {isHome ? <LiveTensionBar /> : null}
               {/* padding-top is derived from CSS variables published by the
                   fixed top chrome (see :root in globals.css and the
                   `data-has-tension-bar` contract in LiveTensionBar.jsx).
@@ -117,8 +114,7 @@ export default function App({ Component, pageProps }) {
                 }}
                 className="pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0"
               >
-                {/* Home renders GlobalWayfinding inside the cockpit feed so the War band is first paint. */}
-                {!isHome ? <GlobalWayfinding /> : null}
+                {router.pathname !== "/" ? <GlobalWayfinding /> : null}
                 <AppErrorBoundary>
                   <Component {...pageProps} />
                 </AppErrorBoundary>

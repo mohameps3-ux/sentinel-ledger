@@ -6,29 +6,27 @@
  * feed and desk columns; this component does not own any product logic.
  */
 export function WarLayout({ header, feed, desk }) {
-  const chromeOffset = "var(--sl-nav-actual, var(--sl-nav-h)) + var(--sl-bar-h) + var(--sl-safe-gap)";
+  const chromeOffset = "var(--sl-nav-actual, var(--sl-nav-h)) + var(--sl-status-h) + var(--sl-safe-gap)";
   const bandHeight = `calc(100dvh - (${chromeOffset}))`;
 
   return (
     <div
-      className="relative flex w-full min-w-0 flex-col overflow-visible lg:overflow-hidden rounded-2xl border border-cyan-500/25 bg-[#080d14] shadow-[0_0_0_1px_rgba(34,211,238,0.12),0_12px_48px_rgba(0,0,0,0.45)] ring-1 ring-cyan-500/15 sm:mx-0.5"
+      className="relative flex w-full min-w-0 flex-col overflow-visible bg-[var(--sl-bg-base)] lg:overflow-hidden"
       style={{ height: bandHeight, maxHeight: bandHeight }}
       data-home-war-layout="1"
     >
-      <div
-        className="pointer-events-none absolute inset-x-3 top-0 h-[3px] rounded-b-full bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent opacity-90"
-        aria-hidden
-      />
-      <div className="shrink-0 border-b border-cyan-950/50 bg-[#050a10]/95 px-3 py-2 sm:px-4">{header}</div>
+      {header ? <div className="shrink-0 border-b border-white/[0.06] bg-[var(--sl-bg-surface)] px-3 py-2 sm:px-4">{header}</div> : null}
 
-      {/* Feed = casi todo el ancho; desk = rail estrecho a la derecha */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-visible lg:overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(12.5rem,15rem)]">
-        {/* Mobile / tablet: desk first so Intel + ?t= is visible without scrolling past the whole feed */}
-        <div className="order-2 min-h-0 min-w-0 overflow-visible lg:overflow-y-auto overflow-x-hidden border-slate-800/80 lg:order-1 lg:border-r">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-visible px-2 pb-3 pt-2 lg:grid-cols-[minmax(0,65%)_minmax(20rem,35%)] lg:overflow-hidden lg:px-3">
+        <div className="min-h-0 min-w-0 overflow-visible lg:overflow-y-auto overflow-x-hidden">
           {feed}
         </div>
-        <div className="order-1 min-h-0 min-w-0 max-h-none overflow-visible lg:max-h-[42dvh] lg:overflow-y-auto overflow-x-hidden border-b border-slate-800/80 lg:order-2 lg:max-h-none lg:border-b-0 lg:border-t-0">
-          {desk}
+        <div className="hidden min-h-0 min-w-0 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--sl-bg-surface)] lg:block">
+          <div className="flex h-10 items-center justify-between border-b border-white/[0.06] px-3">
+            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-white">Token Intel</span>
+            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300"><span className="sl-pulse-dot" />live</span>
+          </div>
+          <div className="h-[calc(100%-2.5rem)] overflow-y-auto">{desk}</div>
         </div>
       </div>
     </div>

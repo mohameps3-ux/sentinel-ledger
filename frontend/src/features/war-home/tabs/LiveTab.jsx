@@ -7,7 +7,6 @@ import {
   confidenceTone,
   entryWindowFromCountdown,
   entryWindowVisual,
-  evidenceChipsForSig,
   feedDecisionPillClass,
   scoreBarGradient,
   suggestedAction,
@@ -17,7 +16,6 @@ import { redFlagsForSignal } from "@/lib/redFlags";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
 import { RealtimeTokenCardShell } from "../../../../components/home/RealtimeTokenCardShell";
 import { RulePerformanceBadge } from "../../../../components/signals/RulePerformanceBadge";
-import { TacticalRegimePill } from "../../../../components/home/TacticalRegimePill";
 import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../../lib/terminalLinks";
 import { isProbableSolanaMint } from "../../../../lib/solanaMint.mjs";
 import { RankBadge, RankDeltaChip } from "./RankIndicators";
@@ -33,7 +31,7 @@ import { useLocale } from "../../../../contexts/LocaleContext";
 function cockpitCardClickTargetIsInteractive(e) {
   const el = e?.target;
   if (!el || typeof el.closest !== "function") return true;
-  return Boolean(el.closest("a, button"));
+  return Boolean(el.closest("a, button, summary, details"));
 }
 
 function narrativeClass(severity) {
@@ -208,8 +206,8 @@ export function LiveTab({
         }}
         baseClassName={`${
           isHeatFill
-            ? "sl-terminal-shell sl-terminal-shell--heat rounded-md border border-amber-500/25 bg-gradient-to-b from-amber-950/25 to-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:-translate-y-[1px] hover:border-amber-400/45 hover:shadow-[0_0_18px_rgba(245,158,11,0.14)]"
-            : "sl-terminal-shell sl-terminal-shell--live sl-glow-live rounded-md border border-white/10 bg-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:-translate-y-[1px] hover:border-emerald-400/45 hover:shadow-[0_0_18px_rgba(16,185,129,0.22)]"
+            ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat rounded-md border border-amber-500/25 border-l-[3px] border-l-amber-400 bg-gradient-to-b from-amber-950/25 to-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-amber-400/45 hover:shadow-[0_0_18px_rgba(245,158,11,0.14)]"
+            : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live rounded-md border border-white/10 border-l-[3px] border-l-emerald-400 bg-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-emerald-400/45 hover:shadow-[0_0_18px_rgba(16,185,129,0.22)]"
         } ${hot ? (isHeatFill ? "ring-1 ring-amber-500/30" : "ring-1 ring-emerald-500/35") : ""} ${
           sig.mint && isProbableSolanaMint(sig.mint) ? "cursor-pointer" : ""
         } ${selectedMint && sig.mint === selectedMint ? "ring-2 ring-cyan-500/40" : ""}`}
@@ -222,7 +220,7 @@ export function LiveTab({
         {({ displayScore, smartMoneyCount }) => (
           <>
         <SentinelNarrativeBanner narrative={narrative} />
-        <div className="flex items-start justify-between gap-1.5">
+        <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-1 mb-0 flex-wrap">
               <RankBadge rank={rankInfo.rank} />
@@ -238,11 +236,6 @@ export function LiveTab({
               )}
             </div>
             <p className="text-xs font-bold text-white tracking-tight truncate leading-tight">${sig.symbol}</p>
-            <p className="text-[8px] text-cyan-200/85 font-mono mt-0.5 leading-tight">
-              {sig._liveSource === "hot_fill"
-                ? `${sig.signalStrength}/100 · heat`
-                : `${sig.smartWallets} w · live`}
-            </p>
             {hasPx || hasChg ? (
               <div
                 className={`mt-0.5 flex items-baseline justify-between gap-2 text-[10px] font-mono leading-tight ${
@@ -265,28 +258,20 @@ export function LiveTab({
             ) : null}
           </div>
           <span
-            className={`shrink-0 text-[7px] max-w-[4.25rem] text-right leading-tight px-0.5 py-0.5 rounded border line-clamp-2 ${confidenceTone(sig.signalStrength)}`}
+            className={`shrink-0 text-[8px] max-w-[4.75rem] text-right leading-tight px-1.5 py-0.5 rounded border line-clamp-1 ${confidenceTone(sig.signalStrength)}`}
             title={confidenceTr(sig.signalStrength)}
           >
             {confidenceTr(sig.signalStrength)}
           </span>
         </div>
 
-        <div className="space-y-0.5">
-          <div className="flex items-baseline justify-between gap-2">
-            <p className="text-[7px] uppercase tracking-[0.12em] text-gray-500 font-semibold">{t("war.combat.thScore")}</p>
-            <span className="text-[7px] text-gray-500 font-mono">/ 100</span>
+        <div className="space-y-1">
+          <div className="h-1 rounded-full bg-gray-900 overflow-hidden ring-1 ring-white/8">
+            <div className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(sig.signalStrength)}`} style={{ width: `${displayScore}%` }} />
           </div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-lg font-black tabular-nums font-mono text-white leading-none tracking-tight">
-              <AnimatedNumber value={displayScore} decimalPlaces={0} />
-            </span>
-            <div className="flex-1 h-0.5 sm:h-1 rounded-full bg-gray-900 overflow-hidden ring-1 ring-white/8 mb-0.5 min-w-0">
-              <div
-                className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(sig.signalStrength)}`}
-                style={{ width: `${displayScore}%` }}
-              />
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-mono text-[11px] font-bold tabular-nums text-white">{displayScore}/100</span>
+            <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-gray-500">{confidenceTr(sig.signalStrength)}</span>
           </div>
         </div>
 
@@ -300,14 +285,9 @@ export function LiveTab({
               {String(coordOnCard).replace(/_/g, " ")}
             </span>
           ) : null}
-          <TacticalRegimePill
-            signalStrength={sig.signalStrength}
-            token={sig.token}
-            priceChange24h={Number(tick?.priceChange24h ?? sig.token?.change) || 0}
-          />
           {!isHeatFill && (sig._api?.confluence || (!sig._api && sig.signalStrength >= 88)) ? (
-            <span className="text-[9px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1 py-0.5 font-mono">
-              🧬 multi
+            <span className="text-[8px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1 py-0.5 font-mono">
+              multi
             </span>
           ) : null}
           {smartMoneyCount > 0 ? (
@@ -318,96 +298,26 @@ export function LiveTab({
           <RulePerformanceBadge performance={sig._api?.rulePerformance} compact />
         </div>
 
-        <div className="rounded border border-white/8 bg-black/30 px-1.5 py-1">
-          <p className="text-[7px] text-gray-500 uppercase tracking-wide font-semibold">
-            {isHeatFill ? t("war.live.metricsMarket") : t("war.live.whyNow")}
-          </p>
-          <ul className="text-[8px] text-gray-200 mt-0.5 space-y-0 leading-snug">
-            {whyLines.slice(0, 3).map((line, li) => (
-              <li key={li} className="flex gap-1">
-                <span className={`shrink-0 ${isHeatFill ? "text-amber-400/85" : "text-emerald-500/80"}`}>•</span>
-                <span className="truncate">{line}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
         <LiveCardOverlay mint={sig.mint} />
-
-        <div className="flex flex-wrap gap-0.5">
-          {evidenceChipsForSig(sig).slice(0, 4).map((chip) => (
-            <span
-              key={chip + idx}
-              className="text-[9px] px-1 py-0.5 rounded border border-white/10 bg-white/[0.02] text-gray-300"
-              title="Evidence"
-            >
-              {chip}
-            </span>
-          ))}
-        </div>
 
         {redFlagsForSignal(sig).length ? (
           <p className="text-[9px] text-red-200/95 truncate leading-tight">RED: {redFlagsForSignal(sig).join(" · ")}</p>
         ) : null}
 
-        {isHeatFill ? (
-          <div className="rounded border border-amber-500/20 bg-amber-500/[0.06] px-1.5 py-1">
-            <p className="text-[8px] text-amber-100/90 font-mono leading-snug">{t("war.live.heatNoEntry")}</p>
-          </div>
-        ) : (
-          <div className="space-y-0.5">
-            <p className={`text-[9px] font-mono ${vis.text} leading-tight`}>
-              ENTRY · {win.label} · {win.detail}
-            </p>
-            <div className="h-0.5 rounded-full bg-gray-900 overflow-hidden">
-              <div
-                className={`h-full rounded-full bg-gradient-to-r ${vis.gradient}`}
-                style={{ width: `${Math.min(100, (sec / 420) * 100)}%` }}
-              />
-            </div>
-          </div>
-        )}
+        <p className={`text-[9px] font-mono leading-tight truncate ${isHeatFill ? "text-amber-200/85" : vis.text}`}>
+          {isHeatFill ? t("war.live.heatNoEntry") : `Entry ${String(win.label || "").toLowerCase()} · ${sig._api?.poolAgeLabel || "Pool live"}`}
+        </p>
 
-        {!isHeatFill ? (
-          <p className="text-[9px] text-cyan-200/85 font-mono truncate">
-            {sig._api?.timeAdvantage || `Earlier than ${Math.max(72, Math.min(96, sig.signalStrength))}% of traders`}
-          </p>
-        ) : null}
-        {sig._api?.signalDecay ? (
-          <p className="text-[9px] text-gray-500 font-mono truncate" title="Server-side recency adjustment for the displayed score">
-            {sig._api.signalDecay}
-          </p>
-        ) : null}
-        {sig._api?.poolAgeLabel ? (
-          <p className="text-[9px] text-slate-400 font-mono truncate" title="Approximate DEX pair age when upstream provides pairCreatedAt">
-            {sig._api.poolAgeLabel}
-          </p>
-        ) : null}
-        {sig._api?.signalQuality &&
-        (sig._api.signalQuality.baseSentinelScore != null || sig._api.signalQuality.stack != null) ? (
-          <div className="rounded border border-white/[0.06] bg-white/[0.02] px-1.5 py-1 space-y-0.5">
-            <p className="text-[8px] text-gray-500 uppercase tracking-wide font-semibold">Signal quality</p>
-            <p className="text-[9px] text-gray-400 font-mono leading-snug">
-              base {sig._api.signalQuality.baseSentinelScore ?? "—"} → adj {sig.signalStrength}
-              {" · "}
-              perf×{sig._api.signalQuality.performanceWeight ?? "—"} rec×{sig._api.signalQuality.recencyWeight ?? "—"}
-              {" · "}
-              stack {sig._api.signalQuality.stack ?? "—"}
-            </p>
+        <details className="group">
+          <summary className="cursor-pointer list-none text-[9px] text-gray-500 hover:text-indigo-200">Why now</summary>
+          <div className="mt-1 rounded border border-white/8 bg-black/30 px-1.5 py-1">
+            <ul className="text-[8px] text-gray-200 space-y-0 leading-snug">
+              {whyLines.slice(0, 3).map((line, li) => (
+                <li key={li} className="truncate">{line}</li>
+              ))}
+            </ul>
           </div>
-        ) : null}
-        {sig._api?.walletBehavior ? (
-          <div className="rounded border border-violet-500/20 bg-violet-500/[0.06] px-1.5 py-1 space-y-0.5">
-            <p className="text-[8px] text-violet-200 uppercase tracking-wide font-semibold">Wallet behavior</p>
-            <p className="text-[9px] text-violet-100/90 font-mono leading-snug">
-              style {sig._api.walletBehavior.styleLabel || "—"}
-              {" · "}
-              WR {sig._api.walletBehavior.winRateReal ?? "—"}%
-              {" · "}
-              latency {sig._api.walletBehavior.avgLatencyPostDeployMin ?? "—"}m
-            </p>
-          </div>
-        ) : null}
+        </details>
 
         <div className="flex flex-wrap gap-0.5 pt-0.5 border-t border-white/[0.04] mt-0.5">
           {[0.5, 1, 5].map((size) => {

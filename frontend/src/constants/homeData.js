@@ -36,5 +36,5 @@ export const UI_CONFIG = Object.freeze({
    * Must stay in sync with `VIRTUOSO` row chunking.
    */
   LIVE_HOT_GRID_CLASS:
-    "grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5"
+    "grid grid-cols-1 min-[560px]:grid-cols-2 xl:grid-cols-3 gap-1.5"
 });

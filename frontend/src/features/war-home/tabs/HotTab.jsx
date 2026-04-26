@@ -1,19 +1,16 @@
 import Link from "next/link";
-import { BarChart3, ChevronsDown, ChevronsUp, Flame, TrendingUp, Waves } from "lucide-react";
+import { ChevronsDown, ChevronsUp, Flame, TrendingUp } from "lucide-react";
 import { formatUsdWhole } from "../../../../lib/formatStable";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
 import { RealtimeTokenCardShell } from "../../../../components/home/RealtimeTokenCardShell";
 import { RulePerformanceBadge } from "../../../../components/signals/RulePerformanceBadge";
-import { TacticalRegimePill } from "../../../../components/home/TacticalRegimePill";
 import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../../lib/terminalLinks";
 import { isProbableSolanaMint } from "../../../../lib/solanaMint.mjs";
 import { AnimatedNumber } from "../../../../components/ui/AnimatedNumber";
 import {
-  clusterHeatEmoji,
   computeSignalStrength,
   confidenceTone,
   gradeClass,
-  heatClass,
   suggestedAction
 } from "@/lib/signalUtils";
 import { redFlagsForSignal } from "@/lib/redFlags";
@@ -24,7 +21,7 @@ import { useLocale } from "../../../../contexts/LocaleContext";
 function cockpitCardClickTargetIsInteractive(e) {
   const el = e?.target;
   if (!el || typeof el.closest !== "function") return true;
-  return Boolean(el.closest("a, button"));
+  return Boolean(el.closest("a, button, summary, details"));
 }
 
 export function HotTab({
@@ -161,7 +158,7 @@ export function HotTab({
                     sw: Math.max(0, Math.round(Number(token?.smartWallets || 0)))
                   });
                 }}
-                baseClassName={`sl-terminal-shell sl-terminal-shell--heat glass-card sl-glow-heat p-1.5 sm:p-2 rounded-lg flex flex-col gap-1 touch-manipulation transition-all duration-200 ${
+                baseClassName={`sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat glass-card p-1.5 sm:p-2 rounded-lg border-l-[3px] border-l-amber-400 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
                   token?.mint
                     ? "hover:-translate-y-[1px] hover:border-violet-400/45 hover:shadow-[0_0_16px_rgba(139,92,246,0.32)]"
                     : "opacity-75"
@@ -172,7 +169,7 @@ export function HotTab({
               >
                 {({ displayScore, smartMoneyCount }) => (
                   <>
-                <div className="flex items-start justify-between gap-1.5">
+                <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     {token?.mint ? (
                       <div className="flex items-center gap-1 mb-0">
@@ -181,40 +178,20 @@ export function HotTab({
                       </div>
                     ) : null}
                     <p className="text-xs font-bold text-white tracking-tight truncate leading-tight">{token?.symbol || "Loading"}</p>
-                    <p className="text-[9px] text-gray-500 font-mono truncate">
-                      {token?.mint ? `${token.mint.slice(0, 4)}…${token.mint.slice(-4)}` : "…"}
-                    </p>
                   </div>
                   <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border ${gradeClass(token?.grade || "C")}`}>
                     {token?.grade || "…"}
                   </span>
                 </div>
 
-                {(token?.narrativeTags || []).length ? (
-                  <div className="flex flex-wrap gap-0.5">
-                    {(token?.narrativeTags || []).slice(0, 3).map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-[9px] px-1 py-0.5 rounded border border-violet-500/30 bg-violet-500/10 text-violet-200"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-
-                <div className="rounded border border-white/[0.08] bg-white/[0.02] px-1.5 py-1 space-y-0.5">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-[7px] uppercase tracking-wider text-gray-500">{t("war.combat.thScore")}</span>
-                    <span className="text-emerald-300 font-bold font-mono tabular-nums text-[10px]">
-                      <AnimatedNumber value={displayScore} decimalPlaces={0} />
-                      /100
-                    </span>
-                  </div>
-                  <div className="h-0.5 sm:h-1 rounded-full bg-gray-900 overflow-hidden">
+                <div className="space-y-1">
+                  <div className="h-1 rounded-full bg-gray-900 overflow-hidden">
                     <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-400" style={{ width: `${displayScore}%` }} />
                   </div>
                   <div className="flex flex-wrap items-center gap-0.5">
+                    <span className="font-mono text-[11px] font-bold tabular-nums text-white">
+                      <AnimatedNumber value={displayScore} decimalPlaces={0} />/100
+                    </span>
                     <span
                       className={`text-[8px] font-bold px-1 py-0.5 rounded border ${
                         signalStrength >= 85
@@ -229,24 +206,13 @@ export function HotTab({
                     <span className={`text-[9px] px-1 py-0.5 rounded border ${confidenceTone(signalStrength)}`}>
                       {confidenceTr(signalStrength)}
                     </span>
-                    {confluence ? (
-                      <span className="text-[9px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1 py-0.5">
-                        🧬
-                      </span>
-                    ) : null}
+                    {confluence ? <span className="text-[8px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1 py-0.5">multi</span> : null}
                     {smartMoneyCount > 0 ? (
                       <span className="text-[8px] px-1 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/12 text-indigo-100 font-mono font-bold">
                         {smartMoneyCount} SM
                       </span>
                     ) : null}
                     <RulePerformanceBadge performance={token?.rulePerformance} compact />
-                    {token?.mint ? (
-                      <TacticalRegimePill
-                        signalStrength={signalStrength}
-                        token={token}
-                        priceChange24h={changeNum}
-                      />
-                    ) : null}
                   </div>
                 </div>
 
@@ -261,34 +227,8 @@ export function HotTab({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-1 text-[9px]">
-                  <div className="flex items-center gap-1 rounded bg-white/[0.03] border border-white/[0.06] px-1.5 py-1">
-                    <BarChart3 size={11} className="text-cyan-400 shrink-0" />
-                    <span className="text-gray-100 truncate">${formatUsdWhole(token?.volume24h || 0)}</span>
-                  </div>
-                  <div className="flex items-center gap-1 rounded bg-white/[0.03] border border-white/[0.06] px-1.5 py-1">
-                    <Waves size={11} className="text-purple-300 shrink-0" />
-                    <span className="text-gray-200 truncate">{token?.flowLabel || "—"}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-0.5">
-                  <div className="flex items-center justify-between text-[9px] text-gray-500">
-                    <span>{t("war.live.badgeHeat")}</span>
-                    <span className="leading-none">{clusterHeatEmoji(Math.min(99, signalStrength - 4))}</span>
-                  </div>
-                  <div className="h-0.5 rounded-full bg-gray-900 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full bg-gradient-to-r ${heatClass(Math.min(99, signalStrength - 4))}`}
-                      style={{ width: `${Math.min(99, signalStrength - 4)}%` }}
-                    />
-                  </div>
-                </div>
-
                 {timeAdvantage || entryWindowLabel ? (
                   <p className="text-[9px] text-gray-500 truncate">
-                    {timeAdvantage ? `${timeAdvantage}` : ""}
-                    {timeAdvantage && entryWindowLabel ? " · " : ""}
                     {entryWindowLabel ? (
                       <>
                         <span className="text-slate-300">{entryWindowLabel}</span>
@@ -300,15 +240,19 @@ export function HotTab({
 
                 {redFlags.length ? <p className="text-[9px] text-red-200/95 truncate leading-tight">⚠ {redFlags.join(" · ")}</p> : null}
 
-                <div className="flex flex-wrap gap-0.5">
-                  {(Array.isArray(token?.evidenceChips) ? token.evidenceChips : [])
-                    .slice(0, 5)
-                    .map((chip) => (
+                <details className="group">
+                  <summary className="cursor-pointer list-none text-[9px] text-gray-500 hover:text-indigo-200">Why now</summary>
+                  <div className="mt-1 flex flex-wrap gap-0.5 rounded border border-white/8 bg-black/30 px-1.5 py-1">
+                    {[
+                      ...(Array.isArray(token?.narrativeTags) ? token.narrativeTags : []),
+                      ...(Array.isArray(token?.evidenceChips) ? token.evidenceChips : [])
+                    ].slice(0, 5).map((chip) => (
                       <span key={chip} className="text-[9px] px-1 py-0.5 rounded border border-white/10 bg-white/[0.02] text-gray-300">
                         {chip}
                       </span>
                     ))}
-                </div>
+                  </div>
+                </details>
 
                 <div className="mt-auto pt-0.5 space-y-1 border-t border-white/[0.04]">
                   <div className="grid grid-cols-3 gap-0.5">
