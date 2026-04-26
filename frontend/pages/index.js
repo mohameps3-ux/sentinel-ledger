@@ -10,7 +10,6 @@ import { AnimatedNumber } from "../components/ui/AnimatedNumber";
 import { useLiveFeedSocket } from "../hooks/useLiveFeedSocket";
 import { PageHead } from "../components/seo/PageHead";
 import { useWalletLabels } from "../hooks/useWalletLabels";
-import { WarLayout } from "../components/layout/WarLayout";
 import { TokenDesk } from "../components/cockpit/TokenDesk";
 import { isProbableSolanaMint } from "../lib/solanaMint.mjs";
 import {
@@ -35,7 +34,6 @@ import { useWarMode } from "../contexts/WarModeContext";
 import { useLocale } from "../contexts/LocaleContext";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useLastGoodArray } from "../hooks/useLastGoodArray";
-import { formatUsdWhole } from "../lib/formatStable";
 
 function HomeMetricStrip({ signalsToday, activeWallets, avgConfidence, bestSignal }) {
   const metrics = [
@@ -64,7 +62,7 @@ function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onTogg
       <summary className="list-none cursor-pointer rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 hover:text-white">
         Settings
       </summary>
-      <div className="absolute right-0 top-[calc(100%+6px)] z-30 w-56 rounded-xl border border-white/10 bg-[#090b12] p-2 shadow-2xl">
+      <div className="absolute right-0 top-[calc(100%+6px)] z-30 w-56 border border-white/10 bg-[#090b12] p-2 shadow-2xl">
         <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-gray-500">Strategy</p>
         {["conservative", "balanced", "aggressive"].map((mode) => (
           <button
@@ -93,32 +91,66 @@ function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onTogg
 function SmartWalletsPreview({ wallets, labelFor, titleFor }) {
   const rows = wallets.slice(0, 5);
   return (
-    <section className="sl-card-elevated p-3">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 className="font-mono text-[12px] font-bold uppercase tracking-[0.16em] text-white">Smart Wallets</h2>
-        <Link href="/smart-money?limit=50" className="text-[11px] font-semibold text-indigo-200 no-underline hover:text-white">
-          View all →
+    <div className="terminal-panel mt-4">
+      <div className="panel-header">
+        <span className="section-title">SMART WALLETS</span>
+        <Link href="/smart-money?limit=50" className="btn-ghost-sm">
+          VIEW ALL
         </Link>
       </div>
       <div className="overflow-x-auto">
-        <table className="sl-table text-[11px]">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th className="data-th">WALLET</th>
+              <th className="data-th">WIN RATE</th>
+              <th className="data-th">TRADES</th>
+              <th className="data-th">LAST SEEN</th>
+              <th className="data-th">ACTION</th>
+            </tr>
+          </thead>
           <tbody>
             {rows.length ? rows.map((wallet, idx) => (
-              <tr key={wallet.address || wallet.wallet || idx}>
-                <td className="py-2 pr-2 text-gray-500">#{idx + 1}</td>
-                <td className="py-2 pr-2 font-mono text-gray-200" title={wallet.address ? titleFor(wallet.address) : wallet.tooltip}>
+              <tr key={wallet.address || wallet.wallet || idx} className="feed-row">
+                <td className="data-td-name" title={wallet.address ? titleFor(wallet.address) : wallet.tooltip}>
                   {wallet.address ? labelFor(wallet.address) : wallet.wallet}
                 </td>
-                <td className="py-2 pr-2 text-emerald-300">{Number(wallet.winRate || 0).toFixed(1)}%</td>
-                <td className="py-2 text-right text-gray-400">${formatUsdWhole(wallet.pnl30d || 0)}</td>
+                <td className="data-td data-pos">{Number(wallet.winRate || 0).toFixed(1)}%</td>
+                <td className="data-td">{wallet.totalTrades || wallet.trades || 0}</td>
+                <td className="data-td text-sl-muted">{wallet.lastSeen || "-"}</td>
+                <td className="data-td">
+                  {wallet.address ? (
+                    <Link href={`/wallet/${wallet.address}`} className="btn-ghost-sm">
+                      VIEW
+                    </Link>
+                  ) : (
+                    <span className="text-sl-muted">-</span>
+                  )}
+                </td>
               </tr>
             )) : (
-              <tr><td className="py-3 text-gray-500">Accumulating verified wallet data.</td></tr>
+              <tr><td className="data-td text-sl-muted" colSpan={5}>Accumulating verified wallet data.</td></tr>
             )}
           </tbody>
         </table>
       </div>
-    </section>
+    </div>
+  );
+}
+
+function TrackRecordPanel() {
+  return (
+    <div className="terminal-panel px-4 py-3 flex items-center justify-between mt-3">
+      <div>
+        <span className="section-title">VERIFIED TRACK RECORD</span>
+        <p className="font-ui text-xs text-sl-muted mt-1">
+          Every signal. Every outcome. Nothing hidden.
+        </p>
+      </div>
+      <Link href="/graveyard" className="btn-outline">
+        VIEW LEDGER
+      </Link>
+    </div>
   );
 }
 
@@ -137,7 +169,7 @@ function RecentAlertsPreview({ alerts }) {
           <Link
             key={`${alert.tokenAddress || "alert"}-${idx}`}
             href={alert.tokenAddress ? `/token/${alert.tokenAddress}` : "/alerts"}
-            className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-1.5 text-[11px] no-underline hover:border-indigo-400/25"
+            className="flex items-center justify-between gap-3 border border-white/[0.06] bg-white/[0.02] px-2 py-1.5 text-[11px] no-underline hover:border-indigo-400/25"
           >
             <span className="font-mono text-gray-200">{alert.tokenAddress ? `${alert.tokenAddress.slice(0, 4)}…${alert.tokenAddress.slice(-4)}` : "Alert"}</span>
             <span className="truncate text-gray-500">{alert.alertType}</span>
@@ -692,10 +724,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   return (
     <>
       <PageHead title={t("home.pageTitle")} description={t("home.pageDesc")} />
-      <WarLayout
-        header={null}
-        feed={
-          <div className="space-y-3">
+      <div className="flex gap-4 px-4 pb-4 pt-[76px]">
+        <div className="flex-1 flex flex-col gap-3 min-w-0">
             <HomeMetricStrip
               signalsToday={homeMetrics.signalsToday}
               activeWallets={homeMetrics.activeWallets}
@@ -749,10 +779,12 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               <SmartWalletsPreview wallets={rankedWallets} labelFor={topWalletLabel} titleFor={topWalletTitle} />
               <RecentAlertsPreview alerts={alerts} />
             </div>
-          </div>
-        }
-        desk={<TokenDesk key={selectedMint ?? "__desk_none__"} mint={selectedMint} deskRadarHint={deskRadarHint} />}
-      />
+            <TrackRecordPanel />
+        </div>
+        <div className="w-[340px] flex-shrink-0 hidden lg:block">
+          <TokenDesk key={selectedMint ?? "__desk_none__"} mint={selectedMint} deskRadarHint={deskRadarHint} />
+        </div>
+      </div>
     </>
   );
 }
