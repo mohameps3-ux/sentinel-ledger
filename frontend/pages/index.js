@@ -39,21 +39,21 @@ import { formatUsdWhole } from "../lib/formatStable";
 
 function HomeMetricStrip({ signalsToday, activeWallets, avgConfidence, bestSignal }) {
   const metrics = [
-    ["Signals Today", signalsToday],
-    ["Active Wallets", activeWallets],
-    ["Avg Confidence", avgConfidence != null ? `${Math.round(avgConfidence)}%` : "—"],
-    ["Best Signal", bestSignal != null ? `${Math.round(bestSignal)}%` : "—"]
+    ["SIGNALS TODAY", signalsToday],
+    ["ACTIVE WALLETS", activeWallets],
+    ["AVG CONFIDENCE", avgConfidence != null ? `${Math.round(avgConfidence)}%` : "—"],
+    ["BEST SIGNAL", bestSignal != null ? `${Math.round(bestSignal)}%` : "—"]
   ];
   return (
-    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {metrics.map(([label, value]) => (
-          <div key={label} className="sl-card-elevated flex h-20 flex-col justify-center px-3 py-2">
-            <p className="sl-metric-label">{label}</p>
-            <p className="sl-metric mt-1 text-lg md:text-xl">
-              {typeof value === "number" ? <AnimatedNumber value={value} decimalPlaces={0} /> : value}
-            </p>
-          </div>
-        ))}
+    <div className="kpi-strip w-full">
+      {metrics.map(([label, value]) => (
+        <div key={label} className="kpi-block">
+          <span className="kpi-label">{label}</span>
+          <span className="kpi-number">
+            {typeof value === "number" ? <AnimatedNumber value={value} decimalPlaces={0} /> : value}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
