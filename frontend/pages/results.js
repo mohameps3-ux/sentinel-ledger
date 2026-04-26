@@ -70,23 +70,57 @@ export default function ResultsPage() {
     return t("results.badge.withData", { wr, n });
   }, [data.winRate7d, data.count7d, t]);
 
+  const resolvedRows = useMemo(() => data.rows.filter((r) => r.status === "WIN" || r.status === "LOSS"), [data.rows]);
+  const wins = useMemo(() => resolvedRows.filter((r) => r.status === "WIN"), [resolvedRows]);
+  const losses = useMemo(() => resolvedRows.filter((r) => r.status === "LOSS"), [resolvedRows]);
+  const avgWin = wins.length
+    ? wins.reduce((sum, r) => sum + Math.max(0, Number(r.resultPct || 0)), 0) / wins.length
+    : null;
+  const avgLoss = losses.length
+    ? losses.reduce((sum, r) => sum + Math.min(0, Number(r.resultPct || 0)), 0) / losses.length
+    : null;
+
   return (
     <>
       <PageHead title={t("results.pageTitle")} description={t("results.pageDesc")} />
       <div className="sl-container py-8 sm:py-10 pb-28 space-y-6">
-        <header className="sl-card-elevated sl-inset space-y-2">
-          <p className="sl-label">{t("results.label")}</p>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{t("results.h1")}</h1>
-          <p className="text-gray-400 max-w-2xl">{t("results.sub")}</p>
-          <div className="flex flex-wrap items-end gap-4">
-            <div>
-              <p className="sl-metric-label">Recent Win Rate</p>
-              <p className="sl-metric text-4xl text-emerald-300">{data.winRate7d != null ? `${data.winRate7d}%` : "—"}</p>
-            </div>
-            <p className="text-sm font-mono text-emerald-300/90 border border-emerald-500/25 rounded-lg px-3 py-2 inline-block bg-emerald-500/10">{badge}</p>
-            <Link href="/graveyard" className="btn-ghost no-underline text-xs">Full Track Record</Link>
+        <header className="terminal-panel px-6 py-5 mb-4">
+          <span className="section-title">RESULTS</span>
+          <div className="flex items-end gap-4 mt-2">
+            <span className="font-display text-3xl font-bold text-sl-green">
+              {data.winRate7d != null ? data.winRate7d : "—"}%
+            </span>
+            <span className="font-mono text-sm text-sl-muted mb-1">
+              WIN RATE · {data.count7d ?? 0} SIGNALS RESOLVED
+            </span>
           </div>
         </header>
+
+        <section className="kpi-strip w-full mb-4">
+          <div className="kpi-block">
+            <span className="kpi-label">WINS</span>
+            <span className="kpi-number text-sl-green">{wins.length}</span>
+          </div>
+          <div className="kpi-block">
+            <span className="kpi-label">LOSSES</span>
+            <span className="kpi-number text-sl-red">{losses.length}</span>
+          </div>
+          <div className="kpi-block">
+            <span className="kpi-label">AVG WIN</span>
+            <span className="kpi-number text-sl-green">{avgWin == null ? "—" : `+${avgWin.toFixed(2)}%`}</span>
+          </div>
+          <div className="kpi-block">
+            <span className="kpi-label">AVG LOSS</span>
+            <span className="kpi-number text-sl-red">{avgLoss == null ? "—" : `${avgLoss.toFixed(2)}%`}</span>
+          </div>
+        </section>
+
+        <section className="terminal-panel px-4 py-3 flex items-center justify-between">
+          <span className="font-mono text-xs text-sl-muted">
+            View complete signal history with all outcomes
+          </span>
+          <Link href="/graveyard" className="btn-outline no-underline">FULL TRACK RECORD</Link>
+        </section>
 
         <div className="flex flex-wrap gap-2">
           {filters.map((f) => (
@@ -94,11 +128,7 @@ export default function ResultsPage() {
               key={f.id}
               type="button"
               onClick={() => setFilter(f.id)}
-              className={`text-xs px-3 py-1.5 rounded-lg border transition ${
-                filter === f.id
-                  ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
-                  : "border-white/10 bg-white/[0.03] text-gray-300 hover:border-white/20"
-              }`}
+              className={filter === f.id ? "btn-pill-active" : "btn-pill"}
               aria-pressed={filter === f.id}
             >
               {f.label}
@@ -109,52 +139,43 @@ export default function ResultsPage() {
         {data.error ? <p className="text-sm text-red-300">{data.error}</p> : null}
         {data.loading ? <p className="text-sm text-gray-500">{t("results.loading")}</p> : null}
 
-        <section className="glass-card sl-inset">
-          <p className="sl-label mb-3">Wins / losses timeline</p>
-          <div className="flex h-24 items-end gap-1">
-            {(data.rows || []).slice(0, 32).map((r) => (
-              <span
-                key={r.id}
-                className={`w-2 rounded-t ${r.status === "WIN" ? "bg-emerald-400" : r.status === "LOSS" ? "bg-red-400" : "bg-slate-500"}`}
-                style={{ height: `${Math.max(10, Math.min(88, Math.abs(Number(r.resultPct || 8))))}px` }}
-                title={`${r.status}: ${fmtPct(r.resultPct)}`}
-              />
-            ))}
-          </div>
+        <section className="terminal-panel px-4 py-3">
+          <span className="section-title">SIGNAL STATUS</span>
+          <p className="font-mono text-sm text-sl-muted mt-2">{badge}</p>
         </section>
 
-        <div className="hidden lg:block overflow-x-auto rounded-xl border border-white/10">
-          <table className="w-full text-sm">
+        <div className="terminal-panel hidden lg:block overflow-x-auto">
+          <table className="data-table">
             <thead>
-              <tr className="text-left text-gray-500 border-b border-white/10">
-                <th className="py-3 pr-3">{t("results.th.token")}</th>
-                <th className="py-3 pr-3">{t("results.th.signalTime")}</th>
-                <th className="py-3 pr-3">{t("results.th.entry")}</th>
-                <th className="py-3 pr-3">{t("results.th.1h")}</th>
-                <th className="py-3 pr-3">{t("results.th.4h")}</th>
-                <th className="py-3 pr-3">{t("results.th.result")}</th>
-                <th className="py-3">{t("results.th.status")}</th>
+              <tr>
+                <th className="data-th">{t("results.th.token")}</th>
+                <th className="data-th">{t("results.th.signalTime")}</th>
+                <th className="data-th">{t("results.th.entry")}</th>
+                <th className="data-th">{t("results.th.1h")}</th>
+                <th className="data-th">{t("results.th.4h")}</th>
+                <th className="data-th">{t("results.th.result")}</th>
+                <th className="data-th">{t("results.th.status")}</th>
               </tr>
             </thead>
             <tbody>
               {data.rows.length === 0 && !data.loading ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-gray-500">
+                  <td colSpan={7} className="data-td text-center text-gray-500">
                     {t("results.empty")}
                   </td>
                 </tr>
               ) : (
                 data.rows.map((r) => (
-                  <tr key={r.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                    <td className="py-3 pr-3 font-mono text-xs text-gray-200">{r.token?.slice(0, 8)}…</td>
-                    <td className="py-3 pr-3 font-mono text-xs text-gray-400">
+                  <tr key={r.id} className="feed-row">
+                    <td className="data-td font-mono text-xs text-gray-200">{r.token?.slice(0, 8)}…</td>
+                    <td className="data-td font-mono text-xs">
                       {r.signalAt ? new Date(r.signalAt).toLocaleString() : "—"}
                     </td>
-                    <td className="py-3 pr-3 font-mono">{fmtPrice(r.entryPrice)}</td>
-                    <td className="py-3 pr-3 font-mono">{fmtPrice(r.price1h)}</td>
-                    <td className="py-3 pr-3 font-mono">{fmtPrice(r.price4h)}</td>
-                    <td className="py-3 pr-3 font-mono">{fmtPct(r.resultPct)}</td>
-                    <td className="py-3">{statusBadge(r.status, t)}</td>
+                    <td className="data-td font-mono">{fmtPrice(r.entryPrice)}</td>
+                    <td className="data-td font-mono">{fmtPrice(r.price1h)}</td>
+                    <td className="data-td font-mono">{fmtPrice(r.price4h)}</td>
+                    <td className={`data-td font-mono ${Number(r.resultPct) >= 0 ? "data-pos" : "data-neg"}`}>{fmtPct(r.resultPct)}</td>
+                    <td className="data-td">{statusBadge(r.status, t)}</td>
                   </tr>
                 ))
               )}
@@ -166,7 +187,7 @@ export default function ResultsPage() {
           {data.rows.map((r) => (
             <div
               key={r.id}
-              className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2 text-sm font-mono"
+              className="terminal-card-interactive p-4 space-y-2 text-sm font-mono"
             >
               <div className="flex justify-between gap-2">
                 <span className="text-gray-200">{r.token?.slice(0, 6)}…</span>

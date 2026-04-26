@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { useQueries } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { ArrowLeftRight, CheckCircle2, Eye, Radio, Star, TrendingUp } from "lucide-react";
+import { CheckCircle2, Eye, Radio, Star, TrendingUp } from "lucide-react";
 import { useWatchlist } from "../hooks/useWatchlist";
 import { formatUsdWhole } from "../lib/formatStable";
 import { ProButton } from "../components/ui/ProButton";
@@ -183,17 +183,12 @@ export default function ComparePage() {
     <>
       <PageHead title={t("compare.pageTitle")} description={t("compare.pageDesc")} />
     <div className="sl-container sl-container-wide py-8 md:py-10 space-y-8">
-      <section className="glass-card sl-inset">
-        <div className="flex items-start gap-4 mb-8">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-600/25 to-cyan-600/15 border border-purple-500/25 flex items-center justify-center shrink-0">
-            <ArrowLeftRight size={22} className="text-purple-200" />
-          </div>
-          <div>
-            <p className="sl-label">{t("compare.hero.label")}</p>
-            <h1 className="sl-h1 text-white mt-1">{t("compare.hero.h1")}</h1>
-            <p className="sl-body sl-muted mt-2 max-w-2xl">{t("compare.hero.body")}</p>
-          </div>
-        </div>
+      <section className="terminal-panel px-6 py-4 mb-4">
+        <span className="section-title">COMPARE</span>
+        <h1 className="font-display text-xl font-bold text-sl-text mt-1">
+          Token Comparison
+        </h1>
+        <p className="font-ui text-sm text-sl-muted mt-1">{t("compare.hero.body")}</p>
         <form onSubmit={onCompare} className="grid md:grid-cols-[repeat(4,minmax(0,1fr))_auto] gap-3 items-stretch md:items-end">
           {slots.map((value, idx) => (
             <div key={idx}>
@@ -216,7 +211,7 @@ export default function ComparePage() {
         </form>
       </section>
 
-      <section className="sl-card-elevated border border-white/[0.08] bg-[#07080b] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <section className="terminal-panel">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06]">
           <div>
             <p className="text-[10px] font-semibold tracking-[0.22em] uppercase text-gray-500">{t("compare.decision.title")}</p>
@@ -228,7 +223,7 @@ export default function ComparePage() {
                 href={buildJupiterSwapUrl(chosen.mint)}
                 target="_blank"
                 rel={EXTERNAL_ANCHOR_REL}
-                className="px-3 py-2 rounded-md border border-emerald-500/35 bg-emerald-500/[0.08] text-emerald-100 text-xs font-semibold"
+                className="btn-ghost-sm"
               >
                 {t("compare.cta.tradeChosen")}
               </a>
@@ -237,7 +232,7 @@ export default function ComparePage() {
               type="button"
               onClick={watchAllLoaded}
               disabled={!loaded.length || isLoading}
-              className="px-3 py-2 rounded-md border border-white/12 bg-white/[0.03] text-gray-200 text-xs font-semibold disabled:opacity-40"
+              className="btn-ghost-sm disabled:opacity-40"
             >
               {watchCtaLabel}
             </button>
@@ -247,7 +242,7 @@ export default function ComparePage() {
         {!loaded.length ? (
           <div className="px-4 py-8 text-sm text-gray-500">{t("compare.decision.empty")}</div>
         ) : (
-          <div className="grid md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-white/[0.06]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
             {ranked.map((row, idx) => {
               const token = row.token;
               const chosenNow = chosen?.mint === row.mint;
@@ -255,7 +250,7 @@ export default function ComparePage() {
               return (
                 <article
                   key={row.mint}
-                  className={`p-4 min-h-[15rem] ${chosenNow ? "bg-cyan-500/[0.04] ring-1 ring-cyan-400/30" : "bg-transparent"}`}
+                  className={`terminal-panel p-4 min-h-[15rem] ${chosenNow ? "bg-cyan-500/[0.04] ring-1 ring-cyan-400/30" : ""}`}
                   translate="no"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -267,24 +262,26 @@ export default function ComparePage() {
                     <div className="text-right shrink-0">
                       <p className="text-[9px] uppercase tracking-wider text-gray-500">{t("compare.card.score")}</p>
                       <p className="text-3xl font-black font-mono text-white">{row.score}</p>
-                      {recommended?.mint === row.mint ? <span className="sl-badge sl-badge-win mt-1">Sentinel recommends</span> : null}
+                      {recommended?.mint === row.mint ? <span className="badge-live mt-1">SENTINEL PICK</span> : null}
                     </div>
                   </div>
-                  <div className="mt-4 sl-score-bar"><span style={{ width: `${row.score}%` }} /></div>
+                  <div className="mt-4 score-track">
+                    <div className="score-fill-high" style={{ width: `${row.score}%` }} />
+                  </div>
                   <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
-                    <div className="rounded-md border border-white/[0.07] bg-black/25 px-2 py-1.5">
+                    <div className="border border-white/[0.07] bg-black/25 px-2 py-1.5">
                       <p className="text-gray-500">{t("compare.card.grade")}</p>
                       <p className="font-mono text-gray-100">{token.analysis?.grade || "—"}</p>
                     </div>
-                    <div className="rounded-md border border-white/[0.07] bg-black/25 px-2 py-1.5">
+                    <div className="border border-white/[0.07] bg-black/25 px-2 py-1.5">
                       <p className="text-gray-500">{t("compare.card.confidence")}</p>
                       <p className="font-mono text-gray-100">{safeNum(token.analysis?.confidence)}%</p>
                     </div>
-                    <div className="rounded-md border border-white/[0.07] bg-black/25 px-2 py-1.5">
+                    <div className="border border-white/[0.07] bg-black/25 px-2 py-1.5">
                       <p className="text-gray-500">{t("compare.metric.liquidity")}</p>
                       <p className="font-mono text-gray-100">${formatUsdWhole(safeNum(token.market?.liquidity))}</p>
                     </div>
-                    <div className="rounded-md border border-white/[0.07] bg-black/25 px-2 py-1.5">
+                    <div className="border border-white/[0.07] bg-black/25 px-2 py-1.5">
                       <p className="text-gray-500">{t("compare.metric.top10")}</p>
                       <p className="font-mono text-gray-100">{safeNum(token.holders?.top10Percentage).toFixed(1)}%</p>
                     </div>
@@ -293,7 +290,7 @@ export default function ComparePage() {
                     <button
                       type="button"
                       onClick={() => setChosenMint(row.mint)}
-                      className={`px-3 py-1.5 rounded-md border text-xs font-semibold ${
+                      className={`btn-ghost-sm ${
                         chosenNow
                           ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-100"
                           : "border-white/12 bg-white/[0.03] text-gray-300 hover:text-white"
@@ -305,7 +302,7 @@ export default function ComparePage() {
                       type="button"
                       onClick={() => toggleWatch(row.mint)}
                       disabled={isLoading}
-                      className="px-3 py-1.5 rounded-md border border-white/12 text-xs text-gray-300 hover:text-white disabled:opacity-40"
+                      className="btn-ghost-sm disabled:opacity-40"
                     >
                       {watchlistLocal.includes(row.mint) ? t("compare.watch.remove") : t("compare.watch.add")}
                     </button>
@@ -317,7 +314,7 @@ export default function ComparePage() {
         )}
       </section>
 
-      <section className="glass-card sl-inset">
+      <section className="terminal-panel p-4">
         <div className="flex items-center gap-3 mb-5">
           <Star size={18} className="text-purple-300" />
           <h2 className="sl-h2 text-white">{t("compare.watchlist.h2")}</h2>
@@ -330,7 +327,7 @@ export default function ComparePage() {
               <button
                 key={mint}
                 onClick={() => loadFromWatchlist(mint)}
-                className="text-xs mono px-2.5 py-1 rounded-full bg-white/5 border soft-divider text-gray-300 hover:text-white hover:border-purple-500/40 transition"
+                className="btn-ghost-sm mono"
                 title={mint}
               >
                 {mint.slice(0, 6)}...{mint.slice(-4)}
@@ -340,7 +337,7 @@ export default function ComparePage() {
         )}
       </section>
 
-      <section className="glass-card sl-inset overflow-x-auto">
+      <section className="terminal-panel overflow-x-auto">
         <div className="flex items-center gap-2 mb-5">
           <Radio size={16} className="text-cyan-300" />
           <h2 className="sl-h2 text-white">{t("compare.metrics.h2")}</h2>
@@ -348,11 +345,14 @@ export default function ComparePage() {
         {ranked.length < 2 ? (
           <div className="text-sm text-gray-500">{t("compare.metrics.loadBoth")}</div>
         ) : (
-          <div className="min-w-[560px]">
-            <div className="grid gap-3 pb-2 mb-1 border-b soft-divider text-xs uppercase tracking-wide text-gray-500" style={{ gridTemplateColumns: `minmax(150px,1fr) repeat(${ranked.length}, minmax(86px, auto))` }}>
-              <span>{t("compare.metrics.th.metric")}</span>
-              {ranked.map((row) => <span key={row.mint}>{row.token.market?.symbol || compactMint(row.mint)}</span>)}
-            </div>
+          <table className="data-table min-w-[560px]">
+            <thead>
+              <tr>
+                <th className="data-th">{t("compare.metrics.th.metric")}</th>
+                {ranked.map((row) => <th key={row.mint} className="data-th">{row.token.market?.symbol || compactMint(row.mint)}</th>)}
+              </tr>
+            </thead>
+            <tbody>
             {[
               ["score", t("compare.metric.score")],
               ["confidence", t("compare.metric.confidence")],
@@ -365,30 +365,25 @@ export default function ComparePage() {
               const lowerBetter = key === "holders" || key === "deployer";
               const best = lowerBetter ? Math.min(...values) : Math.max(...values);
               return (
-                <div key={key} className="grid gap-3 items-center py-2 border-b soft-divider last:border-b-0" style={{ gridTemplateColumns: `minmax(150px,1fr) repeat(${ranked.length}, minmax(110px, auto))` }}>
-                  <div className="text-sm text-gray-400">{label}</div>
+                <tr key={key} className="feed-row">
+                  <td className="data-td text-sm text-gray-400">{label}</td>
                   {ranked.map((row) => {
                     const v = metricValue(row.token, key);
                     return (
-                      <div key={row.mint} className={`text-sm mono ${v === best ? "text-emerald-300" : "text-gray-200"}`}>
-                        <span>{v === best ? "↑ " : "→ "}{metricDisplay(v, key)}</span>
-                        <div className="mt-1 h-1.5 rounded-full bg-white/[0.06]">
-                          <span
-                            className={`block h-full rounded-full ${v === best ? "bg-emerald-400" : "bg-indigo-400/60"}`}
-                            style={{ width: `${Math.max(6, Math.min(100, lowerBetter ? 100 - v : key === "liquidity" || key === "volume" ? (v / Math.max(...values || [1])) * 100 : v))}%` }}
-                          />
-                        </div>
-                      </div>
+                      <td key={row.mint} className={`data-td text-sm mono ${v === best ? "data-pos font-bold" : "data-neutral"}`}>
+                        {metricDisplay(v, key)}
+                      </td>
                     );
                   })}
-                </div>
+                </tr>
               );
             })}
-          </div>
+            </tbody>
+          </table>
         )}
       </section>
 
-      <section className="glass-card p-5">
+      <section className="terminal-panel p-5">
         <h2 className="text-lg font-semibold mb-2">{t("compare.ranking.h2")}</h2>
         {!recommended ? (
           <div className="text-sm text-gray-500">{t("compare.ranking.wait")}</div>

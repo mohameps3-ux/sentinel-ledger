@@ -15,16 +15,6 @@ function readLocalWatchlist() {
   }
 }
 
-function WatchSparkline() {
-  return (
-    <div className="flex h-7 items-end gap-1" aria-hidden>
-      {[10, 16, 12, 22, 18, 25, 20].map((h, i) => (
-        <span key={i} className="sl-sparkbar" style={{ height: `${h}px`, opacity: 0.45 + i * 0.06 }} />
-      ))}
-    </div>
-  );
-}
-
 export default function WatchlistPage() {
   const { t } = useLocale();
   const token = useClientAuthToken();
@@ -69,43 +59,61 @@ export default function WatchlistPage() {
     <>
       <PageHead title={t("watchlist.pageTitle")} description={t("watchlist.pageDesc")} />
       <div className="sl-container py-10 space-y-6">
-        <section className="sl-card-elevated sl-inset">
-          <p className="sl-label">{t("watchlist.label")}</p>
-          <h1 className="sl-h2 text-white mt-1">{t("watchlist.h1")}</h1>
-          <p className="text-sm text-gray-400 mt-2">{token ? t("watchlist.subLive") : t("watchlist.subLocal")}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" className="btn-ghost text-xs">remove all</button>
-            <button type="button" className="btn-ghost text-xs">export</button>
-          </div>
+        <section className="terminal-panel px-6 py-4 mb-4">
+          <span className="section-title">WATCHLIST</span>
+          <h1 className="font-display text-xl font-bold text-sl-text mt-1">
+            Your Tokens
+          </h1>
+          <p className="font-ui text-sm text-sl-muted mt-1">{token ? t("watchlist.subLive") : t("watchlist.subLocal")}</p>
         </section>
 
-        <section className="glass-card sl-inset">
+        <section className="terminal-panel">
+          <div className="panel-header">
+            <span className="section-title">TRACKED TOKENS</span>
+            <button type="button" className="btn-ghost-sm">EXPORT</button>
+          </div>
           {loading ? <p className="text-sm text-gray-400">{t("watchlist.loading")}</p> : null}
           {!loading && error ? <p className="text-sm text-red-300">{t("watchlist.error", { err: error })}</p> : null}
           {!loading && !error && !list.length ? (
-            <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/[0.06] px-5 py-8 text-center">
-              <p className="text-gray-200">Start scanning to add tokens</p>
-              <Link href="/scanner" className="mt-3 inline-flex btn-pro no-underline">Open Scanner</Link>
+            <div className="empty-state">
+              <span className="empty-state-title">WATCHLIST EMPTY</span>
+              <p className="empty-state-sub">
+                Start scanning tokens to add them to your watchlist.
+              </p>
+              <Link href="/scanner" className="btn-primary mt-2 no-underline">OPEN SCANNER</Link>
             </div>
           ) : null}
           {!loading && !error && list.length ? (
             <div className="overflow-x-auto">
-              <table className="sl-table min-w-[760px]">
-                <thead><tr><th>token</th><th>price</th><th>24h</th><th>score</th><th>signal</th><th>sparkline</th><th>notes</th><th>actions</th></tr></thead>
+              <table className="data-table min-w-[760px]">
+                <thead>
+                  <tr>
+                    <th className="data-th">TOKEN</th>
+                    <th className="data-th">PRICE</th>
+                    <th className="data-th">24H</th>
+                    <th className="data-th">SCORE</th>
+                    <th className="data-th">SIGNAL</th>
+                    <th className="data-th">ADDED</th>
+                    <th className="data-th">ACTIONS</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {list.map((row) => (
                     <tr key={row.token_address}>
-                      <td className="font-mono text-cyan-200">{row.token_address?.slice(0, 6)}…{row.token_address?.slice(-6)}</td>
-                      <td>—</td>
-                      <td>—</td>
-                      <td><div className="sl-score-bar w-24"><span style={{ width: "40%" }} /></div></td>
-                      <td><span className="sl-badge sl-badge-indigo">WATCH</span></td>
-                      <td><WatchSparkline /></td>
-                      <td>{row.note || "—"}</td>
-                      <td>
+                      <td className="data-td font-mono text-cyan-200">{row.token_address?.slice(0, 6)}…{row.token_address?.slice(-6)}</td>
+                      <td className="data-td">—</td>
+                      <td className="data-td data-neutral">—</td>
+                      <td className="data-td">
+                        <div className="score-track w-24">
+                          <div className="score-fill-mid" style={{ width: "40%" }} />
+                        </div>
+                      </td>
+                      <td className="data-td"><span className="sl-badge sl-badge-indigo">WATCH</span></td>
+                      <td className="data-td">{row.added_at ? new Date(row.added_at).toLocaleDateString() : "—"}</td>
+                      <td className="data-td">
                         <div className="flex items-center gap-2">
                           <TerminalActionIcons mint={row.token_address} />
-                          <Link href={`/token/${row.token_address}`} className="btn-ghost no-underline text-xs">{t("watchlist.open")}</Link>
+                          <Link href={`/token/${row.token_address}`} className="btn-ghost-sm no-underline">{t("watchlist.open")}</Link>
                         </div>
                       </td>
                     </tr>

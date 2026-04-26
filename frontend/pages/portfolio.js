@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useClientAuthToken } from "../hooks/useClientAuthToken";
-import { formatUsdWhole, formatTokenPrice } from "../lib/formatStable";
+import { formatTokenPrice } from "../lib/formatStable";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { PageHead } from "../components/seo/PageHead";
 import { Loader2 } from "lucide-react";
@@ -62,11 +62,11 @@ export default function PortfolioPage() {
       <>
         <PageHead title={t("portfolio.pageTitle")} description={t("portfolio.descSignedOut")} />
         <div className="sl-container py-10">
-          <section className="glass-card sl-inset max-w-2xl mx-auto text-center">
+          <section className="terminal-panel p-6 max-w-2xl mx-auto text-center">
             <p className="sl-label">{t("portfolio.label")}</p>
             <h1 className="sl-h2 text-white mt-1">{t("portfolio.h1SignedOut")}</h1>
             <p className="text-sm text-gray-400 mt-3">{t("portfolio.pSignedOut")}</p>
-            <Link href="/" className="btn-pro inline-flex mt-5 no-underline">
+            <Link href="/" className="btn-primary inline-flex mt-5 no-underline">
               {t("portfolio.goDashboard")}
             </Link>
           </section>
@@ -75,48 +75,87 @@ export default function PortfolioPage() {
     );
   }
 
+  const changeValues = positions
+    .map((p) => Number(p.change24hPct))
+    .filter((n) => Number.isFinite(n));
+  const change = changeValues.length
+    ? changeValues.reduce((sum, n) => sum + n, 0) / changeValues.length
+    : null;
+  const best = positions.reduce((acc, p) => (
+    Number(p.change24hPct) > Number(acc?.change24hPct ?? -Infinity) ? p : acc
+  ), null);
+  const worst = positions.reduce((acc, p) => (
+    Number(p.change24hPct) < Number(acc?.change24hPct ?? Infinity) ? p : acc
+  ), null);
+
   return (
     <>
       <PageHead title={t("portfolio.pageTitle")} description={t("portfolio.desc")} />
       <div className="sl-container py-10 space-y-6">
-        <section className="sl-card-elevated sl-inset flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <section className="terminal-panel px-6 py-4 mb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <p className="sl-label">{t("portfolio.label")}</p>
-            <h1 className="sl-h2 text-white mt-1">{t("portfolio.h1")}</h1>
-            <p className="text-sm text-gray-400 mt-2 max-w-2xl">{t("portfolio.sub")}</p>
+            <span className="section-title">{t("portfolio.label")}</span>
+            <h1 className="font-display text-xl font-bold text-sl-text mt-1">{t("portfolio.h1")}</h1>
+            <p className="font-ui text-sm text-sl-muted mt-1 max-w-2xl">{t("portfolio.sub")}</p>
           </div>
           <button
             type="button"
             onClick={() => load()}
             disabled={loading}
-            className="btn-ghost inline-flex items-center gap-2 shrink-0 self-start sm:self-auto"
+            className="btn-ghost-sm inline-flex items-center gap-2 shrink-0 self-start sm:self-auto"
           >
             {loading ? <Loader2 className="animate-spin" size={16} /> : null}
             {t("portfolio.refresh")}
           </button>
         </section>
 
-        <section className="border border-amber-500/20 bg-amber-500/[0.055] px-4 py-3">
-          <p className="text-sm font-semibold text-amber-100">Based on watchlist — not real on-chain PnL</p>
-          <p className="mt-1 text-xs text-amber-100/70">Only real market quotes and traceable watchlist rows are shown. No invented ROI.</p>
+        <section className="terminal-panel px-4 py-3 mb-4" style={{ borderLeft: "3px solid #F59E0B" }}>
+          <span className="font-mono text-2xs text-sl-orange uppercase tracking-wider">
+            NOTICE
+          </span>
+          <p className="font-ui text-xs text-sl-sub mt-1">
+            Portfolio data is based on your watchlist — not real on-chain PnL.
+            Connect your wallet for actual position tracking.
+          </p>
         </section>
 
-        <section className="border border-white/[0.08] bg-[#07080b] px-4 py-3">
+        <section className="kpi-strip w-full mb-4">
+          <div className="kpi-block">
+            <span className="kpi-label">TOTAL VALUE</span>
+            <span className="kpi-number">—</span>
+          </div>
+          <div className="kpi-block">
+            <span className="kpi-label">24H CHANGE</span>
+            <span className={`kpi-number ${change == null ? "" : change >= 0 ? "text-sl-green" : "text-sl-red"}`}>
+              {change == null ? "—" : `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`}
+            </span>
+          </div>
+          <div className="kpi-block">
+            <span className="kpi-label">BEST PERFORMER</span>
+            <span className="kpi-number text-sl-green">{best?.symbol ? `${best.symbol} ${Number(best.change24hPct).toFixed(2)}%` : "—"}</span>
+          </div>
+          <div className="kpi-block">
+            <span className="kpi-label">WORST PERFORMER</span>
+            <span className="kpi-number text-sl-red">{worst?.symbol ? `${worst.symbol} ${Number(worst.change24hPct).toFixed(2)}%` : "—"}</span>
+          </div>
+        </section>
+
+        <section className="terminal-panel px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[10px] uppercase tracking-[0.22em] text-gray-500 font-semibold">{t("portfolio.realityTitle")}</p>
               <p className="text-[11px] text-gray-500 mt-1 max-w-3xl">{t("portfolio.realityBody")}</p>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center shrink-0">
-              <div className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.05] px-3 py-2">
+              <div className="border border-emerald-500/20 bg-emerald-500/[0.05] px-3 py-2">
                 <p className="text-[9px] text-gray-500 uppercase tracking-wide">{t("portfolio.worked")}</p>
                 <p className="font-mono text-lg text-emerald-200">{reality.worked}</p>
               </div>
-              <div className="rounded-md border border-red-500/20 bg-red-500/[0.05] px-3 py-2">
+              <div className="border border-red-500/20 bg-red-500/[0.05] px-3 py-2">
                 <p className="text-[9px] text-gray-500 uppercase tracking-wide">{t("portfolio.failed")}</p>
                 <p className="font-mono text-lg text-red-200">{reality.failed}</p>
               </div>
-              <div className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
+              <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
                 <p className="text-[9px] text-gray-500 uppercase tracking-wide">{t("portfolio.unverified")}</p>
                 <p className="font-mono text-lg text-gray-300">{positions.length}</p>
               </div>
@@ -133,30 +172,37 @@ export default function PortfolioPage() {
         ) : null}
         {error ? <p className="text-sm text-red-300">{t("portfolio.error", { err: error })}</p> : null}
         {!loading && !error && !positions.length ? (
-          <section className="glass-card sl-inset text-center py-10">
-            <p className="text-gray-300">{t("portfolio.empty")}</p>
-            <Link href="/watchlist" className="btn-pro inline-flex mt-4 no-underline">
-              {t("portfolio.openWatchlist")}
-            </Link>
+          <section className="empty-state">
+            <span className="empty-state-title">NO PORTFOLIO DATA</span>
+            <p className="empty-state-sub">
+              Add tokens to your watchlist to track portfolio performance.
+            </p>
+            <Link href="/watchlist" className="btn-primary mt-2 no-underline">GO TO WATCHLIST</Link>
           </section>
         ) : null}
 
         {positions.length ? (
-          <section className="glass-card sl-inset overflow-x-auto">
-            <table className="sl-table min-w-[780px]">
-              <thead><tr><th>token</th><th>price</th><th>value</th><th>24h change</th><th>liquidity</th><th>reality</th><th>actions</th></tr></thead>
+          <section className="terminal-panel overflow-x-auto">
+            <table className="data-table min-w-[780px]">
+              <thead>
+                <tr>
+                  <th className="data-th">TOKEN</th>
+                  <th className="data-th">PRICE</th>
+                  <th className="data-th">24H</th>
+                  <th className="data-th">VALUE</th>
+                  <th className="data-th">ACTIONS</th>
+                </tr>
+              </thead>
               <tbody>
                 {positions.map((p) => (
                   <tr key={p.tokenAddress}>
-                    <td><span className="text-white">${p.symbol}</span><p className="font-mono text-[11px] text-gray-600">{p.tokenAddress?.slice(0, 6)}…{p.tokenAddress?.slice(-6)}</p></td>
-                    <td>${p.priceUsd != null ? formatTokenPrice(p.priceUsd) : "—"}</td>
-                    <td>—</td>
-                    <td className={p.change24hPct == null ? "text-gray-500" : p.change24hPct >= 0 ? "text-emerald-300" : "text-red-300"}>
+                    <td className="data-td"><span className="text-white">${p.symbol}</span><p className="font-mono text-[11px] text-gray-600">{p.tokenAddress?.slice(0, 6)}…{p.tokenAddress?.slice(-6)}</p></td>
+                    <td className="data-td">${p.priceUsd != null ? formatTokenPrice(p.priceUsd) : "—"}</td>
+                    <td className={`data-td ${p.change24hPct == null ? "data-neutral" : p.change24hPct >= 0 ? "data-pos" : "data-neg"}`}>
                       {p.change24hPct == null ? "—" : `${p.change24hPct >= 0 ? "+" : ""}${Number(p.change24hPct).toFixed(2)}%`}
                     </td>
-                    <td>${formatUsdWhole(p.liquidityUsd || 0)}</td>
-                    <td><span className={`text-xs px-2 py-1 rounded border shrink-0 ${outcomeTone(p.outcome24h)}`}>{t(`portfolio.outcome.${p.outcome24h || "unknown"}`)}</span></td>
-                    <td><div className="flex items-center gap-2"><TerminalActionIcons mint={p.tokenAddress} /><Link href={`/token/${p.tokenAddress}`} className="btn-ghost inline-flex text-xs no-underline">{t("portfolio.openToken")}</Link></div></td>
+                    <td className="data-td">—</td>
+                    <td className="data-td"><div className="flex items-center gap-2"><span className={`text-xs px-2 py-1 border shrink-0 ${outcomeTone(p.outcome24h)}`}>{t(`portfolio.outcome.${p.outcome24h || "unknown"}`)}</span><TerminalActionIcons mint={p.tokenAddress} /><Link href={`/token/${p.tokenAddress}`} className="btn-ghost-sm inline-flex no-underline">{t("portfolio.openToken")}</Link></div></td>
                   </tr>
                 ))}
               </tbody>
