@@ -1,7 +1,7 @@
 /* Must stay in _app: global Tailwind + design tokens (Next.js only allows global CSS import from here). */
 import "../styles/globals.css";
 import "../styles/sentinel-design-system.css";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { useEffect, useMemo } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -37,6 +37,13 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
   variable: "--font-jetbrains-mono",
   weight: ["400", "500", "600", "700", "800"]
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-space-grotesk",
+  display: "swap"
 });
 
 const queryClient = new QueryClient();
@@ -98,7 +105,7 @@ export default function App({ Component, pageProps }) {
             <LocaleProvider>
             <WarModeProvider>
             <div
-              className={`${inter.variable} ${jetbrainsMono.variable} ${inter.className} min-h-screen bg-[var(--sl-bg-base)] text-white antialiased selection:bg-emerald-500/25 selection:text-emerald-100`}
+              className={`${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} ${inter.className} min-h-screen bg-[var(--sl-bg-base)] text-white antialiased selection:bg-emerald-500/25 selection:text-emerald-100`}
               translate="no"
             >
               <Navbar />

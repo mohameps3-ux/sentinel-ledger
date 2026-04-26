@@ -1,17 +1,48 @@
-/** @type {import('tailwindcss').Config} */
-/* Content globs: include every tree that contains className="" usage (Vercel/CI must resolve paths from this file). */
 module.exports = {
   content: [
-    "./app/**/*.{js,jsx,ts,tsx,mjs,mdx}",
-    "./pages/**/*.{js,jsx,ts,tsx,mjs,mdx}",
-    "./components/**/*.{js,jsx,ts,tsx,mjs,mdx}",
-    "./hooks/**/*.{js,jsx,ts,tsx,mjs,mdx}",
-    "./lib/**/*.{js,jsx,ts,tsx,mjs,mdx}",
-    "./src/**/*.{js,jsx,ts,tsx,mjs,mdx}",
-    "./styles/**/*.css"
+    './pages/**/*.{js,jsx,ts,tsx}',
+    './components/**/*.{js,jsx,ts,tsx}',
+    './src/**/*.{js,jsx,ts,tsx}',
+    './styles/**/*.css',
   ],
+  darkMode: 'class',
   theme: {
-    extend: {}
+    extend: {
+      colors: {
+        'sl-root':   '#050509',
+        'sl-panel':  '#0A0C14',
+        'sl-card':   '#0F1320',
+        'sl-border': '#1A2035',
+        'sl-hover':  '#242D45',
+        'sl-text':   '#F1F5F9',
+        'sl-sub':    '#94A3B8',
+        'sl-muted':  '#475569',
+        'sl-violet': '#8B5CF6',
+        'sl-green':  '#10B981',
+        'sl-orange': '#F59E0B',
+        'sl-red':    '#DC2626',
+        'sl-blue':   '#3B82F6',
+      },
+      fontFamily: {
+        'display': ['var(--font-space-grotesk)', 'sans-serif'],
+        'ui':      ['var(--font-inter)', 'sans-serif'],
+        'mono':    ['var(--font-jetbrains-mono)', 'monospace'],
+      },
+      fontSize: {
+        '2xs':  ['10px', { lineHeight: '14px' }],
+        'xs':   ['11px', { lineHeight: '16px' }],
+        'sm':   ['13px', { lineHeight: '18px' }],
+        'base': ['15px', { lineHeight: '22px' }],
+        'lg':   ['18px', { lineHeight: '26px' }],
+        'xl':   ['22px', { lineHeight: '30px' }],
+        '2xl':  ['28px', { lineHeight: '36px' }],
+        '3xl':  ['36px', { lineHeight: '44px' }],
+      },
+      spacing: {
+        '13': '52px',
+        '18': '72px',
+      },
+    },
   },
-  plugins: []
-};
+  plugins: [],
+}
