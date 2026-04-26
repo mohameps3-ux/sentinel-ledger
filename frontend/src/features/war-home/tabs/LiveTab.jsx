@@ -204,7 +204,7 @@ export function LiveTab({
             sw: Math.max(0, Math.round(Number(sig?.smartWallets || 0)))
           });
         }}
-        baseClassName={`${
+        baseClassName={`terminal-card-interactive group mb-2 ${
           isHeatFill
             ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat rounded-md border border-amber-500/25 border-l-[3px] border-l-amber-400 bg-gradient-to-b from-amber-950/25 to-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-amber-400/45 hover:shadow-[0_0_18px_rgba(245,158,11,0.14)]"
             : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live rounded-md border border-white/10 border-l-[3px] border-l-emerald-400 bg-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-emerald-400/45 hover:shadow-[0_0_18px_rgba(16,185,129,0.22)]"
@@ -272,6 +272,12 @@ export function LiveTab({
           <div className="flex items-center justify-between gap-2">
             <span className="font-mono text-[11px] font-bold tabular-nums text-white">{displayScore}/100</span>
             <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-gray-500">{confidenceTr(sig.signalStrength)}</span>
+          </div>
+          <div className="score-track mx-3 mb-2">
+            <div
+              className={displayScore >= 60 ? "score-fill-high" : displayScore >= 40 ? "score-fill-mid" : "score-fill-low"}
+              style={{ width: `${Math.min(displayScore, 100)}%` }}
+            />
           </div>
         </div>
 
