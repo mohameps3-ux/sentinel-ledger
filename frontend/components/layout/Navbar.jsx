@@ -123,6 +123,12 @@ export function Navbar() {
                 <HealthBar onlyBadge />
               </div>
             ) : null}
+            <Link
+              href="/graveyard"
+              className="hidden min-[980px]:inline-flex shrink-0 rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-2 py-1 text-[11px] font-semibold text-cyan-100 no-underline hover:bg-cyan-400/[0.12]"
+            >
+              Track Record
+            </Link>
           </div>
           <WalletButton />
         </div>
@@ -161,6 +167,12 @@ export function Navbar() {
                   <HealthBar onlyBadge />
                 </div>
               ) : null}
+              <Link
+                href="/graveyard"
+                className="rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-2 py-1 text-[10px] font-semibold text-cyan-100 no-underline"
+              >
+                Track
+              </Link>
               <WalletButton />
             </div>
           </div>

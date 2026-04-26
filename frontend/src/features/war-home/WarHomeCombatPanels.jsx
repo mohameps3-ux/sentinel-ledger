@@ -107,6 +107,9 @@ export default function WarHomeCombatPanels({
               <li className="text-gray-500 text-sm">{t("war.combat.summaryLoading")}</li>
             )}
           </ul>
+          <Link href="/graveyard" className="mt-3 inline-flex text-xs font-semibold text-cyan-200 no-underline hover:text-cyan-100">
+            See our full track record →
+          </Link>
         </div>
       </section>
 

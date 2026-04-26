@@ -349,6 +349,12 @@ function SentinelIntelligence({ address, analysis, terminal, flaggedWallets, rul
             {latestOutcomeLine ? <p className="mt-1 text-[11px] text-amber-100/90">{latestOutcomeLine}</p> : null}
           </div>
         ) : null}
+        <Link
+          href="/graveyard"
+          className="inline-flex w-fit items-center rounded-lg border border-cyan-400/25 bg-cyan-400/[0.06] px-3 py-2 text-xs font-semibold text-cyan-100 no-underline hover:bg-cyan-400/[0.12]"
+        >
+          View Sentinel&apos;s historical accuracy →
+        </Link>
       </div>
       <div className="xl:col-span-7">
         <ExpandablePanel title="Smart wallets on this mint" icon={Radio} defaultOpen={true} badge="PRO intel">

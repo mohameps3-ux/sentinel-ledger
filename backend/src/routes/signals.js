@@ -10,6 +10,7 @@ const { pctFromPrices } = require("../services/smartWalletSignalPrices");
 const { buildDeskProofOfEdge } = require("../services/deskProofOfEdge");
 const { isMissingColumnError } = require("../lib/columnMissingError");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
+const redis = require("../lib/cache");
 
 const router = express.Router();
 
@@ -35,6 +36,211 @@ function actionFromConfidence(confidence) {
   if (c >= 80) return "ACCUMULATE";
   if (c >= 60) return "WATCH";
   return "TOO_LATE";
+}
+
+function oracleAction(row = {}, signal = null) {
+  const action = String(signal?.last_action || "").toLowerCase();
+  if (action === "sell") return "TOO LATE";
+  const confidence = Number(row.rule_snapshot?.confidence ?? signal?.confidence ?? 0);
+  if (confidence > 1) {
+    if (confidence >= 75) return "ACCUMULATE";
+    if (confidence >= 45) return "WATCH";
+    return "AVOID";
+  }
+  if (confidence >= 0.75) return "ACCUMULATE";
+  if (confidence >= 0.45) return "WATCH";
+  return "AVOID";
+}
+
+function oracleResult(row = {}) {
+  const outcome = Number(row.outcome_60m);
+  if (!Number.isFinite(outcome)) {
+    const createdMs = Date.parse(row.created_at);
+    if (Number.isFinite(createdMs) && Date.now() - createdMs <= 60 * 60 * 1000) return "PENDING";
+    return "MISSING";
+  }
+  if (outcome > 0.05) return "WIN";
+  if (outcome < -0.05) return "LOSS";
+  return "NEUTRAL";
+}
+
+function confidenceBadge(row = {}) {
+  const n = Number(row.total_signals || 0);
+  const c = Number(row.confidence_score || 0);
+  if (n < 10 || c < 0.5) return "INSUFFICIENT DATA";
+  if (c >= 0.7) return "HIGH";
+  return "BUILDING";
+}
+
+function bestRegime(row = {}) {
+  const perf = row.regime_performance && typeof row.regime_performance === "object" ? row.regime_performance : {};
+  const entries = Object.entries(perf)
+    .filter(([, v]) => Number(v?.total || 0) > 0)
+    .sort((a, b) => Number(b[1]?.confidence || 0) - Number(a[1]?.confidence || 0));
+  return entries[0] ? `${entries[0][0]} ${(Number(entries[0][1]?.confidence || 0) * 100).toFixed(0)}%` : "—";
+}
+
+function tokenSymbol(row = {}, snapshot = null) {
+  return snapshot?.symbol || row.rule_snapshot?.symbol || (row.mint ? `${String(row.mint).slice(0, 4)}…${String(row.mint).slice(-4)}` : "—");
+}
+
+function tokenName(row = {}, snapshot = null) {
+  return snapshot?.name || snapshot?.symbol || row.rule_snapshot?.symbol || "Unknown token";
+}
+
+function mapOracleSignal(row, signalById, snapshotByMint) {
+  const signal = signalById.get(String(row.signal_id || ""));
+  const snapshot = snapshotByMint.get(row.mint);
+  const outcome60 = row.outcome_60m != null ? Number(row.outcome_60m) : null;
+  return {
+    id: row.id,
+    signal_id: row.signal_id,
+    time: row.created_at,
+    created_at: row.created_at,
+    token: row.mint,
+    token_address: row.mint,
+    token_name: tokenName(row, snapshot),
+    symbol: tokenSymbol(row, snapshot),
+    rule_id: row.rule_id || "unknown",
+    strength: Number(row.rule_snapshot?.confidence ?? signal?.confidence ?? 0),
+    action: oracleAction(row, signal),
+    outcome_5m: row.outcome_5m != null ? Number(row.outcome_5m) : null,
+    outcome_15m: row.outcome_15m != null ? Number(row.outcome_15m) : null,
+    outcome_60m: outcome60,
+    result: oracleResult(row),
+    validation_state: oracleResult(row),
+    wallets_involved: Number(row.wallets_involved || 0),
+    regime: row.regime || null,
+    smart_money_early_min: row.rule_snapshot?.timeAdvantageMin ?? row.rule_snapshot?.entryWindowMin ?? null
+  };
+}
+
+async function enrichOracleRows(supabase, rows = []) {
+  const mints = [...new Set(rows.map((r) => r.mint).filter(Boolean))].slice(0, 250);
+  const signalIds = rows
+    .map((r) => String(r.signal_id || ""))
+    .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
+    .slice(0, 250);
+  const [snapshotsRes, signalsRes] = await Promise.all([
+    mints.length
+      ? supabase.from("market_snapshots").select("mint,symbol,name").in("mint", mints)
+      : Promise.resolve({ data: [], error: null }),
+    signalIds.length
+      ? supabase.from("smart_wallet_signals").select("id,token_address,last_action,confidence,created_at").in("id", signalIds)
+      : Promise.resolve({ data: [], error: null })
+  ]);
+  const snapshotByMint = new Map((snapshotsRes.data || []).map((r) => [r.mint, r]));
+  const signalById = new Map((signalsRes.data || []).map((r) => [String(r.id), r]));
+  return rows.map((row) => mapOracleSignal(row, signalById, snapshotByMint));
+}
+
+async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pageSize = 25 } = {}) {
+  const safePage = Math.max(1, Math.floor(Number(page) || 1));
+  const safePageSize = Math.max(1, Math.min(50, Math.floor(Number(pageSize) || 25)));
+  const from = (safePage - 1) * safePageSize;
+  const to = from + safePageSize - 1;
+  let pageQuery = supabase
+    .from("signal_outcomes")
+    .select("id,signal_id,mint,rule_id,price_at_signal,wallets_involved,regime,price_5m,price_15m,price_60m,outcome_5m,outcome_15m,outcome_60m,validated,rule_snapshot,min_price_observed,validated_at,created_at")
+    .order("created_at", { ascending: false });
+  if (filter === "wins") pageQuery = pageQuery.gt("outcome_60m", 0.05);
+  if (filter === "losses") pageQuery = pageQuery.lt("outcome_60m", -0.05);
+  if (filter === "pending") pageQuery = pageQuery.is("outcome_60m", null);
+  pageQuery = pageQuery.range(from, to);
+
+  const [
+    totalRes,
+    resolvedRes,
+    allResolvedRes,
+    rulesRes,
+    pageRes,
+    winsRes,
+    lossesRes
+  ] = await Promise.all([
+    supabase.from("signal_outcomes").select("id", { count: "exact", head: true }),
+    supabase.from("signal_outcomes").select("id", { count: "exact", head: true }).not("outcome_60m", "is", null),
+    supabase
+      .from("signal_outcomes")
+      .select("id,signal_id,mint,rule_id,outcome_60m,created_at,rule_snapshot")
+      .not("outcome_60m", "is", null)
+      .order("outcome_60m", { ascending: false })
+      .limit(5000),
+    supabase.from("rule_performance").select("*").order("confidence_score", { ascending: false, nullsFirst: false }).limit(100),
+    pageQuery,
+    supabase
+      .from("signal_outcomes")
+      .select("id,signal_id,mint,rule_id,outcome_60m,created_at,rule_snapshot")
+      .gt("outcome_60m", 0.05)
+      .order("outcome_60m", { ascending: false })
+      .limit(5),
+    supabase
+      .from("signal_outcomes")
+      .select("id,signal_id,mint,rule_id,outcome_60m,created_at,rule_snapshot")
+      .lt("outcome_60m", -0.05)
+      .order("outcome_60m", { ascending: true })
+      .limit(3)
+  ]);
+
+  for (const r of [totalRes, resolvedRes, allResolvedRes, rulesRes, pageRes, winsRes, lossesRes]) {
+    if (r.error) throw r.error;
+  }
+
+  const allResolved = allResolvedRes.data || [];
+  const wins = allResolved.filter((r) => Number(r.outcome_60m) > 0.05);
+  const losses = allResolved.filter((r) => Number(r.outcome_60m) < -0.05);
+  const decisive = wins.length + losses.length;
+  const winReturns = wins.map((r) => Number(r.outcome_60m)).filter(Number.isFinite);
+  const returns = allResolved.map((r) => Number(r.outcome_60m)).filter(Number.isFinite);
+  const best = allResolved.slice().sort((a, b) => Number(b.outcome_60m || 0) - Number(a.outcome_60m || 0))[0] || null;
+  const worst = allResolved.slice().sort((a, b) => Number(a.outcome_60m || 0) - Number(b.outcome_60m || 0))[0] || null;
+
+  const rulePerformance = (rulesRes.data || []).map((row) => {
+    const total = Number(row.total_signals || 0);
+    const wr = total ? Number(row.success_count_60m || 0) / total : null;
+    return {
+      rule_id: row.rule_id,
+      total_signals: total,
+      win_rate: wr,
+      avg_return: row.avg_return_60m != null ? Number(row.avg_return_60m) : null,
+      best_regime: bestRegime(row),
+      confidence_score: Number(row.confidence_score || 0),
+      confidence_badge: confidenceBadge(row),
+      max_drawdown: row.max_drawdown != null ? Number(row.max_drawdown) : null
+    };
+  });
+
+  const recent = await enrichOracleRows(supabase, pageRes.data || []);
+  const topWins = await enrichOracleRows(supabase, winsRes.data || []);
+  const worstLosses = await enrichOracleRows(supabase, lossesRes.data || []);
+  const [bestCall] = best ? await enrichOracleRows(supabase, [best]) : [null];
+  const [worstCall] = worst ? await enrichOracleRows(supabase, [worst]) : [null];
+
+  return {
+    ok: true,
+    total_signals: Number(totalRes.count || 0),
+    resolved_signals: Number(resolvedRes.count || 0),
+    win_rate_60m: decisive ? wins.length / decisive : null,
+    avg_return: returns.length ? returns.reduce((a, b) => a + b, 0) / returns.length : null,
+    avg_return_wins: winReturns.length ? winReturns.reduce((a, b) => a + b, 0) / winReturns.length : null,
+    max_drawdown: returns.length ? Math.min(...returns) : null,
+    best_call: bestCall,
+    worst_call: worstCall,
+    rule_performance: rulePerformance,
+    recent_signals: recent,
+    top_wins: topWins,
+    worst_losses: worstLosses,
+    last_updated: new Date().toISOString(),
+    pagination: {
+      page: safePage,
+      page_size: safePageSize,
+      total_pages: Math.max(1, Math.ceil(Number(totalRes.count || 0) / safePageSize))
+    },
+    meta: {
+      source: "supabase:validation_oracle",
+      filter,
+      cache_ttl_sec: 60
+    }
+  };
 }
 
 /**
@@ -138,6 +344,43 @@ router.get("/desk-proof-of-edge", async (req, res) => {
   } catch (e) {
     const code = /unconfigured/i.test(String(e?.message || "")) ? 503 : 500;
     return res.status(code).json({ ok: false, error: e?.message || "desk_proof_of_edge_failed" });
+  }
+});
+
+/**
+ * GET /api/v1/signals/track-record
+ * Validation Oracle trust ledger. Cached for 60s; never fabricates metrics.
+ */
+router.get("/track-record", async (req, res) => {
+  const supabase = safeSupabase();
+  if (!supabase) {
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured" });
+  }
+  const filter = String(req.query.filter || "all").toLowerCase();
+  const page = Math.max(1, Number(req.query.page || 1));
+  const pageSize = Math.max(1, Math.min(50, Number(req.query.limit || 25)));
+  const cacheKey = `signals:track-record:v1:${filter}:${page}:${pageSize}`;
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=60");
+      return res.json({ ...cached, cached: true });
+    }
+  } catch (error) {
+    console.warn("[track-record] cache read failed:", error?.message || error);
+  }
+  try {
+    const body = await buildTrackRecordPayload(supabase, { filter, page, pageSize });
+    try {
+      await redis.set(cacheKey, body, { ex: 60 });
+    } catch (error) {
+      console.warn("[track-record] cache write failed:", error?.message || error);
+    }
+    res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=60");
+    console.log("[track-record] verified signal history live");
+    return res.json(body);
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message || "track_record_failed" });
   }
 });
 

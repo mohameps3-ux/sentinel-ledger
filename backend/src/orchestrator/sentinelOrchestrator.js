@@ -78,6 +78,14 @@ function fillTemplate(key, slots = {}) {
   return tpl.replace(/\{(\w+)\}/g, (_, k) => String(slots[k] ?? "—"));
 }
 
+function narrativeMessage(key, slots, severity) {
+  const base = fillTemplate(key, slots);
+  if (severity === "URGENT") {
+    return `${base}. See our track record before trading →`;
+  }
+  return base;
+}
+
 function sanitizeMint(mint) {
   const m = String(mint || "").trim();
   return isProbableSolanaPubkey(m) ? m : null;
@@ -322,7 +330,7 @@ function handleObservedEvent(event) {
     id: randomUUID(),
     mint: event.mint,
     severity,
-    message: fillTemplate(key, slots),
+    message: narrativeMessage(key, slots, severity),
     cta,
     timestamp: nowIso(),
     expiresAt: new Date(Date.now() + NARRATIVE_TTL_MS).toISOString()
@@ -405,6 +413,7 @@ module.exports = {
     classify,
     chooseTemplate,
     fillTemplate,
+    narrativeMessage,
     normalizeConfidence,
     planCta,
     validateCta

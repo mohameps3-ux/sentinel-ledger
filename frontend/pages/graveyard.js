@@ -7,16 +7,16 @@ import { useLocale } from "../contexts/LocaleContext";
 
 const FILTERS = [
   { id: "all", label: "All" },
-  { id: "wins", label: "Wins" },
-  { id: "losses", label: "Losses" },
-  { id: "pending", label: "Pending" }
+  { id: "wins", label: "Wins ✓" },
+  { id: "losses", label: "Losses ✗" },
+  { id: "pending", label: "Pending ⏳" }
 ];
 
 async function fetchTrackRecord(filter) {
   const qs = new URLSearchParams();
   qs.set("filter", filter || "all");
-  qs.set("limit", "120");
-  const res = await fetch(`${getPublicApiUrl()}/api/v1/public/track-record?${qs.toString()}`);
+  qs.set("limit", "25");
+  const res = await fetch(`${getPublicApiUrl()}/api/v1/signals/track-record?${qs.toString()}`);
   if (!res.ok) throw new Error("track_record_fetch_failed");
   return res.json();
 }
@@ -43,7 +43,8 @@ function time(raw) {
 function rowTone(result) {
   if (result === "WIN") return "border-emerald-500/20 bg-emerald-500/[0.055]";
   if (result === "LOSS") return "border-red-500/20 bg-red-500/[0.045]";
-  return "border-white/[0.08] bg-white/[0.025]";
+  if (result === "NEUTRAL") return "border-slate-500/20 bg-slate-500/[0.035]";
+  return "border-slate-500/20 bg-white/[0.025]";
 }
 
 function ruleTone(winRate) {
@@ -62,6 +63,28 @@ function Stat({ label, value, hint }) {
       {hint ? <p className="mt-0.5 text-[11px] text-gray-500">{hint}</p> : null}
     </div>
   );
+}
+
+function confidenceTone(label) {
+  if (label === "HIGH") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-200";
+  if (label === "BUILDING") return "border-amber-500/30 bg-amber-500/10 text-amber-200";
+  return "border-slate-500/25 bg-slate-500/10 text-slate-300";
+}
+
+function outcomeTone(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "text-slate-500";
+  if (n > 0) return "text-emerald-300";
+  if (n < 0) return "text-red-300";
+  return "text-slate-300";
+}
+
+function resultLabel(row) {
+  if (row.result === "WIN") return "✓ WIN";
+  if (row.result === "LOSS") return "✗ LOSS";
+  if (row.result === "NEUTRAL") return "NEUTRAL";
+  if (row.result === "MISSING") return "Data missing";
+  return "Validating...";
 }
 
 function EmptyState({ children }) {
@@ -83,13 +106,14 @@ export default function VerifiedTrackRecordPage() {
   });
 
   const data = query.data || {};
-  const rows = useMemo(() => data.rows || [], [data.rows]);
-  const rules = useMemo(() => data.rules || [], [data.rules]);
-  const bestCalls = useMemo(() => data.bestCalls || [], [data.bestCalls]);
-  const worstCalls = useMemo(() => data.worstCalls || [], [data.worstCalls]);
-  const stats = data.stats || {};
-  const summary = data.summary || null;
-  const hasData = Boolean(data.meta?.hasOracleData);
+  const rows = useMemo(() => data.recent_signals || [], [data.recent_signals]);
+  const rules = useMemo(() => data.rule_performance || [], [data.rule_performance]);
+  const bestCalls = useMemo(() => data.top_wins || [], [data.top_wins]);
+  const worstCalls = useMemo(() => data.worst_losses || [], [data.worst_losses]);
+  const totalSignals = Number(data.total_signals || 0);
+  const resolvedSignals = Number(data.resolved_signals || 0);
+  const hasMetrics = resolvedSignals >= 10;
+  const hasData = totalSignals > 0 || rules.length > 0;
 
   return (
     <>
@@ -101,27 +125,36 @@ export default function VerifiedTrackRecordPage() {
           <p className="text-sm text-gray-400 mt-2 max-w-3xl leading-relaxed">
             Every signal. Every outcome. Nothing hidden.
           </p>
+          <p className="mt-1 text-xs text-cyan-100/70">
+            Data sourced directly from on-chain events and Sentinel Oracle validation.
+          </p>
+          {totalSignals < 10 ? (
+            <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 text-sm text-amber-100">
+              Oracle is accumulating validated signals — {int(totalSignals)} signals recorded, {Math.max(0, 10 - totalSignals)} until first metrics.
+            </div>
+          ) : null}
           <div className="mt-5 grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            <Stat label="Total signals" value={hasData ? int(stats.totalSignals) : "Accumulating"} />
-            <Stat label="Win rate" value={stats.winRate != null ? pct(stats.winRate) : "Accumulating"} />
-            <Stat label="Avg return" value={stats.avgReturn != null ? pct(stats.avgReturn) : "Accumulating"} />
-            <Stat label="Best call" value={stats.bestCall ? pct(stats.bestCall.outcome60m) : "Accumulating"} hint={stats.bestCall?.symbol || stats.bestCall?.token} />
-            <Stat label="Worst call" value={stats.worstCall ? pct(stats.worstCall.outcome60m) : "Accumulating"} hint={stats.worstCall?.symbol || stats.worstCall?.token} />
+            <Stat label="Total signals" value={hasData ? int(totalSignals) : "Accumulating"} />
+            <Stat label="Win rate 60m" value={hasMetrics && data.win_rate_60m != null ? pct(data.win_rate_60m) : "Accumulating"} />
+            <Stat label="Avg return" value={hasMetrics && data.avg_return != null ? pct(data.avg_return) : "Accumulating"} />
+            <Stat label="Best call" value={data.best_call ? pct(data.best_call.outcome_60m) : "Accumulating"} hint={data.best_call?.symbol || data.best_call?.token} />
+            <Stat label="Worst call" value={data.worst_call ? pct(data.worst_call.outcome_60m) : "Accumulating"} hint={data.worst_call?.symbol || data.worst_call?.token} />
           </div>
         </section>
 
         <section className="grid lg:grid-cols-3 gap-4">
-          {summary ? (
+          {hasMetrics ? (
             <>
-              <Stat label="Win rate 60m" value={pct(summary.winRate60m)} hint={`n=${int(summary.sampleSize)}`} />
-              <Stat label="Avg return on wins" value={pct(summary.avgReturnOnWins)} />
-              <Stat label="Max drawdown" value={pct(-Math.abs(Number(summary.maxDrawdown || 0)))} />
+              <Stat label="Win rate 60m" value={data.win_rate_60m != null ? pct(data.win_rate_60m) : "—"} hint={`n=${int(resolvedSignals)}`} />
+              <Stat label="Avg return on wins" value={data.avg_return_wins != null ? pct(data.avg_return_wins) : "—"} />
+              <Stat label="Max drawdown" value={data.max_drawdown != null ? pct(data.max_drawdown) : "—"} />
             </>
           ) : (
             <div className="lg:col-span-3">
-              <EmptyState>Building track record — check back in 2 days. Oracle metrics only unlock after n ≥ 10 validated signals.</EmptyState>
+              <EmptyState>Building track record — metrics appear after 10 validated signals.</EmptyState>
             </div>
           )}
+          <div className="lg:col-span-3 text-[11px] text-gray-500">Last updated: {time(data.last_updated)}</div>
         </section>
 
         <section className="glass-card sl-inset border-white/[0.08] bg-[#080a0d]/90">
@@ -132,29 +165,33 @@ export default function VerifiedTrackRecordPage() {
             </div>
           </div>
           {!rules.length ? (
-            <EmptyState>Oracle is validating signals — first results in 24-48h.</EmptyState>
+            <EmptyState>Oracle is validating first signals — rule performance appears after 10+ resolved outcomes per rule.</EmptyState>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-[10px] uppercase tracking-[0.14em] text-gray-500">
                   <tr className="border-b border-white/[0.08]">
-                    <th className="text-left py-2 pr-3">Rule</th>
-                    <th className="text-right py-2 px-3">Signals</th>
+                    <th className="text-left py-2 pr-3">Rule ID</th>
+                    <th className="text-right py-2 px-3">Total Signals</th>
                     <th className="text-right py-2 px-3">Win Rate</th>
                     <th className="text-right py-2 px-3">Avg Return</th>
-                    <th className="text-left py-2 px-3">Regime</th>
-                    <th className="text-right py-2 pl-3">Confidence</th>
+                    <th className="text-left py-2 px-3">Best Regime</th>
+                    <th className="text-right py-2 pl-3">Confidence Score</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rules.map((r) => (
-                    <tr key={r.rule} className={`border-b ${ruleTone(r.winRate)} border-white/[0.06]`}>
-                      <td className="py-3 pr-3 font-mono text-cyan-200">{r.rule}</td>
-                      <td className="py-3 px-3 text-right font-mono text-gray-200">{int(r.signals)}</td>
-                      <td className="py-3 px-3 text-right font-mono text-gray-200">{r.winRate != null ? pct(r.winRate) : "—"}</td>
-                      <td className="py-3 px-3 text-right font-mono text-gray-200">{r.avgReturn != null ? pct(r.avgReturn) : "—"}</td>
-                      <td className="py-3 px-3 text-gray-400">{r.regime || "—"}</td>
-                      <td className="py-3 pl-3 text-right font-mono text-gray-200">{pct(r.confidence)}</td>
+                    <tr key={r.rule_id} className={`border-b ${ruleTone(r.win_rate)} border-white/[0.06]`}>
+                      <td className="py-3 pr-3 font-mono text-cyan-200">{r.rule_id}</td>
+                      <td className="py-3 px-3 text-right font-mono text-gray-200">{int(r.total_signals)}</td>
+                      <td className="py-3 px-3 text-right font-mono text-gray-200">{r.win_rate != null ? pct(r.win_rate) : "—"}</td>
+                      <td className="py-3 px-3 text-right font-mono text-gray-200">{r.avg_return != null ? pct(r.avg_return) : "—"}</td>
+                      <td className="py-3 px-3 text-gray-400">{r.best_regime || "—"}</td>
+                      <td className="py-3 pl-3 text-right">
+                        <span className={`inline-flex rounded-lg border px-2 py-1 text-[10px] font-bold ${confidenceTone(r.confidence_badge)}`}>
+                          {r.confidence_badge}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -166,8 +203,8 @@ export default function VerifiedTrackRecordPage() {
         <section className="glass-card sl-inset border-white/[0.08] bg-[#080a0d]/90">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div>
-              <p className="sl-label">Signal History</p>
-              <h2 className="text-xl font-semibold text-white">Chronological validation ledger</h2>
+              <p className="sl-label">Complete Signal History</p>
+              <h2 className="text-xl font-semibold text-white">Every call we made. Unedited.</h2>
             </div>
             <div className="flex flex-wrap gap-2">
               {FILTERS.map((f) => (
@@ -190,19 +227,23 @@ export default function VerifiedTrackRecordPage() {
             <EmptyState>{hasData ? "No signals match this filter." : "Oracle is validating signals — first results in 24-48h."}</EmptyState>
           ) : (
             <div className="space-y-2">
+              <div className="hidden lg:grid grid-cols-[1.1fr_1.1fr_0.9fr_0.75fr_0.8fr_0.7fr_0.7fr_0.7fr_0.9fr] gap-2 px-3 text-[10px] uppercase tracking-[0.14em] text-gray-500">
+                <span>Time</span><span>Token</span><span>Symbol</span><span>Strength</span><span>Action</span><span>5m</span><span>15m</span><span>60m</span><span>Result</span>
+              </div>
               {rows.map((r) => (
                 <div key={r.id} className={`rounded-xl border px-3 py-3 ${rowTone(r.result)}`}>
-                  <div className="grid lg:grid-cols-[1.1fr_1.2fr_0.8fr_0.9fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-2 items-center text-xs">
-                    <span className="text-gray-500">{time(r.timestamp)}</span>
+                  <div className="grid lg:grid-cols-[1.1fr_1.1fr_0.9fr_0.75fr_0.8fr_0.7fr_0.7fr_0.7fr_0.9fr] gap-2 items-center text-xs">
+                    <span className="text-gray-500">{time(r.time)}</span>
                     <Link href={`/token/${encodeURIComponent(r.token || "")}`} className="font-mono text-cyan-200 no-underline break-all">
-                      {r.symbol || r.token || "—"}
+                      {r.token_name || r.token || "—"}
                     </Link>
-                    <span className="font-mono text-gray-300">{Number(r.signalStrength || 0).toFixed(2)}</span>
-                    <span className="text-gray-200">{r.suggestedAction || "—"}</span>
-                    <span className="font-mono text-gray-300">{r.outcome5m != null ? pct(r.outcome5m) : "Validating..."}</span>
-                    <span className="font-mono text-gray-300">{r.outcome15m != null ? pct(r.outcome15m) : "Validating..."}</span>
-                    <span className="font-mono text-gray-300">{r.outcome60m != null ? pct(r.outcome60m) : "Validating..."}</span>
-                    <span className="font-semibold text-gray-100">{r.result === "PENDING" ? "Validating..." : r.result}</span>
+                    <span className="font-mono text-gray-300">{r.symbol || "—"}</span>
+                    <span className="font-mono text-gray-300">{Number(r.strength || 0).toFixed(2)}</span>
+                    <span className="text-gray-200">{r.action || "—"}</span>
+                    <span className={`font-mono ${outcomeTone(r.outcome_5m)}`}>{r.outcome_5m != null ? pct(r.outcome_5m) : "Validating..."}</span>
+                    <span className={`font-mono ${outcomeTone(r.outcome_15m)}`}>{r.outcome_15m != null ? pct(r.outcome_15m) : "Validating..."}</span>
+                    <span className={`font-mono ${outcomeTone(r.outcome_60m)}`}>{r.outcome_60m != null ? pct(r.outcome_60m) : "Validating..."}</span>
+                    <span className="font-semibold text-gray-100">{resultLabel(r)}</span>
                   </div>
                 </div>
               ))}
@@ -212,38 +253,39 @@ export default function VerifiedTrackRecordPage() {
 
         <div className="grid lg:grid-cols-2 gap-4">
           <section className="glass-card sl-inset border-emerald-500/20 bg-emerald-500/[0.025]">
-            <p className="sl-label">Best Calls</p>
-            <h2 className="text-xl font-semibold text-white">This is what Sentinel caught before the market moved</h2>
+            <p className="sl-label">Sentinel&apos;s Best Calls</p>
+            <h2 className="text-xl font-semibold text-white">When the Oracle was right.</h2>
+            <p className="mt-1 text-sm text-gray-500">This is what Sentinel caught before the market moved.</p>
             {!bestCalls.length ? (
-              <p className="text-sm text-gray-500 mt-4">Accumulating verified wins.</p>
+              <p className="text-sm text-gray-500 mt-4">Accumulating verified wins. Showing {bestCalls.length} of 5 available calls.</p>
             ) : (
               <div className="mt-4 space-y-2">
                 {bestCalls.map((r) => (
                   <Link key={r.id} href={`/token/${encodeURIComponent(r.token || "")}`} className="block rounded-xl border border-white/[0.08] bg-black/20 px-3 py-2 no-underline">
                     <div className="flex justify-between gap-3 text-sm">
-                      <span className="font-mono text-cyan-200 break-all">{r.symbol || r.token}</span>
-                      <span className="font-mono text-emerald-300">{pct(r.outcome60m)}</span>
+                      <span className="font-mono text-cyan-200 break-all">{r.token_name || r.symbol || r.token}</span>
+                      <span className="font-mono text-emerald-300">{pct(r.outcome_60m)}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{time(r.timestamp)} · predicted {r.suggestedAction}</p>
+                    <p className="text-xs text-gray-500 mt-1">{time(r.time)} · suggested {r.action} · Smart money was early by {r.smart_money_early_min || "—"}min</p>
                   </Link>
                 ))}
               </div>
             )}
           </section>
           <section className="glass-card sl-inset border-red-500/20 bg-red-500/[0.02]">
-            <p className="sl-label">Worst Calls</p>
-            <h2 className="text-xl font-semibold text-white">We show our mistakes. That's what makes us different.</h2>
+            <p className="sl-label">Where Sentinel Was Wrong</p>
+            <h2 className="text-xl font-semibold text-white">We show our mistakes. That&apos;s what makes this different from every other platform.</h2>
             {!worstCalls.length ? (
-              <p className="text-sm text-gray-500 mt-4">No resolved losses yet.</p>
+              <p className="text-sm text-gray-500 mt-4">No resolved losses yet — accumulating history.</p>
             ) : (
               <div className="mt-4 space-y-2">
                 {worstCalls.map((r) => (
                   <Link key={r.id} href={`/token/${encodeURIComponent(r.token || "")}`} className="block rounded-xl border border-white/[0.08] bg-black/20 px-3 py-2 no-underline">
                     <div className="flex justify-between gap-3 text-sm">
-                      <span className="font-mono text-cyan-200 break-all">{r.symbol || r.token}</span>
-                      <span className="font-mono text-red-300">{pct(r.outcome60m)}</span>
+                      <span className="font-mono text-cyan-200 break-all">{r.token_name || r.symbol || r.token}</span>
+                      <span className="font-mono text-red-300">{pct(r.outcome_60m)}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{time(r.timestamp)} · predicted {r.suggestedAction}</p>
+                    <p className="text-xs text-gray-500 mt-1">{time(r.time)} · suggested {r.action} · Why this happens: regime mismatch / thin liquidity / low sample rule.</p>
                   </Link>
                 ))}
               </div>
@@ -252,12 +294,13 @@ export default function VerifiedTrackRecordPage() {
         </div>
 
         <section className="glass-card sl-inset border-white/[0.08] bg-white/[0.02]">
-          <p className="sl-label">Methodology</p>
+          <p className="sl-label">How Oracle Validates</p>
           <div className="mt-2 grid md:grid-cols-3 gap-3 text-sm text-gray-400 leading-relaxed">
             <p>Signals are validated at 5, 15, and 60 minutes after emission.</p>
             <p>Win = price increased &gt;5% within 60 minutes.</p>
-            <p>All data is on-chain verifiable and sourced from the Validation Oracle tables.</p>
+            <p>All outcomes are calculated from on-chain price data, not manually curated.</p>
           </div>
+          <p className="mt-4 text-sm font-semibold text-gray-200">Nothing is cherry-picked. Nothing is deleted. This page updates automatically.</p>
         </section>
       </div>
     </>
