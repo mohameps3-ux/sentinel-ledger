@@ -47,6 +47,12 @@ function alertTone(tier) {
   return "border-slate-500/25 bg-slate-500/[0.06] text-slate-300";
 }
 
+function alertAccent(tier) {
+  if (tier === "surefire" || tier === "urgent") return "#DC2626";
+  if (tier === "tactical") return "#F59E0B";
+  return "#3B82F6";
+}
+
 export default function ProAlertsPage() {
   const { t } = useLocale();
   const token = useClientAuthToken();
@@ -307,10 +313,11 @@ export default function ProAlertsPage() {
   return (
     <>
       <PageHead title={t("alerts.pageTitle")} description={t("alerts.pageDescription")} />
-      <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full">
-        <section className="glass-card sl-inset">
+      <div className="flex gap-4 px-4 pt-[76px] pb-4">
+        <div className="flex-1 flex flex-col gap-3 min-w-0">
+        <section className="terminal-panel p-4">
           <div className="flex items-start gap-3 mb-4">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500/25 to-cyan-500/20 border border-violet-500/25 flex items-center justify-center shrink-0">
+            <div className="w-11 h-11 bg-gradient-to-br from-violet-500/25 to-cyan-500/20 border border-violet-500/25 flex items-center justify-center shrink-0">
               <Bell className="text-violet-200" size={22} />
             </div>
             <div>
@@ -323,9 +330,8 @@ export default function ProAlertsPage() {
           </div>
         </section>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
         {token && pro && priorityFeed.loaded ? (
-          <section className="glass-card sl-inset">
+          <section className="terminal-panel">
             <div className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-2.5 border-b border-white/[0.06]">
               <div>
                 <p className="text-[10px] font-semibold tracking-[0.22em] text-gray-500 uppercase">
@@ -335,13 +341,22 @@ export default function ProAlertsPage() {
               </div>
             </div>
             {!priorityFeed.items.length ? (
-              <p className="px-4 py-6 text-sm text-gray-500 leading-relaxed">No alerts configured — set your first alert below.</p>
+              <div className="empty-state">
+                <span className="empty-state-title">NO ALERTS CONFIGURED</span>
+                <p className="empty-state-sub">
+                  Set your first alert below to get notified when signals match your criteria.
+                </p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {priorityFeed.items.map((row) => {
                   const mint = row.tokenAddress;
                   return (
-                    <div key={row.id} className={`rounded-xl border px-4 py-3 ${alertTone(row.tier)} ${row.tier === "urgent" ? "animate-pulse" : ""}`}>
+                    <div
+                      key={row.id}
+                      className={`terminal-card-interactive group mb-2 px-4 py-3 ${alertTone(row.tier)} ${row.tier === "urgent" ? "animate-pulse" : ""}`}
+                      style={{ borderLeft: `3px solid ${alertAccent(row.tier)}` }}
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <span className="sl-badge">{tierAbbr(row.tier)}</span>
                         <span className="font-mono text-[11px] opacity-70">{formatDispatchTime(row.createdAt)}</span>
@@ -349,7 +364,7 @@ export default function ProAlertsPage() {
                       <p className="mt-2 text-sm font-semibold">{row.headline}</p>
                       {row.detail ? <p className="mt-1 text-xs opacity-75">{row.detail}</p> : null}
                       {mint && isProbableSolanaMint(mint) ? (
-                        <Link href={`/token/${mint}`} className="mt-3 inline-flex rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold no-underline hover:bg-white/10">
+                        <Link href={`/token/${mint}`} className="btn-ghost-sm mt-3">
                           Open token action
                         </Link>
                       ) : null}
@@ -364,11 +379,19 @@ export default function ProAlertsPage() {
           </section>
         ) : null}
 
-        <section className="sl-section xl:mt-0">
-          <div className="glass-card sl-inset space-y-6">
-            <p className="sl-label">Settings Panel</p>
+        <section className="mt-10 pb-4 border-t border-gray-800/80 pt-8">
+          <FinancialDisclaimer />
+        </section>
+        </div>
+
+        <div className="w-[320px] flex-shrink-0 hidden lg:block">
+        <section className="terminal-panel p-4">
+          <div className="panel-header mb-4">
+            <span className="section-title">ALERT SETTINGS</span>
+          </div>
+          <div className="space-y-6">
             {!token ? (
-              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 inline-flex items-start gap-2">
+              <div className="border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 inline-flex items-start gap-2">
                 <ShieldCheck size={18} className="shrink-0 mt-0.5" />
                 <span>{t("alerts.signInPrompt")}</span>
               </div>
@@ -382,10 +405,10 @@ export default function ProAlertsPage() {
             ) : null}
 
             {token && !loading && !pro ? (
-              <div className="rounded-xl border border-purple-500/25 bg-purple-500/10 px-4 py-4">
+              <div className="border border-purple-500/25 bg-purple-500/10 px-4 py-4">
                 <p className="text-gray-200 font-medium mb-2">{t("alerts.upgradeTitle")}</p>
                 <p className="text-sm text-gray-400 mb-4">{t("alerts.upgradeBody")}</p>
-                <Link href="/pricing" className="btn-pro inline-flex">
+                <Link href="/pricing" className="btn-ghost-sm">
                   {t("alerts.viewPricing")}
                 </Link>
               </div>
@@ -421,7 +444,7 @@ export default function ProAlertsPage() {
                           type="button"
                           disabled={pushUiBusy}
                           onClick={onEnableBrowserPush}
-                          className="text-sm px-4 py-2 rounded-lg border border-violet-500/35 bg-violet-500/10 text-violet-200 hover:bg-violet-500/15 disabled:opacity-50"
+                          className="btn-ghost-sm disabled:opacity-50"
                         >
                           {pushUiBusy ? t("alerts.saving") : t("alerts.enableBrowserPush")}
                         </button>
@@ -430,7 +453,7 @@ export default function ProAlertsPage() {
                           type="button"
                           disabled={pushUiBusy}
                           onClick={onDisableBrowserPush}
-                          className="text-sm px-4 py-2 rounded-lg border border-white/20 bg-white/5 text-gray-200 hover:bg-white/10 disabled:opacity-50"
+                          className="btn-ghost-sm disabled:opacity-50"
                         >
                           {pushUiBusy ? t("alerts.saving") : t("alerts.disableBrowserPush")}
                         </button>
@@ -445,7 +468,7 @@ export default function ProAlertsPage() {
                     type="button"
                     disabled={!hasDeliveryChannel || toggling}
                     onClick={toggleEnabled}
-                    className={`text-sm px-4 py-2 rounded-lg border ${
+                    className={`btn-ghost-sm ${
                       settings.enabled
                         ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
                         : "border-white/15 bg-white/5 text-gray-300"
@@ -466,7 +489,7 @@ export default function ProAlertsPage() {
                         <select
                           value={p.strategy}
                           onChange={(e) => setPref("strategy", e.target.value)}
-                          className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                          className="mt-1 w-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
                         >
                           {settings.strategies.map((s) => (
                             <option key={s} value={s}>
@@ -480,7 +503,7 @@ export default function ProAlertsPage() {
                         <select
                           value={p.direction}
                           onChange={(e) => setPref("direction", e.target.value)}
-                          className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
+                          className="mt-1 w-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-white"
                         >
                           <option value="any">{t("alerts.directionAny")}</option>
                           <option value="up">{t("alerts.directionUp")}</option>
@@ -491,7 +514,7 @@ export default function ProAlertsPage() {
                     <label className="flex items-start gap-2 text-xs text-gray-300">
                       <input
                         type="checkbox"
-                        className="mt-0.5 rounded border-white/20"
+                        className="mt-0.5 border-white/20"
                         checked={Boolean(p.tacticalRegime)}
                         onChange={(e) => setPref("tacticalRegime", e.target.checked)}
                       />
@@ -508,7 +531,7 @@ export default function ProAlertsPage() {
                         type="button"
                         onClick={saveSensitivity}
                         disabled={savingPrefs}
-                        className="text-sm px-4 py-2 rounded-lg border border-cyan-500/35 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/15 disabled:opacity-50"
+                        className="btn-ghost-sm disabled:opacity-50"
                       >
                         {savingPrefs ? t("alerts.saving") : t("alerts.saveRules")}
                       </button>
@@ -522,10 +545,6 @@ export default function ProAlertsPage() {
           </div>
         </section>
         </div>
-
-        <section className="mt-10 pb-4 border-t border-gray-800/80 pt-8">
-          <FinancialDisclaimer />
-        </section>
       </div>
     </>
   );
