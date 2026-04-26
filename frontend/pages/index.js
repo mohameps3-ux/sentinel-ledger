@@ -39,8 +39,8 @@ function HomeMetricStrip({ signalsToday, activeWallets, avgConfidence, bestSigna
   const metrics = [
     ["SIGNALS TODAY", signalsToday],
     ["ACTIVE WALLETS", activeWallets],
-    ["AVG CONFIDENCE", avgConfidence != null ? `${Math.round(avgConfidence)}%` : "—"],
-    ["BEST SIGNAL", bestSignal != null ? `${Math.round(bestSignal)}%` : "—"]
+    ["AVG CONFIDENCE", avgConfidence != null ? `${Math.round(avgConfidence)}%` : "â"],
+    ["BEST SIGNAL", bestSignal != null ? `${Math.round(bestSignal)}%` : "â"]
   ];
   return (
     <div className="kpi-strip w-full">
@@ -58,33 +58,33 @@ function HomeMetricStrip({ signalsToday, activeWallets, avgConfidence, bestSigna
 
 function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onToggleSound }) {
   return (
-    <details className="relative">
-      <summary className="list-none cursor-pointer rounded-md border border-sl-border bg-white/[0.03] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-sl-sub hover:text-sl-text">
-        Settings
-      </summary>
-      <div className="absolute right-0 top-[calc(100%+6px)] z-30 w-56 border border-sl-border bg-[#090b12] p-2 shadow-2xl">
-        <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-sl-muted">Strategy</p>
-        {["conservative", "balanced", "aggressive"].map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => onStrategyModeChange(mode)}
-            className={`mb-1 w-full rounded-md border px-2 py-1 text-left text-[11px] capitalize ${
-              strategyMode === mode ? "border-indigo-400/45 bg-indigo-500/15 text-indigo-100" : "border-sl-border bg-sl-card text-sl-sub"
-            }`}
-          >
-            {mode}
-          </button>
-        ))}
+    <div className="flex items-center gap-1 flex-wrap">
+      {["conservative", "balanced", "aggressive"].map((mode) => (
         <button
+          key={mode}
           type="button"
-          onClick={onToggleSound}
-          className="mt-1 w-full rounded-md border border-sl-border bg-sl-card px-2 py-1 text-left text-[11px] text-sl-sub"
+          onClick={() => onStrategyModeChange(mode)}
+          className={`rounded-md border px-2 py-0.5 text-[10px] font-mono capitalize transition-colors ${
+            strategyMode === mode
+              ? "border-indigo-400/45 bg-indigo-500/15 text-indigo-100"
+              : "border-sl-border bg-sl-card text-sl-sub hover:text-sl-text"
+          }`}
         >
-          Sound alerts: {soundEnabled ? "On" : "Off"}
+          {mode}
         </button>
-      </div>
-    </details>
+      ))}
+      <button
+        type="button"
+        onClick={onToggleSound}
+        className={`rounded-md border px-2 py-0.5 text-[10px] font-mono transition-colors ${
+          soundEnabled
+            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+            : "border-sl-border bg-sl-card text-sl-sub hover:text-sl-text"
+        }`}
+      >
+        {soundEnabled ? "🔔 Sound On" : "🔕 Sound Off"}
+      </button>
+    </div>
   );
 }
 
@@ -161,7 +161,7 @@ function RecentAlertsPreview({ alerts }) {
       <div className="mb-2 flex items-center justify-between gap-3">
         <h2 className="font-mono text-[12px] font-bold uppercase tracking-[0.16em] text-sl-text">Recent Alerts</h2>
         <Link href="/alerts" className="text-[11px] font-semibold text-indigo-200 no-underline hover:text-sl-text">
-          View all →
+          View all â
         </Link>
       </div>
       <div className="space-y-1.5">
@@ -171,7 +171,7 @@ function RecentAlertsPreview({ alerts }) {
             href={alert.tokenAddress ? `/token/${alert.tokenAddress}` : "/alerts"}
             className="flex items-center justify-between gap-3 border border-white/[0.06] bg-sl-card px-2 py-1.5 text-[11px] no-underline hover:border-indigo-400/25"
           >
-            <span className="font-mono text-sl-sub">{alert.tokenAddress ? `${alert.tokenAddress.slice(0, 4)}…${alert.tokenAddress.slice(-4)}` : "Alert"}</span>
+            <span className="font-mono text-sl-sub">{alert.tokenAddress ? `${alert.tokenAddress.slice(0, 4)}â¦${alert.tokenAddress.slice(-4)}` : "Alert"}</span>
             <span className="truncate text-sl-muted">{alert.alertType}</span>
           </Link>
         )) : (
@@ -183,7 +183,7 @@ function RecentAlertsPreview({ alerts }) {
 }
 
 /**
- * HOT row → LIVE card (same shell as DB signals). Rank uses API `sentinelScore` when set.
+ * HOT row â LIVE card (same shell as DB signals). Rank uses API `sentinelScore` when set.
  */
 function mapHotTrendToLiveFill(row, heatContext) {
   const mint =
@@ -308,7 +308,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     limit: UI_CONFIG.TRENDING_API_LIMIT_EXPANDED,
     refetchMs: isWarMode ? UI_CONFIG.TRENDING_REFETCH_WAR_MS : UI_CONFIG.TRENDING_REFETCH_NORMAL_MS
   });
-  // Stable poll for signals (fixed limit) — must run before any memo that uses `apiFeedCards`.
+  // Stable poll for signals (fixed limit) â must run before any memo that uses `apiFeedCards`.
   const signalsFeedQuery = useSignalsFeed({
     strategy: strategyMode,
     limit: UI_CONFIG.SIGNAL_API_LIMIT_EXPANDED,
@@ -415,7 +415,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   }, [apiFeedCards, trending, t]);
 
   // No useRankingSnapshot here: it batched empty vs full and caused whole-grid flicker. Raw merge is the source of truth.
-  // PR / review: do NOT reintroduce useRankingSnapshot on this path — see check-home-live-invariants + .github/pull_request_template.
+  // PR / review: do NOT reintroduce useRankingSnapshot on this path â see check-home-live-invariants + .github/pull_request_template.
   const interpretedSignals = interpretedSignalsRaw;
 
   const liveSignalPool = useMemo(() => {
@@ -429,7 +429,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       if (sig._liveSource === "hot_fill") hotFill.push(sig);
       else signals.push(sig);
     }
-    // Product: ordering is by network / signal strength only. Tactical (execution) regime does not affect rank — see TacticalRegimePill on cards (display-only).
+    // Product: ordering is by network / signal strength only. Tactical (execution) regime does not affect rank â see TacticalRegimePill on cards (display-only).
     // Product: order is by network signal only; tactical (execution) regime is display-only on cards, not a sort key.
     signals.sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
     hotFill.sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
@@ -445,8 +445,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     [liveExpanded, liveSignalPool]
   );
 
-  // Hysteresis: toggling at a single count (e.g. 50↔51) used to swap Grid vs Virtuoso and remount *all* cards.
-  // Do not replace with one threshold at N only (no 42/50 band) — that thrashes on the edge. Tune inside the band, not to a single cut.
+  // Hysteresis: toggling at a single count (e.g. 50â51) used to swap Grid vs Virtuoso and remount *all* cards.
+  // Do not replace with one threshold at N only (no 42/50 band) â that thrashes on the edge. Tune inside the band, not to a single cut.
   const [useLiveVirtualized, setUseLiveVirtualized] = useState(false);
   const liveN = liveSignalsForGrid.length;
   useLayoutEffect(() => {
@@ -512,7 +512,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     [heatExpanded, heatTokenPool]
   );
 
-  // Tracks rank changes between refetches so cards can render ↑N / ↓N / NEW
+  // Tracks rank changes between refetches so cards can render âN / âN / NEW
   // badges when the live ordering moves. Pure client-side; no extra network.
   const signalsRankDeltas = useRankDeltas(interpretedSignals, (s) => s?.mint);
   const trendingRankDeltas = useRankDeltas(heatTokenPool, (t) => t?.mint);
@@ -538,7 +538,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             .filter((r) => r?.token)
             .map((r) => ({
               tokenAddress: r.token,
-              alertType: `${String(r.side || "activity")} · conf ${Math.round(Number(r.confidence || 0))}%`,
+              alertType: `${String(r.side || "activity")} Â· conf ${Math.round(Number(r.confidence || 0))}%`,
               createdAt: r.createdAt || null
             }))
         );
@@ -659,7 +659,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               row.wallet && row.wallet.length <= 14
                 ? row.wallet
                 : w.length > 10
-                  ? `${w.slice(0, 4)}…${w.slice(-4)}`
+                  ? `${w.slice(0, 4)}â¦${w.slice(-4)}`
                   : w || `Wallet ${idx + 1}`,
             address: w,
             winRate: wr,
@@ -668,7 +668,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             consistency: Number(row.consistency ?? Math.round(Math.min(99, Math.max(40, wr * 0.95)))),
             signalStrength: Math.min(99, Math.max(35, Math.round(ss))),
             pnl30d: Number(row.pnl30d || 0),
-            tooltip: String(row.lastBigWin || row.tooltip || `Win ${wr.toFixed(1)}% · hits ${Number(row.recentHits || 0)}`)
+            tooltip: String(row.lastBigWin || row.tooltip || `Win ${wr.toFixed(1)}% Â· hits ${Number(row.recentHits || 0)}`)
           };
         });
         setTopWalletsApi(mapped);
@@ -732,7 +732,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               avgConfidence={homeMetrics.avgConfidence}
               bestSignal={homeMetrics.bestSignal}
             />
-            <div className="flex items-center justify-end">
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <span className="text-[9px] font-mono uppercase tracking-[0.12em] text-sl-muted">Mode</span>
               <HomeSettings
                 strategyMode={strategyMode}
                 onStrategyModeChange={setStrategyMode}
