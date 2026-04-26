@@ -6,7 +6,6 @@ import { UI_CONFIG } from "@/constants/homeData";
 import {
   confidenceTone,
   entryWindowFromCountdown,
-  entryWindowVisual,
   feedDecisionPillClass,
   scoreBarGradient,
   suggestedAction,
@@ -41,12 +40,30 @@ function narrativeClass(severity) {
   return "border-white/15 bg-zinc-950/90 text-zinc-100";
 }
 
+function normalizeSignalDecision(action) {
+  const raw = String(action || "").trim().toUpperCase();
+  if (["ACCUMULATE", "ENTER NOW", "ENTER_NOW", "BUY", "LONG"].includes(raw)) return "ACCUMULATE";
+  if (["WATCH", "PREPARE"].includes(raw)) return "WATCH";
+  if (["TOO_LATE", "TOO LATE", "STAY OUT", "STAY_OUT", "AVOID", "MARKET_ONLY"].includes(raw)) return "TOO_LATE";
+  return raw;
+}
+
+function accentColorForDecision(decision, score) {
+  const n = Number(score);
+  if (decision === "ACCUMULATE") return "#10B981";
+  if (decision === "WATCH") return "#F59E0B";
+  if (decision === "TOO_LATE") return "#DC2626";
+  if (n >= 60) return "#10B981";
+  if (n >= 40) return "#F59E0B";
+  return "#DC2626";
+}
+
 function SentinelNarrativeBanner({ narrative }) {
   if (!narrative) return null;
   return (
     <Link
       href={`/token/${encodeURIComponent(narrative.mint)}`}
-      className={`mb-1.5 block rounded-md border px-2 py-1.5 text-[10px] font-semibold leading-snug no-underline ${narrativeClass(
+      className={`mb-1.5 block border px-2 py-1.5 text-[10px] font-semibold leading-snug no-underline ${narrativeClass(
         narrative.severity
       )}`}
       title={narrative.cta?.label || "Open token desk"}
@@ -156,9 +173,6 @@ export function LiveTab({
                 : "text-red-300"
         }
       : entryWindowFromCountdown(sec);
-    const vis = sig._api
-      ? entryWindowVisual(Math.max(0, (Number(sig._api.entryWindowMinutesLeft) || 0) * 45))
-      : entryWindowVisual(sec);
     const rawDecision = sig._api?.decision;
     const actionKey =
       rawDecision === "MERCADO" ? "MARKET_ONLY" : rawDecision || suggestedAction(sig.signalStrength, strategyMode, "feed");
@@ -169,6 +183,9 @@ export function LiveTab({
     else if (actionKey === "STAY OUT") actionLabel = t("war.live.decision.stayout");
     const decisionEmoji =
       actionKey === "MARKET_ONLY" ? "" : actionKey === "ENTER NOW" ? "🟢 " : actionKey === "PREPARE" ? "🟡 " : "🔴 ";
+    const decision = normalizeSignalDecision(actionKey);
+    const accentColor = accentColorForDecision(decision, sig.signalStrength);
+    const timeLeft = sig._api?.entryWindowMinutesLeft != null ? Math.max(0, Math.round(Number(sig._api.entryWindowMinutesLeft) || 0)) : Math.max(0, Math.ceil(sec / 60));
     const hot = idx === signalCursor % Math.max(1, liveSignalsForGrid.length);
     const coordOnCard =
       selectedMint && sig.mint === selectedMint && deskCoordination?.redSignal ? deskCoordination.redSignal : null;
@@ -206,11 +223,12 @@ export function LiveTab({
         }}
         baseClassName={`terminal-card-interactive group mb-2 ${
           isHeatFill
-            ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat rounded-md border border-amber-500/25 border-l-[3px] border-l-amber-400 bg-gradient-to-b from-amber-950/25 to-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-amber-400/45 hover:shadow-[0_0_18px_rgba(245,158,11,0.14)]"
-            : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live rounded-md border border-white/10 border-l-[3px] border-l-emerald-400 bg-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-emerald-400/45 hover:shadow-[0_0_18px_rgba(16,185,129,0.22)]"
+            ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat border border-amber-500/25 bg-gradient-to-b from-amber-950/25 to-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-amber-400/45 hover:shadow-[0_0_18px_rgba(245,158,11,0.14)]"
+            : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live border border-white/10 bg-white/[0.02] p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-emerald-400/45 hover:shadow-[0_0_18px_rgba(16,185,129,0.22)]"
         } ${hot ? (isHeatFill ? "ring-1 ring-amber-500/30" : "ring-1 ring-emerald-500/35") : ""} ${
           sig.mint && isProbableSolanaMint(sig.mint) ? "cursor-pointer" : ""
         } ${selectedMint && sig.mint === selectedMint ? "ring-2 ring-cyan-500/40" : ""}`}
+        style={{ borderLeft: `3px solid ${accentColor}` }}
         watchedClassName={
           isHeatFill
             ? "!border-amber-500/40 ring-1 ring-amber-500/45 shadow-[0_0_16px_rgba(245,158,11,0.16)]"
@@ -310,18 +328,22 @@ export function LiveTab({
           <p className="text-[9px] text-red-200/95 truncate leading-tight">RED: {redFlagsForSignal(sig).join(" · ")}</p>
         ) : null}
 
-        <p className={`text-[9px] font-mono leading-tight truncate ${isHeatFill ? "text-amber-200/85" : vis.text}`}>
-          {isHeatFill ? t("war.live.heatNoEntry") : `Entry ${String(win.label || "").toLowerCase()} · ${sig._api?.poolAgeLabel || "Pool live"}`}
-        </p>
+        <span className="font-mono text-2xs text-sl-muted">
+          {isHeatFill ? t("war.live.heatNoEntry") : win.label === "CLOSED" || timeLeft <= 0 ? "CLOSED" : `${timeLeft}m`}
+        </span>
 
-        <details className="group">
-          <summary className="cursor-pointer list-none text-[9px] text-gray-500 hover:text-indigo-200">Why now</summary>
-          <div className="mt-1 rounded border border-white/8 bg-black/30 px-1.5 py-1">
-            <ul className="text-[8px] text-gray-200 space-y-0 leading-snug">
-              {whyLines.slice(0, 3).map((line, li) => (
-                <li key={li} className="truncate">{line}</li>
-              ))}
-            </ul>
+        <details className="border-t border-sl-border">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 w-full font-mono text-2xs text-sl-muted hover:text-sl-sub transition-colors duration-150">
+            <span>WHY NOW</span>
+            <span className="ml-auto">▼</span>
+          </summary>
+          <div className="px-3 pb-3 space-y-1">
+            {whyLines.slice(0, 3).map((r, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="text-sl-violet font-mono text-xs mt-0.5">›</span>
+                <span className="font-ui text-xs text-sl-sub">{r}</span>
+              </div>
+            ))}
           </div>
         </details>
 
@@ -338,11 +360,7 @@ export function LiveTab({
                 onClick={(e) => {
                   if (!canSwap) e.preventDefault();
                 }}
-                className={`text-[9px] px-1.5 py-0.5 rounded border font-mono ${
-                  canSwap
-                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20"
-                    : "border-white/10 bg-white/[0.03] text-gray-600 cursor-not-allowed pointer-events-none"
-                }`}
+                className="btn-ghost-sm"
               >
                 {size} SOL
               </a>
@@ -351,7 +369,7 @@ export function LiveTab({
           {sig.mint && isProbableSolanaMint(sig.mint) ? (
             <Link
               href={`/token/${sig.mint}`}
-              className="text-[9px] px-1.5 py-0.5 rounded border border-indigo-500/35 bg-indigo-500/10 text-indigo-100 font-mono hover:bg-indigo-500/20 no-underline"
+              className="btn-ghost-sm ml-auto"
               title="Open Token Intel"
             >
               Token Intel
@@ -386,7 +404,7 @@ export function LiveTab({
                 aria-expanded={liveExpanded}
                 aria-label={liveExpanded ? t("war.live.collapseAria") : t("war.live.expandAria")}
                 title={liveExpanded ? t("war.live.collapseTitle") : t("war.live.expandTitle")}
-                className="group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-gradient-to-b from-white/[0.07] to-white/[0.02] text-cyan-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all hover:border-cyan-400/45 hover:from-cyan-500/18 hover:to-cyan-950/25 hover:text-cyan-50 hover:shadow-[0_0_22px_rgba(34,211,238,0.18)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050a0f]"
+                className="group relative flex h-9 w-9 shrink-0 items-center justify-center border border-white/[0.12] bg-gradient-to-b from-white/[0.07] to-white/[0.02] text-cyan-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all hover:border-cyan-400/45 hover:from-cyan-500/18 hover:to-cyan-950/25 hover:text-cyan-50 hover:shadow-[0_0_22px_rgba(34,211,238,0.18)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050a0f]"
               >
                 {liveExpanded ? (
                   <ChevronsUp className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
@@ -408,14 +426,14 @@ export function LiveTab({
             <div className="flex flex-wrap items-center gap-1">
               <Link
                 href="/wallet-stalker"
-                className="sl-glow-info w-[5cm] max-w-[62vw] h-7 px-2 rounded-md border border-cyan-500/30 bg-cyan-500/[0.08] text-cyan-100 no-underline inline-flex items-center justify-between gap-1"
+                className="sl-glow-info w-[5cm] max-w-[62vw] h-7 px-2 border border-cyan-500/30 bg-cyan-500/[0.08] text-cyan-100 no-underline inline-flex items-center justify-between gap-1"
               >
                 <span className="text-[10px] uppercase tracking-wide truncate">{t("war.live.walletActivity")}</span>
                 <span className="text-[10px] font-mono shrink-0">{stalkerUnread > 0 ? `+${stalkerUnread}` : "0"}</span>
               </Link>
             </div>
             <span
-              className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border inline-flex items-center gap-1 ${
+              className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border inline-flex items-center gap-1 ${
                 signalsFeedIsError || signalsFeedIsDegraded
                   ? "bg-amber-500/15 text-amber-200 border-amber-500/30"
                   : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
@@ -441,10 +459,10 @@ export function LiveTab({
           </div>
         </div>
         {liveSignalsForGrid.length === 0 ? (
-          <div className="rounded-lg border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-transparent px-4 py-5 text-[12px] text-gray-300 leading-relaxed max-w-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-transparent px-4 py-5 text-[12px] text-gray-300 leading-relaxed max-w-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             {signalsFeedIsLoading ? (
               <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-500/25 bg-cyan-500/10">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-cyan-500/25 bg-cyan-500/10">
                   <Loader2 className="h-4 w-4 text-cyan-300 animate-spin" aria-hidden />
                 </span>
                 <div>
@@ -454,7 +472,7 @@ export function LiveTab({
               </div>
             ) : signalsFeedIsError ? (
               <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-amber-500/30 bg-amber-500/10">
                   <WifiOff className="h-4 w-4 text-amber-200" aria-hidden />
                 </span>
                 <div>
@@ -464,7 +482,7 @@ export function LiveTab({
               </div>
             ) : (
               <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-white/10 bg-white/[0.03]">
                   <Inbox className="h-4 w-4 text-gray-400" aria-hidden />
                 </span>
                 <div>
@@ -476,7 +494,7 @@ export function LiveTab({
           </div>
         ) : null}
         {selectedMint && deskCoordination?.redSignal ? (
-          <div className="rounded-md border border-rose-500/35 bg-rose-500/[0.12] px-2.5 py-2 text-[10px] text-rose-100/95 leading-snug w-full max-w-3xl">
+          <div className="border border-rose-500/35 bg-rose-500/[0.12] px-2.5 py-2 text-[10px] text-rose-100/95 leading-snug w-full max-w-3xl">
             <p className="font-semibold uppercase tracking-wide text-rose-200/90 text-[9px]">{t("war.live.coordTitle")}</p>
             <p className="mt-0.5">
               <span className="font-mono">{String(deskCoordination.redSignal).replace(/_/g, " ")}</span>

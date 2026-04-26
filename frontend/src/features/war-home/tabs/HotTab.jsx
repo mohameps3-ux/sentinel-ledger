@@ -24,6 +24,24 @@ function cockpitCardClickTargetIsInteractive(e) {
   return Boolean(el.closest("a, button, summary, details"));
 }
 
+function normalizeSignalDecision(action) {
+  const raw = String(action || "").trim().toUpperCase();
+  if (["ACCUMULATE", "ENTER NOW", "ENTER_NOW", "BUY", "LONG"].includes(raw)) return "ACCUMULATE";
+  if (["WATCH", "PREPARE"].includes(raw)) return "WATCH";
+  if (["TOO_LATE", "TOO LATE", "STAY OUT", "STAY_OUT", "AVOID", "MARKET_ONLY"].includes(raw)) return "TOO_LATE";
+  return raw;
+}
+
+function accentColorForDecision(decision, score) {
+  const n = Number(score);
+  if (decision === "ACCUMULATE") return "#10B981";
+  if (decision === "WATCH") return "#F59E0B";
+  if (decision === "TOO_LATE") return "#DC2626";
+  if (n >= 60) return "#10B981";
+  if (n >= 40) return "#F59E0B";
+  return "#DC2626";
+}
+
 export function HotTab({
   heatExpanded,
   onToggleHeatExpanded,
@@ -62,7 +80,7 @@ export function HotTab({
       <div className="glass-card sl-glow-heat p-3 sm:p-3.5">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div className="flex items-start gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500/25 to-amber-600/15 border border-orange-500/25 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 bg-gradient-to-br from-orange-500/25 to-amber-600/15 border border-orange-500/25 flex items-center justify-center shrink-0">
               <Flame className="text-orange-300" size={18} />
             </div>
             <div>
@@ -75,7 +93,7 @@ export function HotTab({
                   aria-expanded={heatExpanded}
                   aria-label={heatExpanded ? t("war.live.collapseAria") : t("war.live.expandAria")}
                   title={heatExpanded ? t("war.live.collapseTitle") : t("war.live.expandTitle")}
-                  className="group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-gradient-to-b from-orange-500/[0.12] to-white/[0.02] text-orange-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all hover:border-orange-400/50 hover:from-orange-500/22 hover:to-amber-950/30 hover:text-orange-50 hover:shadow-[0_0_22px_rgba(251,146,60,0.2)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0806]"
+                  className="group relative flex h-9 w-9 shrink-0 items-center justify-center border border-white/[0.12] bg-gradient-to-b from-orange-500/[0.12] to-white/[0.02] text-orange-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all hover:border-orange-400/50 hover:from-orange-500/22 hover:to-amber-950/30 hover:text-orange-50 hover:shadow-[0_0_22px_rgba(251,146,60,0.2)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0806]"
                 >
                   {heatExpanded ? (
                     <ChevronsUp className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
@@ -92,7 +110,7 @@ export function HotTab({
           </div>
           <div className="flex flex-col items-start md:items-end gap-1">
             <span
-              className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border inline-flex items-center gap-1 ${
+              className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border inline-flex items-center gap-1 ${
                 feedStatus === "SNAPSHOT"
                   ? "bg-slate-500/15 text-slate-200 border-slate-400/30"
                   : feedIsLive
@@ -131,10 +149,13 @@ export function HotTab({
             else if (actionKey === "ENTER NOW") actionLabel = t("war.live.decision.enter");
             else if (actionKey === "PREPARE") actionLabel = t("war.live.decision.prepare");
             else if (actionKey === "STAY OUT") actionLabel = t("war.live.decision.stayout");
+            const decision = normalizeSignalDecision(actionKey);
+            const accentColor = accentColorForDecision(decision, signalStrength);
             const confluence = Boolean(token?.confluence);
             const timeAdvantage = token?.timeAdvantage || null;
             const entryWindowLabel = token?.entryWindow || null;
             const entryWindowMinutesLeft = Number(token?.entryWindowMinutesLeft);
+            const timeLeft = Number.isFinite(entryWindowMinutesLeft) ? Math.max(0, Math.round(entryWindowMinutesLeft)) : 0;
             const changeNum = Number(token?.change || 0);
             const redFlags = Array.isArray(token?.redFlags) ? token.redFlags : redFlagsForSignal({ signalStrength, token: token || {} });
             const trendingRank = trendingRankDeltas.get(token?.mint) || { rank: idx + 1, delta: 0, isNew: false };
@@ -158,13 +179,14 @@ export function HotTab({
                     sw: Math.max(0, Math.round(Number(token?.smartWallets || 0)))
                   });
                 }}
-                baseClassName={`terminal-card-interactive group mb-2 sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat glass-card p-1.5 sm:p-2 border-l-[3px] border-l-amber-400 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
+                baseClassName={`terminal-card-interactive group mb-2 sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat glass-card p-1.5 sm:p-2 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
                   token?.mint
                     ? "hover:-translate-y-[1px] hover:border-violet-400/45 hover:shadow-[0_0_16px_rgba(139,92,246,0.32)]"
                     : "opacity-75"
                 } ${token?.mint && isProbableSolanaMint(token.mint) ? "cursor-pointer" : ""} ${
                   selectedMint && token?.mint === selectedMint ? "ring-2 ring-cyan-500/40" : ""
                 }`}
+                style={{ borderLeft: `3px solid ${accentColor}` }}
                 watchedClassName="ring-1 ring-emerald-500/50 shadow-[0_0_18px_rgba(16,185,129,0.18)]"
               >
                 {({ displayScore, smartMoneyCount }) => (
@@ -234,28 +256,27 @@ export function HotTab({
                 </div>
 
                 {timeAdvantage || entryWindowLabel ? (
-                  <p className="text-[9px] text-gray-500 truncate">
-                    {entryWindowLabel ? (
-                      <>
-                        <span className="text-slate-300">{entryWindowLabel}</span>
-                        {Number.isFinite(entryWindowMinutesLeft) ? ` (${Math.max(0, Math.round(entryWindowMinutesLeft))}m)` : ""}
-                      </>
-                    ) : null}
-                  </p>
+                  <span className="font-mono text-2xs text-sl-muted">
+                    {entryWindowLabel === "CLOSED" || timeLeft <= 0 ? "CLOSED" : `${timeLeft}m`}
+                  </span>
                 ) : null}
 
                 {redFlags.length ? <p className="text-[9px] text-red-200/95 truncate leading-tight">⚠ {redFlags.join(" · ")}</p> : null}
 
-                <details className="group">
-                  <summary className="cursor-pointer list-none text-[9px] text-gray-500 hover:text-indigo-200">Why now</summary>
-                  <div className="mt-1 flex flex-wrap gap-0.5 rounded border border-white/8 bg-black/30 px-1.5 py-1">
+                <details className="border-t border-sl-border">
+                  <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 w-full font-mono text-2xs text-sl-muted hover:text-sl-sub transition-colors duration-150">
+                    <span>WHY NOW</span>
+                    <span className="ml-auto">▼</span>
+                  </summary>
+                  <div className="px-3 pb-3 space-y-1">
                     {[
                       ...(Array.isArray(token?.narrativeTags) ? token.narrativeTags : []),
                       ...(Array.isArray(token?.evidenceChips) ? token.evidenceChips : [])
-                    ].slice(0, 5).map((chip) => (
-                      <span key={chip} className="text-[9px] px-1 py-0.5 rounded border border-white/10 bg-white/[0.02] text-gray-300">
-                        {chip}
-                      </span>
+                    ].slice(0, 5).map((r, i) => (
+                      <div key={`${r}-${i}`} className="flex items-start gap-2">
+                        <span className="text-sl-violet font-mono text-xs mt-0.5">›</span>
+                        <span className="font-ui text-xs text-sl-sub">{r}</span>
+                      </div>
                     ))}
                   </div>
                 </details>
@@ -274,11 +295,7 @@ export function HotTab({
                           onClick={(e) => {
                             if (!canSwap) e.preventDefault();
                           }}
-                          className={`text-[9px] text-center px-1 py-0.5 rounded border font-mono ${
-                            canSwap
-                              ? "border-cyan-500/35 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20"
-                              : "border-white/10 bg-white/[0.03] text-gray-600 cursor-not-allowed pointer-events-none"
-                          }`}
+                          className="btn-ghost-sm"
                         >
                           {size} SOL
                         </a>
@@ -288,14 +305,14 @@ export function HotTab({
                   {token?.mint && isProbableSolanaMint(token.mint) ? (
                     <Link
                       href={`/token/${token.mint}`}
-                      className="w-full py-1 text-center bg-purple-600/20 rounded border border-purple-500/20 text-[10px] hover:bg-purple-600/40 transition-transform hover:scale-[1.01] inline-flex items-center justify-center gap-1 text-gray-100 no-underline"
+                      className="btn-ghost-sm ml-auto"
                     >
                       <TrendingUp size={11} />
                       Token Intel
                     </Link>
                   ) : (
                     <p
-                      className="w-full py-1 text-center rounded border border-white/10 bg-white/[0.02] text-[9px] text-gray-500"
+                      className="btn-ghost-sm ml-auto"
                       title="No mint on the card yet — cannot open the token terminal."
                     >
                       Token Intel · mint
