@@ -61,6 +61,45 @@ function ExpandedWalletNarrativeSection({ wallet, narrativeLang }) {
   );
 }
 
+function SmartMoneyKpiStrip({ rows, activityRows }) {
+  const total = rows.length;
+  const avgWin = total ? rows.reduce((sum, w) => sum + Number(w.winRate || 0), 0) / total : null;
+  const activeToday = activityRows.length;
+  const best = rows.reduce((acc, w) => (Number(w.winRate || 0) > Number(acc?.winRate || 0) ? w : acc), null);
+  return (
+    <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <div className="sl-card-elevated px-3 py-3"><p className="sl-metric-label">Total Wallets</p><p className="sl-metric">{total || "—"}</p></div>
+      <div className="sl-card-elevated px-3 py-3"><p className="sl-metric-label">Avg Win Rate</p><p className="sl-metric">{avgWin != null ? `${avgWin.toFixed(1)}%` : "—"}</p></div>
+      <div className="sl-card-elevated px-3 py-3"><p className="sl-metric-label">Active Today</p><p className="sl-metric">{activeToday || "—"}</p></div>
+      <div className="sl-card-elevated px-3 py-3"><p className="sl-metric-label">Best Performer</p><p className="sl-metric text-base truncate">{best?.wallet ? `${best.wallet.slice(0, 4)}…${best.wallet.slice(-4)}` : "—"}</p></div>
+    </section>
+  );
+}
+
+function WinRateBar({ value }) {
+  const pct = Math.max(0, Math.min(100, Number(value || 0)));
+  return (
+    <div className="min-w-[120px]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-emerald-300 tabular-nums">{pct.toFixed(1)}%</span>
+        <span className="text-[10px] text-gray-600">WR</span>
+      </div>
+      <div className="mt-1 sl-score-bar"><span style={{ width: `${pct}%` }} /></div>
+    </div>
+  );
+}
+
+function WalletSparkline({ value }) {
+  const base = Math.max(10, Math.min(34, Math.round(Number(value || 0) / 3)));
+  return (
+    <div className="flex h-8 items-end gap-1" aria-hidden>
+      {[0.4, 0.7, 0.55, 0.85, 0.62, 1].map((m, i) => (
+        <span key={i} className="sl-sparkbar" style={{ height: `${Math.max(6, Math.round(base * m))}px`, opacity: 0.45 + i * 0.08 }} />
+      ))}
+    </div>
+  );
+}
+
 export default function SmartMoneyPage() {
   const router = useRouter();
   const { locale, t } = useLocale();
@@ -195,6 +234,8 @@ export default function SmartMoneyPage() {
             </button>
           </p>
         </section>
+
+        <SmartMoneyKpiStrip rows={displayedRanked} activityRows={actRows} />
 
         <section className="glass-card sl-inset space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm text-gray-300">
@@ -415,7 +456,7 @@ export default function SmartMoneyPage() {
                             <div className="font-mono text-[11px] text-gray-500 truncate">{w.wallet}</div>
                           </div>
                         </td>
-                        <td className="py-3 pr-3 text-emerald-300 tabular-nums">{w.winRate.toFixed(1)}%</td>
+                        <td className="py-3 pr-3"><WinRateBar value={w.winRate} /></td>
                         <td className="py-3 pr-3 text-[11px] text-gray-300 leading-tight">
                           {w.profile ? (
                             <div className="space-y-0.5">
@@ -438,7 +479,12 @@ export default function SmartMoneyPage() {
                             <span className="text-gray-600">{t("smart.pending")}</span>
                           )}
                         </td>
-                        <td className="py-3 pr-3 text-cyan-200/90 tabular-nums">{Number(w.roi30dVsAvgSize || 0).toFixed(2)}×</td>
+                        <td className="py-3 pr-3 text-cyan-200/90 tabular-nums">
+                          <div className="flex items-center gap-3">
+                            <span>{Number(w.roi30dVsAvgSize || 0).toFixed(2)}×</span>
+                            <WalletSparkline value={w.winRate} />
+                          </div>
+                        </td>
                         <td className="py-3 pr-3 text-emerald-200/90 tabular-nums">+${formatUsdWhole(w.pnl30d)}</td>
                         <td className="py-3 pr-3 tabular-nums text-gray-200">{w.totalTrades ?? "—"}</td>
                         <td className="py-3 pr-3 text-xs text-gray-300">

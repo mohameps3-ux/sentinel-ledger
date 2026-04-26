@@ -6,7 +6,8 @@ export default function TermsPage() {
   return (
     <>
       <PageHead title={t("terms.pageTitle")} description={t("terms.lead")} />
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+      <div className="sl-container py-10">
+        <div className="glass-card sl-inset max-w-4xl mx-auto space-y-6">
         <h1 className="text-3xl font-bold">{t("terms.h1")}</h1>
         <p className="text-gray-300">{t("terms.lead")}</p>
 
@@ -39,6 +40,7 @@ export default function TermsPage() {
           <h2 className="text-xl font-semibold">{t("terms.s6h")}</h2>
           <p className="text-gray-300">{t("terms.s6p")}</p>
         </section>
+        </div>
       </div>
     </>
   );

@@ -79,7 +79,7 @@ export default function PortfolioPage() {
     <>
       <PageHead title={t("portfolio.pageTitle")} description={t("portfolio.desc")} />
       <div className="sl-container py-10 space-y-6">
-        <section className="glass-card sl-inset flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <section className="sl-card-elevated sl-inset flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
             <p className="sl-label">{t("portfolio.label")}</p>
             <h1 className="sl-h2 text-white mt-1">{t("portfolio.h1")}</h1>
@@ -94,6 +94,11 @@ export default function PortfolioPage() {
             {loading ? <Loader2 className="animate-spin" size={16} /> : null}
             {t("portfolio.refresh")}
           </button>
+        </section>
+
+        <section className="border border-amber-500/20 bg-amber-500/[0.055] px-4 py-3">
+          <p className="text-sm font-semibold text-amber-100">Based on watchlist — not real on-chain PnL</p>
+          <p className="mt-1 text-xs text-amber-100/70">Only real market quotes and traceable watchlist rows are shown. No invented ROI.</p>
         </section>
 
         <section className="border border-white/[0.08] bg-[#07080b] px-4 py-3">
@@ -137,54 +142,25 @@ export default function PortfolioPage() {
         ) : null}
 
         {positions.length ? (
-          <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {positions.map((p) => (
-              <article
-                key={p.tokenAddress}
-                className="glass-card p-4 rounded-2xl border border-white/10 hover:border-purple-500/40 transition"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h2 className="text-lg font-semibold text-white">${p.symbol}</h2>
-                    <p className="mono text-xs text-gray-500 mt-1 break-all">{p.tokenAddress}</p>
-                  </div>
-                  <span className={`text-xs px-2 py-1 rounded border shrink-0 ${outcomeTone(p.outcome24h)}`}>
-                    {t(`portfolio.outcome.${p.outcome24h || "unknown"}`)}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-400 mt-3">
-                  {t("portfolio.price")} ${p.priceUsd != null ? formatTokenPrice(p.priceUsd) : "—"}
-                </p>
-                <p className="text-sm text-gray-400 mt-1">
-                  {t("portfolio.liq")} ${formatUsdWhole(p.liquidityUsd || 0)}
-                </p>
-                <p
-                  className={`text-sm mt-1 ${
-                    p.change24hPct == null
-                      ? "text-gray-500"
-                      : p.change24hPct >= 0
-                        ? "text-emerald-300"
-                        : "text-red-300"
-                  }`}
-                >
-                  {t("portfolio.change24h")}{" "}
-                  {p.change24hPct == null
-                    ? "—"
-                    : `${p.change24hPct >= 0 ? "+" : ""}${Number(p.change24hPct).toFixed(2)}%`}
-                </p>
-                <div className="mt-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-wide text-gray-500">{t("portfolio.pnlReality")}</p>
-                  <p className="text-xs text-gray-300 mt-1">{t("portfolio.pnlUnverified")}</p>
-                </div>
-                {p.note ? <p className="text-xs text-gray-500 mt-2 border-t border-white/10 pt-2">{p.note}</p> : null}
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <TerminalActionIcons mint={p.tokenAddress} />
-                  <Link href={`/token/${p.tokenAddress}`} className="btn-ghost inline-flex text-xs no-underline">
-                    {t("portfolio.openToken")}
-                  </Link>
-                </div>
-              </article>
-            ))}
+          <section className="glass-card sl-inset overflow-x-auto">
+            <table className="sl-table min-w-[780px]">
+              <thead><tr><th>token</th><th>price</th><th>value</th><th>24h change</th><th>liquidity</th><th>reality</th><th>actions</th></tr></thead>
+              <tbody>
+                {positions.map((p) => (
+                  <tr key={p.tokenAddress}>
+                    <td><span className="text-white">${p.symbol}</span><p className="font-mono text-[11px] text-gray-600">{p.tokenAddress?.slice(0, 6)}…{p.tokenAddress?.slice(-6)}</p></td>
+                    <td>${p.priceUsd != null ? formatTokenPrice(p.priceUsd) : "—"}</td>
+                    <td>—</td>
+                    <td className={p.change24hPct == null ? "text-gray-500" : p.change24hPct >= 0 ? "text-emerald-300" : "text-red-300"}>
+                      {p.change24hPct == null ? "—" : `${p.change24hPct >= 0 ? "+" : ""}${Number(p.change24hPct).toFixed(2)}%`}
+                    </td>
+                    <td>${formatUsdWhole(p.liquidityUsd || 0)}</td>
+                    <td><span className={`text-xs px-2 py-1 rounded border shrink-0 ${outcomeTone(p.outcome24h)}`}>{t(`portfolio.outcome.${p.outcome24h || "unknown"}`)}</span></td>
+                    <td><div className="flex items-center gap-2"><TerminalActionIcons mint={p.tokenAddress} /><Link href={`/token/${p.tokenAddress}`} className="btn-ghost inline-flex text-xs no-underline">{t("portfolio.openToken")}</Link></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </section>
         ) : null}
       </div>

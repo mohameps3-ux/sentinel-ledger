@@ -74,13 +74,18 @@ export default function ResultsPage() {
     <>
       <PageHead title={t("results.pageTitle")} description={t("results.pageDesc")} />
       <div className="sl-container py-8 sm:py-10 pb-28 space-y-6">
-        <header className="space-y-2">
+        <header className="sl-card-elevated sl-inset space-y-2">
           <p className="sl-label">{t("results.label")}</p>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{t("results.h1")}</h1>
           <p className="text-gray-400 max-w-2xl">{t("results.sub")}</p>
-          <p className="text-sm font-mono text-emerald-300/90 border border-emerald-500/25 rounded-lg px-3 py-2 inline-block bg-emerald-500/10">
-            {badge}
-          </p>
+          <div className="flex flex-wrap items-end gap-4">
+            <div>
+              <p className="sl-metric-label">Recent Win Rate</p>
+              <p className="sl-metric text-4xl text-emerald-300">{data.winRate7d != null ? `${data.winRate7d}%` : "—"}</p>
+            </div>
+            <p className="text-sm font-mono text-emerald-300/90 border border-emerald-500/25 rounded-lg px-3 py-2 inline-block bg-emerald-500/10">{badge}</p>
+            <Link href="/graveyard" className="btn-ghost no-underline text-xs">Full Track Record</Link>
+          </div>
         </header>
 
         <div className="flex flex-wrap gap-2">
@@ -103,6 +108,20 @@ export default function ResultsPage() {
 
         {data.error ? <p className="text-sm text-red-300">{data.error}</p> : null}
         {data.loading ? <p className="text-sm text-gray-500">{t("results.loading")}</p> : null}
+
+        <section className="glass-card sl-inset">
+          <p className="sl-label mb-3">Wins / losses timeline</p>
+          <div className="flex h-24 items-end gap-1">
+            {(data.rows || []).slice(0, 32).map((r) => (
+              <span
+                key={r.id}
+                className={`w-2 rounded-t ${r.status === "WIN" ? "bg-emerald-400" : r.status === "LOSS" ? "bg-red-400" : "bg-slate-500"}`}
+                style={{ height: `${Math.max(10, Math.min(88, Math.abs(Number(r.resultPct || 8))))}px` }}
+                title={`${r.status}: ${fmtPct(r.resultPct)}`}
+              />
+            ))}
+          </div>
+        </section>
 
         <div className="hidden lg:block overflow-x-auto rounded-xl border border-white/10">
           <table className="w-full text-sm">

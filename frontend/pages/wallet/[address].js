@@ -2,6 +2,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { buildSolscanAccountUrl, EXTERNAL_ANCHOR_REL } from "../../lib/terminalLinks";
 import { PageHead } from "../../components/seo/PageHead";
 import { WalletNarrativeCard } from "../../components/WalletNarrativeCard";
 import { fetchWalletSummary } from "../../lib/api/walletSummary";
@@ -78,7 +79,7 @@ export default function WalletDetailPage() {
         description="Wallet narrative and smart-money performance profile on Sentinel Ledger."
       />
       <div className="sl-container py-8 space-y-5">
-        <section className="glass-card sl-inset">
+        <section className="sl-card-elevated sl-inset">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="sl-label">{t("wallet.page.profileLabel")}</p>
@@ -88,6 +89,12 @@ export default function WalletDetailPage() {
               <p className="mono text-[11px] text-gray-500 mt-1 break-all">{address}</p>
             </div>
             <div className="flex items-center gap-2">
+              <button type="button" className="text-xs px-3 py-2 rounded border border-white/10 bg-white/5 hover:bg-white/10" onClick={() => navigator.clipboard?.writeText(address)}>
+                Copy
+              </button>
+              <a href={buildSolscanAccountUrl(address)} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="text-xs px-3 py-2 rounded border border-cyan-500/25 bg-cyan-500/10 text-cyan-100 no-underline">
+                Solscan
+              </a>
               <Link href="/smart-money" className="text-xs px-3 py-2 rounded border border-white/10 bg-white/5 hover:bg-white/10">
                 {t("wallet.page.backToSmartMoney")}
               </Link>
@@ -141,6 +148,10 @@ export default function WalletDetailPage() {
               </div>
             </div>
           ) : null}
+        </section>
+
+        <section className="glass-card sl-inset">
+          <WalletNarrativeCard walletAddress={address} lang={narrativeLang} />
         </section>
 
         <section id="behavior-memory" className="glass-card sl-inset space-y-3">
@@ -251,11 +262,6 @@ export default function WalletDetailPage() {
               </div>
             </>
           ) : null}
-        </section>
-
-        <section className="glass-card sl-inset">
-          <p className="sl-label mb-3">{t("wallet.page.whyThisWallet")}</p>
-          <WalletNarrativeCard walletAddress={address} lang={narrativeLang} />
         </section>
       </div>
     </>

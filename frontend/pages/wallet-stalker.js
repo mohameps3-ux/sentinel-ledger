@@ -133,9 +133,9 @@ export default function WalletStalkerPage() {
     <>
       <PageHead title={t("stalker.pageTitle")} description={t("stalker.pageDesc")} />
       <div className="sl-container py-8 space-y-4">
-        <section className="glass-card sl-inset">
+        <section className="sl-card-elevated sl-inset">
           <p className="sl-label">{t("stalker.label")}</p>
-          <h1 className="text-2xl text-white font-semibold mt-1">{t("stalker.h1")}</h1>
+          <h1 className="text-2xl text-white font-semibold mt-1">Wallet Intelligence</h1>
           <p className="text-sm text-gray-400 mt-1">{t("stalker.sub")}</p>
           <form
             className="mt-4 flex gap-2"
@@ -149,8 +149,8 @@ export default function WalletStalkerPage() {
             <input
               value={wallet}
               onChange={(e) => setWallet(e.target.value)}
-              placeholder={t("stalker.placeholder")}
-              className="sl-input h-11"
+              placeholder="Enter wallet address..."
+              className="sl-input h-14 font-mono"
             />
             <button type="submit" className="btn-primary px-4" disabled={addMut.isPending}>
               {t("stalker.track")}
@@ -159,14 +159,15 @@ export default function WalletStalkerPage() {
         </section>
 
         <section className="glass-card sl-inset">
-          <p className="sl-label">{t("stalker.listLabel")}</p>
-          <div className="mt-2 space-y-2">
+          <p className="sl-label">Active follows</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {list.map((row) => (
               <div
                 key={row.stalked_wallet}
-                className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2"
+                className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3"
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex items-start justify-between gap-3">
+                  <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="mono text-xs text-gray-200">
                       {row.stalked_wallet?.slice(0, 6)}...{row.stalked_wallet?.slice(-6)}
@@ -190,11 +191,13 @@ export default function WalletStalkerPage() {
                       </p>
                     );
                   })()}
+                  </div>
+                  <span className="sl-badge sl-badge-win">alerts on</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => delMut.mutate(row.stalked_wallet)}
-                  className="text-xs text-red-300 hover:text-red-200"
+                  className="mt-3 text-xs text-red-300 hover:text-red-200"
                 >
                   {t("stalker.remove")}
                 </button>
@@ -207,7 +210,7 @@ export default function WalletStalkerPage() {
         <section className="glass-card sl-inset border-violet-500/20">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="sl-label text-violet-200/90">{t("stalker.f3Title")}</p>
+              <p className="sl-label text-violet-200/90">Real-time activity feed</p>
               <p className="text-sm text-gray-400 mt-1 max-w-2xl leading-snug">{t("stalker.f3Sub")}</p>
               <p className="text-[10px] text-gray-500 mt-2 max-w-2xl leading-snug">{t("stalker.f4Help")}</p>
             </div>

@@ -9,6 +9,14 @@ import { useLocale } from "../../contexts/LocaleContext";
 import { useLayoutEffect, useRef, useEffect, useState } from "react";
 import { Home, Menu, Sparkles, X } from "lucide-react";
 
+const PRIMARY_NAV = [
+  { href: "/", label: "Home", match: "/" },
+  { href: "/scanner", label: "Scanner", match: "/scanner" },
+  { href: "/smart-money", label: "Smart Money", match: "/smart-money" },
+  { href: "/graveyard", label: "Track Record", match: "/graveyard" },
+  { href: "/alerts", label: "Alerts", match: "/alerts" }
+];
+
 export function Navbar() {
   const { t } = useLocale();
   const router = useRouter();
@@ -71,66 +79,69 @@ export function Navbar() {
       data-sl-nav="slim"
       data-sl-ui="home-compact-v2"
       data-sentinel-build={process.env.NEXT_PUBLIC_GIT_SHA}
-      className="fixed top-0 left-0 right-0 w-full z-50 bg-[#070709]/92 backdrop-blur-xl border-b border-white/[0.07] shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
+      className="fixed top-0 left-0 right-0 w-full z-50 border-b border-[var(--sl-border)] bg-[rgba(7,8,15,0.95)] backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
     >
       <div ref={menuRef} className="max-w-7xl mx-auto px-2 sm:px-4 relative">
-        <div className="hidden sm:flex items-center gap-1 min-h-12 h-12 sm:h-[3.25rem] min-w-0">
+        <div className="hidden sm:grid grid-cols-[auto_1fr_auto] items-center gap-3 min-h-12 h-12 min-w-0">
           <Link
             href="/"
-            className="flex items-center gap-1 sm:gap-1.5 shrink-0 min-w-0 group rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#070709]"
+            className="flex items-center gap-2 shrink-0 min-w-0 group rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#070709]"
           >
-            <span className="h-7 w-7 sm:h-8 sm:w-8 rounded-md border border-white/12 bg-white/[0.04] flex items-center justify-center transition-colors group-hover:bg-white/[0.07] shrink-0">
+            <span className="h-8 w-8 rounded-md border border-[var(--sl-border-accent)] bg-[var(--sl-indigo-dim)] flex items-center justify-center transition-colors group-hover:bg-white/[0.07] shrink-0">
               <Sparkles className="text-cyan-200" size={16} aria-hidden />
             </span>
-            <span className="text-sm sm:text-base font-bold tracking-tight text-white truncate max-w-[6.5rem] min-[480px]:max-w-[9rem] sm:max-w-none">
-              Sentinel Ledger
-            </span>
+            <span className="font-mono text-sm font-extrabold tracking-[0.18em] text-white truncate">SENTINEL</span>
+            <span className="sl-badge sl-badge-indigo hidden lg:inline-flex">v1.0 BETA</span>
           </Link>
 
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            className="shrink-0 h-7 px-1.5 rounded-md border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] text-gray-200 inline-flex items-center gap-1"
-            aria-expanded={menuOpen}
-            aria-haspopup="true"
-            aria-label={t("layout.menu")}
-            title={t("layout.menu")}
-          >
-            <Home size={12} />
-            {menuOpen ? <X size={12} /> : <Menu size={12} />}
-          </button>
-
-          <div className="shrink-0">
-            <LanguageMenu />
+          <div className="flex items-center justify-center gap-1 min-w-0">
+            {PRIMARY_NAV.map((item) => {
+              const active = router.pathname === item.match;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold no-underline transition ${
+                    active
+                      ? "bg-[var(--sl-indigo-dim)] text-[var(--sl-text-accent)]"
+                      : "text-[var(--sl-text-secondary)] hover:bg-white/[0.04] hover:text-white"
+                  }`}
+                  aria-current={active ? "page" : undefined}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              className="shrink-0 h-7 px-1.5 rounded-md border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] text-gray-200 inline-flex items-center gap-1"
+              aria-expanded={menuOpen}
+              aria-haspopup="true"
+              aria-label={t("layout.menu")}
+              title={t("layout.menu")}
+            >
+              <Home size={12} />
+              {menuOpen ? <X size={12} /> : <Menu size={12} />}
+            </button>
           </div>
 
-          <div className="flex-1 min-w-0 flex items-center gap-1 pl-0.5 overflow-hidden">
+          <div className="flex items-center justify-end gap-2 min-w-0">
             {showTradingChrome ? (
-              isHome ? (
-                <SearchBar headerMicro withRecents />
-              ) : (
-                <div className="shrink-0 w-36 min-[900px]:w-44 min-w-0 max-w-[28%]">
+              isHome ? null : (
+                <div className="hidden lg:block shrink-0 w-40 min-w-0">
                   <SearchBar compact />
                 </div>
               )
             ) : (
-              <div className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">
+              <div className="hidden lg:block truncate text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">
                 Control room
               </div>
             )}
-            {showHealthBadge ? (
-              <div className="shrink-0 max-w-[5.5rem] sm:max-w-[6.5rem]">
-                <HealthBar onlyBadge />
-              </div>
-            ) : null}
-            <Link
-              href="/graveyard"
-              className="hidden min-[980px]:inline-flex shrink-0 rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-2 py-1 text-[11px] font-semibold text-cyan-100 no-underline hover:bg-cyan-400/[0.12]"
-            >
-              Track Record
-            </Link>
+            <LanguageMenu />
+            <HealthBar onlyBadge />
+            <WalletButton />
           </div>
-          <WalletButton />
         </div>
 
         <div className="sm:hidden flex flex-col gap-1.5 py-1.5">

@@ -216,7 +216,7 @@ export default function ComparePage() {
         </form>
       </section>
 
-      <section className="border border-white/[0.08] bg-[#07080b] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <section className="sl-card-elevated border border-white/[0.08] bg-[#07080b] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06]">
           <div>
             <p className="text-[10px] font-semibold tracking-[0.22em] uppercase text-gray-500">{t("compare.decision.title")}</p>
@@ -255,7 +255,7 @@ export default function ComparePage() {
               return (
                 <article
                   key={row.mint}
-                  className={`p-4 min-h-[15rem] ${chosenNow ? "bg-cyan-500/[0.04]" : "bg-transparent"}`}
+                  className={`p-4 min-h-[15rem] ${chosenNow ? "bg-cyan-500/[0.04] ring-1 ring-cyan-400/30" : "bg-transparent"}`}
                   translate="no"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -267,8 +267,10 @@ export default function ComparePage() {
                     <div className="text-right shrink-0">
                       <p className="text-[9px] uppercase tracking-wider text-gray-500">{t("compare.card.score")}</p>
                       <p className="text-3xl font-black font-mono text-white">{row.score}</p>
+                      {recommended?.mint === row.mint ? <span className="sl-badge sl-badge-win mt-1">Sentinel recommends</span> : null}
                     </div>
                   </div>
+                  <div className="mt-4 sl-score-bar"><span style={{ width: `${row.score}%` }} /></div>
                   <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
                     <div className="rounded-md border border-white/[0.07] bg-black/25 px-2 py-1.5">
                       <p className="text-gray-500">{t("compare.card.grade")}</p>
@@ -363,13 +365,19 @@ export default function ComparePage() {
               const lowerBetter = key === "holders" || key === "deployer";
               const best = lowerBetter ? Math.min(...values) : Math.max(...values);
               return (
-                <div key={key} className="grid gap-3 items-center py-2 border-b soft-divider last:border-b-0" style={{ gridTemplateColumns: `minmax(150px,1fr) repeat(${ranked.length}, minmax(86px, auto))` }}>
+                <div key={key} className="grid gap-3 items-center py-2 border-b soft-divider last:border-b-0" style={{ gridTemplateColumns: `minmax(150px,1fr) repeat(${ranked.length}, minmax(110px, auto))` }}>
                   <div className="text-sm text-gray-400">{label}</div>
                   {ranked.map((row) => {
                     const v = metricValue(row.token, key);
                     return (
                       <div key={row.mint} className={`text-sm mono ${v === best ? "text-emerald-300" : "text-gray-200"}`}>
-                        {metricDisplay(v, key)}
+                        <span>{v === best ? "↑ " : "→ "}{metricDisplay(v, key)}</span>
+                        <div className="mt-1 h-1.5 rounded-full bg-white/[0.06]">
+                          <span
+                            className={`block h-full rounded-full ${v === best ? "bg-emerald-400" : "bg-indigo-400/60"}`}
+                            style={{ width: `${Math.max(6, Math.min(100, lowerBetter ? 100 - v : key === "liquidity" || key === "volume" ? (v / Math.max(...values || [1])) * 100 : v))}%` }}
+                          />
+                        </div>
                       </div>
                     );
                   })}

@@ -1,6 +1,7 @@
 /* Must stay in _app: global Tailwind + design tokens (Next.js only allows global CSS import from here). */
 import "../styles/globals.css";
-import { Inter } from "next/font/google";
+import "../styles/sentinel-design-system.css";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { useEffect, useMemo } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -12,6 +13,7 @@ import { LocaleProvider } from "../contexts/LocaleContext";
 import { Toaster } from "react-hot-toast";
 import { AppErrorBoundary } from "../components/layout/AppErrorBoundary";
 import { Navbar } from "../components/layout/Navbar";
+import { GlobalStatusBar } from "../components/layout/GlobalStatusBar";
 import { GlobalWayfinding } from "../components/layout/GlobalWayfinding";
 import { LiveTensionBar } from "../components/layout/LiveTensionBar";
 import { SiteFooter } from "../components/layout/SiteFooter";
@@ -27,7 +29,15 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-inter",
   weight: ["400", "500", "600", "700", "800", "900"]
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-jetbrains-mono",
+  weight: ["400", "500", "600", "700", "800"]
 });
 
 const queryClient = new QueryClient();
@@ -90,10 +100,11 @@ export default function App({ Component, pageProps }) {
             <LocaleProvider>
             <WarModeProvider>
             <div
-              className={`${inter.className} min-h-screen bg-[#070709] text-white antialiased selection:bg-emerald-500/25 selection:text-emerald-100`}
+              className={`${inter.variable} ${jetbrainsMono.variable} ${inter.className} min-h-screen bg-[var(--sl-bg-base)] text-white antialiased selection:bg-emerald-500/25 selection:text-emerald-100`}
               translate="no"
             >
               <Navbar />
+              <GlobalStatusBar />
               {isHome ? <LiveTensionBar /> : null}
               {/* padding-top is derived from CSS variables published by the
                   fixed top chrome (see :root in globals.css and the
@@ -102,7 +113,7 @@ export default function App({ Component, pageProps }) {
               <main
                 style={{
                   paddingTop:
-                    "calc(var(--sl-nav-actual, var(--sl-nav-h)) + var(--sl-bar-h) + var(--sl-safe-gap))"
+                    "calc(var(--sl-nav-actual, var(--sl-nav-h)) + var(--sl-status-h) + var(--sl-bar-h) + var(--sl-safe-gap))"
                 }}
                 className="pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0"
               >

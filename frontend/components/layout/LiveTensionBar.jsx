@@ -89,11 +89,11 @@ export function LiveTensionBar() {
   return (
     <div
       className="fixed left-0 right-0 z-40 border-b border-emerald-500/25 bg-[#040508]/95 backdrop-blur-md shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
-      style={{ top: "var(--sl-nav-actual, var(--sl-nav-h))" }}
+      style={{ top: "calc(var(--sl-nav-actual, var(--sl-nav-h)) + var(--sl-status-h))" }}
       role="status"
       aria-live="polite"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-2 sm:gap-3 text-[11px] sm:text-xs font-medium text-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-row flex-wrap items-center justify-between gap-2 sm:gap-3 text-[11px] sm:text-xs font-medium text-gray-200">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
           <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
             {freshness.state === "LIVE" ? (

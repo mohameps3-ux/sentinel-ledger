@@ -42,6 +42,27 @@ import { useLocale } from "../contexts/LocaleContext";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useLastGoodArray } from "../hooks/useLastGoodArray";
 
+function HomeMetricStrip({ signalsToday, activeWallets, avgConfidence, bestSignal }) {
+  const metrics = [
+    ["Signals Today", signalsToday],
+    ["Active Wallets", activeWallets],
+    ["Avg Confidence", avgConfidence != null ? `${Math.round(avgConfidence)}%` : "—"],
+    ["Best Signal", bestSignal != null ? `${Math.round(bestSignal)}%` : "—"]
+  ];
+  return (
+    <div className="sl-container max-w-full pt-2">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {metrics.map(([label, value]) => (
+          <div key={label} className="sl-card-elevated px-3 py-2">
+            <p className="sl-metric-label">{label}</p>
+            <p className="sl-metric mt-1 text-lg md:text-xl">{value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /**
  * HOT row → LIVE card (same shell as DB signals). Rank uses API `sentinelScore` when set.
  */
@@ -597,6 +618,19 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     return { label: "A la defensiva", className: "text-red-300" };
   }, [trending]);
 
+  const homeMetrics = useMemo(() => {
+    const scores = interpretedSignals.map((s) => Number(s.signalStrength)).filter(Number.isFinite);
+    const avgConfidence = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+    const bestSignal = scores.length ? Math.max(...scores) : null;
+    const activeWallets = rankedWallets.length || topWalletsApi.length || 0;
+    return {
+      signalsToday: outcomesSummary?.resolved ?? interpretedSignals.length,
+      activeWallets,
+      avgConfidence,
+      bestSignal
+    };
+  }, [interpretedSignals, outcomesSummary?.resolved, rankedWallets.length, topWalletsApi.length]);
+
   return (
     <>
       <PageHead title={t("home.pageTitle")} description={t("home.pageDesc")} />
@@ -606,6 +640,12 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           <>
             <HomeOnboarding />
             <WelcomeBanner />
+            <HomeMetricStrip
+              signalsToday={homeMetrics.signalsToday}
+              activeWallets={homeMetrics.activeWallets}
+              avgConfidence={homeMetrics.avgConfidence}
+              bestSignal={homeMetrics.bestSignal}
+            />
             <div className="sl-container max-w-full pt-2">
               <Link
                 href="/graveyard"

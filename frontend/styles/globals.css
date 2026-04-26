@@ -28,6 +28,7 @@
   /* Dense “insights terminal” rail (Sentinel palette, not third-party branding) */
   --sl-terminal-rail-live: rgba(16, 185, 129, 0.88);
   --sl-terminal-rail-heat: rgba(245, 158, 11, 0.9);
+  --sl-status-h: 24px;
 
   /* -- Layout skeleton variables (fixed top chrome -> <main> padding) --
      Every fixed element anchored to the top of the viewport declares its
@@ -38,9 +39,10 @@
        - --sl-bar-h   : LiveTensionBar height. Zero by default; the bar
                         itself sets html[data-has-tension-bar="1"] when
                         mounted, which overrides this to its real height.
+       - --sl-status-h : global terminal status bar height.
        - --sl-safe-gap: visual breathing room between fixed chrome and
                         first pixel of content.
-     <main> then uses: padding-top: calc(var(--sl-nav-h) + var(--sl-bar-h) + var(--sl-safe-gap))
+     <main> then uses: padding-top: calc(var(--sl-nav-h) + var(--sl-status-h) + var(--sl-bar-h) + var(--sl-safe-gap))
      No per-page ternaries, no magic pixel grid to keep in sync. */
   /* Fallback when JS has not measured the real <nav> height yet (see Navbar.jsx --sl-nav-actual). */
   --sl-nav-h: 48px;
@@ -69,7 +71,7 @@
    the bar stacks into two lines (~80px); from sm up it's a single row
    (~40px). Values chosen so there is no vertical jump on the breakpoint. */
 html[data-has-tension-bar="1"] {
-  --sl-bar-h: 80px;
+  --sl-bar-h: 56px;
 }
 
 @media (min-width: 640px) {

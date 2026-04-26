@@ -475,17 +475,23 @@ export default function OpsPage() {
   return (
     <>
       <PageHead title="Ops Console — Sentinel Ledger" description="Internal operations and observability." />
-      <div className="min-h-[70vh] w-full max-w-5xl mx-auto px-4 sm:px-5 py-8 sm:py-10">
-        <header className="mb-8 space-y-2">
+      <div className="min-h-[70vh] w-full max-w-6xl mx-auto px-4 sm:px-5 py-8 sm:py-10 font-mono">
+        <header className="mb-8 sl-card-elevated sl-inset space-y-2">
           <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Internal</p>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Omni Ops Console</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">System Health Dashboard</h1>
           <p className="text-sm text-gray-500 max-w-2xl leading-relaxed">
             Authenticate once for Ops APIs. Signed export integrity checks use a separate public endpoint (no ops key,
             rate-limited) so third parties can validate evidence you share.
           </p>
+          <div className="grid grid-cols-2 gap-2 pt-3 md:grid-cols-4">
+            <Kpi label="API" value={hasKey ? "READY" : "LOCKED"} tone={hasKey ? "good" : "warn"} />
+            <Kpi label="Oracle" value={validationOracleStatus ? "ONLINE" : "PENDING"} tone={validationOracleStatus ? "good" : "neutral"} />
+            <Kpi label="Auto Discovery" value={autoDiscoveryStatus ? "ONLINE" : "PENDING"} tone={autoDiscoveryStatus ? "good" : "neutral"} />
+            <Kpi label="Freshness" value={degradedFreshnessCount ? "DEGRADED" : "GREEN"} tone={degradedFreshnessCount ? "warn" : "good"} />
+          </div>
         </header>
 
-        <section className="rounded-2xl border border-white/[0.08] bg-[#080a0d]/90 p-4 sm:p-5 space-y-4 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+        <section className="glass-card sl-inset space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-end gap-3 min-w-0">
             <div className="flex-1 min-w-0 space-y-1.5">
               <label htmlFor="ops-key" className="text-[11px] text-gray-500 font-medium">
