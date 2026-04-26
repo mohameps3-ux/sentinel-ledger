@@ -20,7 +20,6 @@ const PRIMARY_NAV = [
 export function Navbar() {
   const { t } = useLocale();
   const router = useRouter();
-  const isHome = router.pathname === "/";
   const isControlRoom = ["/ops", "/pricing", "/legal", "/privacy", "/terms", "/contact"].includes(router.pathname);
   const showTradingChrome = !isControlRoom;
   const navRef = useRef(null);
@@ -111,8 +110,8 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center justify-end gap-3 min-w-0">
-            {showTradingChrome && !isHome ? (
-              <div className="hidden lg:block ml-5 shrink-0 w-40 min-w-0">
+            {showTradingChrome ? (
+              <div className="hidden lg:block ml-5 shrink-0 w-[19rem] min-w-0">
                 <SearchBar compact />
               </div>
             ) : null}
