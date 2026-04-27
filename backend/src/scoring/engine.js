@@ -44,6 +44,7 @@ const { isSmartWallet } = require("../services/convergenceService");
 const { sign: signScoreResult } = require("../lib/scoreSigner");
 const { getActiveSignalWeightMap } = require("../services/signalCalibrator");
 const { combinedPerformanceWeight, clampQualityStack } = require("../services/signalFeedQuality");
+const { isSystemMint } = require("../lib/systemMints");
 
 const CONFIG = {
   whaleMinUsd: Number(process.env.RULE_WHALE_MIN_USD || 5_000),
@@ -219,6 +220,13 @@ function detectContradictions(results) {
  */
 async function evaluate(event, extraCtx = {}) {
   if (!event || !event.data || !event.data.asset) {
+    return null;
+  }
+
+  // Skip events whose target asset is a quote-side / system mint (WSOL, USDC,
+  // USDT, etc.). Those are not actionable signals — scoring them only pollutes
+  // signal_performance and distorts rule_performance learning.
+  if (isSystemMint(event.data.asset)) {
     return null;
   }
 

@@ -2,6 +2,7 @@
 
 const { getSupabase } = require("../lib/supabase");
 const { getMarketData } = require("./marketData");
+const { isSystemMint } = require("../lib/systemMints");
 
 const DEFAULT_HORIZON_MIN = Number(process.env.SIGNAL_PERF_HORIZON_MIN || 10);
 const SUCCESS_MIN_PCT = Number(process.env.SIGNAL_PERF_SUCCESS_MIN_PCT || 1.0);
@@ -84,6 +85,9 @@ function emissionArchiveFromScore(score) {
 async function recordSignalEmission(score, extra = {}) {
   const payload = normalizeScorePayload(score);
   if (!payload) return { ok: false, reason: "invalid_payload" };
+  // Defense-in-depth: never persist outcomes for quote-side / system mints
+  // (WSOL, USDC, USDT...). They distort rule_performance learning.
+  if (isSystemMint(payload.asset)) return { ok: false, reason: "system_mint" };
   let supabase;
   try {
     supabase = getSupabase();

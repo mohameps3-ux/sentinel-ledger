@@ -95,6 +95,61 @@ function EmptyState({ children }) {
   );
 }
 
+const CALIBRATION_MILESTONES = [
+  { id: "first_metric", target: 10, label: "First metric", description: "Win rate / avg return become visible" },
+  { id: "rule_confidence", target: 30, label: "Rule confidence", description: "Per-rule weights start adapting" },
+  { id: "mature", target: 80, label: "Mature calibration", description: "Validation Oracle fully operational" }
+];
+
+function CalibrationProgress({ resolved, total }) {
+  const r = Math.max(0, Number(resolved) || 0);
+  const t = Math.max(r, Number(total) || 0);
+  return (
+    <div className="mt-4 border border-white/[0.08] bg-black/30 px-4 py-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-sl-muted font-semibold">
+          Oracle calibration
+        </p>
+        <p className="font-mono text-[11px] text-sl-sub tabular-nums">
+          {r}/{t} resolved · {Math.max(0, t - r)} pending
+        </p>
+      </div>
+      <div className="mt-3 space-y-2.5">
+        {CALIBRATION_MILESTONES.map((m) => {
+          const pctRaw = (r / m.target) * 100;
+          const reached = r >= m.target;
+          const widthPct = Math.min(100, Math.max(0, pctRaw));
+          const tone = reached
+            ? "bg-emerald-400"
+            : widthPct > 50
+              ? "bg-violet-400"
+              : "bg-amber-400";
+          return (
+            <div key={m.id}>
+              <div className="flex items-center justify-between gap-2 text-[11px]">
+                <span className={`font-semibold ${reached ? "text-emerald-200" : "text-sl-sub"}`}>
+                  {reached ? "✓ " : ""}
+                  {m.label}
+                </span>
+                <span className="font-mono tabular-nums text-sl-muted">
+                  {Math.min(r, m.target)}/{m.target}
+                </span>
+              </div>
+              <div className="mt-1 h-1.5 bg-white/[0.05] overflow-hidden">
+                <div
+                  className={`h-full ${tone} transition-[width] duration-700 ease-out`}
+                  style={{ width: `${widthPct}%` }}
+                />
+              </div>
+              <p className="mt-1 text-[10px] text-sl-muted">{m.description}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function VerifiedTrackRecordPage() {
   const { t } = useLocale();
   const [filter, setFilter] = useState("all");
@@ -129,10 +184,8 @@ export default function VerifiedTrackRecordPage() {
           <p className="mt-1 text-xs text-cyan-100/70">
             Data sourced directly from on-chain events and Sentinel Oracle validation.
           </p>
-          {totalSignals < 10 ? (
-            <div className="mt-4 border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 text-sm text-amber-100">
-              Oracle is accumulating validated signals — {int(totalSignals)} signals recorded, {Math.max(0, 10 - totalSignals)} until first metrics.
-            </div>
+          {resolvedSignals < 80 ? (
+            <CalibrationProgress resolved={resolvedSignals} total={totalSignals} />
           ) : null}
           <div className="mt-5 grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <Stat label="Total signals" value={hasData ? int(totalSignals) : "Accumulating"} />
