@@ -24,14 +24,16 @@ export function InstitutionalProse({ children, className = "" }) {
           color: var(--sl-text-primary);
           font-weight: 600;
         }
+        /* Apex Obsidian: links carry gold underline (no soft violet). */
         .sl-inst-prose a {
-          color: var(--sl-text-accent);
+          color: #fbbf24;
           text-decoration: none;
-          border-bottom: 1px dotted rgba(167, 139, 250, 0.4);
-          transition: border-color 150ms;
+          border-bottom: 1px dotted rgba(245, 158, 11, 0.4);
+          transition: border-color 150ms, color 150ms;
         }
         .sl-inst-prose a:hover {
-          border-bottom-color: var(--sl-text-accent);
+          color: #fef3c7;
+          border-bottom-color: #fef3c7;
         }
         .sl-inst-prose h2 {
           color: var(--sl-text-primary);

@@ -118,10 +118,12 @@ function SignalChip({ signal, flashing }) {
 }
 
 function MemoryChip({ variant, title }) {
+  // Apex Obsidian: BREAKOUT is a real-value moment → iridescent gold halo
+  // (replaces the previous cyan glow). REPEATED stays neutral pearl.
   const config = {
     breakout: {
       label: "BREAKOUT",
-      cls: "text-cyan-100 border-cyan-400/60 bg-cyan-500/15 shadow-[0_0_12px_rgba(34,211,238,0.25)] animate-pulse"
+      cls: "text-[#fef3c7] border-[rgba(245,158,11,0.6)] bg-[rgba(245,158,11,0.18)] shadow-[0_0_12px_rgba(245,158,11,0.32)] animate-pulse"
     },
     repeated: {
       label: "REPEATED",

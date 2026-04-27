@@ -65,24 +65,26 @@ export function InstitutionalPage({
         <div className="space-y-6">{children}</div>
       </div>
       <style jsx global>{`
+        /* Apex Obsidian: top accent line — pearl silver flanks, gold center. */
         .sl-inst-page-accent {
           position: relative;
           height: 1px;
           background: linear-gradient(
             90deg,
             transparent,
-            rgba(124, 58, 237, 0.4) 18%,
-            rgba(6, 182, 212, 0.32) 50%,
-            rgba(124, 58, 237, 0.4) 82%,
+            rgba(209, 213, 219, 0.20) 18%,
+            rgba(245, 158, 11, 0.45) 50%,
+            rgba(209, 213, 219, 0.20) 82%,
             transparent
           );
         }
+        /* Apex Obsidian: tracker dot — gold pulse instead of soft violet. */
         .sl-inst-tracker-dot {
           width: 6px;
           height: 6px;
-          background: var(--sl-text-accent, #a78bfa);
+          background: #fbbf24;
           border-radius: 999px;
-          box-shadow: 0 0 8px rgba(167, 139, 250, 0.55);
+          box-shadow: 0 0 8px rgba(245, 158, 11, 0.55);
           display: inline-block;
         }
         .sl-inst-divider {

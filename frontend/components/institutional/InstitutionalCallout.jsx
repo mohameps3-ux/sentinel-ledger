@@ -6,10 +6,11 @@
  */
 export function InstitutionalCallout({ tone = "info", title, icon, children }) {
   const palette = {
+    // Apex Obsidian: info → silver pearl frame with gold title (no indigo).
     info: {
-      border: "rgba(99, 102, 241, 0.32)",
-      bg: "rgba(99, 102, 241, 0.05)",
-      title: "var(--sl-text-accent)"
+      border: "rgba(209, 213, 219, 0.22)",
+      bg: "rgba(209, 213, 219, 0.04)",
+      title: "#fbbf24"
     },
     warn: {
       border: "rgba(245, 158, 11, 0.32)",

@@ -7,7 +7,7 @@
  *
  * Tones:
  *  - "default" — neutral
- *  - "accent"  — subtle indigo border (use for primary KPIs)
+ *  - "accent"  — subtle gold border (Apex Obsidian — use for primary KPIs)
  *  - "warn"    — amber border (use for warnings / disclaimers)
  *  - "loss"    — red border (use for risk surfaces)
  */
@@ -57,10 +57,11 @@ export function InstitutionalCard({
             rgba(13, 14, 26, 0.9);
           border: 1px solid rgba(255, 255, 255, 0.08);
         }
+        /* Apex Obsidian: accent tone — gold border + warm wash. */
         .sl-inst-card--accent {
-          border-color: rgba(124, 58, 237, 0.32);
+          border-color: rgba(245, 158, 11, 0.32);
           background:
-            linear-gradient(180deg, rgba(124, 58, 237, 0.06), transparent 42%),
+            linear-gradient(180deg, rgba(245, 158, 11, 0.06), transparent 42%),
             rgba(13, 14, 26, 0.92);
         }
         .sl-inst-card--warn {

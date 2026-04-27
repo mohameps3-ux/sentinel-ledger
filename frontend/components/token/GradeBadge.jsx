@@ -1,5 +1,7 @@
+// Apex Obsidian: A+ becomes the iridescent gold tier — the prestige grade.
+// A/B keep semantic green (positive). C/D amber/orange (caution). F red (danger).
 const GRADE_STYLES = {
-  "A+": "from-violet-500 to-fuchsia-500 shadow-[0_0_24px_rgba(168,85,247,0.55)]",
+  "A+": "from-[#fbbf24] via-[#f59e0b] to-[#c08552] text-black shadow-[0_0_28px_rgba(245,158,11,0.55)]",
   A: "from-emerald-500 to-green-600 shadow-[0_0_20px_rgba(34,197,94,0.45)]",
   B: "from-teal-500 to-green-500 shadow-[0_0_18px_rgba(20,184,166,0.35)]",
   C: "from-amber-400 to-yellow-500 text-black shadow-[0_0_18px_rgba(250,204,21,0.35)]",

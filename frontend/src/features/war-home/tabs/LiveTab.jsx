@@ -414,7 +414,7 @@ export function LiveTab({
                 aria-expanded={liveExpanded}
                 aria-label={liveExpanded ? t("war.live.collapseAria") : t("war.live.expandAria")}
                 title={liveExpanded ? t("war.live.collapseTitle") : t("war.live.expandTitle")}
-                className="group relative flex h-9 w-9 shrink-0 items-center justify-center border border-white/[0.12] bg-gradient-to-b from-white/[0.07] to-sl-card text-cyan-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all hover:border-cyan-400/45 hover:from-cyan-500/18 hover:to-cyan-950/25 hover:text-cyan-50 hover:shadow-[0_0_22px_rgba(34,211,238,0.18)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050a0f]"
+                className="group relative flex h-9 w-9 shrink-0 items-center justify-center border border-[rgba(209,213,219,0.16)] bg-gradient-to-b from-white/[0.05] to-sl-card text-[#d1d5db] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all hover:border-[rgba(245,158,11,0.5)] hover:from-[rgba(245,158,11,0.10)] hover:to-[rgba(245,158,11,0.04)] hover:text-[#fbbf24] hover:shadow-[0_0_22px_rgba(245,158,11,0.20)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(245,158,11,0.5)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
               >
                 {liveExpanded ? (
                   <ChevronsUp className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />

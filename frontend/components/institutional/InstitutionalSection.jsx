@@ -53,6 +53,7 @@ export function InstitutionalSection({
         .sl-inst-section--rail {
           padding-top: 14px;
         }
+        /* Apex Obsidian: section rail — gold left edge fading to nothing. */
         .sl-inst-section--rail::before {
           content: "";
           position: absolute;
@@ -62,8 +63,8 @@ export function InstitutionalSection({
           height: 1px;
           background: linear-gradient(
             90deg,
-            rgba(124, 58, 237, 0.55),
-            rgba(124, 58, 237, 0.15) 35%,
+            rgba(245, 158, 11, 0.55),
+            rgba(209, 213, 219, 0.15) 35%,
             transparent
           );
         }
