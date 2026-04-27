@@ -1,5 +1,4 @@
 import { useState } from "react";
-import Link from "next/link";
 import { useGuestTrial } from "../../hooks/useGuestTrial";
 
 export default function GuestTrialBanner() {
@@ -51,7 +50,8 @@ export default function GuestTrialBanner() {
             </span>
           )}
         </div>
-        <Link
+
+        <a
           href="/pricing"
           className="font-mono text-[10px] font-semibold uppercase tracking-wider
                      px-3 flex items-center flex-shrink-0
@@ -59,13 +59,13 @@ export default function GuestTrialBanner() {
           style={{
             height: "24px",
             borderRadius: "2px",
-            background: isCritical ? "#FACC15" : "var(--sl-violet, #facc15)",
+            background: isCritical ? "#FACC15" : "var(--sl-violet, #8B5CF6)",
             color: isCritical ? "#000" : "#fff",
             border: "none"
           }}
         >
           SECURE PRO ACCESS
-        </Link>
+        </a>
       </div>
     );
   }
