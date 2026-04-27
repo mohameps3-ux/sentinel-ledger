@@ -22,6 +22,7 @@ import { GlobalCommandHud } from "../components/terminal/GlobalCommandHud";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 
 const SentinelBot = dynamic(() => import("../components/bot/SentinelBot"), { ssr: false });
+const GuestTrialBanner = dynamic(() => import("../components/trial/GuestTrialBanner"), { ssr: false });
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
 import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
 import { getPublicWsUrl } from "../lib/publicRuntime";
@@ -138,6 +139,7 @@ export default function App({ Component, pageProps }) {
                 </div>
               ) : null}
               <SentinelBot />
+              <GuestTrialBanner />
               <Toaster
                 position="bottom-center"
                 containerStyle={{
