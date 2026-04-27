@@ -80,6 +80,7 @@ function hasPumpRoute(token) {
 }
 
 export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token, regime }) {
+  const { t } = useLocale();
   if (!mint || !isProbableSolanaMint(mint)) {
     return <p className="text-xs text-gray-500">Invalid mint — execution links disabled.</p>;
   }
@@ -92,11 +93,11 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
   const disabled = riskLabel === "AVOID";
 
   return (
-    <div className="border border-emerald-500/25 bg-gradient-to-br from-emerald-500/[0.14] via-cyan-500/[0.05] to-black/20 p-3 shadow-[0_0_28px_rgba(16,185,129,0.08)]">
+    <div className="border border-white/[0.1] bg-black/35 p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[9px] uppercase tracking-[0.18em] text-emerald-200/85 font-semibold">Execution scope</p>
-          <p className="mt-1 text-xs text-gray-400 leading-snug">
+          <p className="text-[9px] uppercase tracking-[0.18em] text-[#a3a3a3] font-semibold">Execution scope</p>
+          <p className="mt-1 text-xs text-gray-500 leading-snug">
             Trade is dominant; chart and explorers are support rails.
           </p>
         </div>
@@ -108,10 +109,10 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
         href={buildJupiterSwapUrl(mint)}
         target="_blank"
         rel={EXTERNAL_ANCHOR_REL}
-        className={`mt-3 flex h-12 w-full items-center justify-center border px-4 text-sm font-black uppercase tracking-[0.14em] transition ${
+        className={`mt-2.5 flex w-full items-center justify-center border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] transition ${
           disabled
-            ? "border-red-500/35 bg-red-500/10 text-red-100"
-            : "border-emerald-400/50 bg-emerald-400 text-black hover:bg-emerald-300"
+            ? "border-red-500/35 bg-red-500/[0.08] text-red-200/90"
+            : "border-[rgba(16,185,129,0.4)] bg-emerald-500/[0.06] text-emerald-200/90 hover:border-emerald-400/55 hover:bg-emerald-500/[0.1]"
         }`}
       >
         TRADE NOW
@@ -121,9 +122,9 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
           href={dexUrl}
           target="_blank"
           rel={EXTERNAL_ANCHOR_REL}
-          className="border border-cyan-500/25 bg-cyan-500/[0.07] px-2 py-1.5 text-center text-[10px] font-semibold text-cyan-100"
+          className="border border-white/[0.1] bg-white/[0.04] px-2 py-1.5 text-center text-[10px] font-semibold text-gray-200 hover:border-[rgba(245,158,11,0.35)]"
         >
-          DEX chart
+          {t("cockpit.desk.marketsLink")}
         </a>
         <a
           href={solscanUrl}

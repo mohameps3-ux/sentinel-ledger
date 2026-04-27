@@ -486,6 +486,7 @@ export const FLAT_STRINGS = {
   "cockpit.desk.confidence": S("Confidence", { es: "Confianza" }),
   "cockpit.desk.integrity": S("Integrity:", { es: "Integridad:" }),
   "cockpit.desk.jupiterTitle": S("Execution · Jupiter quick buy", { es: "Ejecución · compra rápida Jupiter" }),
+  "cockpit.desk.marketsLink": S("Markets", { es: "Mercados" }),
   "cockpit.desk.smartWallets": S("Smart wallets"),
   "cockpit.desk.antiSignal": S("Risk trap", { es: "Trampa de riesgo" }),
   "cockpit.desk.quickScan": S("Command scan", { es: "Escaneo de comando" }),

@@ -19,10 +19,8 @@ import {
  *    while the iframe loads, so the brand is the first thing the user
  *    sees regardless of network speed.
  *
- * Data source: still DexScreener iframe (no backend change). A custom
- * Sentinel-owned chart powered by Birdeye OHLCV is queued for a
- * dedicated phase — this panel is structured so it can be swapped at
- * the iframe level without touching the surrounding page.
+ * Data: embed in iframe (no backend change; UI does not name the vendor).
+ * A Sentinel-owned chart is queued for a later phase.
  */
 export function ChartPanel({ address, compact = false, symbol = "" }) {
   const [timeframe, setTimeframe] = useState("1h");
@@ -205,15 +203,16 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
 
         <div className="sl-chart-footer">
           <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#525252]">
-            Data: dexscreener feed
+            Aggregated DEX price action
           </span>
           <a
             href={dexUrl}
             target="_blank"
             rel={EXTERNAL_ANCHOR_REL}
             className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#737373] hover:text-[#fbbf24] inline-flex items-center gap-1"
+            title="View markets in a new tab"
           >
-            Open external <ExternalLink size={9} />
+            Open in browser <ExternalLink size={9} />
           </a>
         </div>
       </div>

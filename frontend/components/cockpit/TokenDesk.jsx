@@ -93,9 +93,18 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
       <div className="flex flex-wrap items-start justify-between gap-2 border-b border-white/[0.08] pb-2 shrink-0">
         <div className="min-w-0">
           <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500 font-semibold">{t("cockpit.desk.intelLabel")}</p>
-          <p className="font-mono text-xs text-cyan-200/90 truncate mt-1" title={mint}>
+          <p className="mt-1 font-mono text-xs text-[#d1d5db] truncate" title={mint}>
             {mint.slice(0, 6)}…{mint.slice(-4)}
           </p>
+          <Link
+            href={`/token/${encodeURIComponent(mint)}`}
+            className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#fbbf24] underline decoration-[rgba(245,158,11,0.45)] underline-offset-2 hover:text-[#fef3c7] hover:decoration-[#fef3c7]"
+          >
+            {t("cockpit.desk.openTerminal")}
+            <span aria-hidden className="font-mono text-[10px] opacity-80">
+              →
+            </span>
+          </Link>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <span
@@ -105,12 +114,6 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
           >
             {isConnected ? t("cockpit.desk.live") : t("cockpit.desk.syncing")}
           </span>
-          <Link
-            href={`/token/${mint}`}
-            className="text-[10px] px-2 py-0.5 border border-emerald-500/25 text-emerald-200/90 hover:text-emerald-100 hover:border-emerald-400/40 font-semibold"
-          >
-            {t("cockpit.desk.openTerminal")}
-          </Link>
           <button
             type="button"
             onClick={() => router.push("/", undefined, { shallow: true })}

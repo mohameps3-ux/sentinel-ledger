@@ -157,30 +157,46 @@ function MetricCell({ label, value }) {
   );
 }
 
-function TokenHeroBar({ address, market, analysis, terminal, statusTone, statusLabel, soundEnabled, setSoundEnabled, isWatchlisted, proStatusReady, hasToken, hasProAccess }) {
+/**
+ * Token meta column — placed beside the chart (desktop) or above it (mobile).
+ * Not sticky: avoids a full-width bar covering the chart when scrolling.
+ */
+function TokenMetaAside({
+  address,
+  market,
+  analysis,
+  terminal,
+  statusTone,
+  statusLabel,
+  soundEnabled,
+  setSoundEnabled,
+  isWatchlisted,
+  proStatusReady,
+  hasToken,
+  hasProAccess
+}) {
   const jupiterUrl = buildJupiterSwapUrl(address);
   const dexUrl = buildDexscreenerSolanaTokenUrl(address);
   const solscanUrl = buildSolscanTokenUrl(address);
   const pumpUrl = hasPumpRoute(market) ? buildPumpFunTokenUrl(address) : null;
   const score = Math.round(Number(terminal?.signalStrength ?? analysis?.confidence ?? 0));
-  // Apex state — gold appears only when there is real value.
-  // 80+ critical · 60+ active · else neutral silver.
   const apexState = deriveApexState(score);
   const priceChange = Number(market.priceChange24h);
   const priceUp = Number.isFinite(priceChange) && priceChange >= 0;
 
   return (
     <ApexCard
-      as="section"
+      as="aside"
+      id="token-meta"
       state={apexState}
-      className="sticky top-[var(--sl-nav-actual,52px)] z-30 p-3 backdrop-blur-xl"
+      className="order-1 w-full max-w-full shrink-0 p-3 backdrop-blur-sm xl:order-2 xl:max-w-[20rem] xl:shrink-0"
     >
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+      <div className="space-y-3">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="truncate text-2xl font-black tracking-tight text-[#fafafa]">
-              {market.name || market.symbol || "Token"}
-            </h1>
+          <h1 className="break-words text-xl font-black tracking-tight text-[#fafafa] sm:text-2xl">
+            {market.name || market.symbol || "Token"}
+          </h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <span className="border border-[rgba(209,213,219,0.22)] bg-[rgba(209,213,219,0.06)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#d1d5db]">
               SOLANA
             </span>
@@ -191,80 +207,60 @@ function TokenHeroBar({ address, market, analysis, terminal, statusTone, statusL
           <p className="mt-1 text-sm text-[#737373]">${market.symbol || "TOKEN"}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-[auto_auto_auto_minmax(14rem,18rem)] sm:items-center sm:justify-end">
-          <div className="col-span-2 sm:col-span-1 sm:text-right">
-            <p className="font-mono text-3xl font-black text-[#fafafa] leading-none">{usdOrNA(market.price, "$0")}</p>
-            <p className={`mt-1 font-mono text-sm font-semibold ${priceUp ? "text-emerald-300" : "text-red-300"}`}>
-              {pct(market.priceChange24h)} · 24h
-            </p>
-          </div>
-          <div className="border border-[rgba(209,213,219,0.18)] bg-[rgba(209,213,219,0.04)] px-3 py-2 text-center">
+        <div>
+          <p className="font-mono text-2xl font-black leading-none text-[#fafafa] sm:text-3xl">{usdOrNA(market.price, "$0")}</p>
+          <p className={`mt-0.5 font-mono text-sm font-semibold ${priceUp ? "text-emerald-300" : "text-red-300"}`}>
+            {pct(market.priceChange24h)} · 24h
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="border border-[rgba(209,213,219,0.18)] bg-[rgba(209,213,219,0.04)] px-2 py-2 text-center sm:px-3">
             <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[#737373]">Grade</p>
-            <p className="mt-0.5 text-xl font-black text-[#fafafa] leading-none">{analysis.grade || "—"}</p>
+            <p className="mt-0.5 text-lg font-black leading-none text-[#fafafa] sm:text-xl">{analysis.grade || "—"}</p>
           </div>
-          <div className="px-3 py-1 text-center">
-            <IridescentScore value={score} label="Sentinel" size="md" align="center" />
+          <div className="flex items-center justify-center px-1 py-0.5 sm:px-2">
+            <IridescentScore value={score} label="Sentinel" size="sm" align="center" />
           </div>
-          <div className="col-span-2 sm:col-span-1 space-y-2">
-            <ApexButton
-              as="a"
-              href={jupiterUrl}
-              target="_blank"
-              rel={EXTERNAL_ANCHOR_REL}
-              size="lg"
-              className="w-full"
-            >
-              TRADE NOW
-            </ApexButton>
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
-              <a
-                href={dexUrl}
-                target="_blank"
-                rel={EXTERNAL_ANCHOR_REL}
-                className="apex-btn-secondary"
-              >
-                DEX
-              </a>
-              <a
-                href={solscanUrl}
-                target="_blank"
-                rel={EXTERNAL_ANCHOR_REL}
-                className="apex-btn-secondary"
-              >
-                Solscan
-              </a>
-              {pumpUrl ? (
-                <a
-                  href={pumpUrl}
-                  target="_blank"
-                  rel={EXTERNAL_ANCHOR_REL}
-                  className="apex-btn-secondary"
-                >
-                  Pump
-                </a>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
-              <span className="inline-flex items-center gap-2 border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.03)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[#a3a3a3]">
-                <span className={`h-2 w-2 rounded-full ${statusTone}`} />
-                {statusLabel}
-              </span>
-              <button
-                type="button"
-                onClick={() => setSoundEnabled((v) => !v)}
-                className="apex-btn-secondary"
-                aria-pressed={soundEnabled}
-              >
-                {soundEnabled ? "Sound on" : "Sound off"}
-              </button>
-              <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
-              {proStatusReady && hasToken && hasProAccess ? (
-                <Link href="/alerts" className="apex-btn-secondary">
-                  Alerts
-                </Link>
-              ) : null}
-            </div>
-          </div>
+        </div>
+
+        <ApexButton as="a" href={jupiterUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} size="md" className="w-full">
+          TRADE NOW
+        </ApexButton>
+
+        <div className="flex flex-wrap items-stretch justify-start gap-1.5">
+          <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="apex-btn-secondary">
+            DEX
+          </a>
+          <a href={solscanUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="apex-btn-secondary">
+            Solscan
+          </a>
+          {pumpUrl ? (
+            <a href={pumpUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="apex-btn-secondary">
+              Pump
+            </a>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-[rgba(255,255,255,0.06)] pt-2">
+          <span className="inline-flex items-center gap-2 border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.03)] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-[#a3a3a3]">
+            <span className={`h-1.5 w-1.5 rounded-full ${statusTone}`} />
+            {statusLabel}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSoundEnabled((v) => !v)}
+            className="apex-btn-secondary"
+            aria-pressed={soundEnabled}
+          >
+            {soundEnabled ? "Sound on" : "Sound off"}
+          </button>
+          <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
+          {proStatusReady && hasToken && hasProAccess ? (
+            <Link href="/alerts" className="apex-btn-secondary">
+              Alerts
+            </Link>
+          ) : null}
         </div>
       </div>
     </ApexCard>
@@ -643,30 +639,35 @@ export default function TokenPage() {
         description={t("token.pageDescLive", { symbol: market.symbol })}
       />
     <div className="sl-container py-6 pb-28 lg:pb-10">
-      <TokenHeroBar
-        address={address}
-        market={market}
-        analysis={analysis}
-        terminal={token?.terminal}
-        statusTone={statusTone}
-        statusLabel={statusLabel}
-        soundEnabled={soundEnabled}
-        setSoundEnabled={setSoundEnabled}
-        isWatchlisted={isWatchlisted}
-        proStatusReady={proStatusReady}
-        hasToken={hasToken}
-        hasProAccess={hasProAccess}
-      />
-
-      <div className="mt-4 grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)] xl:gap-5">
+      <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)] xl:gap-5">
         <div className="hidden xl:block">
           <RecentTokensSidebar activeMint={address} />
         </div>
 
         <div className="space-y-6 min-w-0">
-          <section id="chart" className="scroll-mt-24">
-            <ChartPanel address={address} compact symbol={market.symbol || ""} />
-          </section>
+          {/* Mobile: title/info first, then chart. Desktop: chart left, title/info right (matches home desk layout). */}
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-stretch">
+            <section
+              id="chart"
+              className="order-2 min-w-0 w-full flex-1 scroll-mt-[calc(var(--sl-nav-actual,52px)+0.75rem)] xl:order-1"
+            >
+              <ChartPanel address={address} compact symbol={market.symbol || ""} />
+            </section>
+            <TokenMetaAside
+              address={address}
+              market={market}
+              analysis={analysis}
+              terminal={token?.terminal}
+              statusTone={statusTone}
+              statusLabel={statusLabel}
+              soundEnabled={soundEnabled}
+              setSoundEnabled={setSoundEnabled}
+              isWatchlisted={isWatchlisted}
+              proStatusReady={proStatusReady}
+              hasToken={hasToken}
+              hasProAccess={hasProAccess}
+            />
+          </div>
 
           <KeyMetricsBar market={market} naLabel={t("token.stat.na")} />
 
