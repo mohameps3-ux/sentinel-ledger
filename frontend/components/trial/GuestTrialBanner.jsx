@@ -102,7 +102,7 @@ export default function GuestTrialBanner() {
           <button
             type="button"
             onClick={() => setDismissed(true)}
-            className="font-mono text-xs text-sl-muted hover:text-slate-200
+            className="font-mono text-xs text-sl-muted hover:text-sl-sub
                        transition-colors duration-150 px-1"
             aria-label="Dismiss"
           >
