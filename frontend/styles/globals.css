@@ -6,6 +6,8 @@
 
 /* —— Design system (spacing + type + actions) —— */
 :root {
+  --current-accent: #8B5CF6;
+  --war-glow: 0 0 0 transparent;
   --sl-card-pad: 20px;
   --sl-gap: 16px;
   --sl-section: 40px;
@@ -44,7 +46,6 @@
   --sl-terminal-rail-live: rgba(16, 185, 129, 0.88);
   --sl-terminal-rail-heat: rgba(250, 204, 21, 0.9);
   --sl-status-h: 24px;
-
   /* -- Layout skeleton variables (fixed top chrome -> <main> padding) --
      Every fixed element anchored to the top of the viewport declares its
      own contribution here so the main-content padding is a simple sum.
@@ -63,6 +64,38 @@
   --sl-nav-h: 48px;
   --sl-bar-h: 0px;
   --sl-safe-gap: 8px;
+}
+
+body.war-mode-active {
+  --current-accent: #FACC15;
+  --war-glow: 0 0 15px rgba(250, 204, 21, 0.15);
+}
+
+body.war-mode-active .telemetry-strip {
+  background-color: rgba(220, 38, 38, 0.04);
+  border-color: rgba(220, 38, 38, 0.15);
+}
+
+body.war-mode-active .btn-war-active {
+  border-color: #dc2626;
+  color: #dc2626;
+  background-color: rgba(220, 38, 38, 0.08);
+}
+
+body.war-mode-active .sl-logo-radar {
+  stroke: #dc2626;
+}
+
+body.war-mode-active .sl-logo-center {
+  fill: #dc2626;
+}
+
+body.war-mode-active .live-dot {
+  animation: war-blink 0.8s ease-in-out infinite;
+}
+
+body.war-mode-active .feed-row:hover {
+  background-color: rgba(220, 38, 38, 0.04);
 }
 
 @media (max-width: 640px) {

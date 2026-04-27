@@ -28,10 +28,24 @@ export function WarModeProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem("sl-war-mode") === "1";
+    if (saved) {
+      setIsWarMode(true);
+      document.body.classList.add("war-mode-active");
+      document.documentElement.style.setProperty("--current-accent", "#FACC15");
+    }
+  }, []);
+
+  useEffect(() => {
     if (!hydrated || typeof document === "undefined") return;
-    document.body.classList.toggle("war-mode", isWarMode);
+    document.body.classList.toggle("war-mode-active", isWarMode);
+    document.documentElement.style.setProperty(
+      "--current-accent",
+      isWarMode ? "#FACC15" : "#8B5CF6"
+    );
     return () => {
-      document.body.classList.remove("war-mode");
+      document.body.classList.remove("war-mode-active");
     };
   }, [hydrated, isWarMode]);
 
@@ -41,14 +55,22 @@ export function WarModeProvider({ children }) {
   }, [hydrated, isWarMode]);
 
   const toggleWarMode = useCallback(() => {
-    setIsWarMode((prev) => {
-      const next = !prev;
-      try {
-        if (typeof window !== "undefined") window.localStorage.setItem(LS_KEY, String(next));
-      } catch (_) {}
-      return next;
-    });
-  }, []);
+    const next = !isWarMode;
+    setIsWarMode(next);
+
+    if (typeof window !== "undefined") {
+      document.body.classList.toggle("war-mode-active", next);
+      document.documentElement.style.setProperty(
+        "--current-accent",
+        next ? "#FACC15" : "#8B5CF6"
+      );
+      localStorage.setItem("sl-war-mode", next ? "1" : "0");
+      window.dispatchEvent(new CustomEvent("war-mode-change", { detail: { active: next } }));
+    }
+    try {
+      if (typeof window !== "undefined") window.localStorage.setItem(LS_KEY, String(next));
+    } catch (_) {}
+  }, [isWarMode]);
 
   const value = useMemo(
     () => ({
