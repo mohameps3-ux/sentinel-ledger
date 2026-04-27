@@ -11,9 +11,14 @@ import {
   unsubscribeWebPush
 } from "../lib/webPushClient";
 import { FinancialDisclaimer } from "../components/layout/FinancialDisclaimer";
-import { PageHead } from "../components/seo/PageHead";
 import { useLocale } from "../contexts/LocaleContext";
 import { isProbableSolanaMint } from "../lib/solanaMint.mjs";
+import {
+  InstitutionalPage,
+  InstitutionalSection,
+  InstitutionalCard,
+  InstitutionalCallout
+} from "../components/institutional";
 
 const BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "";
 
@@ -311,241 +316,237 @@ export default function ProAlertsPage() {
   const canConfigurePrefs = hasDeliveryChannel;
 
   return (
-    <>
-      <PageHead title={t("alerts.pageTitle")} description={t("alerts.pageDescription")} />
-      <div className="flex gap-4 px-4 pt-[76px] pb-4">
-        <div className="flex-1 flex flex-col gap-3 min-w-0">
-        <section className="terminal-panel p-4">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="w-11 h-11 bg-gradient-to-br from-violet-500/25 to-cyan-500/20 border border-violet-500/25 flex items-center justify-center shrink-0">
-              <Bell className="text-violet-200" size={22} />
-            </div>
-            <div>
-              <p className="sl-label mb-1">{t("alerts.proLabel")}</p>
-              <h1 className="sl-display bg-gradient-to-r from-purple-400 via-violet-300 to-cyan-300 bg-clip-text text-transparent">
-                {t("alerts.heroTitle")}
-              </h1>
-              <p className="sl-body sl-muted mt-2 max-w-2xl">{t("alerts.heroBody")}</p>
-            </div>
+    <InstitutionalPage
+      trackerLabel="ALERTS · PRO ROUTING"
+      title={t("alerts.heroTitle")}
+      subtitle={t("alerts.heroBody")}
+      pageHeadTitle={t("alerts.pageTitle")}
+      pageHeadDescription={t("alerts.pageDescription")}
+      width="wide"
+      actions={
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 bg-gradient-to-br from-violet-500/25 to-cyan-500/20 border border-violet-500/25 flex items-center justify-center">
+            <Bell className="text-violet-200" size={18} />
           </div>
-        </section>
+        </div>
+      }
+    >
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        <div className="flex-1 min-w-0 space-y-6 w-full">
+          {token && pro && priorityFeed.loaded ? (
+            <InstitutionalSection
+              trackerLabel="01 · Active feed"
+              title="Active alerts feed"
+              description={t("alerts.dispatchSubtitle")}
+            >
+              <InstitutionalCard padded={false}>
+                {!priorityFeed.items.length ? (
+                  <div className="empty-state px-4 py-10">
+                    <span className="empty-state-title">NO ALERTS CONFIGURED</span>
+                    <p className="empty-state-sub">
+                      Set your first alert below to get notified when signals match your criteria.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-3 space-y-3">
+                    {priorityFeed.items.map((row) => {
+                      const mint = row.tokenAddress;
+                      return (
+                        <div
+                          key={row.id}
+                          className={`terminal-card-interactive group px-4 py-3 ${alertTone(row.tier)} ${row.tier === "urgent" ? "animate-pulse" : ""}`}
+                          style={{ borderLeft: `3px solid ${alertAccent(row.tier)}` }}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <span className="sl-badge">{tierAbbr(row.tier)}</span>
+                            <span className="font-mono text-[11px] opacity-70">{formatDispatchTime(row.createdAt)}</span>
+                          </div>
+                          <p className="mt-2 text-sm font-semibold">{row.headline}</p>
+                          {row.detail ? <p className="mt-1 text-xs opacity-75">{row.detail}</p> : null}
+                          {mint && isProbableSolanaMint(mint) ? (
+                            <Link href={`/token/${mint}`} className="btn-ghost-sm mt-3">
+                              Open token action
+                            </Link>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="px-4 py-2 text-[9px] text-sl-muted font-mono border-t border-white/[0.05] leading-relaxed">
+                  {t("alerts.dispatchFoot")}
+                </p>
+              </InstitutionalCard>
+            </InstitutionalSection>
+          ) : null}
 
-        {token && pro && priorityFeed.loaded ? (
-          <section className="terminal-panel">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-2.5 border-b border-white/[0.06]">
-              <div>
-                <p className="text-[10px] font-semibold tracking-[0.22em] text-sl-muted uppercase">
-                  Active Alerts Feed
-                </p>
-                <p className="text-[9px] text-sl-muted font-mono mt-0.5">{t("alerts.dispatchSubtitle")}</p>
-              </div>
-            </div>
-            {!priorityFeed.items.length ? (
-              <div className="empty-state">
-                <span className="empty-state-title">NO ALERTS CONFIGURED</span>
-                <p className="empty-state-sub">
-                  Set your first alert below to get notified when signals match your criteria.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {priorityFeed.items.map((row) => {
-                  const mint = row.tokenAddress;
-                  return (
-                    <div
-                      key={row.id}
-                      className={`terminal-card-interactive group mb-2 px-4 py-3 ${alertTone(row.tier)} ${row.tier === "urgent" ? "animate-pulse" : ""}`}
-                      style={{ borderLeft: `3px solid ${alertAccent(row.tier)}` }}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <span className="sl-badge">{tierAbbr(row.tier)}</span>
-                        <span className="font-mono text-[11px] opacity-70">{formatDispatchTime(row.createdAt)}</span>
-                      </div>
-                      <p className="mt-2 text-sm font-semibold">{row.headline}</p>
-                      {row.detail ? <p className="mt-1 text-xs opacity-75">{row.detail}</p> : null}
-                      {mint && isProbableSolanaMint(mint) ? (
-                        <Link href={`/token/${mint}`} className="btn-ghost-sm mt-3">
-                          Open token action
-                        </Link>
+          <FinancialDisclaimer />
+        </div>
+
+        <div className="w-full lg:w-[340px] lg:flex-shrink-0">
+          <InstitutionalSection
+            trackerLabel="02 · Settings"
+            title="Alert settings"
+          >
+            <InstitutionalCard>
+              <div className="space-y-6">
+                {!token ? (
+                  <div className="border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 inline-flex items-start gap-2">
+                    <ShieldCheck size={18} className="shrink-0 mt-0.5" />
+                    <span>{t("alerts.signInPrompt")}</span>
+                  </div>
+                ) : null}
+
+                {token && loading ? (
+                  <div className="flex items-center gap-2 text-sl-sub">
+                    <Loader2 className="animate-spin" size={18} />
+                    {t("alerts.loading")}
+                  </div>
+                ) : null}
+
+                {token && !loading && !pro ? (
+                  <div className="border border-purple-500/25 bg-purple-500/10 px-4 py-4">
+                    <p className="text-sl-sub font-medium mb-2">{t("alerts.upgradeTitle")}</p>
+                    <p className="text-sm text-sl-sub mb-4">{t("alerts.upgradeBody")}</p>
+                    <Link href="/pricing" className="btn-ghost-sm">
+                      {t("alerts.viewPricing")}
+                    </Link>
+                  </div>
+                ) : null}
+
+                {token && !loading && pro ? (
+                  <>
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-sl-text">{t("alerts.step1Title")}</p>
+                      {!BOT ? (
+                        <p className="text-sm text-amber-200 leading-relaxed">
+                          {t("alerts.botEnvHint")}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-sl-sub">{t("alerts.widgetHint")}</p>
+                      )}
+                      <div id="tg-login-widget" className="min-h-[44px]" />
+                      {settings.linked ? (
+                        <p className="text-xs text-emerald-300">
+                          {t("alerts.linkedPrefix")}
+                          {settings.chatHint ? ` (${settings.chatHint})` : ""}
+                        </p>
                       ) : null}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-            <p className="px-4 py-2 text-[9px] text-sl-muted font-mono border-t border-white/[0.05] leading-relaxed">
-              {t("alerts.dispatchFoot")}
-            </p>
-          </section>
-        ) : null}
 
-        <section className="mt-10 pb-4 border-t border-gray-800/80 pt-8">
-          <FinancialDisclaimer />
-        </section>
-        </div>
+                    {isWebPushEnvironmentSupported() ? (
+                      <div className="space-y-2 border-t border-sl-border pt-6">
+                        <p className="text-sm font-semibold text-sl-text">{t("alerts.browserSectionTitle")}</p>
+                        <p className="text-xs text-sl-muted">{t("alerts.browserSectionBody")}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {!thisBrowserSubscribed ? (
+                            <button
+                              type="button"
+                              disabled={pushUiBusy}
+                              onClick={onEnableBrowserPush}
+                              className="btn-ghost-sm disabled:opacity-50"
+                            >
+                              {pushUiBusy ? t("alerts.saving") : t("alerts.enableBrowserPush")}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={pushUiBusy}
+                              onClick={onDisableBrowserPush}
+                              className="btn-ghost-sm disabled:opacity-50"
+                            >
+                              {pushUiBusy ? t("alerts.saving") : t("alerts.disableBrowserPush")}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
 
-        <div className="w-[320px] flex-shrink-0 hidden lg:block">
-        <section className="terminal-panel p-4">
-          <div className="panel-header mb-4">
-            <span className="section-title">ALERT SETTINGS</span>
-          </div>
-          <div className="space-y-6">
-            {!token ? (
-              <div className="border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 inline-flex items-start gap-2">
-                <ShieldCheck size={18} className="shrink-0 mt-0.5" />
-                <span>{t("alerts.signInPrompt")}</span>
-              </div>
-            ) : null}
-
-            {token && loading ? (
-              <div className="flex items-center gap-2 text-sl-sub">
-                <Loader2 className="animate-spin" size={18} />
-                {t("alerts.loading")}
-              </div>
-            ) : null}
-
-            {token && !loading && !pro ? (
-              <div className="border border-purple-500/25 bg-purple-500/10 px-4 py-4">
-                <p className="text-sl-sub font-medium mb-2">{t("alerts.upgradeTitle")}</p>
-                <p className="text-sm text-sl-sub mb-4">{t("alerts.upgradeBody")}</p>
-                <Link href="/pricing" className="btn-ghost-sm">
-                  {t("alerts.viewPricing")}
-                </Link>
-              </div>
-            ) : null}
-
-            {token && !loading && pro ? (
-              <>
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold text-sl-text">{t("alerts.step1Title")}</p>
-                  {!BOT ? (
-                    <p className="text-sm text-amber-200 leading-relaxed">
-                      {t("alerts.botEnvHint")}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-sl-sub">{t("alerts.widgetHint")}</p>
-                  )}
-                  <div id="tg-login-widget" className="min-h-[44px]" />
-                  {settings.linked ? (
-                    <p className="text-xs text-emerald-300">
-                      {t("alerts.linkedPrefix")}
-                      {settings.chatHint ? ` (${settings.chatHint})` : ""}
-                    </p>
-                  ) : null}
-                </div>
-
-                {isWebPushEnvironmentSupported() ? (
-                  <div className="space-y-2 border-t border-sl-border pt-6">
-                    <p className="text-sm font-semibold text-sl-text">{t("alerts.browserSectionTitle")}</p>
-                    <p className="text-xs text-sl-muted">{t("alerts.browserSectionBody")}</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {!thisBrowserSubscribed ? (
-                        <button
-                          type="button"
-                          disabled={pushUiBusy}
-                          onClick={onEnableBrowserPush}
-                          className="btn-ghost-sm disabled:opacity-50"
-                        >
-                          {pushUiBusy ? t("alerts.saving") : t("alerts.enableBrowserPush")}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={pushUiBusy}
-                          onClick={onDisableBrowserPush}
-                          className="btn-ghost-sm disabled:opacity-50"
-                        >
-                          {pushUiBusy ? t("alerts.saving") : t("alerts.disableBrowserPush")}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="flex flex-wrap items-center gap-3 border-t border-sl-border pt-6">
-                  <p className="text-sm font-semibold text-sl-text w-full sm:w-auto">{t("alerts.step2Title")}</p>
-                  <button
-                    type="button"
-                    disabled={!hasDeliveryChannel || toggling}
-                    onClick={toggleEnabled}
-                    className={`btn-ghost-sm ${
-                      settings.enabled
-                        ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
-                        : "border-white/15 bg-white/5 text-sl-sub"
-                    } disabled:opacity-40`}
-                  >
-                    {toggling ? t("alerts.saving") : settings.enabled ? t("alerts.alertsOnBtn") : t("alerts.alertsOffBtn")}
-                  </button>
-                  {!hasDeliveryChannel ? <span className="text-xs text-sl-muted">{t("alerts.deliveryOrBrowser")}</span> : null}
-                </div>
-
-                {canConfigurePrefs ? (
-                  <div className="space-y-3 border-t border-sl-border pt-6">
-                    <p className="text-sm font-semibold text-sl-text">{t("alerts.step3Title")}</p>
-                    <p className="text-xs text-sl-muted">{t("alerts.sensitivityHelp")}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <label className="block text-xs text-sl-sub">
-                        {t("alerts.labelStrategy")}
-                        <select
-                          value={p.strategy}
-                          onChange={(e) => setPref("strategy", e.target.value)}
-                          className="mt-1 w-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-sl-text"
-                        >
-                          {settings.strategies.map((s) => (
-                            <option key={s} value={s}>
-                              {t(`alerts.strategy.${s}`)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="block text-xs text-sl-sub">
-                        {t("alerts.labelDirection")}
-                        <select
-                          value={p.direction}
-                          onChange={(e) => setPref("direction", e.target.value)}
-                          className="mt-1 w-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-sl-text"
-                        >
-                          <option value="any">{t("alerts.directionAny")}</option>
-                          <option value="up">{t("alerts.directionUp")}</option>
-                          <option value="down">{t("alerts.directionDown")}</option>
-                        </select>
-                      </label>
-                    </div>
-                    <label className="flex items-start gap-2 text-xs text-sl-sub">
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 border-white/20"
-                        checked={Boolean(p.tacticalRegime)}
-                        onChange={(e) => setPref("tacticalRegime", e.target.checked)}
-                      />
-                      <span>
-                        <span className="block text-sl-sub font-medium">{t("alerts.tacticalRegimeLabel")}</span>
-                        <span className="block text-sl-muted mt-0.5">{t("alerts.tacticalRegimeHelp")}</span>
-                      </span>
-                    </label>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-sl-sub">
-                      <span>
-                        {t("alerts.resolvedLine", { minMovePct: p.minMovePct, dedupHours: p.dedupHours })}
-                      </span>
+                    <div className="flex flex-wrap items-center gap-3 border-t border-sl-border pt-6">
+                      <p className="text-sm font-semibold text-sl-text w-full sm:w-auto">{t("alerts.step2Title")}</p>
                       <button
                         type="button"
-                        onClick={saveSensitivity}
-                        disabled={savingPrefs}
-                        className="btn-ghost-sm disabled:opacity-50"
+                        disabled={!hasDeliveryChannel || toggling}
+                        onClick={toggleEnabled}
+                        className={`btn-ghost-sm ${
+                          settings.enabled
+                            ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
+                            : "border-white/15 bg-white/5 text-sl-sub"
+                        } disabled:opacity-40`}
                       >
-                        {savingPrefs ? t("alerts.saving") : t("alerts.saveRules")}
+                        {toggling ? t("alerts.saving") : settings.enabled ? t("alerts.alertsOnBtn") : t("alerts.alertsOffBtn")}
                       </button>
+                      {!hasDeliveryChannel ? <span className="text-xs text-sl-muted">{t("alerts.deliveryOrBrowser")}</span> : null}
                     </div>
-                  </div>
-                ) : null}
 
-                <p className="text-xs text-sl-muted">{t("alerts.footerHint")}</p>
-              </>
-            ) : null}
-          </div>
-        </section>
+                    {canConfigurePrefs ? (
+                      <div className="space-y-3 border-t border-sl-border pt-6">
+                        <p className="text-sm font-semibold text-sl-text">{t("alerts.step3Title")}</p>
+                        <p className="text-xs text-sl-muted">{t("alerts.sensitivityHelp")}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <label className="block text-xs text-sl-sub">
+                            {t("alerts.labelStrategy")}
+                            <select
+                              value={p.strategy}
+                              onChange={(e) => setPref("strategy", e.target.value)}
+                              className="mt-1 w-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-sl-text"
+                            >
+                              {settings.strategies.map((s) => (
+                                <option key={s} value={s}>
+                                  {t(`alerts.strategy.${s}`)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="block text-xs text-sl-sub">
+                            {t("alerts.labelDirection")}
+                            <select
+                              value={p.direction}
+                              onChange={(e) => setPref("direction", e.target.value)}
+                              className="mt-1 w-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-sl-text"
+                            >
+                              <option value="any">{t("alerts.directionAny")}</option>
+                              <option value="up">{t("alerts.directionUp")}</option>
+                              <option value="down">{t("alerts.directionDown")}</option>
+                            </select>
+                          </label>
+                        </div>
+                        <label className="flex items-start gap-2 text-xs text-sl-sub">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 border-white/20"
+                            checked={Boolean(p.tacticalRegime)}
+                            onChange={(e) => setPref("tacticalRegime", e.target.checked)}
+                          />
+                          <span>
+                            <span className="block text-sl-sub font-medium">{t("alerts.tacticalRegimeLabel")}</span>
+                            <span className="block text-sl-muted mt-0.5">{t("alerts.tacticalRegimeHelp")}</span>
+                          </span>
+                        </label>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-sl-sub">
+                          <span>
+                            {t("alerts.resolvedLine", { minMovePct: p.minMovePct, dedupHours: p.dedupHours })}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={saveSensitivity}
+                            disabled={savingPrefs}
+                            className="btn-ghost-sm disabled:opacity-50"
+                          >
+                            {savingPrefs ? t("alerts.saving") : t("alerts.saveRules")}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <p className="text-xs text-sl-muted">{t("alerts.footerHint")}</p>
+                  </>
+                ) : null}
+              </div>
+            </InstitutionalCard>
+          </InstitutionalSection>
         </div>
       </div>
-    </>
+    </InstitutionalPage>
   );
 }

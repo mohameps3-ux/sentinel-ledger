@@ -2,9 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useClientAuthToken } from "../hooks/useClientAuthToken";
-import { PageHead } from "../components/seo/PageHead";
 import { useLocale } from "../contexts/LocaleContext";
 import { TerminalActionIcons } from "../components/terminal/TerminalActionIcons";
+import {
+  InstitutionalPage,
+  InstitutionalSection,
+  InstitutionalCard
+} from "../components/institutional";
 
 function readLocalWatchlist() {
   try {
@@ -56,26 +60,28 @@ export default function WatchlistPage() {
   const list = useMemo(() => rows.slice(0, 80), [rows]);
 
   return (
-    <>
-      <PageHead title={t("watchlist.pageTitle")} description={t("watchlist.pageDesc")} />
-      <div className="sl-container py-10 space-y-6">
-        <section className="terminal-panel px-6 py-4 mb-4">
-          <span className="section-title">WATCHLIST</span>
-          <h1 className="font-display text-xl font-bold text-sl-text mt-1">
-            Your Tokens
-          </h1>
-          <p className="font-ui text-sm text-sl-muted mt-1">{token ? t("watchlist.subLive") : t("watchlist.subLocal")}</p>
-        </section>
-
-        <section className="terminal-panel">
-          <div className="panel-header">
-            <span className="section-title">TRACKED TOKENS</span>
-            <button type="button" className="btn-ghost-sm">EXPORT</button>
-          </div>
-          {loading ? <p className="text-sm text-sl-sub">{t("watchlist.loading")}</p> : null}
-          {!loading && error ? <p className="text-sm text-red-300">{t("watchlist.error", { err: error })}</p> : null}
+    <InstitutionalPage
+      trackerLabel="WATCHLIST · TRACKED"
+      title="Your Tokens"
+      subtitle={token ? t("watchlist.subLive") : t("watchlist.subLocal")}
+      pageHeadTitle={t("watchlist.pageTitle")}
+      pageHeadDescription={t("watchlist.pageDesc")}
+      width="wide"
+    >
+      <InstitutionalSection
+        trackerLabel="01 · Tracked tokens"
+        title="Tokens under observation"
+        actions={<button type="button" className="btn-ghost-sm">EXPORT</button>}
+      >
+        <InstitutionalCard padded={false}>
+          {loading ? (
+            <p className="text-sm text-sl-sub px-4 py-6">{t("watchlist.loading")}</p>
+          ) : null}
+          {!loading && error ? (
+            <p className="text-sm text-red-300 px-4 py-6">{t("watchlist.error", { err: error })}</p>
+          ) : null}
           {!loading && !error && !list.length ? (
-            <div className="empty-state">
+            <div className="empty-state px-4 py-10">
               <span className="empty-state-title">WATCHLIST EMPTY</span>
               <p className="empty-state-sub">
                 Start scanning tokens to add them to your watchlist.
@@ -122,8 +128,8 @@ export default function WatchlistPage() {
               </table>
             </div>
           ) : null}
-        </section>
-      </div>
-    </>
+        </InstitutionalCard>
+      </InstitutionalSection>
+    </InstitutionalPage>
   );
 }

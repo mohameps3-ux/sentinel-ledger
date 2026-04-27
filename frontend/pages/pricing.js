@@ -4,8 +4,13 @@ import toast from "react-hot-toast";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useClientAuthToken } from "../hooks/useClientAuthToken";
 import { FinancialDisclaimer } from "../components/layout/FinancialDisclaimer";
-import { PageHead } from "../components/seo/PageHead";
 import { useLocale } from "../contexts/LocaleContext";
+import {
+  InstitutionalPage,
+  InstitutionalSection,
+  InstitutionalCard,
+  InstitutionalCallout
+} from "../components/institutional";
 
 function Cell({ v, ariaIncluded, ariaNotIncluded }) {
   if (v === true) return <span className="text-sl-green font-bold" aria-label={ariaIncluded}>✓</span>;
@@ -173,111 +178,114 @@ export default function PricingPage() {
   };
 
   return (
-    <>
-      <PageHead title={t("pricing.pageTitle")} description={t("pricing.pageDesc")} />
-      <div className="sl-container py-8 sm:py-10 md:py-14 max-w-full space-y-8">
-        <section className="px-6 py-8 text-center mb-8">
-          <span className="section-title">PRICING</span>
-          <h1 className="font-display text-3xl font-bold text-sl-text mt-2">
-            Choose Your Intelligence Level
-          </h1>
-          <p className="font-ui text-sm text-sl-muted mt-2 max-w-md mx-auto">
-            Professional Solana trading intelligence. Cancel anytime.
-          </p>
-        </section>
+    <InstitutionalPage
+      trackerLabel="PRICING · ACCESS TIERS"
+      title="Choose Your Intelligence Level"
+      subtitle="Professional Solana trading intelligence. Cancel anytime."
+      pageHeadTitle={t("pricing.pageTitle")}
+      pageHeadDescription={t("pricing.pageDesc")}
+      width="wide"
+    >
+      {mounted && !canCheckout ? (
+        <InstitutionalCallout tone="warn" title={t("pricing.walletBannerTitle")}>
+          {t("pricing.walletBannerBody")}
+        </InstitutionalCallout>
+      ) : null}
 
-        {mounted && !canCheckout ? (
-          <div
-            className="border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
-            role="status"
-          >
-            <strong className="text-amber-50">{t("pricing.walletBannerTitle")}</strong> {t("pricing.walletBannerBody")}
-          </div>
-        ) : null}
-
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto px-4">
+      <InstitutionalSection
+        trackerLabel="01 · Plans"
+        title="Subscription tiers"
+        description="All plans include real-time signals, smart-wallet tracking, and priority support."
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {plans.map((plan, idx) => {
             const isPrimary = Boolean(plan.highlight);
             const ctaClass = idx === 0 ? "btn-ghost mt-auto w-full" : isPrimary ? "btn-primary mt-auto w-full" : "btn-outline mt-auto w-full";
             return (
-            <div
-              key={plan.id}
-              className={`terminal-panel p-6 flex flex-col gap-4 relative overflow-hidden ${
-                isPrimary ? "border-sl-violet border" : ""
-              }`}
-            >
-              {isPrimary ? (
-                <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400" />
-              ) : null}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="section-title">{plan.title}</span>
-                  {isPrimary ? <span className="badge-pro">POPULAR</span> : null}
-                </div>
-                <span className="font-display text-3xl font-bold text-sl-text">{plan.priceLine}</span>
-                <p className="font-mono text-2xs text-sl-muted mb-6 mt-2">{plan.blurb}</p>
-              </div>
-              <ul className="text-sm text-sl-sub space-y-1.5 flex-1">
-                {plan.points.map((point) => (
-                  <li key={point} className="flex gap-2">
-                    <span className="text-sl-green font-bold shrink-0 mt-0.5">✓</span>
-                    <span>{point}</span>
-                  </li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                onClick={() => startCheckout(plan.id)}
-                disabled={!mounted || loadingPlan === plan.id || !canCheckout}
-                title={!canCheckout ? t("pricing.btn.checkoutTitle") : undefined}
-                className={`${ctaClass} justify-center disabled:opacity-40 disabled:cursor-not-allowed`}
+              <div
+                key={plan.id}
+                className={`terminal-panel p-6 flex flex-col gap-4 relative overflow-hidden ${
+                  isPrimary ? "border-sl-violet border" : ""
+                }`}
               >
-                {loadingPlan === plan.id ? t("pricing.btn.redirecting") : t("pricing.btn.checkout")}
-              </button>
-            </div>
-          );})}
-        </section>
+                {isPrimary ? (
+                  <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400" />
+                ) : null}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="section-title">{plan.title}</span>
+                    {isPrimary ? <span className="badge-pro">POPULAR</span> : null}
+                  </div>
+                  <span className="font-display text-3xl font-bold text-sl-text">{plan.priceLine}</span>
+                  <p className="font-mono text-2xs text-sl-muted mb-6 mt-2">{plan.blurb}</p>
+                </div>
+                <ul className="text-sm text-sl-sub space-y-1.5 flex-1">
+                  {plan.points.map((point) => (
+                    <li key={point} className="flex gap-2">
+                      <span className="text-sl-green font-bold shrink-0 mt-0.5">✓</span>
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => startCheckout(plan.id)}
+                  disabled={!mounted || loadingPlan === plan.id || !canCheckout}
+                  title={!canCheckout ? t("pricing.btn.checkoutTitle") : undefined}
+                  className={`${ctaClass} justify-center disabled:opacity-40 disabled:cursor-not-allowed`}
+                >
+                  {loadingPlan === plan.id ? t("pricing.btn.redirecting") : t("pricing.btn.checkout")}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </InstitutionalSection>
 
-        <section className="terminal-panel max-w-5xl mx-auto mt-8 mx-4 overflow-x-auto">
-          <div className="panel-header">
-            <span className="section-title">FEATURE COMPARISON</span>
-          </div>
-          <table className="data-table min-w-[640px]">
-            <thead>
-              <tr>
-                <th className="data-th">{t("pricing.matrix.th.cap")}</th>
-                <th className="data-th text-center">{t("pricing.matrix.th.pro")}</th>
-                <th className="data-th text-center">{t("pricing.matrix.th.super")}</th>
-                <th className="data-th text-center">{t("pricing.matrix.th.life")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {featureRows.map((row) => (
-                <tr key={row.feature} className="feed-row">
-                  <td className="data-td">{row.feature}</td>
-                  <td className="data-td text-center">
-                    <Cell v={row.pro} ariaIncluded={t("pricing.aria.included")} ariaNotIncluded={t("pricing.aria.notIncluded")} />
-                  </td>
-                  <td className="data-td text-center">
-                    <Cell v={row.superPro} ariaIncluded={t("pricing.aria.included")} ariaNotIncluded={t("pricing.aria.notIncluded")} />
-                  </td>
-                  <td className="data-td text-center">
-                    <Cell v={row.lifetime} ariaIncluded={t("pricing.aria.included")} ariaNotIncluded={t("pricing.aria.notIncluded")} />
-                  </td>
+      <InstitutionalSection
+        trackerLabel="02 · Comparison"
+        title="Feature matrix"
+        description="Capabilities by plan. Hover the headers to inspect aria labels."
+      >
+        <InstitutionalCard padded={false}>
+          <div className="overflow-x-auto">
+            <table className="data-table min-w-[640px]">
+              <thead>
+                <tr>
+                  <th className="data-th">{t("pricing.matrix.th.cap")}</th>
+                  <th className="data-th text-center">{t("pricing.matrix.th.pro")}</th>
+                  <th className="data-th text-center">{t("pricing.matrix.th.super")}</th>
+                  <th className="data-th text-center">{t("pricing.matrix.th.life")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+              </thead>
+              <tbody>
+                {featureRows.map((row) => (
+                  <tr key={row.feature} className="feed-row">
+                    <td className="data-td">{row.feature}</td>
+                    <td className="data-td text-center">
+                      <Cell v={row.pro} ariaIncluded={t("pricing.aria.included")} ariaNotIncluded={t("pricing.aria.notIncluded")} />
+                    </td>
+                    <td className="data-td text-center">
+                      <Cell v={row.superPro} ariaIncluded={t("pricing.aria.included")} ariaNotIncluded={t("pricing.aria.notIncluded")} />
+                    </td>
+                    <td className="data-td text-center">
+                      <Cell v={row.lifetime} ariaIncluded={t("pricing.aria.included")} ariaNotIncluded={t("pricing.aria.notIncluded")} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </InstitutionalCard>
+        <p className="text-xs text-sl-muted mt-3">{t("pricing.footnote")}</p>
+      </InstitutionalSection>
 
-        <p className="text-xs text-sl-muted">{t("pricing.footnote")}</p>
-
-        {mounted && canCheckout ? (
-          <div className="terminal-panel px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-sl-text">{t("pricing.portal.title")}</p>
-              <p className="text-xs text-sl-sub mt-1">{t("pricing.portal.sub")}</p>
-            </div>
+      {mounted && canCheckout ? (
+        <InstitutionalSection
+          trackerLabel="03 · Manage subscription"
+          title={t("pricing.portal.title")}
+          description={t("pricing.portal.sub")}
+          actions={
             <button
               type="button"
               onClick={openBillingPortal}
@@ -286,13 +294,17 @@ export default function PricingPage() {
             >
               {portalLoading ? t("pricing.portal.opening") : t("pricing.portal.btn")}
             </button>
-          </div>
-        ) : null}
+          }
+        >
+          <InstitutionalCard tone="accent">
+            <p className="text-sm text-sl-sub">
+              Open the Stripe billing portal to update payment methods, download invoices, or cancel your plan.
+            </p>
+          </InstitutionalCard>
+        </InstitutionalSection>
+      ) : null}
 
-        <section className="pb-4 border-t border-gray-800/80 pt-8">
-          <FinancialDisclaimer />
-        </section>
-      </div>
-    </>
+      <FinancialDisclaimer />
+    </InstitutionalPage>
   );
 }
