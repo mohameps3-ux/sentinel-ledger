@@ -1,115 +1,165 @@
 {
-  "no_signals": {
-    "keywords": [
+  "GREETING": {
+    "intent_id": "GREETING",
+    "core_tokens": ["hola", "hello", "hi", "hey", "buenas", "saludos"],
+    "noise_tokens": ["que", "tal", "como", "estas"],
+    "phrases": ["buenos dias", "buenas tardes", "buenas noches"],
+    "response_template": "Hola. Soy el asistente de Sentinel Ledger. Puedo ayudarte con señales, wallets, score, Telegram, planes PRO y más. ¿Qué necesitas?",
+    "confidence": 1.0,
+    "version": "2.0"
+  },
+  "SIGNALS_MISSING": {
+    "intent_id": "SIGNALS_MISSING",
+    "core_tokens": ["signal", "señal", "senales", "trade", "feed", "vacio", "actividad", "missing"],
+    "noise_tokens": ["no", "hay", "veo", "me", "salen", "sin", "por", "que"],
+    "phrases": [
       "no veo señales",
-      "no veo senales",
       "no hay señales",
-      "no hay senales",
       "sin señales",
-      "sin senales",
-      "signals empty",
-      "no signals"
+      "no me salen",
+      "feed vacio",
+      "no hay trades",
+      "no veo nada"
     ],
-    "answer": "El motor está calibrándose. El gate requiere mínimo de confianza para emitir señales. Con más datos históricos (2-3 semanas) las señales aumentarán. Estado actual visible en /ops."
+    "response_template": "El motor está calibrándose. Gate actual: {emit_rate} de señales emitidas. Con más datos históricos (2-3 semanas) las señales aumentarán. Estado en /ops.",
+    "confidence": 0.9,
+    "version": "2.0"
   },
-  "wallet_connect": {
-    "keywords": [
-      "como conecto",
-      "como conectar",
-      "conectar wallet",
-      "wallet no conecta",
-      "connect wallet",
-      "phantom",
-      "solflare",
-      "seleccionar wallet",
-      "select wallet",
-      "mi wallet"
-    ],
-    "answer": "Para conectar tu wallet: 1) Instala Phantom o Solflare. 2) Haz clic en Select Wallet en el navbar. 3) Aprueba la conexión. Si hay error, recarga la página e inténtalo de nuevo."
-  },
-  "what_is_score": {
-    "keywords": [
-      "qué es el score",
+  "SCORE_EXPLANATION": {
+    "intent_id": "SCORE_EXPLANATION",
+    "core_tokens": ["score", "puntuacion", "sentinel", "valor", "significado"],
+    "noise_tokens": ["que", "es", "como", "funciona", "el", "la", "un"],
+    "phrases": [
       "que es el score",
-      "what is score",
-      "score significa",
-      "puntuación",
-      "puntuacion",
-      "sentinel score"
+      "como funciona el score",
+      "sentinel score",
+      "que significa el score"
     ],
-    "answer": "El Sentinel Score (0-100) combina 3 dimensiones: Risk (riesgo del token), Smart Money (actividad de wallets inteligentes) y Momentum (fuerza del movimiento). Score mayor de 60 indica señal fuerte."
+    "response_template": "El Sentinel Score (0-100) combina: Risk (riesgo del token), Smart Money (wallets inteligentes activas) y Momentum (fuerza del movimiento). Score mayor de 60 indica señal fuerte.",
+    "confidence": 0.9,
+    "version": "2.0"
   },
-  "pro_plan": {
-    "keywords": [
-      "pro",
-      "suscripcion",
-      "suscripción",
-      "pagar",
-      "precio plan",
-      "upgrade",
-      "lifetime"
+  "WALLET_CONNECT": {
+    "intent_id": "WALLET_CONNECT",
+    "core_tokens": ["wallet", "phantom", "solflare", "conectar", "connect", "conexion"],
+    "noise_tokens": ["como", "mi", "la", "el", "un", "se"],
+    "phrases": [
+      "conectar wallet",
+      "como conecto",
+      "wallet no conecta",
+      "seleccionar wallet",
+      "connect wallet",
+      "mi wallet no"
     ],
-    "answer": "Los planes PRO están en /pricing. PRO $19/mes incluye alertas en tiempo real y señales prioritarias. LIFETIME $199 pago único. Activa PRO desde el botón en el navbar."
+    "response_template": "Para conectar tu wallet: 1) Instala Phantom o Solflare. 2) Clic en Select Wallet en el navbar. 3) Aprueba la conexión. Si hay error, recarga la página.",
+    "confidence": 0.9,
+    "version": "2.0"
   },
-  "war_mode": {
-    "keywords": [
-      "war mode",
-      "modo guerra",
-      "war button",
-      "war activo"
+  "PRO_PLAN": {
+    "intent_id": "PRO_PLAN",
+    "core_tokens": ["pro", "suscripcion", "pagar", "upgrade", "lifetime", "plan", "premium"],
+    "noise_tokens": ["como", "el", "la", "un", "que", "activar"],
+    "phrases": [
+      "plan pro",
+      "activar pro",
+      "precio pro",
+      "upgrade pro",
+      "suscripcion pro",
+      "cuanto cuesta"
     ],
-    "answer": "WAR mode aumenta la frecuencia de actualización del feed para mercados volátiles. Actívalo con el botón WAR en el navbar cuando quieras monitoreo más intensivo."
+    "response_template": "Planes en /pricing: PRO $19/mes (alertas tiempo real, señales prioritarias). LIFETIME $199 pago único. Activa PRO desde el navbar.",
+    "confidence": 0.9,
+    "version": "2.0"
   },
-  "track_record": {
-    "keywords": [
-      "track record",
-      "historial",
-      "señales pasadas",
-      "senales pasadas",
-      "resultados",
-      "graveyard"
-    ],
-    "answer": "El Verified Track Record en /graveyard muestra todas las señales históricas con resultados reales. El Oracle valida cada señal a los 5, 15 y 60 minutos automáticamente."
-  },
-  "smart_money": {
-    "keywords": [
-      "smart money",
-      "wallet inteligente",
-      "smart wallet",
-      "que wallet seguir",
-      "qué wallet seguir"
-    ],
-    "answer": "Las Smart Wallets son traders con win rate superior al 65% verificado on-chain. Puedes ver el leaderboard completo en /smart-money y seguir sus movimientos en tiempo real."
-  },
-  "telegram_alerts": {
-    "keywords": [
-      "telegram",
+  "TELEGRAM_BOT": {
+    "intent_id": "TELEGRAM_BOT",
+    "core_tokens": ["telegram", "notificaciones", "alertas", "bot", "aviso"],
+    "noise_tokens": ["como", "el", "la", "un", "que", "activar", "donde"],
+    "phrases": [
       "alertas telegram",
-      "notificaciones",
-      "bot telegram"
+      "bot telegram",
+      "activar telegram",
+      "notificaciones telegram",
+      "como activo telegram"
     ],
-    "answer": "Para activar alertas en Telegram: 1) Busca @sentinelledger_intel_bot en Telegram. 2) Escribe /start. 3) Usa /signal TOKEN para señales o /price TOKEN para precios en tiempo real."
+    "response_template": "Bot Telegram: @sentinelledger_intel_bot. Comandos: /start, /price TOKEN, /signal TOKEN, /wallet DIRECCIÓN.",
+    "confidence": 0.9,
+    "version": "2.0"
   },
-  "oracle": {
-    "keywords": [
-      "oracle",
-      "validacion",
-      "validación",
+  "TRACK_RECORD": {
+    "intent_id": "TRACK_RECORD",
+    "core_tokens": ["track", "record", "historial", "resultados", "graveyard", "aciertos", "errores"],
+    "noise_tokens": ["como", "el", "la", "un", "ver", "donde"],
+    "phrases": [
+      "track record",
+      "historial de señales",
+      "señales pasadas",
+      "resultados pasados",
+      "ver historial"
+    ],
+    "response_template": "Verified Track Record en /graveyard: todas las señales con resultados reales. Oracle valida cada señal a los 5, 15 y 60 minutos.",
+    "confidence": 0.9,
+    "version": "2.0"
+  },
+  "SMART_MONEY": {
+    "intent_id": "SMART_MONEY",
+    "core_tokens": ["smart", "money", "wallets", "inteligente", "leaderboard", "traders", "mejores"],
+    "noise_tokens": ["como", "el", "la", "un", "ver", "donde", "que"],
+    "phrases": [
+      "smart money",
+      "wallets inteligentes",
+      "mejores wallets",
+      "top wallets",
+      "que wallets seguir"
+    ],
+    "response_template": "Smart Wallets: traders con win rate mayor 65% verificado on-chain. Leaderboard en /smart-money. {wallet_count} wallets monitoreadas actualmente.",
+    "confidence": 0.9,
+    "version": "2.0"
+  },
+  "WAR_MODE": {
+    "intent_id": "WAR_MODE",
+    "core_tokens": ["war", "mode", "modo", "guerra", "volatil", "volatilidad"],
+    "noise_tokens": ["como", "el", "la", "un", "activar", "que", "es"],
+    "phrases": ["war mode", "modo guerra", "activar war", "boton war", "que es war"],
+    "response_template": "WAR mode aumenta frecuencia de actualización del feed para mercados volátiles. Actívalo con el botón WAR en el navbar.",
+    "confidence": 0.9,
+    "version": "2.0"
+  },
+  "ORACLE": {
+    "intent_id": "ORACLE",
+    "core_tokens": ["oracle", "validacion", "precision", "acierto", "verifica"],
+    "noise_tokens": ["como", "el", "la", "un", "que", "funciona"],
+    "phrases": [
+      "validation oracle",
       "como valida",
-      "cómo valida",
-      "como funciona",
-      "cómo funciona"
+      "como funciona el oracle",
+      "que es el oracle"
     ],
-    "answer": "El Sentinel Oracle valida cada señal automáticamente a los 5, 15 y 60 minutos después de emitirse. Mide si el precio subió más del 5% en ese tiempo. Los resultados se acumulan para mejorar el sistema."
+    "response_template": "El Sentinel Oracle valida cada señal a los 5, 15 y 60 minutos. Win = precio subió más del 5%. Resultados acumulados mejoran el sistema automáticamente.",
+    "confidence": 0.9,
+    "version": "2.0"
   },
-  "auto_discovery": {
-    "keywords": [
+  "AUTO_DISCOVERY": {
+    "intent_id": "AUTO_DISCOVERY",
+    "core_tokens": ["discovery", "descubrimiento", "nuevas", "wallets", "encuentra", "descubre", "auto"],
+    "noise_tokens": ["como", "el", "la", "un", "que", "hace"],
+    "phrases": [
       "auto discovery",
-      "nuevas wallets",
       "como encuentra wallets",
-      "cómo encuentra wallets",
-      "descubre wallets"
+      "descubre wallets",
+      "encuentra wallets nuevas"
     ],
-    "answer": "El Auto-Discovery analiza automáticamente qué wallets compraron antes de cada señal exitosa. Las mejores son promovidas al leaderboard cada 6 horas tras superar filtros anti-bot y mínimo 10 trades cerrados."
+    "response_template": "Auto-Discovery analiza wallets que compraron antes de señales exitosas. Las mejores se promocionan al leaderboard cada 6 horas tras filtros anti-bot.",
+    "confidence": 0.9,
+    "version": "2.0"
+  },
+  "SOLANA_GENERAL": {
+    "intent_id": "SOLANA_GENERAL",
+    "core_tokens": ["solana", "sol", "blockchain", "defi", "pump", "raydium", "jupiter", "dex", "swap", "cripto", "crypto"],
+    "noise_tokens": ["como", "el", "la", "un", "que", "es", "funciona"],
+    "phrases": ["pump fun", "pump.fun", "solana blockchain", "cadena solana", "red solana"],
+    "response_template": "Sentinel Ledger monitorea Solana en tiempo real. Detecta movimientos de smart wallets en Pump.fun, Raydium y Jupiter. Actualmente {signal_count} señales activas.",
+    "confidence": 0.7,
+    "version": "2.0"
   }
 }

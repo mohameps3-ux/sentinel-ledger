@@ -4,6 +4,51 @@ const crypto = require("crypto");
 const { getSupabase } = require("../lib/supabase");
 const supportTree = require("../data/support-tree.json");
 
+// ── GLOBAL NOISE WORDS ───────────────────────────────────────
+const GLOBAL_NOISE = new Set([
+  "el",
+  "la",
+  "los",
+  "las",
+  "un",
+  "una",
+  "unos",
+  "unas",
+  "de",
+  "del",
+  "en",
+  "con",
+  "por",
+  "para",
+  "que",
+  "es",
+  "son",
+  "hay",
+  "como",
+  "donde",
+  "cuando",
+  "cual",
+  "me",
+  "te",
+  "se",
+  "nos",
+  "le",
+  "lo",
+  "al",
+  "yo",
+  "tu",
+  "si",
+  "no",
+  "mi",
+  "su",
+  "mas",
+  "pero",
+  "y",
+  "o",
+  "a",
+  "e"
+]);
+
 function safeSupabase() {
   try {
     return getSupabase();
@@ -12,74 +57,84 @@ function safeSupabase() {
   }
 }
 
-/** Lowercase + strip combining marks for es/en keyword matching. */
-function stripDiacritics(s) {
-  return String(s || "")
+// ── NORMALIZER (Unicode letter/number; preserves ñ, ä, etc.) ─
+function normalize(text) {
+  return String(text || "")
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}\s]+/gu, " ")
+    .trim();
 }
 
-/** Also fold ñ/ü so “senales” matches “señales”-style keywords after accent strip. */
-function normalizeForKeywordMatch(s) {
-  return stripDiacritics(s).replace(/ñ/g, "n").replace(/ü/g, "u");
+function extractTokens(text, filterNoise = true) {
+  return normalize(text)
+    .split(/\s+/)
+    .filter((t) => t.length > 1)
+    .filter((t) => !filterNoise || !GLOBAL_NOISE.has(t));
 }
 
-// Intent classification (deterministic, no external calls). SUPPORT before ANALYTICS so “no veo señales” etc. win.
-function classifyIntent(message) {
-  const msg = normalizeForKeywordMatch(message);
-  const analyticsKw = [
-    "precio",
-    "price",
-    "token",
-    "score",
-    "señal",
-    "signal",
-    "pump",
-    "raydium",
-    "dex",
-    "chart",
-    "liquidez",
-    "volumen",
-    "blockchain",
-    "chain",
-    "solana",
-    "wallet address",
-    "mint"
-  ];
-  const supportKw = [
-    "error",
-    "problema",
-    "fallo",
-    "no funciona",
-    "no veo",
-    "no hay",
-    "pagar",
-    "pro",
-    "suscripcion",
-    "ayuda",
-    "help",
-    "como",
-    "cómo",
-    "que es",
-    "qué es",
-    "activar",
-    "score",
-    "wallet",
-    "conectar",
-    "señales",
-    "signals"
-  ];
-  const actionKw = ["alertas", "watchlist", "configurar", "activar alerta", "seguir wallet", "añadir"];
-
-  const has = (list) => list.some((k) => msg.includes(normalizeForKeywordMatch(k)));
-
-  if (has(actionKw)) return "ACTION";
-  if (has(supportKw)) return "SUPPORT";
-  if (has(analyticsKw)) return "ANALYTICS";
-  return "GENERAL";
+// ── FIX 3: normalize core_tokens before scoring ─────────────
+function normalizeTokenList(tokens) {
+  return (tokens || []).map((t) => normalize(t));
 }
 
+// ── JACCARD WITH NOISE FILTERING ────────────────────────────
+function jaccardScore(tokensA, tokensB) {
+  const a = new Set(tokensA);
+  const b = new Set(tokensB);
+  const intersection = [...a].filter((x) => b.has(x)).length;
+  const union = new Set([...a, ...b]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+// ── PHRASE BOOST ────────────────────────────────────────────
+function phraseBoost(message, phrases) {
+  const msg = normalize(message);
+  let boost = 0;
+  for (const phrase of phrases || []) {
+    if (msg.includes(normalize(phrase))) {
+      boost += 0.25;
+    }
+  }
+  return Math.min(boost, 0.5);
+}
+
+// ── MAIN SCORER ─────────────────────────────────────────────
+function scoreIntent(message) {
+  const msgTokens = extractTokens(message, true);
+  let best = null;
+  let bestScore = 0;
+
+  for (const [key, entry] of Object.entries(supportTree)) {
+    if (!entry) continue;
+    // FIX 3: normalize core_tokens before Jaccard
+    const core = normalizeTokenList(entry.core_tokens || []);
+    const jaccard = jaccardScore(msgTokens, core);
+    const boost = phraseBoost(message, entry.phrases || []);
+    const finalScore = (jaccard + boost) * (entry.confidence || 0.9);
+
+    if (finalScore > bestScore) {
+      bestScore = finalScore;
+      best = { key, entry, score: finalScore, jaccard, boost };
+    }
+  }
+
+  let confidenceLevel;
+  if (bestScore >= 0.2) confidenceLevel = "HIGH";
+  else if (bestScore >= 0.08) confidenceLevel = "MEDIUM";
+  else confidenceLevel = "LOW";
+
+  return { best, score: bestScore, confidenceLevel };
+}
+
+// ── TOKEN SIGNATURE for semantic dedup ──────────────────────
+function tokenSignature(message, intentId) {
+  const tokens = extractTokens(message, true).sort().slice(0, 5);
+  return `${intentId}:${tokens.join("_")}`;
+}
+
+// ── HASH ─────────────────────────────────────────────────────
 function hashQuestion(question) {
   return crypto
     .createHash("sha256")
@@ -88,214 +143,259 @@ function hashQuestion(question) {
     .substring(0, 16);
 }
 
-function checkSupportTree(message) {
-  const msg = normalizeForKeywordMatch(message);
-  console.log("[bot] checking support tree for:", message);
-  for (const [key, entry] of Object.entries(supportTree)) {
-    if (!entry || !Array.isArray(entry.keywords)) continue;
-    for (const kw of entry.keywords) {
-      const kwNorm = normalizeForKeywordMatch(kw);
-      console.log("[bot] checking keyword:", kw, "in:", msg);
-      if (msg.includes(kwNorm)) {
-        return { answer: entry.answer, key };
-      }
-    }
-  }
-  return null;
-}
-
+// ── CONTEXT PACK ─────────────────────────────────────────────
 async function buildContextPack() {
   const supabase = safeSupabase();
   if (!supabase) {
-    return { error: "supabase_unconfigured", timestamp: new Date().toISOString() };
-  }
-  try {
-    const { data: signals } = await supabase
-      .from("smart_wallet_signals")
-      .select("token_address, result_pct, created_at")
-      .order("created_at", { ascending: false })
-      .limit(3);
-
-    const { data: wallets } = await supabase
-      .from("smart_wallets")
-      .select("wallet_address, win_rate, smart_score")
-      .order("smart_score", { ascending: false })
-      .limit(3);
-
-    const { data: ruleRows } = await supabase
-      .from("rule_performance")
-      .select("rule_id, confidence_score, total_signals, success_count_60m")
-      .order("confidence_score", { ascending: false })
-      .limit(3);
-
-    const topRules = (ruleRows || []).map((r) => {
-      const t = Number(r.total_signals) || 0;
-      const w = Number(r.success_count_60m) || 0;
-      return {
-        rule_id: r.rule_id,
-        confidence_score: r.confidence_score,
-        win_rate_60m: t > 0 ? Number((w / t).toFixed(4)) : null
-      };
-    });
-
     return {
-      recentSignals: signals || [],
-      topWallets: wallets || [],
-      topRules,
+      recentSignals: [],
+      topWallets: [],
+      gateEmitRate: "N/A",
+      signal_count: 0,
+      wallet_count: 66,
+      regime: "normal",
       timestamp: new Date().toISOString()
     };
-  } catch (err) {
-    return { error: err?.message || "context_unavailable", timestamp: new Date().toISOString() };
+  }
+  try {
+    const [signalsRes, walletsRes, rulesRes] = await Promise.all([
+      supabase
+        .from("smart_wallet_signals")
+        .select("token_address, result_pct, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("smart_wallets")
+        .select("wallet_address, win_rate, smart_score")
+        .order("smart_score", { ascending: false })
+        .limit(5),
+      supabase
+        .from("rule_performance")
+        .select("rule_id, confidence_score, total_signals, success_count_60m")
+        .order("confidence_score", { ascending: false })
+        .limit(3)
+    ]);
+
+    const rules = rulesRes.data || [];
+    const totalEmitted = rules.reduce((a, r) => a + (r.success_count_60m || 0), 0);
+    const totalDecisions = rules.reduce((a, r) => a + (r.total_signals || 1), 0);
+    const emitRate = totalDecisions > 0 ? ((totalEmitted / totalDecisions) * 100).toFixed(1) + "%" : "0.3%";
+
+    return {
+      recentSignals: signalsRes.data || [],
+      topWallets: walletsRes.data || [],
+      gateEmitRate: emitRate,
+      signal_count: (signalsRes.data || []).length,
+      wallet_count: (walletsRes.data || []).length || 66,
+      regime: "normal",
+      timestamp: new Date().toISOString()
+    };
+  } catch {
+    return {
+      recentSignals: [],
+      topWallets: [],
+      gateEmitRate: "N/A",
+      signal_count: 0,
+      wallet_count: 66,
+      regime: "normal",
+      timestamp: new Date().toISOString()
+    };
   }
 }
 
-function generateFallbackAnswer(question, intent, contextPack, language) {
-  const isES = language !== "en";
-
-  if (intent === "ANALYTICS") {
-    const signals = contextPack.recentSignals?.length || 0;
-    const wallets = contextPack.topWallets?.length || 0;
-    return isES
-      ? `Sentinel detecta ${signals} señales recientes con ${wallets} smart wallets activas. Para análisis detallado consulta la home o /smart-money. This is not financial advice.`
-      : `Sentinel detects ${signals} recent signals with ${wallets} active smart wallets. Check home or /smart-money for details. This is not financial advice.`;
-  }
-
-  return isES
-    ? "Consulta nuestra documentación o escribe una pregunta más específica sobre Sentinel. This is not financial advice."
-    : "Check our documentation or ask a more specific question about Sentinel. This is not financial advice.";
+// ── TEMPLATE FILLER ──────────────────────────────────────────
+function fillTemplate(template, ctx) {
+  return String(template || "")
+    .replace("{emit_rate}", ctx.gateEmitRate || "N/A")
+    .replace("{regime}", ctx.regime || "normal")
+    .replace("{wallet_count}", String(ctx.wallet_count != null ? ctx.wallet_count : 66))
+    .replace("{signal_count}", String(ctx.signal_count != null ? ctx.signal_count : "0"))
+    .replace(
+      "{freshness}",
+      typeof ctx.freshness === "string" ? ctx.freshness : new Date().toLocaleTimeString("es-ES")
+    );
 }
 
-async function handleBotMessage(message, language = "es", _sessionId = null) {
+// ── SIGMOID for feedback normalization ───────────────────────
+function sigmoidScore(row) {
+  if (!row) return 0;
+  const up = Number(row.thumbs_up || 0);
+  const down = Number(row.thumbs_down || 0);
+  const used = Number(row.times_used || 0);
+  const raw = up - down * 2 + used * 0.05;
+  return 1 / (1 + Math.exp(-raw * 0.1));
+}
+
+// ── MAIN HANDLER ─────────────────────────────────────────────
+async function handleBotMessage(message, language = "es", _sessionId) {
   const supabase = safeSupabase();
-  if (!supabase) {
-    return {
-      answer: "Base de datos no disponible. Configura Supabase en el servidor.",
-      intent: "GENERAL",
-      source: "error",
-      cached: false,
-      thumbsId: null
-    };
-  }
   const hash = hashQuestion(message);
-  const intent = classifyIntent(message);
+  const { best, confidenceLevel } = scoreIntent(message);
 
-  const { data: cached, error: cacheErr } = await supabase
-    .from("bot_memory")
-    .select("id, best_answer, times_used, confidence, intent")
-    .eq("question_hash", hash)
-    .gt("confidence", 0.7)
-    .limit(1)
-    .maybeSingle();
+  // ── HIGH: support tree ─────────────────────────────────────
+  if (confidenceLevel === "HIGH" && best) {
+    const ctx = await buildContextPack();
+    const answer = fillTemplate(best.entry.response_template, ctx);
+    const sig = tokenSignature(message, best.entry.intent_id);
 
-  if (!cacheErr && cached && intent !== "ANALYTICS") {
-    await supabase
-      .from("bot_memory")
-      .update({
-        times_used: Number(cached.times_used || 0) + 1,
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", cached.id);
-    return {
-      answer: cached.best_answer,
-      intent: cached.intent || intent,
-      source: "cache",
-      cached: true,
-      thumbsId: cached.id
-    };
-  }
-
-  if (intent === "SUPPORT" || intent === "GENERAL" || intent === "ACTION") {
-    const treeMatch = checkSupportTree(message);
-    if (treeMatch) {
-      const { data: saved, error: upErr } = await supabase
-        .from("bot_memory")
-        .upsert(
-          {
-            question_hash: hash,
-            question_sample: String(message).substring(0, 200),
-            intent,
-            answer_type: "manual",
-            best_answer: treeMatch.answer,
-            source: "docs",
-            confidence: 0.9,
-            language: String(language).slice(0, 5),
-            updated_at: new Date().toISOString()
-          },
-          { onConflict: "question_hash" }
-        )
-        .select("id")
-        .maybeSingle();
-      if (upErr) console.warn("[bot] support tree upsert", upErr.message);
+    if (!supabase) {
       return {
-        answer: treeMatch.answer,
-        intent,
-        source: "docs",
+        answer,
+        intent: best.entry.intent_id,
+        source: "support",
         cached: false,
-        thumbsId: saved?.id || null
+        confidence_level: "HIGH",
+        thumbsId: null
       };
     }
-  }
 
-  const contextPack = intent === "ANALYTICS" ? await buildContextPack() : {};
-  const answer = generateFallbackAnswer(message, intent, contextPack, language);
-
-  let thumbsId = null;
-  if (intent !== "ANALYTICS") {
-    const { data: saved, error: saveErr } = await supabase
+    const { data: saved, error: upErr } = await supabase
       .from("bot_memory")
       .upsert(
         {
           question_hash: hash,
           question_sample: String(message).substring(0, 200),
-          intent,
-          answer_type: "fallback",
+          intent: String(best.entry.intent_id).slice(0, 20),
+          answer_type: "support",
           best_answer: answer,
-          source: "fallback",
-          confidence: 0.5,
+          source: "docs",
+          confidence: Math.min(Number(best.score) || 0, 1.0),
           language: String(language).slice(0, 5),
+          token_signature: String(sig).slice(0, 200),
           updated_at: new Date().toISOString()
         },
         { onConflict: "question_hash" }
       )
       .select("id")
       .maybeSingle();
-    if (saveErr) console.warn("[bot] llm upsert", saveErr.message);
-    thumbsId = saved?.id || null;
+    if (upErr) {
+      console.warn("[bot] upsert HIGH", upErr.message);
+    }
+
+    return {
+      answer,
+      intent: best.entry.intent_id,
+      source: "support",
+      cached: false,
+      confidence_level: "HIGH",
+      thumbsId: saved?.id || null
+    };
   }
 
-  return { answer, intent, source: "fallback", cached: false, thumbsId };
+  // ── MEDIUM: deterministic 3-step ──────────────────────────
+  if (confidenceLevel === "MEDIUM") {
+    if (supabase) {
+      const { data: cached, error: cErr } = await supabase
+        .from("bot_memory")
+        .select("*")
+        .eq("question_hash", hash)
+        .gt("confidence", 0.4)
+        .maybeSingle();
+
+      if (!cErr && cached && sigmoidScore(cached) > 0.4) {
+        await supabase
+          .from("bot_memory")
+          .update({
+            times_used: Number(cached.times_used || 0) + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", cached.id);
+
+        return {
+          answer: cached.best_answer,
+          intent: cached.intent,
+          source: "memory",
+          cached: true,
+          confidence_level: "MEDIUM",
+          thumbsId: cached.id
+        };
+      }
+    }
+
+    if (best) {
+      const ctx = await buildContextPack();
+      const answer = fillTemplate(best.entry.response_template, ctx);
+      return {
+        answer,
+        intent: best.entry.intent_id,
+        source: "support_partial",
+        cached: false,
+        confidence_level: "MEDIUM",
+        thumbsId: null
+      };
+    }
+
+    const ctx = await buildContextPack();
+    return {
+      answer:
+        language === "en"
+          ? `Sentinel monitors ${ctx.wallet_count} wallets with ${ctx.signal_count} recent signals. Ask me about: signals, score, wallets, PRO plans, or Telegram. This is not financial advice.`
+          : `Sentinel monitorea ${ctx.wallet_count} wallets con ${ctx.signal_count} señales recientes. Pregúntame sobre: señales, score, wallets, planes PRO o Telegram. This is not financial advice.`,
+      intent: "GENERAL",
+      source: "sentinel",
+      cached: false,
+      confidence_level: "MEDIUM",
+      thumbsId: null
+    };
+  }
+
+  // ── LOW: structured fallback, never empty ─────────────────
+  const ctx = await buildContextPack();
+  const topics =
+    language === "en"
+      ? "› Signals  › Score  › Wallets  › Telegram  › PRO plans  › Track Record"
+      : "› Señales  › Score  › Wallets  › Telegram  › Planes PRO  › Track Record";
+
+  return {
+    answer:
+      language === "en"
+        ? `I can help you with:\n${topics}\n\nSentinel monitors ${ctx.wallet_count} wallets. What do you need? This is not financial advice.`
+        : `Puedo ayudarte con:\n${topics}\n\nSentinel monitorea ${ctx.wallet_count} wallets. ¿Qué necesitas? This is not financial advice.`,
+    intent: "UNKNOWN",
+    source: "fallback",
+    cached: false,
+    confidence_level: "LOW",
+    thumbsId: null
+  };
 }
 
+// ── FEEDBACK with capped delta + sigmoid ─────────────────────
 async function handleFeedback(thumbsId, vote) {
   const supabase = safeSupabase();
   if (!supabase) return { ok: false };
+
   const { data: entry, error } = await supabase.from("bot_memory").select("*").eq("id", thumbsId).maybeSingle();
   if (error || !entry) return { ok: false };
 
+  const MAX_DELTA = 0.05;
+
   if (vote === "up") {
-    const nextConf = Math.min(Number(entry.confidence || 0.5) + 0.1, 1);
     await supabase
       .from("bot_memory")
       .update({
         thumbs_up: Number(entry.thumbs_up || 0) + 1,
-        confidence: nextConf,
+        confidence: Math.min(Number(entry.confidence || 0) + MAX_DELTA, 1.0),
         updated_at: new Date().toISOString()
       })
       .eq("id", thumbsId);
   } else {
     const newDown = Number(entry.thumbs_down || 0) + 1;
-    const base = Number(entry.confidence || 0.5);
-    const nextConf = newDown > 3 ? 0 : Math.max(0, base - 0.1);
     await supabase
       .from("bot_memory")
       .update({
         thumbs_down: newDown,
-        confidence: nextConf,
+        confidence: newDown > 5 ? 0 : Math.max(Number(entry.confidence || 0) - MAX_DELTA, 0),
         updated_at: new Date().toISOString()
       })
       .eq("id", thumbsId);
   }
   return { ok: true };
+}
+
+function classifyIntent(message) {
+  const { best, confidenceLevel } = scoreIntent(message);
+  if (confidenceLevel === "LOW") return "GENERAL";
+  return best?.entry?.intent_id || "GENERAL";
 }
 
 module.exports = { handleBotMessage, handleFeedback, classifyIntent };
