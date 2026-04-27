@@ -289,7 +289,7 @@ body {
   z-index: 1;
 }
 
-/* Primary CTA — premium gradient */
+/* Primary CTA — institutional amber with crisp border */
 .btn-pro {
   display: inline-flex;
   align-items: center;
@@ -300,18 +300,18 @@ body {
   font-weight: 600;
   font-size: 14px;
   line-height: 1.2;
-  color: theme('colors.sl-text');
-  background: linear-gradient(90deg, theme('colors.sl-violet'), theme('colors.sl-blue'));
-  border: none;
+  color: #0a0a0a;
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  border: 1px solid rgba(245, 158, 11, 0.85);
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(108, 92, 231, 0.32);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.22);
   transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.15s ease;
 }
 
 .btn-pro:hover {
   opacity: 0.96;
-  transform: scale(1.05);
-  box-shadow: 0 8px 24px rgba(0, 206, 201, 0.22);
+  transform: scale(1.04);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.32);
 }
 
 .btn-pro:active {
@@ -361,17 +361,18 @@ body {
   border-radius: var(--sl-radius-btn);
   font-weight: 600;
   font-size: 14px;
-  color: theme('colors.sl-text');
+  color: #fbbf24;
   background: transparent;
-  border: 1px solid rgba(108, 92, 231, 0.45);
+  border: 1px solid rgba(245, 158, 11, 0.55);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .btn-pro-outline:hover {
-  transform: scale(1.05);
-  background: rgba(108, 92, 231, 0.08);
-  border-color: rgba(0, 206, 201, 0.5);
+  transform: scale(1.04);
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.85);
+  color: #fef3c7;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -397,8 +398,8 @@ body {
 
 .sl-input:focus {
   outline: none;
-  border-color: rgba(129, 140, 248, 0.65);
-  box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.14);
+  border-color: rgba(245, 158, 11, 0.65);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.14);
 }
 
 /* Compact home search — more terminal-like density */
@@ -963,7 +964,7 @@ body.war-mode *::after {
   border-radius: 0;
 }
 
-/* ── BUTTONS ── */
+/* ── BUTTONS — institutional terminal, prominent borders ── */
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -976,15 +977,18 @@ body.war-mode *::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background-color: #7C3AED;
-  border: 1px solid #7C3AED;
-  color: white;
+  background-color: #f59e0b;
+  border: 1px solid #f59e0b;
+  color: #0a0a0a;
   cursor: pointer;
-  transition: opacity 150ms ease;
+  transition: opacity 150ms ease, box-shadow 150ms ease;
   border-radius: 2px;
   text-decoration: none;
 }
-.btn-primary:hover { opacity: 0.85; }
+.btn-primary:hover {
+  opacity: 0.9;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.35);
+}
 
 .btn-outline {
   display: inline-flex;
@@ -998,15 +1002,19 @@ body.war-mode *::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background-color: transparent;
-  border: 1px solid theme('colors.sl-violet');
-  color: theme('colors.sl-violet');
+  background-color: rgba(245, 158, 11, 0.04);
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  color: #fbbf24;
   cursor: pointer;
-  transition: background-color 150ms ease;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
   border-radius: 2px;
   text-decoration: none;
 }
-.btn-outline:hover { background-color: rgba(139,92,246,0.08); }
+.btn-outline:hover {
+  background-color: rgba(245, 158, 11, 0.10);
+  border-color: rgba(245, 158, 11, 0.85);
+  color: #fef3c7;
+}
 
 .btn-ghost {
   display: inline-flex;
@@ -1020,17 +1028,18 @@ body.war-mode *::after {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background-color: transparent;
-  border: 1px solid theme('colors.sl-border');
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: theme('colors.sl-sub');
   cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease;
+  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
   border-radius: 2px;
   text-decoration: none;
 }
 .btn-ghost:hover {
-  border-color: theme('colors.sl-hover');
-  color: theme('colors.sl-text');
+  border-color: rgba(245, 158, 11, 0.55);
+  color: #fafafa;
+  background-color: rgba(245, 158, 11, 0.05);
 }
 
 .btn-ghost-sm {
@@ -1045,17 +1054,18 @@ body.war-mode *::after {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background-color: transparent;
-  border: 1px solid theme('colors.sl-border');
-  color: theme('colors.sl-muted');
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: theme('colors.sl-sub');
   cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease;
+  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
   border-radius: 2px;
   text-decoration: none;
 }
 .btn-ghost-sm:hover {
-  border-color: theme('colors.sl-hover');
-  color: theme('colors.sl-sub');
+  border-color: rgba(245, 158, 11, 0.55);
+  color: #fafafa;
+  background-color: rgba(245, 158, 11, 0.05);
 }
 
 .btn-war {
