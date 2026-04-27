@@ -18,6 +18,7 @@ import { FinancialDisclaimer } from "../../components/layout/FinancialDisclaimer
 import { PageHead } from "../../components/seo/PageHead";
 import { useLocale } from "../../contexts/LocaleContext";
 import { recordRecentToken } from "../../lib/recentTokens";
+import { ApexCard, ApexButton, IridescentScore, deriveApexState } from "../../components/apex";
 import {
   buildDexscreenerSolanaTokenUrl,
   buildJupiterSwapUrl,
@@ -162,63 +163,111 @@ function TokenHeroBar({ address, market, analysis, terminal, statusTone, statusL
   const solscanUrl = buildSolscanTokenUrl(address);
   const pumpUrl = hasPumpRoute(market) ? buildPumpFunTokenUrl(address) : null;
   const score = Math.round(Number(terminal?.signalStrength ?? analysis?.confidence ?? 0));
+  // Apex state — gold appears only when there is real value.
+  // 80+ critical · 60+ active · else neutral silver.
+  const apexState = deriveApexState(score);
+  const priceChange = Number(market.priceChange24h);
+  const priceUp = Number.isFinite(priceChange) && priceChange >= 0;
 
   return (
-    <section className="sticky top-[var(--sl-nav-actual,52px)] z-30 border border-sl-border bg-[#080b10]/95 p-3 shadow-2xl shadow-black/35 backdrop-blur-xl">
+    <ApexCard
+      as="section"
+      state={apexState}
+      className="sticky top-[var(--sl-nav-actual,52px)] z-30 p-3 backdrop-blur-xl"
+    >
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="truncate text-2xl font-black tracking-tight text-sl-text">{market.name || market.symbol || "Token"}</h1>
-            <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-100">SOLANA</span>
-            <span className="rounded-full border border-sl-border bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-sl-sub">{shortMint(address)}</span>
+            <h1 className="truncate text-2xl font-black tracking-tight text-[#fafafa]">
+              {market.name || market.symbol || "Token"}
+            </h1>
+            <span className="border border-[rgba(209,213,219,0.22)] bg-[rgba(209,213,219,0.06)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#d1d5db]">
+              SOLANA
+            </span>
+            <span className="border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.025)] px-2 py-0.5 font-mono text-[10px] text-[#a3a3a3]">
+              {shortMint(address)}
+            </span>
           </div>
-          <p className="mt-1 text-sm text-sl-muted">${market.symbol || "TOKEN"}</p>
+          <p className="mt-1 text-sm text-[#737373]">${market.symbol || "TOKEN"}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-[auto_auto_auto_minmax(14rem,18rem)] sm:items-center sm:justify-end">
           <div className="col-span-2 sm:col-span-1 sm:text-right">
-            <p className="font-mono text-3xl font-black text-sl-text">{usdOrNA(market.price, "$0")}</p>
-            <p className={`font-mono text-sm font-semibold ${Number(market.priceChange24h) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+            <p className="font-mono text-3xl font-black text-[#fafafa] leading-none">{usdOrNA(market.price, "$0")}</p>
+            <p className={`mt-1 font-mono text-sm font-semibold ${priceUp ? "text-emerald-300" : "text-red-300"}`}>
               {pct(market.priceChange24h)} · 24h
             </p>
           </div>
-          <div className="border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-center">
-            <p className="text-[10px] uppercase tracking-[0.14em] text-emerald-200/80">Grade</p>
-            <p className="text-xl font-black text-emerald-100">{analysis.grade || "—"}</p>
+          <div className="border border-[rgba(209,213,219,0.18)] bg-[rgba(209,213,219,0.04)] px-3 py-2 text-center">
+            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[#737373]">Grade</p>
+            <p className="mt-0.5 text-xl font-black text-[#fafafa] leading-none">{analysis.grade || "—"}</p>
           </div>
-          <div className="border border-violet-500/25 bg-violet-500/10 px-3 py-2 text-center">
-            <p className="text-[10px] uppercase tracking-[0.14em] text-violet-200/80">Sentinel</p>
-            <p className="text-xl font-black text-violet-100">{score}</p>
+          <div className="px-3 py-1 text-center">
+            <IridescentScore value={score} label="Sentinel" size="md" align="center" />
           </div>
-          <div className="col-span-2 sm:col-span-1">
-            <a
+          <div className="col-span-2 sm:col-span-1 space-y-2">
+            <ApexButton
+              as="a"
               href={jupiterUrl}
               target="_blank"
               rel={EXTERNAL_ANCHOR_REL}
-              className="flex h-14 w-full items-center justify-center bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-6 text-sm font-black uppercase tracking-[0.2em] text-sl-text shadow-[0_0_34px_rgba(99,102,241,0.35)] transition hover:scale-[1.01] hover:from-indigo-400 hover:to-fuchsia-400"
+              size="lg"
+              className="w-full"
             >
               TRADE NOW
-            </a>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-              <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="border border-cyan-500/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20">DEX</a>
-              <a href={solscanUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-sl-sub hover:bg-white/[0.08]">Solscan</a>
-              {pumpUrl ? <a href={pumpUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="border border-fuchsia-500/25 bg-fuchsia-500/10 px-3 py-1.5 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20">Pump</a> : null}
+            </ApexButton>
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              <a
+                href={dexUrl}
+                target="_blank"
+                rel={EXTERNAL_ANCHOR_REL}
+                className="apex-btn-secondary"
+              >
+                DEX
+              </a>
+              <a
+                href={solscanUrl}
+                target="_blank"
+                rel={EXTERNAL_ANCHOR_REL}
+                className="apex-btn-secondary"
+              >
+                Solscan
+              </a>
+              {pumpUrl ? (
+                <a
+                  href={pumpUrl}
+                  target="_blank"
+                  rel={EXTERNAL_ANCHOR_REL}
+                  className="apex-btn-secondary"
+                >
+                  Pump
+                </a>
+              ) : null}
             </div>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-              <span className="inline-flex items-center gap-2 border border-sl-border bg-white/5 px-2.5 py-1.5 text-xs">
-                <span className={`h-2.5 w-2.5 rounded-full ${statusTone}`} />
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              <span className="inline-flex items-center gap-2 border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.03)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[#a3a3a3]">
+                <span className={`h-2 w-2 rounded-full ${statusTone}`} />
                 {statusLabel}
               </span>
-              <button type="button" onClick={() => setSoundEnabled((v) => !v)} className="border border-sl-border bg-white/5 px-2.5 py-1.5 text-xs hover:bg-white/10">
+              <button
+                type="button"
+                onClick={() => setSoundEnabled((v) => !v)}
+                className="apex-btn-secondary"
+                aria-pressed={soundEnabled}
+              >
                 {soundEnabled ? "Sound on" : "Sound off"}
               </button>
               <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
-              {proStatusReady && hasToken && hasProAccess ? <Link href="/alerts" className="border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20">Alerts</Link> : null}
+              {proStatusReady && hasToken && hasProAccess ? (
+                <Link href="/alerts" className="apex-btn-secondary">
+                  Alerts
+                </Link>
+              ) : null}
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </ApexCard>
   );
 }
 
