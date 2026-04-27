@@ -6,31 +6,31 @@
   --sl-bg-overlay: #1f1f1f;
 
   /* Accent colors — amber/gold (kept token names for compatibility) */
-  --sl-indigo: #f59e0b;
-  --sl-indigo-dim: rgba(245, 158, 11, 0.14);
-  --sl-purple: #f59e0b;
-  --sl-cyan: #fbbf24;
-  --sl-cyan-dim: rgba(251, 191, 36, 0.10);
+  --sl-indigo: #facc15;
+  --sl-indigo-dim: rgba(212, 175, 55, 0.14);
+  --sl-purple: #facc15;
+  --sl-cyan: #f1c75b;
+  --sl-cyan-dim: rgba(241, 199, 91, 0.10);
 
   /* Semantic colors — finance standards */
   --sl-win: #10b981;
   --sl-win-dim: rgba(16, 185, 129, 0.12);
   --sl-loss: #ef4444;
   --sl-loss-dim: rgba(239, 68, 68, 0.12);
-  --sl-warn: #f59e0b;
-  --sl-warn-dim: rgba(245, 158, 11, 0.12);
+  --sl-warn: #facc15;
+  --sl-warn-dim: rgba(212, 175, 55, 0.12);
   --sl-neutral: #737373;
 
   /* Text */
   --sl-text-primary: #fafafa;
   --sl-text-secondary: #a3a3a3;
   --sl-text-muted: #737373;
-  --sl-text-accent: #fbbf24;
+  --sl-text-accent: #f1c75b;
 
   /* Borders */
   --sl-border: #1f1f1f;
-  --sl-border-accent: rgba(245, 158, 11, 0.28);
-  --sl-border-bright: rgba(245, 158, 11, 0.55);
+  --sl-border-accent: rgba(212, 175, 55, 0.28);
+  --sl-border-bright: rgba(212, 175, 55, 0.55);
 
   /* Typography */
   --sl-font-mono: var(--font-jetbrains-mono), "JetBrains Mono", "Fira Code", monospace;
@@ -46,8 +46,8 @@ body {
 
 body {
   background-image:
-    radial-gradient(circle at 12% 0%, rgba(245, 158, 11, 0.07), transparent 32%),
-    radial-gradient(circle at 88% 10%, rgba(245, 158, 11, 0.04), transparent 34%),
+    radial-gradient(circle at 12% 0%, rgba(212, 175, 55, 0.07), transparent 32%),
+    radial-gradient(circle at 88% 10%, rgba(212, 175, 55, 0.04), transparent 34%),
     linear-gradient(180deg, var(--sl-bg-base), #050505 58%, var(--sl-bg-base));
 }
 
@@ -72,7 +72,7 @@ body {
 
 .sl-card-elevated {
   background:
-    linear-gradient(180deg, rgba(245, 158, 11, 0.06), transparent 44%),
+    linear-gradient(180deg, rgba(250, 204, 21, 0.06), transparent 44%),
     var(--sl-bg-elevated);
   border: 1px solid var(--sl-border-accent);
   border-radius: 8px;
@@ -121,13 +121,13 @@ body {
 .sl-badge-warn {
   background: var(--sl-warn-dim);
   color: var(--sl-warn);
-  border-color: rgba(245, 158, 11, 0.28);
+  border-color: rgba(250, 204, 21, 0.28);
 }
 
 .sl-badge-indigo {
   background: var(--sl-indigo-dim);
   color: var(--sl-text-accent);
-  border-color: rgba(245, 158, 11, 0.32);
+  border-color: rgba(250, 204, 21, 0.32);
 }
 
 .sl-table {
@@ -219,7 +219,7 @@ table tr:hover td {
 
 .sl-input:focus {
   border-color: var(--sl-border-bright);
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18), 0 0 28px rgba(245, 158, 11, 0.10);
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.18), 0 0 28px rgba(250, 204, 21, 0.10);
 }
 
 .btn-primary,
@@ -236,7 +236,7 @@ a {
   .glass-card:hover {
     border-color: var(--sl-border-bright);
     transform: translateY(-1px);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 26px rgba(245, 158, 11, 0.10);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 26px rgba(250, 204, 21, 0.10);
   }
 
   .btn-primary:hover,
@@ -245,7 +245,7 @@ a {
   .btn-pro-outline:hover,
   a[class*="border"]:hover {
     transform: translateY(-1px);
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.14);
+    box-shadow: 0 0 20px rgba(250, 204, 21, 0.14);
   }
 }
 
@@ -394,8 +394,8 @@ a {
 
 .sl-logo-wrapper {
   border-radius: 8px;
-  background: rgba(245, 158, 11, 0.06);
-  border: 1px solid rgba(245, 158, 11, 0.28);
+  background: rgba(250, 204, 21, 0.06);
+  border: 1px solid rgba(250, 204, 21, 0.28);
 }
 
 .sl-logo-hex-outer {

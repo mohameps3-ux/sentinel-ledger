@@ -104,15 +104,15 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
                 <polygon
                   points="16,2 26,8 26,24 16,30 6,24 6,8"
                   fill="none"
-                  stroke="#f59e0b"
+                  stroke="#facc15"
                   strokeWidth="1.2"
                   opacity="0.65"
                 />
-                <circle cx="16" cy="16" r="2.4" fill="#fbbf24" />
-                <line x1="16" y1="16" x2="16" y2="6" stroke="#fbbf24" strokeWidth="1" opacity="0.85" />
+                <circle cx="16" cy="16" r="2.4" fill="#fef08a" />
+                <line x1="16" y1="16" x2="16" y2="6" stroke="#fef08a" strokeWidth="1" opacity="0.85" />
               </svg>
             </span>
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#fbbf24]">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#fef08a]">
               SENTINEL
             </span>
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a3a3a3]">·</span>
@@ -180,7 +180,7 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
             <>
               {isFrameLoading ? (
                 <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-[#0a0a0a]/85 font-mono text-xs text-[#a3a3a3]">
-                  <Loader2 size={14} className="animate-spin text-[#fbbf24]" />
+                  <Loader2 size={14} className="animate-spin text-[#fef08a]" />
                   Streaming chart…
                 </div>
               ) : null}
@@ -193,7 +193,7 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
               />
               <div className="sl-chart-watermark sl-chart-watermark--corner" aria-hidden>
                 <SentinelChartMark size={28} />
-                <span className="font-mono text-[8px] uppercase tracking-[0.22em] text-[#fbbf24]/70 mt-1">
+                <span className="font-mono text-[8px] uppercase tracking-[0.22em] text-[#fef08a]/70 mt-1">
                   Sentinel
                 </span>
               </div>
@@ -209,7 +209,7 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
             href={dexUrl}
             target="_blank"
             rel={EXTERNAL_ANCHOR_REL}
-            className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#737373] hover:text-[#fbbf24] inline-flex items-center gap-1"
+            className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#737373] hover:text-[#fef08a] inline-flex items-center gap-1"
             title="View markets in a new tab"
           >
             Open in browser <ExternalLink size={9} />
@@ -224,7 +224,7 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
         .sl-chart-container {
           background: #0a0a0a;
           border: 1px solid rgba(255, 255, 255, 0.06);
-          border-top: 1px solid rgba(245, 158, 11, 0.22);
+          border-top: 1px solid rgba(250, 204, 21, 0.22);
           overflow: hidden;
         }
         .sl-chart-container--fs {
@@ -239,7 +239,7 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
           justify-content: space-between;
           gap: 12px;
           padding: 10px 14px;
-          background: linear-gradient(180deg, rgba(245, 158, 11, 0.06), transparent);
+          background: linear-gradient(180deg, rgba(250, 204, 21, 0.06), transparent);
           border-bottom: 1px solid rgba(255, 255, 255, 0.06);
           flex-wrap: wrap;
         }
@@ -262,13 +262,13 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
           transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
         }
         :global(.sl-chart-tf-pill:hover) {
-          border-color: rgba(245, 158, 11, 0.45);
+          border-color: rgba(250, 204, 21, 0.45);
           color: #fafafa;
         }
         :global(.sl-chart-tf-pill--active) {
-          background: rgba(245, 158, 11, 0.12);
-          border-color: rgba(245, 158, 11, 0.85);
-          color: #fbbf24;
+          background: rgba(250, 204, 21, 0.12);
+          border-color: rgba(250, 204, 21, 0.85);
+          color: #fef08a;
         }
         :global(.sl-chart-fs-btn) {
           display: inline-flex;
@@ -280,15 +280,15 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
           font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.14em;
-          color: #fbbf24;
-          background: rgba(245, 158, 11, 0.08);
-          border: 1px solid rgba(245, 158, 11, 0.55);
+          color: #fef08a;
+          background: rgba(250, 204, 21, 0.08);
+          border: 1px solid rgba(250, 204, 21, 0.55);
           cursor: pointer;
           transition: background 120ms ease, border-color 120ms ease;
         }
         :global(.sl-chart-fs-btn:hover) {
-          background: rgba(245, 158, 11, 0.16);
-          border-color: rgba(245, 158, 11, 0.85);
+          background: rgba(250, 204, 21, 0.16);
+          border-color: rgba(250, 204, 21, 0.85);
         }
         .sl-chart-body {
           position: relative;
@@ -341,22 +341,22 @@ function SentinelChartMark({ size = 32 }) {
       <polygon
         points="16,1 25,5 31,14 31,18 25,27 16,31 7,27 1,18 1,14 7,5"
         fill="none"
-        stroke="#f59e0b"
+        stroke="#facc15"
         strokeWidth="0.7"
         opacity="0.6"
       />
       <polygon
         points="16,7 21,9.5 24,14 24,18 21,22.5 16,25 11,22.5 8,18 8,14 11,9.5"
         fill="none"
-        stroke="#f59e0b"
+        stroke="#facc15"
         strokeWidth="0.9"
         opacity="0.75"
       />
-      <line x1="16" y1="2" x2="16" y2="16" stroke="#fbbf24" strokeWidth="1.2" opacity="0.95" />
+      <line x1="16" y1="2" x2="16" y2="16" stroke="#fef08a" strokeWidth="1.2" opacity="0.95" />
       <line x1="8" y1="16" x2="13" y2="16" stroke="#fafafa" strokeWidth="0.7" opacity="0.55" />
       <line x1="19" y1="16" x2="24" y2="16" stroke="#fafafa" strokeWidth="0.7" opacity="0.55" />
       <line x1="16" y1="19" x2="16" y2="24" stroke="#fafafa" strokeWidth="0.7" opacity="0.55" />
-      <circle cx="16" cy="16" r="2.4" fill="#fbbf24" />
+      <circle cx="16" cy="16" r="2.4" fill="#fef08a" />
     </svg>
   );
 }

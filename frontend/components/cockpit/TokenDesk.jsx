@@ -98,7 +98,7 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
           </p>
           <Link
             href={`/token/${encodeURIComponent(mint)}`}
-            className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#fbbf24] underline decoration-[rgba(245,158,11,0.45)] underline-offset-2 hover:text-[#fef3c7] hover:decoration-[#fef3c7]"
+            className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#fef08a] underline decoration-[rgba(250,204,21,0.45)] underline-offset-2 hover:text-[#fffbeb] hover:decoration-[#fffbeb]"
           >
             {t("cockpit.desk.openTerminal")}
             <span aria-hidden className="font-mono text-[10px] opacity-80">

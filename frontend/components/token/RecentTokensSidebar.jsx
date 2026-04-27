@@ -46,7 +46,7 @@ export function RecentTokensSidebar({ activeMint }) {
     <aside className="sl-recent-sidebar">
       <div className="sl-recent-head">
         <div className="flex items-center gap-2">
-          <Clock size={11} className="text-[#fbbf24]" />
+          <Clock size={11} className="text-[#fef08a]" />
           <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.2em] text-[#a3a3a3]">
             Recent · {RECENT_TOKEN_TTL_HOURS}h
           </span>
@@ -112,7 +112,7 @@ export function RecentTokensSidebar({ activeMint }) {
         .sl-recent-sidebar {
           background: linear-gradient(180deg, #0d0d0d, #0a0a0a);
           border: 1px solid rgba(255, 255, 255, 0.06);
-          border-top: 1px solid rgba(245, 158, 11, 0.18);
+          border-top: 1px solid rgba(250, 204, 21, 0.18);
           width: 100%;
           max-height: calc(100vh - 140px);
           overflow-y: auto;
@@ -126,8 +126,8 @@ export function RecentTokensSidebar({ activeMint }) {
           height: 1px;
           background: linear-gradient(
             90deg,
-            rgba(245, 158, 11, 0.32),
-            rgba(245, 158, 11, 0.08) 60%,
+            rgba(250, 204, 21, 0.32),
+            rgba(250, 204, 21, 0.08) 60%,
             transparent
           );
         }
@@ -147,11 +147,11 @@ export function RecentTokensSidebar({ activeMint }) {
           transition: background 120ms ease;
         }
         :global(.sl-recent-item:hover) {
-          background: rgba(245, 158, 11, 0.05);
+          background: rgba(250, 204, 21, 0.05);
         }
         :global(.sl-recent-item--active) {
-          background: rgba(245, 158, 11, 0.10);
-          box-shadow: inset 2px 0 0 #f59e0b;
+          background: rgba(250, 204, 21, 0.10);
+          box-shadow: inset 2px 0 0 #facc15;
         }
         .sl-recent-fresh-dot {
           position: absolute;

@@ -39,7 +39,7 @@ const LED_STYLES = {
   SYNCING: {
     label: "SYNCING",
     dot: "bg-amber-400",
-    glow: "shadow-[0_0_8px_rgba(251,191,36,0.75)]",
+    glow: "shadow-[0_0_8px_rgba(254,240,138,0.6)]",
     pill: "text-amber-200 border-amber-500/30 bg-amber-500/10",
     pulse: true
   },

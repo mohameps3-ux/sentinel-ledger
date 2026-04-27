@@ -53,13 +53,13 @@ export function InstitutionalKPI({ label, value, delta, deltaTone = "neutral", h
         }
         /* Apex Obsidian: accent KPI — gold border + warm wash for value markers. */
         .sl-inst-kpi--accent {
-          border-color: rgba(245, 158, 11, 0.32);
+          border-color: rgba(250, 204, 21, 0.32);
           background:
-            linear-gradient(180deg, rgba(245, 158, 11, 0.06), transparent 50%),
+            linear-gradient(180deg, rgba(250, 204, 21, 0.06), transparent 50%),
             rgba(13, 14, 26, 0.9);
         }
         .sl-inst-kpi--warn {
-          border-color: rgba(245, 158, 11, 0.28);
+          border-color: rgba(250, 204, 21, 0.28);
         }
         .sl-inst-kpi--loss {
           border-color: rgba(239, 68, 68, 0.28);

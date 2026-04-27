@@ -59,15 +59,15 @@ export function InstitutionalCard({
         }
         /* Apex Obsidian: accent tone — gold border + warm wash. */
         .sl-inst-card--accent {
-          border-color: rgba(245, 158, 11, 0.32);
+          border-color: rgba(250, 204, 21, 0.32);
           background:
-            linear-gradient(180deg, rgba(245, 158, 11, 0.06), transparent 42%),
+            linear-gradient(180deg, rgba(250, 204, 21, 0.06), transparent 42%),
             rgba(13, 14, 26, 0.92);
         }
         .sl-inst-card--warn {
-          border-color: rgba(245, 158, 11, 0.32);
+          border-color: rgba(250, 204, 21, 0.32);
           background:
-            linear-gradient(180deg, rgba(245, 158, 11, 0.04), transparent 42%),
+            linear-gradient(180deg, rgba(250, 204, 21, 0.04), transparent 42%),
             rgba(13, 14, 26, 0.9);
         }
         .sl-inst-card--loss {

@@ -54,7 +54,7 @@ function ExpandedWalletNarrativeSection({ wallet, narrativeLang }) {
     <section
       data-testid="smart-money-expanded-wallet-narrative"
       data-wallet={wallet}
-      className="terminal-panel p-3 shadow-[0_0_22px_rgba(245,158,11,0.14)]"
+      className="terminal-panel p-3 shadow-[0_0_22px_rgba(250,204,21,0.14)]"
     >
       <WalletNarrativeCard walletAddress={wallet} lang={narrativeLang} />
     </section>

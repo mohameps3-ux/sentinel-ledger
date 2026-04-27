@@ -123,7 +123,7 @@ function MemoryChip({ variant, title }) {
   const config = {
     breakout: {
       label: "BREAKOUT",
-      cls: "text-[#fef3c7] border-[rgba(245,158,11,0.6)] bg-[rgba(245,158,11,0.18)] shadow-[0_0_12px_rgba(245,158,11,0.32)] animate-pulse"
+      cls: "text-[#fef3c7] border-[rgba(250,204,21,0.6)] bg-[rgba(250,204,21,0.18)] shadow-[0_0_12px_rgba(250,204,21,0.32)] animate-pulse"
     },
     repeated: {
       label: "REPEATED",

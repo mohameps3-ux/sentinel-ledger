@@ -16,7 +16,7 @@ export default function WarHomeIntro({ strategyMode, onStrategyModeChange, sound
   return (
     <>
       <section className="sl-section !mt-0 !mb-1">
-        <div className="sl-glow-info border border-white/[0.08] bg-sl-card h-[1cm] px-2 flex items-center transition-all duration-200 hover:-translate-y-[1px] hover:border-[rgba(245,158,11,0.5)] hover:shadow-[0_0_14px_rgba(245,158,11,0.18)]">
+        <div className="sl-glow-info border border-white/[0.08] bg-sl-card h-[1cm] px-2 flex items-center transition-all duration-200 hover:-translate-y-[1px] hover:border-[rgba(250,204,21,0.5)] hover:shadow-[0_0_14px_rgba(250,204,21,0.18)]">
           <p
             className="text-[11px] sm:text-xs text-sl-sub truncate w-full leading-tight"
             title={`${t("war.intro.ribbonTitle")} · ${t("war.intro.ribbonBody")}`}
@@ -40,8 +40,8 @@ export default function WarHomeIntro({ strategyMode, onStrategyModeChange, sound
                   onClick={() => onStrategyModeChange(mode.id)}
                   className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
                     strategyMode === mode.id
-                      ? "border-[rgba(245,158,11,0.5)] bg-[rgba(245,158,11,0.08)] text-[#fbbf24]"
-                      : "border-sl-border text-sl-sub hover:text-sl-text hover:border-[rgba(245,158,11,0.32)]"
+                      ? "border-[rgba(250,204,21,0.5)] bg-[rgba(250,204,21,0.08)] text-[#fef08a]"
+                      : "border-sl-border text-sl-sub hover:text-sl-text hover:border-[rgba(250,204,21,0.32)]"
                   }`}
                 >
                   {mode.label}

@@ -73,7 +73,7 @@ export function InstitutionalPage({
             90deg,
             transparent,
             rgba(209, 213, 219, 0.20) 18%,
-            rgba(245, 158, 11, 0.45) 50%,
+            rgba(250, 204, 21, 0.45) 50%,
             rgba(209, 213, 219, 0.20) 82%,
             transparent
           );
@@ -82,9 +82,9 @@ export function InstitutionalPage({
         .sl-inst-tracker-dot {
           width: 6px;
           height: 6px;
-          background: #fbbf24;
+          background: #fef08a;
           border-radius: 999px;
-          box-shadow: 0 0 8px rgba(245, 158, 11, 0.55);
+          box-shadow: 0 0 8px rgba(250, 204, 21, 0.55);
           display: inline-block;
         }
         .sl-inst-divider {

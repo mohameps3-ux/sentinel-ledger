@@ -36,7 +36,7 @@ function cockpitCardClickTargetIsInteractive(e) {
 
 function narrativeClass(severity) {
   // URGENT — the apex moment: iridescent gold border + warm halo (matches Apex Obsidian critical state).
-  if (severity === "URGENT") return "border-[rgba(245,158,11,0.55)] bg-gradient-to-r from-[rgba(245,158,11,0.18)] via-[rgba(251,191,36,0.10)] to-[rgba(245,158,11,0.18)] text-amber-50 shadow-[0_0_20px_rgba(245,158,11,0.32)] animate-pulse";
+  if (severity === "URGENT") return "border-[rgba(250,204,21,0.5)] bg-gradient-to-r from-[rgba(250,204,21,0.14)] via-[rgba(254,240,138,0.12)] to-[rgba(250,204,21,0.14)] text-amber-50 shadow-[0_0_20px_rgba(250,204,21,0.28)] animate-pulse";
   // TACTICAL — solid gold base (already on-palette).
   if (severity === "TACTICAL") return "border-amber-300/60 bg-amber-500/85 text-black";
   // ANOMALY — semantic red (preserved, danger signal).
@@ -233,16 +233,16 @@ export function LiveTab({
         }}
         baseClassName={`apex-card terminal-card-interactive group mb-2 ${
           isHeatFill
-            ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat bg-gradient-to-b from-amber-950/25 to-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(245,158,11,0.18)]"
-            : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live bg-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(245,158,11,0.14)]"
-        } ${hot ? "ring-1 ring-[rgba(245,158,11,0.32)]" : ""} ${
+            ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat bg-gradient-to-b from-amber-950/25 to-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(250,204,21,0.18)]"
+            : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live bg-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(250,204,21,0.14)]"
+        } ${hot ? "ring-1 ring-[rgba(250,204,21,0.32)]" : ""} ${
           sig.mint && isProbableSolanaMint(sig.mint) ? "cursor-pointer" : ""
-        } ${selectedMint && sig.mint === selectedMint ? "ring-2 ring-[rgba(245,158,11,0.5)]" : ""}`}
+        } ${selectedMint && sig.mint === selectedMint ? "ring-2 ring-[rgba(250,204,21,0.5)]" : ""}`}
         style={{ borderLeft: `3px solid ${accentColor}` }}
         watchedClassName={
           isHeatFill
-            ? "ring-1 ring-amber-500/45 shadow-[0_0_16px_rgba(245,158,11,0.16)]"
-            : "ring-1 ring-amber-500/40 shadow-[0_0_18px_rgba(245,158,11,0.16)]"
+            ? "ring-1 ring-amber-500/45 shadow-[0_0_16px_rgba(250,204,21,0.16)]"
+            : "ring-1 ring-amber-500/40 shadow-[0_0_18px_rgba(250,204,21,0.16)]"
         }
       >
         {({ displayScore, smartMoneyCount }) => (
@@ -414,7 +414,7 @@ export function LiveTab({
                 aria-expanded={liveExpanded}
                 aria-label={liveExpanded ? t("war.live.collapseAria") : t("war.live.expandAria")}
                 title={liveExpanded ? t("war.live.collapseTitle") : t("war.live.expandTitle")}
-                className="group relative flex h-9 w-9 shrink-0 items-center justify-center border border-[rgba(209,213,219,0.16)] bg-gradient-to-b from-white/[0.05] to-sl-card text-[#d1d5db] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all hover:border-[rgba(245,158,11,0.5)] hover:from-[rgba(245,158,11,0.10)] hover:to-[rgba(245,158,11,0.04)] hover:text-[#fbbf24] hover:shadow-[0_0_22px_rgba(245,158,11,0.20)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(245,158,11,0.5)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
+                className="group relative flex h-9 w-9 shrink-0 items-center justify-center border border-[rgba(209,213,219,0.16)] bg-gradient-to-b from-white/[0.05] to-sl-card text-[#d1d5db] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all hover:border-[rgba(250,204,21,0.5)] hover:from-[rgba(250,204,21,0.10)] hover:to-[rgba(250,204,21,0.04)] hover:text-[#fef08a] hover:shadow-[0_0_22px_rgba(250,204,21,0.20)] active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(250,204,21,0.5)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
               >
                 {liveExpanded ? (
                   <ChevronsUp className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />

@@ -48,7 +48,7 @@ function topBreakdownEntry(breakdown = {}) {
 const MIN_HORIZON_SAMPLE = 5;
 const MIN_COORD_ALERT_SCORE = 0.68;
 
-function Sparkline({ points = [], stroke = "#fbbf24" }) {
+function Sparkline({ points = [], stroke = "#fef08a" }) {
   if (!Array.isArray(points) || points.length < 2) {
     return <div className="h-12  border border-white/[0.08] bg-[#0b0f13]/80" />;
   }
@@ -109,8 +109,8 @@ function TabButton({ active, children, onClick, id }) {
       onClick={onClick}
       className={`shrink-0 px-3 py-2  text-xs font-semibold border transition whitespace-nowrap ${
         active
-          ? "border-[rgba(245,158,11,0.5)] bg-[rgba(245,158,11,0.10)] text-[#fbbf24] shadow-[0_0_0_1px_rgba(245,158,11,0.10)]"
-          : "border-white/[0.08] bg-sl-card text-sl-sub hover:text-sl-sub hover:border-[rgba(245,158,11,0.28)]"
+          ? "border-[rgba(250,204,21,0.5)] bg-[rgba(250,204,21,0.10)] text-[#fef08a] shadow-[0_0_0_1px_rgba(250,204,21,0.10)]"
+          : "border-white/[0.08] bg-sl-card text-sl-sub hover:text-sl-sub hover:border-[rgba(250,204,21,0.28)]"
       }`}
     >
       {children}
@@ -1112,7 +1112,7 @@ export default function OpsPage() {
                     <p className="text-[11px] uppercase tracking-wide text-sl-muted font-semibold">
                       Last 24h ({formatInteger(supabaseSeries24h.length)} points)
                     </p>
-                    <Sparkline points={supabaseSeries24h} stroke="#fbbf24" />
+                    <Sparkline points={supabaseSeries24h} stroke="#fef08a" />
                   </div>
                   <div className="space-y-2">
                     <p className="text-[11px] uppercase tracking-wide text-sl-muted font-semibold">

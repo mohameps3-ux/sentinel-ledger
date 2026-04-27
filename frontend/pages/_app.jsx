@@ -130,7 +130,7 @@ export default function App({ Component, pageProps }) {
               <GlobalCommandHud />
               <SiteFooter />
               {showDevUiBadge ? (
-                <div className="fixed left-2 bottom-2 z-[260] pointer-events-none select-none text-[10px] leading-tight px-2 py-1 rounded-md border border-[rgba(209,213,219,0.28)] bg-[#0a0a0a]/92 text-[#d1d5db] font-mono shadow-[0_0_14px_rgba(245,158,11,0.18)]">
+                <div className="fixed left-2 bottom-2 z-[260] pointer-events-none select-none text-[10px] leading-tight px-2 py-1 rounded-md border border-[rgba(209,213,219,0.28)] bg-[#0a0a0a]/92 text-[#d1d5db] font-mono shadow-[0_0_14px_rgba(250,204,21,0.18)]">
                   DEV · UI {devUiStamp} · BUILD {buildStamp}
                 </div>
               ) : null}

@@ -10,12 +10,12 @@ export function InstitutionalCallout({ tone = "info", title, icon, children }) {
     info: {
       border: "rgba(209, 213, 219, 0.22)",
       bg: "rgba(209, 213, 219, 0.04)",
-      title: "#fbbf24"
+      title: "#fef08a"
     },
     warn: {
-      border: "rgba(245, 158, 11, 0.32)",
-      bg: "rgba(245, 158, 11, 0.06)",
-      title: "#fbbf24"
+      border: "rgba(250, 204, 21, 0.32)",
+      bg: "rgba(250, 204, 21, 0.06)",
+      title: "#fef08a"
     },
     danger: {
       border: "rgba(239, 68, 68, 0.34)",

@@ -26,9 +26,9 @@ export function InstitutionalProse({ children, className = "" }) {
         }
         /* Apex Obsidian: links carry gold underline (no soft violet). */
         .sl-inst-prose a {
-          color: #fbbf24;
+          color: #fef08a;
           text-decoration: none;
-          border-bottom: 1px dotted rgba(245, 158, 11, 0.4);
+          border-bottom: 1px dotted rgba(250, 204, 21, 0.4);
           transition: border-color 150ms, color 150ms;
         }
         .sl-inst-prose a:hover {

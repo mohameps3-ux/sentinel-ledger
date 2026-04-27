@@ -122,7 +122,7 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
           href={dexUrl}
           target="_blank"
           rel={EXTERNAL_ANCHOR_REL}
-          className="border border-white/[0.1] bg-white/[0.04] px-2 py-1.5 text-center text-[10px] font-semibold text-gray-200 hover:border-[rgba(245,158,11,0.35)]"
+          className="border border-white/[0.1] bg-white/[0.04] px-2 py-1.5 text-center text-[10px] font-semibold text-gray-200 hover:border-[rgba(250,204,21,0.35)]"
         >
           {t("cockpit.desk.marketsLink")}
         </a>

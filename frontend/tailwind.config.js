@@ -1,30 +1,27 @@
 /**
  * Sentinel Ledger — Tailwind config
  *
- * Phase 7C palette migration: Bloomberg-Black
+ * Phase 7C+ Champagne Gold (institutional, not terracotta):
  *  - Surfaces: pure black + dark grays
- *  - Accent: amber (#f59e0b) — replaces violet/indigo across the codebase
- *  - Up: emerald, Down: red — kept (semantic standards in finance)
- *  - Removed all blue/cyan tint by overriding Tailwind built-ins
+ *  - Accent: clean yellow-gold — #FACC15 base, #FEF08A highlight, #CA8A04 depth
+ *    (no copper #c08552 / no amber-500 #f59e0b: reads brown on black)
+ *  - Up: emerald, Down: red
  *
- * Strategy: we keep the existing token NAMES (sl-violet, sl-blue, etc.) but
- * change their VALUES. Existing className usages (e.g. `bg-sl-violet`) keep
- * working — they just paint amber now. We also override Tailwind's built-in
- * `violet/purple/indigo/sky/cyan/blue` so raw classes like `text-violet-300`
- * automatically follow the institutional palette without touching pages.
+ * Strategy: same token names (sl-violet, etc.), single champagne family.
+ * violet/purple/indigo/blue/sky/cyan classNames map to this ramp.
  */
-const amberRamp = {
-  50:  '#fef7e6',
-  100: '#fdecc3',
-  200: '#fbd99c',
-  300: '#fbbf24',
-  400: '#f59e0b',
-  500: '#f59e0b',
-  600: '#d97706',
-  700: '#b45309',
-  800: '#92400e',
-  900: '#78350f',
-  950: '#451a03'
+const champagneGoldRamp = {
+  50:  '#fffbeb',
+  100: '#fef3c7',
+  200: '#fef08a',
+  300: '#fde047',
+  400: '#facc15',
+  500: '#eab308',
+  600: '#ca8a04',
+  700: '#a16207',
+  800: '#854d0e',
+  900: '#713f12',
+  950: '#422006'
 };
 
 const neutralRamp = {
@@ -62,21 +59,20 @@ module.exports = {
         'sl-text':   '#fafafa',
         'sl-sub':    '#a3a3a3',
         'sl-muted':  '#737373',
-        // Brand accent (amber/gold) — keeps the old name for compatibility
-        'sl-violet': '#f59e0b',
+        // Brand accent — single champagne gold (hex matches CSS tokens)
+        'sl-violet': '#facc15',
         // Semantic
         'sl-green':  '#10b981',
-        'sl-orange': '#f59e0b',
+        'sl-orange': '#facc15',
         'sl-red':    '#dc2626',
-        // Legacy 'sl-blue' now maps to amber so existing usages stay coherent
-        'sl-blue':   '#f59e0b',
+        // Legacy 'sl-blue' — same gold accent
+        'sl-blue':   '#facc15',
 
-        // Override Tailwind built-ins to remove violet/purple/indigo/blue/cyan
-        // tint across the whole codebase. We keep semantic emerald/red/amber.
-        violet:  amberRamp,
-        purple:  amberRamp,
-        indigo:  amberRamp,
-        fuchsia: amberRamp,
+        // Override Tailwind built-ins — all warm legacy hues → champagne scale
+        violet:  champagneGoldRamp,
+        purple:  champagneGoldRamp,
+        indigo:  champagneGoldRamp,
+        fuchsia: champagneGoldRamp,
         cyan:    neutralRamp,
         sky:     neutralRamp,
         blue:    neutralRamp,

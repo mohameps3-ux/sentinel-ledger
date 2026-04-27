@@ -10,7 +10,7 @@ import {
 import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 
 const btnBase =
-  "inline-flex h-7 w-7 items-center justify-center rounded-md border text-gray-200 transition-all duration-150 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(245,158,11,0.5)] focus-visible:ring-offset-1 focus-visible:ring-offset-[#050505]";
+  "inline-flex h-7 w-7 items-center justify-center rounded-md border text-gray-200 transition-all duration-150 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(250,204,21,0.5)] focus-visible:ring-offset-1 focus-visible:ring-offset-[#050505]";
 
 /**
  * Unified JUP / DEX / DESK muscle-memory row (terminal HUD).
@@ -50,7 +50,7 @@ export function TerminalActionIcons({ mint, onShallowDesk, className = "" }) {
         rel={EXTERNAL_ANCHOR_REL}
         title={t("terminal.actions.dex")}
         aria-label={t("terminal.actions.dex")}
-        className={`${btnBase} border-[rgba(209,213,219,0.22)] bg-[rgba(209,213,219,0.06)] hover:border-[rgba(245,158,11,0.5)] hover:bg-[rgba(245,158,11,0.10)] hover:shadow-[0_0_12px_rgba(245,158,11,0.18)] ${!ok ? "pointer-events-none opacity-40" : ""}`}
+        className={`${btnBase} border-[rgba(209,213,219,0.22)] bg-[rgba(209,213,219,0.06)] hover:border-[rgba(250,204,21,0.5)] hover:bg-[rgba(250,204,21,0.10)] hover:shadow-[0_0_12px_rgba(250,204,21,0.18)] ${!ok ? "pointer-events-none opacity-40" : ""}`}
         onClick={(e) => !ok && e.preventDefault()}
       >
         <LineChart size={14} strokeWidth={2} className="text-[#d1d5db]" aria-hidden />
@@ -60,19 +60,19 @@ export function TerminalActionIcons({ mint, onShallowDesk, className = "" }) {
           type="button"
           title={t("terminal.actions.deskShallow")}
           aria-label={t("terminal.actions.deskShallow")}
-          className={`${btnBase} border-[rgba(245,158,11,0.4)] bg-[rgba(245,158,11,0.08)] hover:border-[rgba(245,158,11,0.6)] hover:bg-[rgba(245,158,11,0.14)] hover:shadow-[0_0_12px_rgba(245,158,11,0.22)]`}
+          className={`${btnBase} border-[rgba(250,204,21,0.4)] bg-[rgba(250,204,21,0.08)] hover:border-[rgba(250,204,21,0.6)] hover:bg-[rgba(250,204,21,0.14)] hover:shadow-[0_0_12px_rgba(250,204,21,0.22)]`}
           onClick={() => onShallowDesk(mint)}
         >
-          <SquareTerminal size={14} strokeWidth={2} className="text-[#fbbf24]" aria-hidden />
+          <SquareTerminal size={14} strokeWidth={2} className="text-[#fef08a]" aria-hidden />
         </button>
       ) : (
         <Link
           href={fullDesk}
           title={t("terminal.actions.deskFull")}
           aria-label={t("terminal.actions.deskFull")}
-          className={`${btnBase} border-[rgba(245,158,11,0.4)] bg-[rgba(245,158,11,0.08)] hover:border-[rgba(245,158,11,0.6)] hover:bg-[rgba(245,158,11,0.14)] hover:shadow-[0_0_12px_rgba(245,158,11,0.22)] no-underline ${!ok ? "pointer-events-none opacity-40" : ""}`}
+          className={`${btnBase} border-[rgba(250,204,21,0.4)] bg-[rgba(250,204,21,0.08)] hover:border-[rgba(250,204,21,0.6)] hover:bg-[rgba(250,204,21,0.14)] hover:shadow-[0_0_12px_rgba(250,204,21,0.22)] no-underline ${!ok ? "pointer-events-none opacity-40" : ""}`}
         >
-          <SquareTerminal size={14} strokeWidth={2} className="text-[#fbbf24]" aria-hidden />
+          <SquareTerminal size={14} strokeWidth={2} className="text-[#fef08a]" aria-hidden />
         </Link>
       )}
     </div>

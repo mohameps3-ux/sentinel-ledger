@@ -12,11 +12,18 @@
   --sl-page-x: 16px;
   --sl-radius-card: 14px;
   --sl-radius-btn: 10px;
-  --sl-violet: #f59e0b;
+  /* Champagne gold — one institutional accent (no amber-500 / no copper) */
+  --sl-gold-hi: #fef08a;
+  --sl-gold: #facc15;
+  --sl-gold-mid: #eab308;
+  --sl-gold-dim: #ca8a04;
+  --sl-gold-rgb: 250, 204, 21;
+  --sl-gold-hi-rgb: 254, 240, 138;
+  --sl-violet: #facc15;
   --sl-text: #fafafa;
   --sl-sub: #a3a3a3;
   --sl-muted: #737373;
-  --sl-color-violet: #f59e0b;
+  --sl-color-violet: #facc15;
   --sl-color-text: #fafafa;
   --sl-color-sub: #a3a3a3;
   --sl-color-muted: #737373;
@@ -35,7 +42,7 @@
   --safe-right: env(safe-area-inset-right, 0px);
   /* Dense “insights terminal” rail (Sentinel palette, not third-party branding) */
   --sl-terminal-rail-live: rgba(16, 185, 129, 0.88);
-  --sl-terminal-rail-heat: rgba(245, 158, 11, 0.9);
+  --sl-terminal-rail-heat: rgba(250, 204, 21, 0.9);
   --sl-status-h: 24px;
 
   /* -- Layout skeleton variables (fixed top chrome -> <main> padding) --
@@ -103,8 +110,8 @@ body {
   /* Do not set overflow-x on body — it clips fixed wallet modals/dropdowns on mobile. */
   background-color: theme('colors.sl-root');
   background-image:
-    radial-gradient(ellipse 120% 80% at 50% -30%, rgba(245, 158, 11, 0.06) 0%, transparent 55%),
-    radial-gradient(circle at 12% 20%, rgba(245, 158, 11, 0.04) 0, transparent 38%),
+    radial-gradient(ellipse 120% 80% at 50% -30%, rgba(250, 204, 21, 0.06) 0%, transparent 55%),
+    radial-gradient(circle at 12% 20%, rgba(250, 204, 21, 0.04) 0, transparent 38%),
     linear-gradient(180deg, theme('colors.sl-panel') 0%, theme('colors.sl-root') 28%, theme('colors.sl-card') 100%);
   /* fixed backgrounds hurt paint/scroll on iOS Safari; use scroll on small viewports */
   background-attachment: scroll;
@@ -222,8 +229,8 @@ body {
 }
 
 .sl-terminal-shell--heat::before {
-  background: linear-gradient(180deg, var(--sl-terminal-rail-heat), rgba(245, 158, 11, 0.16));
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.18);
+  background: linear-gradient(180deg, var(--sl-terminal-rail-heat), rgba(250, 204, 21, 0.16));
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.18);
 }
 
 .sl-terminal-shell > * {
@@ -252,7 +259,7 @@ body {
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
-    linear-gradient(105deg, rgba(245, 158, 11, 0.05) 0%, transparent 42%, rgba(209, 213, 219, 0.04) 100%);
+    linear-gradient(105deg, rgba(250, 204, 21, 0.05) 0%, transparent 42%, rgba(209, 213, 219, 0.04) 100%);
   background-size:
     14px 14px,
     14px 14px,
@@ -271,7 +278,7 @@ body {
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
-    linear-gradient(105deg, rgba(245, 158, 11, 0.05) 0%, transparent 42%, rgba(209, 213, 219, 0.04) 100%);
+    linear-gradient(105deg, rgba(250, 204, 21, 0.05) 0%, transparent 42%, rgba(209, 213, 219, 0.04) 100%);
   background-size:
     14px 14px,
     14px 14px,
@@ -302,17 +309,17 @@ body {
   font-size: 14px;
   line-height: 1.2;
   color: #0a0a0a;
-  background: linear-gradient(90deg, #f59e0b, #fbbf24);
-  border: 1px solid rgba(245, 158, 11, 0.85);
+  background: linear-gradient(90deg, #facc15, #fef08a);
+  border: 1px solid rgba(250, 204, 21, 0.85);
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.22);
+  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.22);
   transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.15s ease;
 }
 
 .btn-pro:hover {
   opacity: 0.96;
   transform: scale(1.04);
-  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.32);
+  box-shadow: 0 8px 24px rgba(250, 204, 21, 0.32);
 }
 
 .btn-pro:active {
@@ -362,17 +369,17 @@ body {
   border-radius: var(--sl-radius-btn);
   font-weight: 600;
   font-size: 14px;
-  color: #fbbf24;
+  color: #fef08a;
   background: transparent;
-  border: 1px solid rgba(245, 158, 11, 0.55);
+  border: 1px solid rgba(250, 204, 21, 0.55);
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .btn-pro-outline:hover {
   transform: scale(1.04);
-  background: rgba(245, 158, 11, 0.08);
-  border-color: rgba(245, 158, 11, 0.85);
+  background: rgba(250, 204, 21, 0.08);
+  border-color: rgba(250, 204, 21, 0.85);
   color: #fef3c7;
 }
 
@@ -399,8 +406,8 @@ body {
 
 .sl-input:focus {
   outline: none;
-  border-color: rgba(245, 158, 11, 0.65);
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.14);
+  border-color: rgba(250, 204, 21, 0.65);
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.14);
 }
 
 /* Compact home search — more terminal-like density */
@@ -460,11 +467,11 @@ a {
   /* Shared "alive" border behavior for cards/boxes (Apex Obsidian: pearl→gold) */
   .glass-card:hover {
     transform: translateY(-1px);
-    border-color: rgba(245, 158, 11, 0.42);
+    border-color: rgba(250, 204, 21, 0.42);
     box-shadow:
       0 16px 44px rgb(0 0 0 / 0.52),
-      0 0 0 1px rgba(245, 158, 11, 0.18),
-      0 0 18px rgba(245, 158, 11, 0.16),
+      0 0 0 1px rgba(250, 204, 21, 0.18),
+      0 0 18px rgba(250, 204, 21, 0.16),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
 }
@@ -492,8 +499,8 @@ a {
   .sl-glow-info:hover {
     /* Info glow → silver pearl with gold edge (Apex Obsidian). */
     transform: translateY(-1px);
-    border-color: rgba(245, 158, 11, 0.5) !important;
-    box-shadow: 0 0 16px rgba(245, 158, 11, 0.2), 0 0 0 1px rgba(209, 213, 219, 0.16);
+    border-color: rgba(250, 204, 21, 0.5) !important;
+    box-shadow: 0 0 16px rgba(250, 204, 21, 0.2), 0 0 0 1px rgba(209, 213, 219, 0.16);
   }
 }
 
@@ -512,7 +519,7 @@ a {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 70% 50% at 100% 0%, rgba(245, 158, 11, 0.10), transparent 55%),
+  background: radial-gradient(ellipse 70% 50% at 100% 0%, rgba(250, 204, 21, 0.10), transparent 55%),
     radial-gradient(ellipse 60% 45% at 0% 100%, rgba(209, 213, 219, 0.05), transparent 50%);
   pointer-events: none;
 }
@@ -529,7 +536,7 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(
     160deg,
-    rgba(245, 158, 11, 0.05) 0%,
+    rgba(250, 204, 21, 0.05) 0%,
     rgba(19, 23, 26, 0.96) 50%,
     rgba(12, 16, 20, 0.99) 100%
   );
@@ -981,8 +988,8 @@ body.war-mode *::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background-color: #f59e0b;
-  border: 1px solid #f59e0b;
+  background-color: #facc15;
+  border: 1px solid #facc15;
   color: #0a0a0a;
   cursor: pointer;
   transition: opacity 150ms ease, box-shadow 150ms ease;
@@ -991,7 +998,7 @@ body.war-mode *::after {
 }
 .btn-primary:hover {
   opacity: 0.9;
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.35);
 }
 
 .btn-outline {
@@ -1006,17 +1013,17 @@ body.war-mode *::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background-color: rgba(245, 158, 11, 0.04);
-  border: 1px solid rgba(245, 158, 11, 0.55);
-  color: #fbbf24;
+  background-color: rgba(250, 204, 21, 0.04);
+  border: 1px solid rgba(250, 204, 21, 0.55);
+  color: #fef08a;
   cursor: pointer;
   transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
   border-radius: 2px;
   text-decoration: none;
 }
 .btn-outline:hover {
-  background-color: rgba(245, 158, 11, 0.10);
-  border-color: rgba(245, 158, 11, 0.85);
+  background-color: rgba(250, 204, 21, 0.10);
+  border-color: rgba(250, 204, 21, 0.85);
   color: #fef3c7;
 }
 
@@ -1041,9 +1048,9 @@ body.war-mode *::after {
   text-decoration: none;
 }
 .btn-ghost:hover {
-  border-color: rgba(245, 158, 11, 0.55);
+  border-color: rgba(250, 204, 21, 0.55);
   color: #fafafa;
-  background-color: rgba(245, 158, 11, 0.05);
+  background-color: rgba(250, 204, 21, 0.05);
 }
 
 .btn-ghost-sm {
@@ -1067,9 +1074,9 @@ body.war-mode *::after {
   text-decoration: none;
 }
 .btn-ghost-sm:hover {
-  border-color: rgba(245, 158, 11, 0.55);
+  border-color: rgba(250, 204, 21, 0.55);
   color: #fafafa;
-  background-color: rgba(245, 158, 11, 0.05);
+  background-color: rgba(250, 204, 21, 0.05);
 }
 
 .btn-war {
@@ -1142,9 +1149,9 @@ body.war-mode *::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  border: 1px solid rgba(245,158,11,0.3);
+  border: 1px solid rgba(250,204,21,0.3);
   color: theme('colors.sl-orange');
-  background-color: rgba(245,158,11,0.06);
+  background-color: rgba(250,204,21,0.06);
   border-radius: 2px;
 }
 
@@ -1159,9 +1166,9 @@ body.war-mode *::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  border: 1px solid rgba(245, 158, 11, 0.32);
-  color: #fbbf24;
-  background-color: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(250, 204, 21, 0.32);
+  color: #fef08a;
+  background-color: rgba(250, 204, 21, 0.06);
   border-radius: 2px;
 }
 
@@ -1176,9 +1183,9 @@ body.war-mode *::after {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  border: 1px solid rgba(245, 158, 11, 0.42);
-  color: #fbbf24;
-  background-color: rgba(245, 158, 11, 0.10);
+  border: 1px solid rgba(250, 204, 21, 0.42);
+  color: #fef08a;
+  background-color: rgba(250, 204, 21, 0.10);
   border-radius: 2px;
 }
 
@@ -1208,7 +1215,7 @@ body.war-mode *::after {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  border: 1px solid rgba(245,158,11,0.25);
+  border: 1px solid rgba(250,204,21,0.25);
   color: theme('colors.sl-orange');
   background-color: transparent;
   border-radius: 2px;

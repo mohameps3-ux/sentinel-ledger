@@ -184,13 +184,13 @@ export function HotTab({
                 }}
                 baseClassName={`apex-card terminal-card-interactive group mb-2 sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat p-1.5 sm:p-2 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
                   token?.mint
-                    ? "hover:-translate-y-[1px] hover:shadow-[0_0_16px_rgba(245,158,11,0.18)]"
+                    ? "hover:-translate-y-[1px] hover:shadow-[0_0_16px_rgba(250,204,21,0.18)]"
                     : "opacity-75"
                 } ${token?.mint && isProbableSolanaMint(token.mint) ? "cursor-pointer" : ""} ${
-                  selectedMint && token?.mint === selectedMint ? "ring-2 ring-[rgba(245,158,11,0.5)]" : ""
+                  selectedMint && token?.mint === selectedMint ? "ring-2 ring-[rgba(250,204,21,0.5)]" : ""
                 }`}
                 style={{ borderLeft: `3px solid ${accentColor}` }}
-                watchedClassName="ring-1 ring-amber-500/45 shadow-[0_0_18px_rgba(245,158,11,0.16)]"
+                watchedClassName="ring-1 ring-amber-500/45 shadow-[0_0_18px_rgba(250,204,21,0.16)]"
               >
                 {({ displayScore, smartMoneyCount }) => (
                   <>
@@ -211,7 +211,7 @@ export function HotTab({
 
                 <div className="space-y-1">
                   <div className="h-1 rounded-full bg-sl-card overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-[rgba(245,158,11,0.95)] via-[rgba(251,191,36,0.95)] to-[rgba(192,133,82,0.85)]" style={{ width: `${displayScore}%` }} />
+                    <div className="h-full rounded-full bg-gradient-to-r from-[#fef08a] via-[#facc15] to-[#ca8a04]" style={{ width: `${displayScore}%` }} />
                   </div>
                   <div className="flex flex-wrap items-center gap-0.5">
                     <span className="font-mono text-[11px] font-bold tabular-nums text-sl-text">

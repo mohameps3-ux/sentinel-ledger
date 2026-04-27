@@ -63,7 +63,7 @@ export function InstitutionalSection({
           height: 1px;
           background: linear-gradient(
             90deg,
-            rgba(245, 158, 11, 0.55),
+            rgba(250, 204, 21, 0.55),
             rgba(209, 213, 219, 0.15) 35%,
             transparent
           );
