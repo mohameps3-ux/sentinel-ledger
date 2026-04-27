@@ -17,6 +17,7 @@ import { redFlagsForSignal } from "@/lib/redFlags";
 import { UI_CONFIG } from "@/constants/homeData";
 import { RankBadge, RankDeltaChip } from "./RankIndicators";
 import { useLocale } from "../../../../contexts/LocaleContext";
+import { deriveApexState } from "../../../../components/apex";
 
 function cockpitCardClickTargetIsInteractive(e) {
   const el = e?.target;
@@ -160,10 +161,12 @@ export function HotTab({
             const redFlags = Array.isArray(token?.redFlags) ? token.redFlags : redFlagsForSignal({ signalStrength, token: token || {} });
             const trendingRank = trendingRankDeltas.get(token?.mint) || { rank: idx + 1, delta: 0, isNew: false };
 
+            const apexState = deriveApexState(signalStrength);
             return (
               <RealtimeTokenCardShell
                 key={`${token?.mint || "token"}-${idx}`}
                 mint={token?.mint}
+                data-apex-state={apexState}
                 staticScore={signalStrength}
                 actionKey={actionKey}
                 smartMoneyCount={token?.smartWallets}
@@ -179,15 +182,15 @@ export function HotTab({
                     sw: Math.max(0, Math.round(Number(token?.smartWallets || 0)))
                   });
                 }}
-                baseClassName={`terminal-card-interactive group mb-2 sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat glass-card p-1.5 sm:p-2 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
+                baseClassName={`apex-card terminal-card-interactive group mb-2 sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat p-1.5 sm:p-2 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
                   token?.mint
-                    ? "hover:-translate-y-[1px] hover:border-violet-400/45 hover:shadow-[0_0_16px_rgba(139,92,246,0.32)]"
+                    ? "hover:-translate-y-[1px] hover:shadow-[0_0_16px_rgba(245,158,11,0.18)]"
                     : "opacity-75"
                 } ${token?.mint && isProbableSolanaMint(token.mint) ? "cursor-pointer" : ""} ${
-                  selectedMint && token?.mint === selectedMint ? "ring-2 ring-cyan-500/40" : ""
+                  selectedMint && token?.mint === selectedMint ? "ring-2 ring-[rgba(245,158,11,0.5)]" : ""
                 }`}
                 style={{ borderLeft: `3px solid ${accentColor}` }}
-                watchedClassName="ring-1 ring-emerald-500/50 shadow-[0_0_18px_rgba(16,185,129,0.18)]"
+                watchedClassName="ring-1 ring-amber-500/45 shadow-[0_0_18px_rgba(245,158,11,0.16)]"
               >
                 {({ displayScore, smartMoneyCount }) => (
                   <>
@@ -208,7 +211,7 @@ export function HotTab({
 
                 <div className="space-y-1">
                   <div className="h-1 rounded-full bg-sl-card overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-400" style={{ width: `${displayScore}%` }} />
+                    <div className="h-full rounded-full bg-gradient-to-r from-[rgba(245,158,11,0.95)] via-[rgba(251,191,36,0.95)] to-[rgba(192,133,82,0.85)]" style={{ width: `${displayScore}%` }} />
                   </div>
                   <div className="flex flex-wrap items-center gap-0.5">
                     <span className="font-mono text-[11px] font-bold tabular-nums text-sl-text">

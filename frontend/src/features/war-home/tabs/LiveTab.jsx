@@ -20,6 +20,7 @@ import { isProbableSolanaMint } from "../../../../lib/solanaMint.mjs";
 import { RankBadge, RankDeltaChip } from "./RankIndicators";
 import { AnimatedNumber } from "../../../../components/ui/AnimatedNumber";
 import { useLocale } from "../../../../contexts/LocaleContext";
+import { deriveApexState } from "../../../../components/apex";
 
 /**
  * War Home — Live tab (grid / Virtuoso). Parent `index.js` controls merge + hysteresis; this file only renders.
@@ -34,10 +35,14 @@ function cockpitCardClickTargetIsInteractive(e) {
 }
 
 function narrativeClass(severity) {
-  if (severity === "URGENT") return "border-indigo-300/70 bg-indigo-600/85 text-sl-text shadow-[0_0_18px_rgba(99,102,241,0.35)] animate-pulse";
+  // URGENT — the apex moment: iridescent gold border + warm halo (matches Apex Obsidian critical state).
+  if (severity === "URGENT") return "border-[rgba(245,158,11,0.55)] bg-gradient-to-r from-[rgba(245,158,11,0.18)] via-[rgba(251,191,36,0.10)] to-[rgba(245,158,11,0.18)] text-amber-50 shadow-[0_0_20px_rgba(245,158,11,0.32)] animate-pulse";
+  // TACTICAL — solid gold base (already on-palette).
   if (severity === "TACTICAL") return "border-amber-300/60 bg-amber-500/85 text-black";
+  // ANOMALY — semantic red (preserved, danger signal).
   if (severity === "ANOMALY") return "border-red-400/80 bg-red-950/90 text-red-50 shadow-[0_0_16px_rgba(248,113,113,0.25)]";
-  return "border-white/15 bg-zinc-950/90 text-zinc-100";
+  // Default — silver pearl frame.
+  return "border-[rgba(209,213,219,0.18)] bg-zinc-950/90 text-zinc-100";
 }
 
 function normalizeSignalDecision(action) {
@@ -197,9 +202,14 @@ export function LiveTab({
     const chg = Number(tick?.priceChange24h ?? sig.token?.change);
     const hasPx = Number.isFinite(px) && px > 0;
     const hasChg = Number.isFinite(chg);
+    // Apex Obsidian state — gold appears only when the underlying signal carries value.
+    // Heat-fill is always "active" (warm gold) to communicate "pure heat, not validated signal".
+    // Live cards derive from signalStrength: >=80 critical (high conviction), >=60 active, else neutral silver.
+    const apexState = isHeatFill ? "active" : deriveApexState(sig.signalStrength);
     return (
       <RealtimeTokenCardShell
         data-testid="sl-war-live-card"
+        data-apex-state={apexState}
         mint={sig.mint}
         staticScore={sig.signalStrength}
         actionKey={actionKey}
@@ -221,18 +231,18 @@ export function LiveTab({
             sw: Math.max(0, Math.round(Number(sig?.smartWallets || 0)))
           });
         }}
-        baseClassName={`terminal-card-interactive group mb-2 ${
+        baseClassName={`apex-card terminal-card-interactive group mb-2 ${
           isHeatFill
-            ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat border border-amber-500/25 bg-gradient-to-b from-amber-950/25 to-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-amber-400/45 hover:shadow-[0_0_18px_rgba(245,158,11,0.14)]"
-            : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live border border-sl-border bg-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:border-emerald-400/45 hover:shadow-[0_0_18px_rgba(16,185,129,0.22)]"
-        } ${hot ? (isHeatFill ? "ring-1 ring-amber-500/30" : "ring-1 ring-emerald-500/35") : ""} ${
+            ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat bg-gradient-to-b from-amber-950/25 to-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(245,158,11,0.18)]"
+            : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live bg-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(245,158,11,0.14)]"
+        } ${hot ? "ring-1 ring-[rgba(245,158,11,0.32)]" : ""} ${
           sig.mint && isProbableSolanaMint(sig.mint) ? "cursor-pointer" : ""
-        } ${selectedMint && sig.mint === selectedMint ? "ring-2 ring-cyan-500/40" : ""}`}
+        } ${selectedMint && sig.mint === selectedMint ? "ring-2 ring-[rgba(245,158,11,0.5)]" : ""}`}
         style={{ borderLeft: `3px solid ${accentColor}` }}
         watchedClassName={
           isHeatFill
-            ? "!border-amber-500/40 ring-1 ring-amber-500/45 shadow-[0_0_16px_rgba(245,158,11,0.16)]"
-            : "!border-emerald-500/35 ring-1 ring-emerald-500/50 shadow-[0_0_18px_rgba(16,185,129,0.18)]"
+            ? "ring-1 ring-amber-500/45 shadow-[0_0_16px_rgba(245,158,11,0.16)]"
+            : "ring-1 ring-amber-500/40 shadow-[0_0_18px_rgba(245,158,11,0.16)]"
         }
       >
         {({ displayScore, smartMoneyCount }) => (
