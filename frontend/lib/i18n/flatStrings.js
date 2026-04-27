@@ -645,6 +645,11 @@ export const FLAT_STRINGS = {
   "footer.link.contact": S("Contact", { es: "Contacto", fr: "Contact", de: "Kontakt", zh: "联系", ko: "문의", ja: "お問い合わせ", ar: "اتصل", pt: "Contato" }),
   "footer.link.twitter": S("Twitter", { es: "Twitter", zh: "推特", ko: "트위터", ja: "Twitter", ar: "تويتر", pt: "Twitter" }),
   "footer.link.github": S("GitHub", { es: "GitHub", zh: "GitHub", ko: "GitHub", ja: "GitHub", ar: "GitHub", pt: "GitHub" }),
+  "footer.col.trading": S("Trading", { es: "Operativa", fr: "Trading", de: "Trading", zh: "交易", ko: "트레이딩", ja: "トレーディング", ar: "التداول", pt: "Operações" }),
+  "footer.col.intelligence": S("Intelligence", { es: "Inteligencia", fr: "Intelligence", de: "Intelligenz", zh: "情报", ko: "인텔리전스", ja: "インテリジェンス", ar: "الاستخبارات", pt: "Inteligência" }),
+  "footer.col.account": S("Account", { es: "Cuenta", fr: "Compte", de: "Konto", zh: "账户", ko: "계정", ja: "アカウント", ar: "الحساب", pt: "Conta" }),
+  "footer.col.legal": S("Legal", { es: "Legal", fr: "Mentions légales", de: "Rechtliches", zh: "法律", ko: "법률", ja: "法務", ar: "قانوني", pt: "Legal" }),
+  "footer.col.connect": S("Connect", { es: "Conectar", fr: "Réseaux", de: "Kontakt", zh: "联系", ko: "연결", ja: "接続", ar: "تواصل", pt: "Conectar" }),
 
   ...WAYFINDING_FLAT_STRINGS,
 
