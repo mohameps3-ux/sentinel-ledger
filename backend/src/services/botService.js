@@ -12,9 +12,6 @@ function safeSupabase() {
   }
 }
 
-const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
-const HAIKU_MAX = 300;
-
 // Intent classification (deterministic, no external calls)
 function classifyIntent(message) {
   const msg = String(message || "").toLowerCase();
@@ -127,19 +124,19 @@ async function buildContextPack() {
   }
 }
 
-async function callClaudeAPI(question, _intent, contextPack, language) {
-  const key = String(process.env.ANTHROPIC_API_KEY || "").trim();
-  if (!key) {
-    return "El asistente requiere ANTHROPIC_API_KEY en el servidor. This is not financial advice.";
+async function callGeminiAPI(question, _intent, contextPack, language) {
+  const apiKey = String(process.env.GOOGLE_AI_API_KEY || "").trim();
+  if (!apiKey) {
+    return "Bot IA no configurado. Usa el modo SUPPORT para preguntas frecuentes.";
   }
-  const model = String(process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).trim() || DEFAULT_MODEL;
+
   const systemPrompt = `You are Sentinel Assistant, the AI support for Sentinel Ledger — a Solana on-chain intelligence terminal.
 
 RULES:
 - Answer in ${language === "en" ? "English" : "Spanish"} always
 - Be concise and technical — this is a professional trading tool
 - Never give financial advice
-- Always add disclaimer: "This is not financial advice"
+- Always add: "This is not financial advice"
 - If asked about prices or signals, use the context data provided
 - If you don't know something specific about Sentinel, say so clearly
 
@@ -154,29 +151,40 @@ SENTINEL FEATURES:
 - Telegram bot: @sentinelledger_intel_bot
 - Track Record: /graveyard page`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: HAIKU_MAX,
-      system: systemPrompt,
-      messages: [{ role: "user", content: String(question).slice(0, 2000) }]
-    })
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    console.warn("[bot] Claude error", res.status, t.slice(0, 200));
-    return "No pude procesar tu pregunta ahora. Inténtalo de nuevo. This is not financial advice.";
+  const q = String(question).slice(0, 2000);
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(
+      apiKey
+    )}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: "user", parts: [{ text: q }] }],
+        generationConfig: { maxOutputTokens: 300, temperature: 0.3 }
+      })
+    }
+  );
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error("[bot] Gemini HTTP error:", response.status, data);
+    return "No pude procesar tu pregunta. Intenta de nuevo.";
   }
-  const data = await res.json();
-  const out = data?.content?.[0]?.text;
-  if (!out) return "No pude procesar tu pregunta. Intenta de nuevo.\n\nThis is not financial advice.";
-  return `${String(out).trim()}\n\nThis is not financial advice.`;
+  if (data.error) {
+    console.error("[bot] Gemini error:", data.error);
+    return "No pude procesar tu pregunta. Intenta de nuevo.";
+  }
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    return "No pude procesar tu pregunta. Intenta de nuevo.";
+  }
+  const trimmed = String(text).trim();
+  if (!/financial advice/i.test(trimmed)) {
+    return `${trimmed}\n\nThis is not financial advice.`;
+  }
+  return trimmed;
 }
 
 async function handleBotMessage(message, language = "es", _sessionId = null) {
@@ -251,7 +259,7 @@ async function handleBotMessage(message, language = "es", _sessionId = null) {
   }
 
   const contextPack = intent === "ANALYTICS" ? await buildContextPack() : {};
-  const answer = await callClaudeAPI(message, intent, contextPack, language);
+  const answer = await callGeminiAPI(message, intent, contextPack, language);
 
   let thumbsId = null;
   if (intent !== "ANALYTICS") {
