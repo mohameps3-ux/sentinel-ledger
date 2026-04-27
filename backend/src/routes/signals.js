@@ -155,7 +155,8 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     rulesRes,
     pageRes,
     winsRes,
-    lossesRes
+    lossesRes,
+    autoDiscoveredRes
   ] = await Promise.all([
     supabase.from("signal_outcomes").select("id", { count: "exact", head: true }),
     supabase.from("signal_outcomes").select("id", { count: "exact", head: true }).not("outcome_60m", "is", null),
@@ -178,12 +179,22 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
       .select("id,signal_id,mint,rule_id,outcome_60m,created_at,rule_snapshot")
       .lt("outcome_60m", -0.05)
       .order("outcome_60m", { ascending: true })
-      .limit(3)
+      .limit(3),
+    supabase
+      .from("smart_wallets")
+      .select("wallet_address,win_rate,total_trades,promoted_at,source")
+      .eq("source", "auto_discovery")
+      .order("win_rate", { ascending: false, nullsFirst: false })
+      .limit(20)
   ]);
 
   for (const r of [totalRes, resolvedRes, allResolvedRes, rulesRes, pageRes, winsRes, lossesRes]) {
     if (r.error) throw r.error;
   }
+  // Auto-discovered wallets are best-effort: missing column / table degrades to empty list, never fails the page.
+  const autoDiscoveredRows = autoDiscoveredRes && !autoDiscoveredRes.error
+    ? Array.isArray(autoDiscoveredRes.data) ? autoDiscoveredRes.data : []
+    : [];
 
   const allResolved = allResolvedRes.data || [];
   const wins = allResolved.filter((r) => Number(r.outcome_60m) > 0.05);
@@ -215,6 +226,18 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
   const [bestCall] = best ? await enrichOracleRows(supabase, [best]) : [null];
   const [worstCall] = worst ? await enrichOracleRows(supabase, [worst]) : [null];
 
+  const autoDiscoveredWallets = autoDiscoveredRows
+    .map((row) => {
+      const wr = Number(row.win_rate);
+      return {
+        wallet: row.wallet_address,
+        win_rate: Number.isFinite(wr) ? wr : null,
+        total_trades: Number.isFinite(Number(row.total_trades)) ? Number(row.total_trades) : null,
+        promoted_at: row.promoted_at || null
+      };
+    })
+    .filter((row) => row.wallet);
+
   return {
     ok: true,
     total_signals: Number(totalRes.count || 0),
@@ -229,6 +252,7 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     recent_signals: recent,
     top_wins: topWins,
     worst_losses: worstLosses,
+    auto_discovered_wallets: autoDiscoveredWallets,
     last_updated: new Date().toISOString(),
     pagination: {
       page: safePage,

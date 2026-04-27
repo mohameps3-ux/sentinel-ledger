@@ -3,6 +3,7 @@
 const { randomUUID } = require("crypto");
 const { getSupabase } = require("../lib/supabase");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
+const tokenStateMachine = require("../services/tokenStateMachine");
 
 const POLL_MS = Math.max(10_000, Number(process.env.SENTINEL_ORCHESTRATOR_POLL_MS || 30_000));
 const STALE_MS = 120_000;
@@ -326,12 +327,27 @@ function handleObservedEvent(event) {
   if (rateLimited()) return false;
 
   const cta = planCta(event, severity);
+  let tokenState = null;
+  try {
+    tokenState = tokenStateMachine.applyEvent(event.mint, {
+      severity,
+      action: event.action,
+      score: event.score,
+      confidence: event.confidence,
+      scoreDelta: event.scoreDelta,
+      priceChange24h: event.priceChange24h,
+      outcomeResolved: event.resultPct != null
+    });
+  } catch (_) {
+    tokenState = null;
+  }
   const payload = {
     id: randomUUID(),
     mint: event.mint,
     severity,
     message: narrativeMessage(key, slots, severity),
     cta,
+    state: tokenState ? { key: tokenState.state, since: tokenState.since, prev: tokenState.prev } : null,
     timestamp: nowIso(),
     expiresAt: new Date(Date.now() + NARRATIVE_TTL_MS).toISOString()
   };

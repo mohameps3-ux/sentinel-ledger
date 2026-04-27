@@ -110,6 +110,7 @@ export default function VerifiedTrackRecordPage() {
   const rules = useMemo(() => data.rule_performance || [], [data.rule_performance]);
   const bestCalls = useMemo(() => data.top_wins || [], [data.top_wins]);
   const worstCalls = useMemo(() => data.worst_losses || [], [data.worst_losses]);
+  const autoDiscovered = useMemo(() => data.auto_discovered_wallets || [], [data.auto_discovered_wallets]);
   const totalSignals = Number(data.total_signals || 0);
   const resolvedSignals = Number(data.resolved_signals || 0);
   const hasMetrics = resolvedSignals >= 10;
@@ -292,6 +293,42 @@ export default function VerifiedTrackRecordPage() {
             )}
           </section>
         </div>
+
+        {autoDiscovered.length ? (
+          <section className="glass-card sl-inset border-white/[0.08] bg-[#080a0d]/90">
+            <div className="mb-4">
+              <p className="sl-label">Auto-discovered wallets</p>
+              <h2 className="text-xl font-semibold text-sl-text">Smart wallets surfaced by the engine, not curated.</h2>
+              <p className="mt-1 text-sm text-sl-muted">Promoted from candidates after closing real round-trip cycles on validated signals.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-[10px] uppercase tracking-[0.14em] text-sl-muted">
+                  <tr className="border-b border-white/[0.08]">
+                    <th className="text-left py-2 pr-3">Wallet</th>
+                    <th className="text-right py-2 px-3">Win rate</th>
+                    <th className="text-right py-2 px-3">Closed trades</th>
+                    <th className="text-right py-2 pl-3">Promoted</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {autoDiscovered.map((w) => (
+                    <tr key={w.wallet} className="border-b border-white/[0.06]">
+                      <td className="py-3 pr-3 font-mono text-cyan-200 break-all">
+                        <Link href={`/wallet/${encodeURIComponent(w.wallet)}`} className="text-cyan-200 no-underline">
+                          {w.wallet.slice(0, 6)}…{w.wallet.slice(-4)}
+                        </Link>
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono text-sl-sub">{w.win_rate != null ? `${Number(w.win_rate).toFixed(1)}%` : "—"}</td>
+                      <td className="py-3 px-3 text-right font-mono text-sl-sub">{w.total_trades != null ? int(w.total_trades) : "—"}</td>
+                      <td className="py-3 pl-3 text-right font-mono text-sl-muted">{time(w.promoted_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
 
         <section className="glass-card sl-inset border-white/[0.08] bg-sl-card">
           <p className="sl-label">How Oracle Validates</p>
