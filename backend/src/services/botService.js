@@ -12,9 +12,22 @@ function safeSupabase() {
   }
 }
 
-// Intent classification (deterministic, no external calls)
+/** Lowercase + strip combining marks for es/en keyword matching. */
+function stripDiacritics(s) {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Also fold ñ/ü so “senales” matches “señales”-style keywords after accent strip. */
+function normalizeForKeywordMatch(s) {
+  return stripDiacritics(s).replace(/ñ/g, "n").replace(/ü/g, "u");
+}
+
+// Intent classification (deterministic, no external calls). SUPPORT before ANALYTICS so “no veo señales” etc. win.
 function classifyIntent(message) {
-  const msg = String(message || "").toLowerCase();
+  const msg = normalizeForKeywordMatch(message);
   const analyticsKw = [
     "precio",
     "price",
@@ -50,13 +63,20 @@ function classifyIntent(message) {
     "cómo",
     "que es",
     "qué es",
-    "activar"
+    "activar",
+    "score",
+    "wallet",
+    "conectar",
+    "señales",
+    "signals"
   ];
   const actionKw = ["alertas", "watchlist", "configurar", "activar alerta", "seguir wallet", "añadir"];
 
-  if (actionKw.some((k) => msg.includes(k))) return "ACTION";
-  if (analyticsKw.some((k) => msg.includes(k))) return "ANALYTICS";
-  if (supportKw.some((k) => msg.includes(k))) return "SUPPORT";
+  const has = (list) => list.some((k) => msg.includes(normalizeForKeywordMatch(k)));
+
+  if (has(actionKw)) return "ACTION";
+  if (has(supportKw)) return "SUPPORT";
+  if (has(analyticsKw)) return "ANALYTICS";
   return "GENERAL";
 }
 
@@ -69,11 +89,16 @@ function hashQuestion(question) {
 }
 
 function checkSupportTree(message) {
-  const msg = String(message || "").toLowerCase();
+  const msg = normalizeForKeywordMatch(message);
+  console.log("[bot] checking support tree for:", message);
   for (const [key, entry] of Object.entries(supportTree)) {
     if (!entry || !Array.isArray(entry.keywords)) continue;
-    if (entry.keywords.some((kw) => msg.includes(String(kw).toLowerCase()))) {
-      return { answer: entry.answer, key };
+    for (const kw of entry.keywords) {
+      const kwNorm = normalizeForKeywordMatch(kw);
+      console.log("[bot] checking keyword:", kw, "in:", msg);
+      if (msg.includes(kwNorm)) {
+        return { answer: entry.answer, key };
+      }
     }
   }
   return null;
