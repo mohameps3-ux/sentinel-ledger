@@ -3,6 +3,7 @@ import "../styles/globals.css";
 import "../styles/sentinel-design-system.css";
 import "../styles/apex-obsidian.css";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -19,6 +20,10 @@ import { GlobalWayfinding } from "../components/layout/GlobalWayfinding";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { GlobalCommandHud } from "../components/terminal/GlobalCommandHud";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
+
+const SentinelBot = dynamic(() => import("../components/bot/SentinelBot").then((m) => m.SentinelBot), {
+  ssr: false
+});
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
 import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
 import { getPublicWsUrl } from "../lib/publicRuntime";
@@ -134,6 +139,7 @@ export default function App({ Component, pageProps }) {
                   DEV · UI {devUiStamp} · BUILD {buildStamp}
                 </div>
               ) : null}
+              <SentinelBot />
               <Toaster
                 position="bottom-center"
                 containerStyle={{
