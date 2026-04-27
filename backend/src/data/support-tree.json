@@ -14,11 +14,16 @@
   },
   "wallet_connect": {
     "keywords": [
+      "como conecto",
+      "como conectar",
       "conectar wallet",
       "wallet no conecta",
       "connect wallet",
       "phantom",
-      "solflare"
+      "solflare",
+      "seleccionar wallet",
+      "select wallet",
+      "mi wallet"
     ],
     "answer": "Para conectar tu wallet: 1) Instala Phantom o Solflare. 2) Haz clic en Select Wallet en el navbar. 3) Aprueba la conexión. Si hay error, recarga la página e inténtalo de nuevo."
   },
