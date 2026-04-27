@@ -113,7 +113,7 @@ export function SentinelBot() {
         >
           <div className="shrink-0 border-b border-sl-border px-3 py-2 flex items-center justify-between gap-2 bg-sl-card/80">
             <div>
-              <div className="font-mono text-xs text-sl-muted uppercase tracking-wider">Sentinel Assistant</div>
+              <div className="font-mono text-xs text-sl-muted uppercase tracking-wider">SENTINEL ASSISTANT</div>
               <div className="mt-1 flex gap-1">
                 <button
                   type="button"
@@ -122,7 +122,7 @@ export function SentinelBot() {
                     mode === "support" ? "bg-sl-violet/20 text-sl-violet border border-sl-violet/50" : "text-sl-muted border border-transparent"
                   }`}
                 >
-                  Support
+                  SUPPORT
                 </button>
                 <button
                   type="button"
@@ -131,7 +131,7 @@ export function SentinelBot() {
                     mode === "ask" ? "bg-sl-violet/20 text-sl-violet border border-sl-violet/50" : "text-sl-muted border border-transparent"
                   }`}
                 >
-                  Ask Sentinel
+                  ASK SENTINEL
                 </button>
               </div>
             </div>
