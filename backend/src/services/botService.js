@@ -2,20 +2,7 @@
 
 const crypto = require("crypto");
 const { getSupabase } = require("../lib/supabase");
-const redis = require("../lib/cache");
-const { getSignalGateOpsSnapshot } = require("./signalEmissionGate");
-const {
-  getLatestSignalsFeedCached,
-  getSmartWalletsTopCached,
-  capSignalsLatestLimit
-} = require("./homeTerminalApi");
-
 const supportTree = require("../data/support-tree.json");
-
-const RE_ACTION = /\b(alertas|watchlist|configurar|activar)\b|watchlist|alertas/i;
-const RE_ANALYTICS = /precio|price|token|score|señal|signal|chain|blockchain|pump|raydium/i;
-const RE_SUPPORT =
-  /error|problema|fallo|no funciona|no veo|pagar|suscripci|subscription|ayuda|help|wallet|phantom|conectar|connect|\bpro\b|upgrade/i;
 
 function safeSupabase() {
   try {
@@ -25,374 +12,304 @@ function safeSupabase() {
   }
 }
 
-function hashQuestion(message) {
-  const n = String(message || "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-  return crypto.createHash("sha256").update(n, "utf8").digest("hex").slice(0, 16);
-}
+const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
+const HAIKU_MAX = 300;
 
+// Intent classification (deterministic, no external calls)
 function classifyIntent(message) {
-  const t = String(message || "");
-  if (RE_ACTION.test(t)) return "ACTION";
-  if (RE_ANALYTICS.test(t)) return "ANALYTICS";
-  if (RE_SUPPORT.test(t)) return "SUPPORT";
+  const msg = String(message || "").toLowerCase();
+  const analyticsKw = [
+    "precio",
+    "price",
+    "token",
+    "score",
+    "señal",
+    "signal",
+    "pump",
+    "raydium",
+    "dex",
+    "chart",
+    "liquidez",
+    "volumen",
+    "blockchain",
+    "chain",
+    "solana",
+    "wallet address",
+    "mint"
+  ];
+  const supportKw = [
+    "error",
+    "problema",
+    "fallo",
+    "no funciona",
+    "no veo",
+    "no hay",
+    "pagar",
+    "pro",
+    "suscripcion",
+    "ayuda",
+    "help",
+    "como",
+    "cómo",
+    "que es",
+    "qué es",
+    "activar"
+  ];
+  const actionKw = ["alertas", "watchlist", "configurar", "activar alerta", "seguir wallet", "añadir"];
+
+  if (actionKw.some((k) => msg.includes(k))) return "ACTION";
+  if (analyticsKw.some((k) => msg.includes(k))) return "ANALYTICS";
+  if (supportKw.some((k) => msg.includes(k))) return "SUPPORT";
   return "GENERAL";
 }
 
-function findSupportTreeAnswer(normalized) {
-  const n = String(normalized || "").toLowerCase();
-  for (const [key, def] of Object.entries(supportTree)) {
-    const kws = Array.isArray(def.keywords) ? def.keywords : [];
-    for (const kw of kws) {
-      const k = String(kw).toLowerCase();
-      if (k.length < 4) {
-        if (new RegExp(`\\b${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(n)) {
-          return { id: key, answer: def.answer };
-        }
-      } else if (n.includes(k)) {
-        return { id: key, answer: def.answer };
-      }
+function hashQuestion(question) {
+  return crypto
+    .createHash("sha256")
+    .update(String(question).toLowerCase().trim(), "utf8")
+    .digest("hex")
+    .substring(0, 16);
+}
+
+function checkSupportTree(message) {
+  const msg = String(message || "").toLowerCase();
+  for (const [key, entry] of Object.entries(supportTree)) {
+    if (!entry || !Array.isArray(entry.keywords)) continue;
+    if (entry.keywords.some((kw) => msg.includes(String(kw).toLowerCase()))) {
+      return { answer: entry.answer, key };
     }
   }
   return null;
 }
 
-async function getBotSystemHealth() {
-  let cache = null;
-  try {
-    await redis.set("health:ping", "1", { ex: 10 });
-    cache = (await redis.get("health:ping")) != null;
-  } catch {
-    cache = false;
-  }
-  return {
-    service: "sentinel-ledger-backend",
-    commit:
-      process.env.RAILWAY_GIT_COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA || process.env.COMMIT_SHA || null,
-    cache
-  };
-}
-
-async function buildAnalyticsContextPack() {
+async function buildContextPack() {
   const supabase = safeSupabase();
-  const systemHealth = await getBotSystemHealth();
-  const gate = getSignalGateOpsSnapshot();
-  const regime = gate?.regime || {};
-  const stats = gate?.stats || {};
-
-  let recentSignals = null;
-  let topWallets = null;
-  let opsWinHint = null;
-
-  if (supabase) {
-    try {
-      const lim = capSignalsLatestLimit(3);
-      const feed = await getLatestSignalsFeedCached(supabase, lim, "balanced");
-      const rows = Array.isArray(feed?.data) ? feed.data : [];
-      recentSignals = rows.slice(0, 3).map((r) => ({
-        token: r?.token || r?.symbol || "—",
-        tokenAddress: r?.tokenAddress,
-        decision: r?.decision,
-        score: r?.score ?? r?.sentinelScore
-      }));
-    } catch (e) {
-      recentSignals = { error: e?.message || "signals_unavailable" };
-    }
-    try {
-      const top = await getSmartWalletsTopCached(supabase, 3);
-      const data = top?.data ?? top?.rows;
-      const list = Array.isArray(data) ? data : [];
-      topWallets = list.slice(0, 3).map((w) => ({
-        wallet: w?.walletAddress || w?.address || w?.wallet,
-        winRate: w?.winRate ?? w?.win_rate,
-        pnl30d: w?.pnl30d ?? w?.pnl_30d
-      }));
-    } catch (e) {
-      topWallets = { error: e?.message || "leaderboard_unavailable" };
-    }
-    try {
-      const { data: rules, error: rErr } = await supabase
-        .from("signal_performance")
-        .select("total_signals, success_count_60m")
-        .limit(200);
-      if (!rErr && Array.isArray(rules) && rules.length) {
-        const tot = rules.reduce((s, r) => s + Number(r?.total_signals || 0), 0);
-        const wins = rules.reduce((s, r) => s + Number(r?.success_count_60m || 0), 0);
-        opsWinHint = tot > 0 ? { aggregateWinRate60m: Number((wins / tot).toFixed(4)), sampleSignals: tot } : null;
-      }
-    } catch {
-      opsWinHint = null;
-    }
+  if (!supabase) {
+    return { error: "supabase_unconfigured", timestamp: new Date().toISOString() };
   }
+  try {
+    const { data: signals } = await supabase
+      .from("smart_wallet_signals")
+      .select("token_address, result_pct, created_at")
+      .order("created_at", { ascending: false })
+      .limit(3);
 
-  return {
-    systemHealth,
-    signalGate: {
-      emitRate: stats.emitRate,
-      decisions: stats.decisions,
-      emitted: stats.emitted,
-      blocked: stats.blocked,
-      regimeEnabled: Boolean(regime?.enabled),
-      byRegime: regime?.byRegime || {}
-    },
-    recentSignals,
-    topWallets,
-    opsData: { winRateFromRules: opsWinHint }
-  };
+    const { data: wallets } = await supabase
+      .from("smart_wallets")
+      .select("wallet_address, win_rate, smart_score")
+      .order("smart_score", { ascending: false })
+      .limit(3);
+
+    const { data: ruleRows } = await supabase
+      .from("rule_performance")
+      .select("rule_id, confidence_score, total_signals, success_count_60m")
+      .order("confidence_score", { ascending: false })
+      .limit(3);
+
+    const topRules = (ruleRows || []).map((r) => {
+      const t = Number(r.total_signals) || 0;
+      const w = Number(r.success_count_60m) || 0;
+      return {
+        rule_id: r.rule_id,
+        confidence_score: r.confidence_score,
+        win_rate_60m: t > 0 ? Number((w / t).toFixed(4)) : null
+      };
+    });
+
+    return {
+      recentSignals: signals || [],
+      topWallets: wallets || [],
+      topRules,
+      timestamp: new Date().toISOString()
+    };
+  } catch (err) {
+    return { error: err?.message || "context_unavailable", timestamp: new Date().toISOString() };
+  }
 }
 
-function buildSystemPrompt(language, contextPack) {
-  const es = !language || String(language).toLowerCase().startsWith("es");
-  const ctx = JSON.stringify(contextPack, null, 0);
-  if (es) {
-    return `Eres el asistente de Sentinel Ledger (terminal de señales y smart money en Solana). 
-Responde en español, de forma breve y clara (4-8 oraciones o viñetas).
-Usa SOLO el contexto JSON (context_pack) y conocimiento de producto; no inventes cifras que no vengan del contexto.
-Prohibido garantizar retornos o dar asesoramiento financiero personalizado. El producto hace análisis y señales, no asesoría de inversión.
-context_pack: ${ctx}`;
-  }
-  return `You are Sentinel Ledger's in-app assistant (Solana smart-money / signals terminal).
-Reply in English, concisely, using only the following JSON context and public product knowledge; do not fabricate numbers.
-Do not provide personalized financial advice or guaranteed returns.
-context_pack: ${ctx}`;
-}
-
-async function callClaudeModel({ system, userMessage, language }) {
+async function callClaudeAPI(question, _intent, contextPack, language) {
   const key = String(process.env.ANTHROPIC_API_KEY || "").trim();
   if (!key) {
-    const es = !language || String(language).toLowerCase().startsWith("es");
-    return {
-      text: es
-        ? "El asistente analítico requiere ANTHROPIC_API_KEY en el servidor. Contacta al administrador."
-        : "The analytics assistant requires ANTHROPIC_API_KEY on the server.",
-      model: null
-    };
+    return "El asistente requiere ANTHROPIC_API_KEY en el servidor. This is not financial advice.";
   }
-  const model =
-    String(process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514").trim() || "claude-sonnet-4-20250514";
+  const model = String(process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).trim() || DEFAULT_MODEL;
+  const systemPrompt = `You are Sentinel Assistant, the AI support for Sentinel Ledger — a Solana on-chain intelligence terminal.
+
+RULES:
+- Answer in ${language === "en" ? "English" : "Spanish"} always
+- Be concise and technical — this is a professional trading tool
+- Never give financial advice
+- Always add disclaimer: "This is not financial advice"
+- If asked about prices or signals, use the context data provided
+- If you don't know something specific about Sentinel, say so clearly
+
+SENTINEL CONTEXT:
+${JSON.stringify(contextPack, null, 2)}
+
+SENTINEL FEATURES:
+- Live signal feed with Sentinel Score (0-100)
+- Smart Money leaderboard (66+ verified wallets)
+- Validation Oracle (validates signals at 5/15/60 min)
+- Auto-Discovery (finds new smart wallets automatically)
+- Telegram bot: @sentinelledger_intel_bot
+- Track Record: /graveyard page`;
+
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
-      "content-type": "application/json",
+      "Content-Type": "application/json",
       "x-api-key": key,
       "anthropic-version": "2023-06-01"
     },
     body: JSON.stringify({
       model,
-      max_tokens: 900,
-      system,
-      messages: [{ role: "user", content: userMessage.slice(0, 4000) }]
+      max_tokens: HAIKU_MAX,
+      system: systemPrompt,
+      messages: [{ role: "user", content: String(question).slice(0, 2000) }]
     })
   });
   if (!res.ok) {
-    const errText = await res.text();
-    console.warn("[bot] Claude API error", res.status, errText.slice(0, 220));
-    const es = !language || String(language).toLowerCase().startsWith("es");
-    return {
-      text: es
-        ? "No se pudo generar la respuesta ahora. Inténtalo de nuevo en unos segundos."
-        : "Could not generate a response. Please try again shortly.",
-      model: null
-    };
+    const t = await res.text();
+    console.warn("[bot] Claude error", res.status, t.slice(0, 200));
+    return "No pude procesar tu pregunta ahora. Inténtalo de nuevo. This is not financial advice.";
   }
   const data = await res.json();
-  const text = (data?.content || []).find((b) => b.type === "text")?.text || "";
-  return { text: String(text).trim() || "—", model };
+  const out = data?.content?.[0]?.text;
+  if (!out) return "No pude procesar tu pregunta. Intenta de nuevo.\n\nThis is not financial advice.";
+  return `${String(out).trim()}\n\nThis is not financial advice.`;
 }
 
-function sanitizeIncomingMessage(message) {
-  if (message == null) return { ok: false, error: "message_required" };
-  const s = String(message).replace(/\u0000/g, "").trim();
-  if (s.length < 1) return { ok: false, error: "message_empty" };
-  if (s.length > 2000) return { ok: false, error: "message_too_long" };
-  if (/<\s*script/i.test(s)) return { ok: false, error: "message_rejected" };
-  return { ok: true, value: s };
-}
-
-async function insertMemoryRow({
-  questionHash,
-  questionSample,
-  intent,
-  answer,
-  source,
-  answerType,
-  language,
-  confidence
-}) {
+async function handleBotMessage(message, language = "es", _sessionId = null) {
   const supabase = safeSupabase();
-  if (!supabase) return null;
-  const { data, error } = await supabase
+  if (!supabase) {
+    return {
+      answer: "Base de datos no disponible. Configura Supabase en el servidor.",
+      intent: "GENERAL",
+      source: "error",
+      cached: false,
+      thumbsId: null
+    };
+  }
+  const hash = hashQuestion(message);
+  const intent = classifyIntent(message);
+
+  const { data: cached, error: cacheErr } = await supabase
     .from("bot_memory")
-    .insert({
-      question_hash: questionHash,
-      question_sample: questionSample.slice(0, 500),
-      intent,
-      answer_type: answerType,
-      best_answer: answer,
-      source,
-      language: (language || "es").slice(0, 5),
-      confidence,
-      times_used: 0,
-      updated_at: new Date().toISOString()
-    })
-    .select("id")
+    .select("id, best_answer, times_used, confidence, intent")
+    .eq("question_hash", hash)
+    .gt("confidence", 0.7)
+    .limit(1)
     .maybeSingle();
-  if (error) {
-    console.warn("[bot] insert bot_memory failed:", error.message);
-    return null;
-  }
-  return data?.id || null;
-}
 
-function useFullAnalyticsContext(intent, uiMode) {
-  if (uiMode === "ask") return true;
-  if (uiMode === "support") return false;
-  return intent === "ANALYTICS" || intent === "GENERAL";
-}
-
-async function processBotMessage({ message, language, sessionId: _sessionId, uiMode = "auto" }) {
-  const v = sanitizeIncomingMessage(message);
-  if (!v.ok) {
-    return { ok: false, error: v.error, status: 400 };
-  }
-  const text = v.value;
-  const lang = (language || "es").slice(0, 5);
-  const h = hashQuestion(text);
-  const intent = classifyIntent(text);
-  const supabase = safeSupabase();
-
-  if (supabase) {
-    const { data: cached, error: cErr } = await supabase
+  if (!cacheErr && cached && intent !== "ANALYTICS") {
+    await supabase
       .from("bot_memory")
-      .select("id, best_answer, intent, source, confidence, times_used, thumbs_up, thumbs_down")
-      .eq("question_hash", h)
-      .gt("confidence", 0.7)
-      .limit(1)
-      .maybeSingle();
-    if (!cErr && cached && cached.id) {
-      const next = Number(cached.times_used || 0) + 1;
-      await supabase.from("bot_memory").update({ times_used: next, updated_at: new Date().toISOString() }).eq("id", cached.id);
+      .update({
+        times_used: Number(cached.times_used || 0) + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", cached.id);
+    return {
+      answer: cached.best_answer,
+      intent: cached.intent || intent,
+      source: "cache",
+      cached: true,
+      thumbsId: cached.id
+    };
+  }
+
+  if (intent === "SUPPORT" || intent === "GENERAL" || intent === "ACTION") {
+    const treeMatch = checkSupportTree(message);
+    if (treeMatch) {
+      const { data: saved, error: upErr } = await supabase
+        .from("bot_memory")
+        .upsert(
+          {
+            question_hash: hash,
+            question_sample: String(message).substring(0, 200),
+            intent,
+            answer_type: "manual",
+            best_answer: treeMatch.answer,
+            source: "docs",
+            confidence: 0.9,
+            language: String(language).slice(0, 5),
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: "question_hash" }
+        )
+        .select("id")
+        .maybeSingle();
+      if (upErr) console.warn("[bot] support tree upsert", upErr.message);
       return {
-        ok: true,
-        answer: cached.best_answer,
-        intent: cached.intent || intent,
-        source: "cache",
-        cached: true,
-        thumbsId: cached.id
+        answer: treeMatch.answer,
+        intent,
+        source: "docs",
+        cached: false,
+        thumbsId: saved?.id || null
       };
     }
   }
 
-  const supportHit = findSupportTreeAnswer(text);
-  if (supportHit) {
-    const id = await insertMemoryRow({
-      questionHash: h,
-      questionSample: text,
-      intent,
-      answer: supportHit.answer,
-      source: "docs",
-      answerType: "manual",
-      language: lang,
-      confidence: 0.85
-    });
-    return {
-      ok: true,
-      answer: supportHit.answer,
-      intent,
-      source: "docs",
-      cached: false,
-      thumbsId: id
-    };
+  const contextPack = intent === "ANALYTICS" ? await buildContextPack() : {};
+  const answer = await callClaudeAPI(message, intent, contextPack, language);
+
+  let thumbsId = null;
+  if (intent !== "ANALYTICS") {
+    const { data: saved, error: saveErr } = await supabase
+      .from("bot_memory")
+      .upsert(
+        {
+          question_hash: hash,
+          question_sample: String(message).substring(0, 200),
+          intent,
+          answer_type: "llm",
+          best_answer: answer,
+          source: "llm",
+          confidence: 0.5,
+          language: String(language).slice(0, 5),
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: "question_hash" }
+      )
+      .select("id")
+      .maybeSingle();
+    if (saveErr) console.warn("[bot] llm upsert", saveErr.message);
+    thumbsId = saved?.id || null;
   }
 
-  const fullCtx = useFullAnalyticsContext(intent, uiMode);
-
-  if (!fullCtx) {
-    const contextPack = { light: true, intent, uiMode, systemHealth: await getBotSystemHealth() };
-    const sys = buildSystemPrompt(lang, contextPack);
-    const { text: ans } = await callClaudeModel({
-      system: sys,
-      userMessage: `Pregunta del usuario: ${text}`,
-      language: lang
-    });
-    const id = await insertMemoryRow({
-      questionHash: h,
-      questionSample: text,
-      intent,
-      answer: ans,
-      source: "llm",
-      answerType: "llm",
-      language: lang,
-      confidence: 0.5
-    });
-    return { ok: true, answer: ans, intent, source: "llm", cached: false, thumbsId: id };
-  }
-
-  const contextPack = await buildAnalyticsContextPack();
-  const system = buildSystemPrompt(lang, contextPack);
-  const { text: ans } = await callClaudeModel({
-    system,
-    userMessage: `Pregunta del usuario: ${text}`,
-    language: lang
-  });
-  const id = await insertMemoryRow({
-    questionHash: h,
-    questionSample: text,
-    intent,
-    answer: ans,
-    source: "llm",
-    answerType: "llm",
-    language: lang,
-    confidence: 0.5
-  });
-  return { ok: true, answer: ans, intent, source: "llm", cached: false, thumbsId: id };
+  return { answer, intent, source: "llm", cached: false, thumbsId };
 }
 
-async function applyBotFeedback({ thumbsId, vote }) {
+async function handleFeedback(thumbsId, vote) {
   const supabase = safeSupabase();
-  if (!supabase) {
-    return { ok: false, error: "supabase_unconfigured", status: 503 };
-  }
-  const { data: row, error } = await supabase
-    .from("bot_memory")
-    .select("id, confidence, thumbs_up, thumbs_down")
-    .eq("id", thumbsId)
-    .maybeSingle();
-  if (error || !row) {
-    return { ok: false, error: "not_found", status: 404 };
-  }
-  let confidence = Number(row.confidence || 0.5);
-  let thumbsUp = Number(row.thumbs_up || 0);
-  let thumbsDown = Number(row.thumbs_down || 0);
+  if (!supabase) return { ok: false };
+  const { data: entry, error } = await supabase.from("bot_memory").select("*").eq("id", thumbsId).maybeSingle();
+  if (error || !entry) return { ok: false };
+
   if (vote === "up") {
-    confidence = Math.min(1, confidence + 0.1);
-    thumbsUp += 1;
+    const nextConf = Math.min(Number(entry.confidence || 0.5) + 0.1, 1);
+    await supabase
+      .from("bot_memory")
+      .update({
+        thumbs_up: Number(entry.thumbs_up || 0) + 1,
+        confidence: nextConf,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", thumbsId);
   } else {
-    thumbsDown += 1;
-    if (thumbsDown > 3) confidence = 0;
+    const newDown = Number(entry.thumbs_down || 0) + 1;
+    const base = Number(entry.confidence || 0.5);
+    const nextConf = newDown > 3 ? 0 : Math.max(0, base - 0.1);
+    await supabase
+      .from("bot_memory")
+      .update({
+        thumbs_down: newDown,
+        confidence: nextConf,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", thumbsId);
   }
-  const { error: uErr } = await supabase
-    .from("bot_memory")
-    .update({
-      confidence,
-      thumbs_up: thumbsUp,
-      thumbs_down: thumbsDown,
-      updated_at: new Date().toISOString()
-    })
-    .eq("id", thumbsId);
-  if (uErr) {
-    return { ok: false, error: uErr.message, status: 500 };
-  }
-  return { ok: true, confidence, thumbsUp, thumbsDown };
+  return { ok: true };
 }
 
-module.exports = {
-  hashQuestion,
-  classifyIntent,
-  buildAnalyticsContextPack,
-  processBotMessage,
-  applyBotFeedback,
-  findSupportTreeAnswer
-};
+module.exports = { handleBotMessage, handleFeedback, classifyIntent };

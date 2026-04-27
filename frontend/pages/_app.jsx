@@ -21,9 +21,7 @@ import { SiteFooter } from "../components/layout/SiteFooter";
 import { GlobalCommandHud } from "../components/terminal/GlobalCommandHud";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 
-const SentinelBot = dynamic(() => import("../components/bot/SentinelBot").then((m) => m.SentinelBot), {
-  ssr: false
-});
+const SentinelBot = dynamic(() => import("../components/bot/SentinelBot"), { ssr: false });
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
 import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
 import { getPublicWsUrl } from "../lib/publicRuntime";

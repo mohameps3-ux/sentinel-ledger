@@ -1,30 +1,42 @@
 {
   "no_signals": {
-    "keywords": ["no veo señales", "no hay señales", "sin señales", "signals empty"],
+    "keywords": ["no veo señales", "no hay señales", "sin señales", "signals empty", "no signals"],
     "answer": "El motor está calibrándose. El gate requiere mínimo de confianza para emitir señales. Con más datos históricos (2-3 semanas) las señales aumentarán. Estado actual visible en /ops."
   },
   "wallet_connect": {
     "keywords": ["conectar wallet", "wallet no conecta", "connect wallet", "phantom", "solflare"],
-    "answer": "Para conectar tu wallet: 1) Instala Phantom o Solflare. 2) Haz clic en 'Select Wallet' en el navbar. 3) Aprueba la conexión. Si hay error, recarga la página e inténtalo de nuevo."
+    "answer": "Para conectar tu wallet: 1) Instala Phantom o Solflare. 2) Haz clic en Select Wallet en el navbar. 3) Aprueba la conexión. Si hay error, recarga la página e inténtalo de nuevo."
   },
   "what_is_score": {
-    "keywords": ["qué es el score", "what is score", "score significa", "puntuación"],
-    "answer": "El Sentinel Score (0-100) combina 3 dimensiones: Risk (riesgo del token), Smart Money (actividad de wallets inteligentes) y Momentum (fuerza del movimiento). Score >60 = señal fuerte."
+    "keywords": ["qué es el score", "what is score", "score significa", "puntuación", "sentinel score"],
+    "answer": "El Sentinel Score (0-100) combina 3 dimensiones: Risk (riesgo del token), Smart Money (actividad de wallets inteligentes) y Momentum (fuerza del movimiento). Score mayor de 60 indica señal fuerte."
   },
   "pro_plan": {
-    "keywords": ["pro", "suscripcion", "pagar", "precio plan", "upgrade", "activar pro"],
-    "answer": "Los planes PRO están en /pricing. PRO $19/mes incluye alertas en tiempo real, señales prioritarias y acceso completo al leaderboard. LIFETIME $199 pago único."
+    "keywords": ["pro", "suscripcion", "pagar", "precio plan", "upgrade", "lifetime"],
+    "answer": "Los planes PRO están en /pricing. PRO $19/mes incluye alertas en tiempo real y señales prioritarias. LIFETIME $199 pago único. Activa PRO desde el botón en el navbar."
   },
   "war_mode": {
-    "keywords": ["war mode", "modo guerra", "war button"],
+    "keywords": ["war mode", "modo guerra", "war button", "war activo"],
     "answer": "WAR mode aumenta la frecuencia de actualización del feed para mercados volátiles. Actívalo con el botón WAR en el navbar cuando quieras monitoreo más intensivo."
   },
   "track_record": {
-    "keywords": ["track record", "historial", "señales pasadas", "resultados"],
-    "answer": "El Verified Track Record en /graveyard muestra todas las señales históricas con resultados reales. El Oracle valida cada señal a los 5, 15 y 60 minutos."
+    "keywords": ["track record", "historial", "señales pasadas", "resultados", "graveyard"],
+    "answer": "El Verified Track Record en /graveyard muestra todas las señales históricas con resultados reales. El Oracle valida cada señal a los 5, 15 y 60 minutos automáticamente."
   },
-  "watchlist_alerts": {
-    "keywords": ["watchlist", "alertas", "configurar", "activar", "notificaciones"],
-    "answer": "Añade tokens a tu watchlist desde el token desk o el scanner. Las alertas PRO se gestionan en /alerts y requieren plan activo. Revisa notificaciones del navegador en Ajustes si no ves avisos."
+  "smart_money": {
+    "keywords": ["smart money", "wallet inteligente", "smart wallet", "que wallet seguir"],
+    "answer": "Las Smart Wallets son traders con win rate superior al 65% verificado on-chain. Puedes ver el leaderboard completo en /smart-money y seguir sus movimientos en tiempo real."
+  },
+  "telegram_alerts": {
+    "keywords": ["telegram", "alertas telegram", "notificaciones", "bot telegram"],
+    "answer": "Para activar alertas en Telegram: 1) Busca @sentinelledger_intel_bot en Telegram. 2) Escribe /start. 3) Usa /signal TOKEN para señales o /price TOKEN para precios en tiempo real."
+  },
+  "oracle": {
+    "keywords": ["oracle", "validacion", "como valida", "como funciona"],
+    "answer": "El Sentinel Oracle valida cada señal automáticamente a los 5, 15 y 60 minutos después de emitirse. Mide si el precio subió más del 5% en ese tiempo. Los resultados se acumulan para mejorar el sistema."
+  },
+  "auto_discovery": {
+    "keywords": ["auto discovery", "nuevas wallets", "como encuentra wallets", "descubre wallets"],
+    "answer": "El Auto-Discovery analiza automáticamente qué wallets compraron antes de cada señal exitosa. Las mejores son promovidas al leaderboard cada 6 horas tras superar filtros anti-bot y mínimo 10 trades cerrados."
   }
 }

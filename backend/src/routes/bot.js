@@ -2,88 +2,47 @@
 
 const express = require("express");
 const rateLimit = require("express-rate-limit");
-const { processBotMessage, applyBotFeedback } = require("../services/botService");
+const { handleBotMessage, handleFeedback } = require("../services/botService");
 
 const router = express.Router();
 
-const botWindowMs = 60 * 1000;
-const botMessageLimiter = rateLimit({
-  windowMs: botWindowMs,
+const botLimiter = rateLimit({
+  windowMs: 60 * 1000,
   max: 20,
+  message: { error: "Too many requests" },
   standardHeaders: true,
   legacyHeaders: false
 });
 
-const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function parseBodyMessage(body) {
-  if (!body || typeof body !== "object") return { ok: false, error: "invalid_body" };
-  const { message, language, sessionId: _s, uiMode } = body;
-  if (message != null && typeof message !== "string") return { ok: false, error: "message_invalid" };
-  if (language != null && typeof language !== "string") return { ok: false, error: "language_invalid" };
-  const modeRaw = uiMode == null ? "" : String(uiMode).toLowerCase();
-  const mode = modeRaw === "support" || modeRaw === "ask" ? modeRaw : "auto";
-  return {
-    ok: true,
-    message,
-    language,
-    sessionId: typeof body.sessionId === "string" ? body.sessionId.slice(0, 128) : "",
-    uiMode: mode
-  };
-}
-
-router.post("/message", botMessageLimiter, async (req, res) => {
-  const p = parseBodyMessage(req.body);
-  if (!p.ok) {
-    return res.status(400).json({ ok: false, error: p.error });
-  }
+router.post("/message", botLimiter, async (req, res) => {
   try {
-    const out = await processBotMessage({
-      message: p.message,
-      language: p.language,
-      sessionId: p.sessionId,
-      uiMode: p.uiMode
-    });
-    if (!out.ok) {
-      return res.status(out.status || 500).json({ ok: false, error: out.error || "bot_failed" });
+    const { message, language = "es", sessionId } = req.body || {};
+    if (!message || typeof message !== "string" || message.length > 500) {
+      return res.status(400).json({ error: "Invalid message" });
     }
-    return res.json({
-      ok: true,
-      answer: out.answer,
-      intent: out.intent,
-      source: out.source,
-      cached: Boolean(out.cached),
-      thumbsId: out.thumbsId
+    const result = await handleBotMessage(message, language, sessionId);
+    return res.json(result);
+  } catch (err) {
+    console.error("[bot] error:", err?.message || err);
+    return res.status(500).json({
+      answer: "Error procesando tu pregunta. Intenta de nuevo.",
+      source: "error"
     });
-  } catch (e) {
-    console.error("[bot] /message", e);
-    return res.status(500).json({ ok: false, error: "bot_internal" });
   }
 });
 
-router.post("/feedback", botMessageLimiter, async (req, res) => {
-  const b = req.body;
-  if (!b || typeof b !== "object") {
-    return res.status(400).json({ ok: false, error: "invalid_body" });
-  }
-  const thumbsId = b.thumbsId;
-  const vote = b.vote;
-  if (thumbsId == null || !uuidRe.test(String(thumbsId).trim())) {
-    return res.status(400).json({ ok: false, error: "thumbsId_invalid" });
-  }
-  if (vote !== "up" && vote !== "down") {
-    return res.status(400).json({ ok: false, error: "vote_invalid" });
-  }
+router.post("/feedback", botLimiter, async (req, res) => {
   try {
-    const out = await applyBotFeedback({ thumbsId: String(thumbsId).trim(), vote });
-    if (!out.ok) {
-      return res.status(out.status || 500).json({ ok: false, error: out.error || "feedback_failed" });
+    const { thumbsId, vote } = req.body || {};
+    if (!thumbsId || !["up", "down"].includes(vote)) {
+      return res.status(400).json({ error: "Invalid feedback" });
     }
-    return res.json({ ok: true, confidence: out.confidence, thumbsUp: out.thumbsUp, thumbsDown: out.thumbsDown });
-  } catch (e) {
-    console.error("[bot] /feedback", e);
-    return res.status(500).json({ ok: false, error: "bot_internal" });
+    const result = await handleFeedback(thumbsId, vote);
+    return res.json(result);
+  } catch (err) {
+    console.error("[bot] feedback:", err?.message || err);
+    return res.status(500).json({ error: "Feedback failed" });
   }
 });
 
-module.exports = { botRouter: router, botMessageLimiter };
+module.exports = router;
