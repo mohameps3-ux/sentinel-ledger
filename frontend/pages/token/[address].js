@@ -7,6 +7,7 @@ import { useProStatus } from "../../hooks/useProStatus";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { TokenSkeleton } from "../../components/token/TokenSkeleton";
 import { ChartPanel } from "../../components/token/ChartPanel";
+import { RecentTokensSidebar } from "../../components/token/RecentTokensSidebar";
 import { WatchlistButton } from "../../components/token/WatchlistButton";
 import { ExpandablePanel } from "../../components/token/ExpandablePanel";
 import { WalletThreatBanner } from "../../components/token/WalletThreatBanner";
@@ -16,6 +17,7 @@ import { Ticker } from "../../components/layout/Ticker";
 import { FinancialDisclaimer } from "../../components/layout/FinancialDisclaimer";
 import { PageHead } from "../../components/seo/PageHead";
 import { useLocale } from "../../contexts/LocaleContext";
+import { recordRecentToken } from "../../lib/recentTokens";
 import {
   buildDexscreenerSolanaTokenUrl,
   buildJupiterSwapUrl,
@@ -457,6 +459,17 @@ export default function TokenPage() {
   }, [walletIntel]);
   const recentTransactions = useMemo(() => transactions.slice(0, 30), [transactions]);
 
+  // Record this token in the user's local last-24h analyzed log. Pure
+  // localStorage, no backend; TTL handled inside lib/recentTokens.js.
+  // Runs unconditionally so it complies with rules-of-hooks; the helper
+  // itself bails if address/market are missing.
+  useEffect(() => {
+    const symbol = query.data?.data?.market?.symbol || "";
+    const name = query.data?.data?.market?.name || "";
+    if (!address || (!symbol && !name)) return;
+    recordRecentToken({ mint: address, symbol, name });
+  }, [address, query.data?.data?.market?.symbol, query.data?.data?.market?.name]);
+
   useEffect(() => {
     if (!soundEnabled) return;
     const topTx = recentTransactions[0];
@@ -580,7 +593,7 @@ export default function TokenPage() {
         title={`${market.symbol} (${shortMint(address)}) — Sentinel Ledger`}
         description={t("token.pageDescLive", { symbol: market.symbol })}
       />
-    <div className="sl-container py-6 space-y-6 pb-28 lg:pb-10">
+    <div className="sl-container py-6 pb-28 lg:pb-10">
       <TokenHeroBar
         address={address}
         market={market}
@@ -596,56 +609,64 @@ export default function TokenPage() {
         hasProAccess={hasProAccess}
       />
 
-      <section id="chart" className="scroll-mt-24">
-        <ChartPanel address={address} compact />
-      </section>
+      <div className="mt-4 grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)] xl:gap-5">
+        <div className="hidden xl:block">
+          <RecentTokensSidebar activeMint={address} />
+        </div>
 
-      <KeyMetricsBar market={market} naLabel={t("token.stat.na")} />
+        <div className="space-y-6 min-w-0">
+          <section id="chart" className="scroll-mt-24">
+            <ChartPanel address={address} compact symbol={market.symbol || ""} />
+          </section>
 
-      <SentinelIntelligence
-        address={address}
-        analysis={analysis}
-        terminal={token?.terminal}
-        flaggedWallets={flaggedWallets}
-        rulePerformance={token?.rulePerformance}
-      />
+          <KeyMetricsBar market={market} naLabel={t("token.stat.na")} />
 
-      <TokenAlertStack token={token} convergence={convergence} redSig={redSig} coordMeta={coordMeta} t={t} />
+          <SentinelIntelligence
+            address={address}
+            analysis={analysis}
+            terminal={token?.terminal}
+            flaggedWallets={flaggedWallets}
+            rulePerformance={token?.rulePerformance}
+          />
 
-      <SecurityReport security={token?.security} />
+          <TokenAlertStack token={token} convergence={convergence} redSig={redSig} coordMeta={coordMeta} t={t} />
 
-      <section id="flow" className="scroll-mt-24">
-        <ExpandablePanel
-          title={t("token.panel.liveTx")}
-          icon={CandlestickChart}
-          defaultOpen={true}
-          badge={recentTransactions.length ? t("token.panel.badgeTx", { n: recentTransactions.length }) : null}
-        >
-          <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={market.price} />
-        </ExpandablePanel>
-      </section>
+          <SecurityReport security={token?.security} />
 
-      <section className="space-y-4">
-        <p className="sl-label">Details</p>
-        <ExpandablePanel title={t("token.panel.holders")} icon={Users} defaultOpen={false}>
-          <HoldersPanel holders={token?.holders} />
-        </ExpandablePanel>
-        <ExpandablePanel title={t("token.panel.deployer")} icon={ShieldAlert} defaultOpen={false}>
-          <DeployerPanel deployer={token?.deployer} />
-        </ExpandablePanel>
-        <ExpandablePanel title="DEX venues" icon={Radio} defaultOpen={false} badge={`${dedupeDexPairs(market?.dexPairs).length} unique`}>
-          <DexVenuesPanel address={address} market={market} />
-        </ExpandablePanel>
-        <ExpandablePanel title="Full security details" icon={ShieldAlert} defaultOpen={false}>
-          <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-xs text-sl-sub">
-            {JSON.stringify(token?.security || {}, null, 2)}
-          </pre>
-        </ExpandablePanel>
-      </section>
-      {hasToken && <NotesPanel tokenAddress={address} initialNote={note} />}
+          <section id="flow" className="scroll-mt-24">
+            <ExpandablePanel
+              title={t("token.panel.liveTx")}
+              icon={CandlestickChart}
+              defaultOpen={true}
+              badge={recentTransactions.length ? t("token.panel.badgeTx", { n: recentTransactions.length }) : null}
+            >
+              <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={market.price} />
+            </ExpandablePanel>
+          </section>
 
-      <div className="pt-4 pb-8 border-t border-gray-800/60 mt-8">
-        <FinancialDisclaimer />
+          <section className="space-y-4">
+            <p className="sl-label">Details</p>
+            <ExpandablePanel title={t("token.panel.holders")} icon={Users} defaultOpen={false}>
+              <HoldersPanel holders={token?.holders} />
+            </ExpandablePanel>
+            <ExpandablePanel title={t("token.panel.deployer")} icon={ShieldAlert} defaultOpen={false}>
+              <DeployerPanel deployer={token?.deployer} />
+            </ExpandablePanel>
+            <ExpandablePanel title="DEX venues" icon={Radio} defaultOpen={false} badge={`${dedupeDexPairs(market?.dexPairs).length} unique`}>
+              <DexVenuesPanel address={address} market={market} />
+            </ExpandablePanel>
+            <ExpandablePanel title="Full security details" icon={ShieldAlert} defaultOpen={false}>
+              <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-xs text-sl-sub">
+                {JSON.stringify(token?.security || {}, null, 2)}
+              </pre>
+            </ExpandablePanel>
+          </section>
+          {hasToken && <NotesPanel tokenAddress={address} initialNote={note} />}
+
+          <div className="pt-4 pb-8 border-t border-gray-800/60 mt-8">
+            <FinancialDisclaimer />
+          </div>
+        </div>
       </div>
 
       <div className="fixed safe-bottom-offset left-1/2 -translate-x-1/2 z-40 xl:hidden">
