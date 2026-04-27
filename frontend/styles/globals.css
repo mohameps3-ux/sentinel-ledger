@@ -1458,11 +1458,11 @@ body.war-mode-active .terminal-card-interactive:not(.war-target) {
 }
 
 body.war-mode-active .war-target {
+  outline: 3px solid #FF3B30 !important;
   border-color: #FF3B30 !important;
-  background: rgba(255,59,48,0.03) !important;
-  box-shadow: 0 0 0 1px #FF3B30, 0 0 20px rgba(255,59,48,0.35);
-  transform: translateY(-2px);
-  animation: warPulse 2.4s ease-in-out infinite;
+  background: rgba(255,59,48,0.15) !important;
+  box-shadow: 0 0 0 3px #FF3B30 !important;
+  transform: translateY(-2px) !important;
 }
 
 @keyframes warPulse {
