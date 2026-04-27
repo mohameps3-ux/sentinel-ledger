@@ -124,76 +124,20 @@ async function buildContextPack() {
   }
 }
 
-async function callGeminiAPI(question, _intent, contextPack, language) {
-  const apiKey = String(process.env.GOOGLE_AI_API_KEY || "").trim();
-  if (!apiKey) {
-    return "Bot IA no configurado. Usa el modo SUPPORT para preguntas frecuentes.";
+function generateFallbackAnswer(question, intent, contextPack, language) {
+  const isES = language !== "en";
+
+  if (intent === "ANALYTICS") {
+    const signals = contextPack.recentSignals?.length || 0;
+    const wallets = contextPack.topWallets?.length || 0;
+    return isES
+      ? `Sentinel detecta ${signals} señales recientes con ${wallets} smart wallets activas. Para análisis detallado consulta la home o /smart-money. This is not financial advice.`
+      : `Sentinel detects ${signals} recent signals with ${wallets} active smart wallets. Check home or /smart-money for details. This is not financial advice.`;
   }
 
-  const systemPrompt = `You are Sentinel Assistant, the AI support for Sentinel Ledger — a Solana on-chain intelligence terminal.
-
-RULES:
-- Answer in ${language === "en" ? "English" : "Spanish"} always
-- Be concise and technical — this is a professional trading tool
-- Never give financial advice
-- Always add: "This is not financial advice"
-- If asked about prices or signals, use the context data provided
-- If you don't know something specific about Sentinel, say so clearly
-
-SENTINEL CONTEXT:
-${JSON.stringify(contextPack, null, 2)}
-
-SENTINEL FEATURES:
-- Live signal feed with Sentinel Score (0-100)
-- Smart Money leaderboard (66+ verified wallets)
-- Validation Oracle (validates signals at 5/15/60 min)
-- Auto-Discovery (finds new smart wallets automatically)
-- Telegram bot: @sentinelledger_intel_bot
-- Track Record: /graveyard page`;
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${encodeURIComponent(
-      apiKey
-    )}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: systemPrompt + "\n\nUser question: " + question
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          maxOutputTokens: 300,
-          temperature: 0.3
-        }
-      })
-    }
-  );
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    console.error("[bot] Gemini HTTP error:", response.status, data);
-    return "No pude procesar tu pregunta. Intenta de nuevo.";
-  }
-  if (data.error) {
-    console.error("[bot] Gemini error:", data.error);
-    return "No pude procesar tu pregunta. Intenta de nuevo.";
-  }
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    return "No pude procesar tu pregunta. Intenta de nuevo.";
-  }
-  const trimmed = String(text).trim();
-  if (!/financial advice/i.test(trimmed)) {
-    return `${trimmed}\n\nThis is not financial advice.`;
-  }
-  return trimmed;
+  return isES
+    ? "Consulta nuestra documentación o escribe una pregunta más específica sobre Sentinel. This is not financial advice."
+    : "Check our documentation or ask a more specific question about Sentinel. This is not financial advice.";
 }
 
 async function handleBotMessage(message, language = "es", _sessionId = null) {
@@ -268,7 +212,7 @@ async function handleBotMessage(message, language = "es", _sessionId = null) {
   }
 
   const contextPack = intent === "ANALYTICS" ? await buildContextPack() : {};
-  const answer = await callGeminiAPI(message, intent, contextPack, language);
+  const answer = generateFallbackAnswer(message, intent, contextPack, language);
 
   let thumbsId = null;
   if (intent !== "ANALYTICS") {
@@ -279,9 +223,9 @@ async function handleBotMessage(message, language = "es", _sessionId = null) {
           question_hash: hash,
           question_sample: String(message).substring(0, 200),
           intent,
-          answer_type: "llm",
+          answer_type: "fallback",
           best_answer: answer,
-          source: "llm",
+          source: "fallback",
           confidence: 0.5,
           language: String(language).slice(0, 5),
           updated_at: new Date().toISOString()
@@ -294,7 +238,7 @@ async function handleBotMessage(message, language = "es", _sessionId = null) {
     thumbsId = saved?.id || null;
   }
 
-  return { answer, intent, source: "llm", cached: false, thumbsId };
+  return { answer, intent, source: "fallback", cached: false, thumbsId };
 }
 
 async function handleFeedback(thumbsId, vote) {
