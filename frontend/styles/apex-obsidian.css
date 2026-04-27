@@ -1,0 +1,388 @@
+/* ==========================================================================
+   APEX OBSIDIAN — Sentinel Ledger executive design layer (v2)
+
+   Layered on top of the Bloomberg-Black palette. Components opt-in via
+   utility classes / data-attributes; existing surfaces stay calm.
+
+   Discipline (the "why"):
+     80% surfaces  →  deep obsidian        (#050505 / #0a0a0a / #0d0d0e)
+     15% structure →  silver pearl         (#9ca3af / #d1d5db family, low alpha)
+      5% accent    →  iridescent gold      (#fbbf24 / #f59e0b / copper #c08552)
+                      shown ONLY when a signal carries real value.
+
+   Animations are deliberately slow — luxury, not flash. Reduced-motion
+   neutralizes every flow / pulse / iridescence to keep the surfaces
+   accessible for users who request it.
+   ========================================================================== */
+
+@property --apex-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+:root {
+  /* Iridescent gold ramp — oil-on-water shifts */
+  --apex-gold-pale:    #fef3c7;
+  --apex-gold-bright:  #fbbf24;
+  --apex-gold:         #f59e0b;
+  --apex-gold-deep:    #b45309;
+  --apex-gold-copper:  #c08552;
+
+  /* Pearl silver */
+  --apex-silver-pale:    #f4f4f5;
+  --apex-silver-bright:  #d1d5db;
+  --apex-silver:         #9ca3af;
+  --apex-silver-deep:    #525252;
+
+  /* Obsidian surfaces */
+  --apex-obsidian-deep:  #050505;
+  --apex-obsidian-base:  #0a0a0a;
+  --apex-obsidian-card:  #0d0d0e;
+  --apex-obsidian-elev:  #131316;
+
+  /* Reactive state speeds */
+  --apex-flow-neutral:   42s;
+  --apex-flow-active:    16s;
+  --apex-flow-critical:  6s;
+}
+
+/* ── PEARL OBSIDIAN SURFACE ───────────────────────────────────────────
+   For hero zones / dashboard core. Two opposing radial whispers add
+   barely-perceptible warm/cool depth. Not shiny. Not plasticky. */
+.apex-surface {
+  background:
+    radial-gradient(ellipse 60% 50% at 12% 0%, rgba(245, 158, 11, 0.035), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 88% 100%, rgba(209, 213, 219, 0.025), transparent 55%),
+    linear-gradient(180deg, var(--apex-obsidian-card) 0%, var(--apex-obsidian-deep) 100%);
+}
+
+/* ── LIVE CARD (liquid metal border, reactive states) ─────────────────
+   Static obsidian inner surface + animated linear-gradient border that
+   flows continuously. The border gradient is 4× wider than the card, so
+   a slow background-position animation reads as continuous metal flowing
+   around the card.
+
+   States — toggle via data-apex-state="neutral|active|critical":
+     neutral   silver dominant, ultra-slow flow                  (default)
+     active    gold introduced, faster, micro-pulse halo
+     critical  gold dominant, internal halo, tension breathing     */
+.apex-card {
+  position: relative;
+  background-color: var(--apex-obsidian-card);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 255, 255, 0.012), transparent 60%);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.apex-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  background: linear-gradient(
+    90deg,
+    rgba(209, 213, 219, 0.16),
+    rgba(156, 163, 175, 0.06) 12%,
+    rgba(245, 158, 11, 0.24) 28%,
+    rgba(192, 133, 82, 0.18) 42%,
+    rgba(209, 213, 219, 0.16) 58%,
+    rgba(156, 163, 175, 0.06) 72%,
+    rgba(245, 158, 11, 0.24) 86%,
+    rgba(209, 213, 219, 0.16)
+  );
+  background-size: 400% 100%;
+  background-position: 0% 0%;
+  animation: apex-flow var(--apex-flow-neutral) linear infinite;
+}
+
+/* Active state — relevant signal */
+.apex-card[data-apex-state="active"]::before {
+  background: linear-gradient(
+    90deg,
+    rgba(245, 158, 11, 0.28),
+    rgba(192, 133, 82, 0.22) 18%,
+    rgba(245, 158, 11, 0.55) 36%,
+    rgba(251, 191, 36, 0.32) 52%,
+    rgba(192, 133, 82, 0.24) 70%,
+    rgba(245, 158, 11, 0.45) 84%,
+    rgba(245, 158, 11, 0.28)
+  );
+  background-size: 400% 100%;
+  animation-duration: var(--apex-flow-active);
+}
+
+.apex-card[data-apex-state="active"] {
+  animation: apex-pulse-active 4.6s ease-in-out infinite;
+}
+
+/* Critical state — high-conviction signal */
+.apex-card[data-apex-state="critical"]::before {
+  background: linear-gradient(
+    90deg,
+    rgba(245, 158, 11, 0.55),
+    rgba(251, 191, 36, 0.70) 25%,
+    rgba(245, 158, 11, 0.90) 50%,
+    rgba(251, 191, 36, 0.70) 75%,
+    rgba(245, 158, 11, 0.55)
+  );
+  background-size: 400% 100%;
+  animation-duration: var(--apex-flow-critical);
+}
+
+.apex-card[data-apex-state="critical"]::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(245, 158, 11, 0.10), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(245, 158, 11, 0.07), transparent 55%);
+  pointer-events: none;
+  animation: apex-halo-pulse 3.2s ease-in-out infinite;
+}
+
+.apex-card[data-apex-state="critical"] {
+  animation: apex-pulse-critical 2.8s ease-in-out infinite;
+}
+
+@keyframes apex-flow {
+  to { background-position: 100% 0%; }
+}
+
+@keyframes apex-pulse-active {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+  50%      { box-shadow: 0 0 22px -10px rgba(245, 158, 11, 0.18); }
+}
+
+@keyframes apex-pulse-critical {
+  0%, 100% { box-shadow: 0 0 26px -8px rgba(245, 158, 11, 0.22); }
+  50%      { box-shadow: 0 0 38px -4px rgba(245, 158, 11, 0.45); }
+}
+
+@keyframes apex-halo-pulse {
+  0%, 100% { opacity: 0.65; }
+  50%      { opacity: 1; }
+}
+
+/* ── HARDWARE BUTTON (primary) ────────────────────────────────────────
+   Convex metal feel via stacked linear-gradients + inset shadows.
+   Hover sweeps a directional iridescent highlight across the surface.
+   Active state micro-presses with an inner shadow (real metal feel). */
+.apex-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 20px;
+  height: 38px;
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--apex-obsidian-deep);
+  background:
+    linear-gradient(180deg,
+      var(--apex-gold-bright) 0%,
+      var(--apex-gold) 45%,
+      var(--apex-gold-deep) 100%
+    );
+  border: 1px solid var(--apex-gold-deep);
+  cursor: pointer;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 1px;
+  text-decoration: none;
+  transition: transform 120ms ease, box-shadow 200ms ease, filter 200ms ease;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 243, 199, 0.55),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 4px 14px -2px rgba(245, 158, 11, 0.25),
+    0 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.apex-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(254, 243, 199, 0.4) 48%,
+    rgba(192, 133, 82, 0.35) 56%,
+    transparent 72%
+  );
+  background-size: 220% 100%;
+  background-position: 100% 0%;
+  pointer-events: none;
+  z-index: -1;
+  transition: background-position 800ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.apex-btn:hover::before {
+  background-position: 0% 0%;
+}
+
+.apex-btn:hover {
+  filter: brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 rgba(254, 243, 199, 0.65),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 6px 20px -2px rgba(245, 158, 11, 0.4),
+    0 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.apex-btn:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(0, 0, 0, 0.2),
+    0 1px 4px rgba(245, 158, 11, 0.15);
+}
+
+.apex-btn:disabled {
+  filter: grayscale(0.7) brightness(0.7);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.apex-btn-sm { height: 30px; padding: 0 14px; font-size: 10px; letter-spacing: 0.14em; }
+.apex-btn-lg { height: 48px; padding: 0 28px; font-size: 12px; letter-spacing: 0.20em; }
+
+/* ── HARDWARE BUTTON (secondary — pearl with gold text) ───────────────
+   Less weight, used alongside primary CTA. Hover lifts gold edge. */
+.apex-btn-secondary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  height: 34px;
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--apex-gold-bright);
+  background:
+    linear-gradient(180deg,
+      rgba(209, 213, 219, 0.10) 0%,
+      rgba(156, 163, 175, 0.04) 100%
+    );
+  border: 1px solid rgba(209, 213, 219, 0.22);
+  cursor: pointer;
+  isolation: isolate;
+  border-radius: 1px;
+  text-decoration: none;
+  transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.apex-btn-secondary:hover {
+  background:
+    linear-gradient(180deg,
+      rgba(209, 213, 219, 0.16) 0%,
+      rgba(156, 163, 175, 0.06) 100%
+    );
+  border-color: rgba(245, 158, 11, 0.45);
+  color: var(--apex-gold-pale);
+}
+
+.apex-btn-secondary:active {
+  transform: translateY(1px);
+}
+
+/* ── IRIDESCENT GOLD TEXT ─────────────────────────────────────────────
+   Animated background-clip:text using a conic-gradient that rotates via
+   the @property-registered --apex-angle. Gives the "opal pulido" feel
+   for the Sentinel score and other high-value hero numbers. Browsers
+   that lack @property show a static gold→silver shimmer (still elegant). */
+.apex-iridescent {
+  background: conic-gradient(
+    from var(--apex-angle, 0deg),
+    var(--apex-gold-pale),
+    var(--apex-gold-bright) 14%,
+    var(--apex-gold) 28%,
+    var(--apex-gold-copper) 42%,
+    var(--apex-silver-bright) 56%,
+    var(--apex-gold-bright) 70%,
+    var(--apex-gold-pale) 86%,
+    var(--apex-gold-pale)
+  );
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: apex-iridescent-rotate 7s linear infinite;
+  filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.10));
+}
+
+@keyframes apex-iridescent-rotate {
+  to { --apex-angle: 360deg; }
+}
+
+/* ── PEARL DIVIDER & SEALS ────────────────────────────────────────────
+   Subtle horizontal divider used between sections in apex zones. */
+.apex-divider {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(209, 213, 219, 0.14) 25%,
+    rgba(245, 158, 11, 0.32) 50%,
+    rgba(209, 213, 219, 0.14) 75%,
+    transparent
+  );
+}
+
+/* "Verified signal" pearl seal — used next to confirmed positives. */
+.apex-seal-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--apex-silver-bright);
+  background:
+    linear-gradient(180deg,
+      rgba(209, 213, 219, 0.10),
+      rgba(156, 163, 175, 0.04)
+    );
+  border: 1px solid rgba(209, 213, 219, 0.28);
+  border-radius: 1px;
+}
+
+.apex-seal-verified::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--apex-gold-bright), var(--apex-gold-deep));
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.45);
+}
+
+/* ── ACCESSIBILITY ────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .apex-card::before,
+  .apex-card[data-apex-state="active"],
+  .apex-card[data-apex-state="critical"],
+  .apex-card[data-apex-state="critical"]::after,
+  .apex-iridescent,
+  .apex-btn::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}

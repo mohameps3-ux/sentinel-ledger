@@ -1,6 +1,7 @@
 /* Must stay in _app: global Tailwind + design tokens (Next.js only allows global CSS import from here). */
 import "../styles/globals.css";
 import "../styles/sentinel-design-system.css";
+import "../styles/apex-obsidian.css";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { useEffect, useMemo } from "react";
 import Head from "next/head";
