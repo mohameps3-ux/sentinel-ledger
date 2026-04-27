@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronsDown, ChevronsUp, Info, Inbox, Loader2, Sparkles, WifiOff } from "lucide-react";
 import { Virtuoso } from "react-virtuoso";
@@ -21,6 +21,7 @@ import { RankBadge, RankDeltaChip } from "./RankIndicators";
 import { AnimatedNumber } from "../../../../components/ui/AnimatedNumber";
 import { useLocale } from "../../../../contexts/LocaleContext";
 import { deriveApexState } from "../../../../components/apex";
+import { useWarMode } from "../../../../contexts/WarModeContext";
 
 /**
  * War Home — Live tab (grid / Virtuoso). Parent `index.js` controls merge + hysteresis; this file only renders.
@@ -88,7 +89,6 @@ export function LiveTab({
   signalsFeedIsDegraded = false,
   signalsFeedIsLoading = false,
   signalsAgeSec,
-  isWarMode,
   useVirtualizedLayout = false,
   liveVirtuosoRows,
   entryCountdownByMint,
@@ -160,6 +160,26 @@ export function LiveTab({
     };
   }, []);
 
+  const { isWarMode } = useWarMode();
+  const getScore = (item) => item?.score ?? item?.sentinelScore ?? item?.unified_score ?? 0;
+
+  const displaySignals = useMemo(() => {
+    if (!isWarMode) return liveSignalsForGrid;
+    return [...liveSignalsForGrid].sort((a, b) => {
+      return (getScore(b) >= 60 ? 1 : 0) - (getScore(a) >= 60 ? 1 : 0);
+    });
+  }, [liveSignalsForGrid, isWarMode]);
+
+  const displayVirtuosoRows = useMemo(() => {
+    if (!isWarMode) return liveVirtuosoRows;
+    const cols = UI_CONFIG.VIRTUOSO_COLUMNS;
+    const rows = [];
+    for (let i = 0; i < displaySignals.length; i += cols) {
+      rows.push(displaySignals.slice(i, i + cols));
+    }
+    return rows;
+  }, [displaySignals, liveVirtuosoRows, isWarMode]);
+
   function renderLiveGridItem(sig, idx) {
     const isHeatFill = sig._liveSource === "hot_fill";
     const sec = sig._api
@@ -191,7 +211,7 @@ export function LiveTab({
     const decision = normalizeSignalDecision(actionKey);
     const accentColor = accentColorForDecision(decision, sig.signalStrength);
     const timeLeft = sig._api?.entryWindowMinutesLeft != null ? Math.max(0, Math.round(Number(sig._api.entryWindowMinutesLeft) || 0)) : Math.max(0, Math.ceil(sec / 60));
-    const hot = idx === signalCursor % Math.max(1, liveSignalsForGrid.length);
+    const hot = idx === signalCursor % Math.max(1, displaySignals.length);
     const coordOnCard =
       selectedMint && sig.mint === selectedMint && deskCoordination?.redSignal ? deskCoordination.redSignal : null;
     const narrative = narratives.find((n) => n.mint === sig.mint) || null;
@@ -231,7 +251,7 @@ export function LiveTab({
             sw: Math.max(0, Math.round(Number(sig?.smartWallets || 0)))
           });
         }}
-        baseClassName={`apex-card terminal-card-interactive group mb-2 ${
+        baseClassName={`apex-card terminal-card-interactive relative group mb-2 ${isWarMode && getScore(sig) >= 60 ? "war-target" : ""} ${
           isHeatFill
             ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat bg-gradient-to-b from-amber-950/25 to-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(250,204,21,0.18)]"
             : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live bg-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(250,204,21,0.14)]"
@@ -247,6 +267,17 @@ export function LiveTab({
       >
         {({ displayScore, smartMoneyCount }) => (
           <>
+        {isWarMode && getScore(sig) >= 60 && (
+          <div
+            className="absolute top-2 right-2 pointer-events-none"
+            style={{ width: "18px", height: "18px", zIndex: 1 }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5">
+              <circle cx="12" cy="12" r="9" strokeOpacity="0.35" />
+              <path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round" />
+            </svg>
+          </div>
+        )}
         <SentinelNarrativeBanner narrative={narrative} />
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -427,7 +458,7 @@ export function LiveTab({
               {t("war.live.poolLine", {
                 db: dbSignalCount,
                 heat: heatFillCount,
-                vis: liveSignalsForGrid.length,
+                vis: displaySignals.length,
                 pool: liveSignalPool.length
               })}
             </p>
@@ -468,7 +499,7 @@ export function LiveTab({
             </span>
           </div>
         </div>
-        {liveSignalsForGrid.length === 0 ? (
+        {displaySignals.length === 0 ? (
           <div className="border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-transparent px-4 py-5 text-[12px] text-sl-sub leading-relaxed max-w-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             {signalsFeedIsLoading ? (
               <div className="flex items-start gap-3">
@@ -523,16 +554,16 @@ export function LiveTab({
           </div>
         ) : null}
       </div>
-      {liveSignalsForGrid.length === 0 ? null : useVirtualizedLayout && liveVirtuosoRows.length > 0 ? (
+      {displaySignals.length === 0 ? null : useVirtualizedLayout && displayVirtuosoRows.length > 0 ? (
         <div className="min-h-[min(72dvh,920px)] w-full">
           <Virtuoso
             style={{ height: "min(72dvh, 920px)" }}
-            totalCount={liveVirtuosoRows.length}
+            totalCount={displayVirtuosoRows.length}
             defaultItemHeight={260}
             increaseViewportBy={{ bottom: 400, top: 100 }}
             itemContent={(rowIndex) => (
               <div className={`${UI_CONFIG.LIVE_HOT_GRID_CLASS} pb-1.5`}>
-                {liveVirtuosoRows[rowIndex].map((sig, j) => {
+                {displayVirtuosoRows[rowIndex].map((sig, j) => {
                   const idx = rowIndex * UI_CONFIG.VIRTUOSO_COLUMNS + j;
                   return <Fragment key={`${sig.mint}-${idx}`}>{renderLiveGridItem(sig, idx)}</Fragment>;
                 })}
@@ -542,7 +573,7 @@ export function LiveTab({
         </div>
       ) : (
         <div className={UI_CONFIG.LIVE_HOT_GRID_CLASS}>
-          {liveSignalsForGrid.map((sig, idx) => (
+          {displaySignals.map((sig, idx) => (
             <Fragment key={`${sig.mint}-${idx}`}>{renderLiveGridItem(sig, idx)}</Fragment>
           ))}
         </div>

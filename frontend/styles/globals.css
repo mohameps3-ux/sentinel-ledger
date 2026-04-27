@@ -1422,3 +1422,75 @@ body.war-mode *::after {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* ── WAR MODE SYSTEM ── */
+:root {
+  --accent: #8B5CF6;
+  --accent-glow: rgba(139,92,246,0.25);
+}
+
+body.war-mode-active {
+  --accent: #FF3B30;
+  --accent-glow: rgba(255,59,48,0.35);
+  background-color: #020204 !important;
+}
+
+body.war-mode-active::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, transparent 45%, rgba(0,0,0,0.65) 100%),
+    linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.10) 50%),
+    linear-gradient(90deg, rgba(255,0,0,0.03), rgba(0,255,0,0.01), rgba(0,255,255,0.03));
+  background-size: 100% 100%, 100% 4px, 3px 100%;
+  z-index: 30;
+}
+
+.terminal-card-interactive {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  will-change: transform, box-shadow;
+}
+
+body.war-mode-active .terminal-card-interactive:not(.war-target) {
+  border-color: rgba(255,59,48,0.12);
+}
+
+body.war-mode-active .war-target {
+  border-color: #FF3B30 !important;
+  background: rgba(255,59,48,0.03) !important;
+  box-shadow: 0 0 0 1px #FF3B30, 0 0 20px rgba(255,59,48,0.35);
+  transform: translateY(-2px);
+  animation: warPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes warPulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(255,59,48,0.35); }
+  50%       { box-shadow: 0 0 25px rgba(255,59,48,0.50); }
+}
+
+body.war-mode-active .telemetry-strip {
+  background-color: rgba(255,59,48,0.04);
+  border-color: rgba(255,59,48,0.20);
+}
+
+body.war-mode-active .btn-war-active {
+  border-color: #FF3B30 !important;
+  color: #FF3B30 !important;
+  background-color: rgba(255,59,48,0.08) !important;
+}
+
+body.war-mode-active .sl-logo-radar     { stroke: #FF3B30; }
+body.war-mode-active .sl-logo-center    { fill: #FF3B30; }
+body.war-mode-active .sl-logo-hex-outer { stroke: rgba(255,59,48,0.40); }
+
+body.war-mode-active .live-dot {
+  animation: war-blink 0.8s ease-in-out infinite;
+}
+
+@keyframes war-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.15; }
+}
+

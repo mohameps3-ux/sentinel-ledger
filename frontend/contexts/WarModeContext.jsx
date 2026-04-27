@@ -20,6 +20,13 @@ export function WarModeProvider({ children }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    const saved = localStorage.getItem("sl-war-mode") === "1";
+    if (saved) {
+      setIsWarMode(true);
+      document.body.classList.add("war-mode-active");
+      document.documentElement.style.setProperty("--accent", "#FF3B30");
+      document.documentElement.style.setProperty("--accent-glow", "rgba(255,59,48,0.35)");
+    }
     try {
       const stored = typeof window !== "undefined" ? window.localStorage.getItem(LS_KEY) : null;
       if (stored !== null) setIsWarMode(stored === "true");
@@ -28,21 +35,12 @@ export function WarModeProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = localStorage.getItem("sl-war-mode") === "1";
-    if (saved) {
-      setIsWarMode(true);
-      document.body.classList.add("war-mode-active");
-      document.documentElement.style.setProperty("--current-accent", "#FACC15");
-    }
-  }, []);
-
-  useEffect(() => {
     if (!hydrated || typeof document === "undefined") return;
     document.body.classList.toggle("war-mode-active", isWarMode);
+    document.documentElement.style.setProperty("--accent", isWarMode ? "#FF3B30" : "#8B5CF6");
     document.documentElement.style.setProperty(
-      "--current-accent",
-      isWarMode ? "#FACC15" : "#8B5CF6"
+      "--accent-glow",
+      isWarMode ? "rgba(255,59,48,0.35)" : "rgba(139,92,246,0.25)"
     );
     return () => {
       document.body.classList.remove("war-mode-active");
@@ -57,12 +55,12 @@ export function WarModeProvider({ children }) {
   const toggleWarMode = useCallback(() => {
     const next = !isWarMode;
     setIsWarMode(next);
-
     if (typeof window !== "undefined") {
       document.body.classList.toggle("war-mode-active", next);
+      document.documentElement.style.setProperty("--accent", next ? "#FF3B30" : "#8B5CF6");
       document.documentElement.style.setProperty(
-        "--current-accent",
-        next ? "#FACC15" : "#8B5CF6"
+        "--accent-glow",
+        next ? "rgba(255,59,48,0.35)" : "rgba(139,92,246,0.25)"
       );
       localStorage.setItem("sl-war-mode", next ? "1" : "0");
       window.dispatchEvent(new CustomEvent("war-mode-change", { detail: { active: next } }));

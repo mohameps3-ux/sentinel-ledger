@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useMemo } from "react";
 import { ChevronsDown, ChevronsUp, Flame, TrendingUp } from "lucide-react";
 import { formatUsdWhole } from "../../../../lib/formatStable";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
@@ -18,6 +19,7 @@ import { UI_CONFIG } from "@/constants/homeData";
 import { RankBadge, RankDeltaChip } from "./RankIndicators";
 import { useLocale } from "../../../../contexts/LocaleContext";
 import { deriveApexState } from "../../../../components/apex";
+import { useWarMode } from "../../../../contexts/WarModeContext";
 
 function cockpitCardClickTargetIsInteractive(e) {
   const el = e?.target;
@@ -52,7 +54,6 @@ export function HotTab({
   feedIsLive,
   feedLabel,
   feedAgeSec,
-  isWarMode,
   trendingMinLiquidityUsd,
   strategyMode,
   trendingRankDeltas,
@@ -60,6 +61,15 @@ export function HotTab({
   onSelectMint
 }) {
   const { t } = useLocale();
+  const { isWarMode } = useWarMode();
+  const getScore = (item) => item?.score ?? item?.sentinelScore ?? item?.unified_score ?? 0;
+
+  const displaySignals = useMemo(() => {
+    if (!isWarMode) return heatTokensForGrid;
+    return [...heatTokensForGrid].sort((a, b) => {
+      return (getScore(b) >= 60 ? 1 : 0) - (getScore(a) >= 60 ? 1 : 0);
+    });
+  }, [heatTokensForGrid, isWarMode]);
 
   const feedLabelTr =
     feedLabel === "SNAPSHOT"
@@ -105,7 +115,7 @@ export function HotTab({
               </div>
               <p className="text-xs text-sl-muted mt-1 max-w-xl leading-snug">{t("war.hot.sub")}</p>
               <p className="text-[10px] text-sl-muted mt-0.5">
-                {t("war.hot.visLine", { vis: heatTokensForGrid.length, pool: heatTokenPool.length })}
+                {t("war.hot.visLine", { vis: displaySignals.length, pool: heatTokenPool.length })}
               </p>
             </div>
           </div>
@@ -139,7 +149,7 @@ export function HotTab({
         </div>
 
         <div className={UI_CONFIG.LIVE_HOT_GRID_CLASS}>
-          {heatTokensForGrid.map((token, idx) => {
+          {displaySignals.map((token, idx) => {
             const signalStrength = Number.isFinite(Number(token?.sentinelScore))
               ? Math.max(1, Math.min(100, Math.round(Number(token.sentinelScore))))
               : computeSignalStrength(token);
@@ -182,7 +192,7 @@ export function HotTab({
                     sw: Math.max(0, Math.round(Number(token?.smartWallets || 0)))
                   });
                 }}
-                baseClassName={`apex-card terminal-card-interactive group mb-2 sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat p-1.5 sm:p-2 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
+                baseClassName={`apex-card terminal-card-interactive relative group mb-2 ${isWarMode && getScore(token) >= 60 ? "war-target" : ""} sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat p-1.5 sm:p-2 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
                   token?.mint
                     ? "hover:-translate-y-[1px] hover:shadow-[0_0_16px_rgba(250,204,21,0.18)]"
                     : "opacity-75"
@@ -194,6 +204,17 @@ export function HotTab({
               >
                 {({ displayScore, smartMoneyCount }) => (
                   <>
+                {isWarMode && getScore(token) >= 60 && (
+                  <div
+                    className="absolute top-2 right-2 pointer-events-none"
+                    style={{ width: "18px", height: "18px", zIndex: 1 }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5">
+                      <circle cx="12" cy="12" r="9" strokeOpacity="0.35" />
+                      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                )}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     {token?.mint ? (
