@@ -151,7 +151,6 @@ SENTINEL FEATURES:
 - Telegram bot: @sentinelledger_intel_bot
 - Track Record: /graveyard page`;
 
-  const q = String(question).slice(0, 2000);
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${encodeURIComponent(
       apiKey
@@ -160,9 +159,19 @@ SENTINEL FEATURES:
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text: q }] }],
-        generationConfig: { maxOutputTokens: 300, temperature: 0.3 }
+        contents: [
+          {
+            parts: [
+              {
+                text: systemPrompt + "\n\nUser question: " + question
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          maxOutputTokens: 300,
+          temperature: 0.3
+        }
       })
     }
   );
