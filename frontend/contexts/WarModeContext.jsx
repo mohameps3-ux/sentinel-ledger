@@ -20,17 +20,26 @@ export function WarModeProvider({ children }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("sl-war-mode") === "1";
-    if (saved) {
-      setIsWarMode(true);
-      document.body.classList.add("war-mode-active");
-      document.documentElement.style.setProperty("--accent", "#FF3B30");
-      document.documentElement.style.setProperty("--accent-glow", "rgba(255,59,48,0.35)");
-    }
     try {
-      const stored = typeof window !== "undefined" ? window.localStorage.getItem(LS_KEY) : null;
-      if (stored !== null) setIsWarMode(stored === "true");
-    } catch (_) {}
+      // Priority 1: new key
+      const newKey = localStorage.getItem("sl-war-mode");
+      // Priority 2: legacy key
+      const legacyKey = localStorage.getItem(LS_KEY);
+
+      let shouldBeWar = false;
+      if (newKey !== null) {
+        shouldBeWar = newKey === "1";
+      } else if (legacyKey !== null) {
+        shouldBeWar = legacyKey === "true";
+      }
+
+      if (shouldBeWar) {
+        setIsWarMode(true);
+        document.body.classList.add("war-mode-active");
+        document.documentElement.style.setProperty("--accent", "#FF3B30");
+        document.documentElement.style.setProperty("--accent-glow", "rgba(255,59,48,0.35)");
+      }
+    } catch {}
     setHydrated(true);
   }, []);
 
