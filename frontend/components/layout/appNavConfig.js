@@ -14,5 +14,9 @@ export const APP_NAV_LINKS = [
   { href: "/wallet-stalker", key: "stalker", label: "Stalker", isStalker: true },
   { href: "/compare", key: "compare", label: "Compare" },
   { href: "/watchlist", key: "watch", label: "Watchlist" },
-  { href: "/portfolio", key: "port", label: "Portfolio" }
+  { href: "/portfolio", key: "port", label: "Portfolio" },
+  { href: "/contact", key: "contact", label: "Contact", isSecondary: true },
+  { href: "/legal", key: "legal", label: "Legal", isSecondary: true },
+  { href: "/privacy", key: "privacy", label: "Privacy", isSecondary: true },
+  { href: "/terms", key: "terms", label: "Terms", isSecondary: true }
 ];

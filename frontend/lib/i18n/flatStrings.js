@@ -610,6 +610,10 @@ export const FLAT_STRINGS = {
   "nav.compare": S("Compare", { es: "Comparar", fr: "Comparer", de: "Vergleichen", it: "Confronta", ru: "Сравнить", zh: "对比", ko: "비교", ja: "比較", ar: "مقارنة", pt: "Comparar" }),
   "nav.watch": S("Watchlist", { es: "Watchlist", fr: "Watchlist", de: "Watchlist", it: "Watchlist", ru: "Список наблюдения", zh: "自选", ko: "관심목록", ja: "ウォッチリスト", ar: "قائمة المراقبة", pt: "Watchlist" }),
   "nav.port": S("Portfolio", { es: "Cartera", fr: "Portefeuille", de: "Portfolio", it: "Portafoglio", ru: "Портфель", zh: "投资组合", ko: "포트폴리오", ja: "ポートフォリオ", ar: "المحفظة", pt: "Carteira" }),
+  "nav.contact": S("Contact", { es: "Contacto", fr: "Contact", de: "Kontakt", it: "Contatto", ru: "Контакт", zh: "联系", ko: "문의", ja: "お問い合わせ", ar: "اتصل", pt: "Contacto" }),
+  "nav.terms": S("Terms", { es: "Términos", fr: "Conditions", de: "AGB", it: "Termini", ru: "Условия", zh: "条款", ko: "약관", ja: "規約", ar: "الشروط", pt: "Termos" }),
+  "nav.privacy": S("Privacy", { es: "Privacidad", fr: "Confidentialité", de: "Datenschutz", it: "Privacy", ru: "Приватность", zh: "隐私", ko: "개인정보", ja: "プライバシー", ar: "الخصوصية", pt: "Privacidade" }),
+  "nav.legal": S("Legal", { es: "Legal", fr: "Mentions légales", de: "Rechtliches", it: "Legale", ru: "Правовая информация", zh: "法律", ko: "법적 고지", ja: "法的事項", ar: "قانوني", pt: "Legal" }),
 
   "footer.brand": S("Sentinel Ledger"),
   "footer.tagline": S(

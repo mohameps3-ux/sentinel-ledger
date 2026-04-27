@@ -8,7 +8,7 @@ import { useLocale } from "../../contexts/LocaleContext";
 import { useLayoutEffect, useRef, useEffect, useState } from "react";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { SentinelLogo } from "./SentinelLogo";
-import { useWarMode } from "../../contexts/WarModeContext";
+import { WarModeToggle } from "../cockpit/WarModeToggle";
 
 const PRIMARY_NAV = [
   { href: "/", label: "Home", match: "/" },
@@ -47,7 +47,6 @@ export function Navbar() {
   const [stalkerUnread, setStalkerUnread] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [homeMenuOpen, setHomeMenuOpen] = useState(false);
-  const { isWarMode, toggleWarMode } = useWarMode();
 
   const clearStalker = () => {
     if (typeof window !== "undefined") {
@@ -110,16 +109,7 @@ export function Navbar() {
               FREE
             </span>
             <LanguageMenu compact />
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isWarMode}
-              aria-label={isWarMode ? "Disable WAR mode" : "Enable WAR mode"}
-              onClick={toggleWarMode}
-              className={isWarMode ? "inline-flex h-7 items-center rounded-md border border-red-500/50 bg-red-500/20 px-2 font-mono text-[10px] tracking-wider text-red-300 transition-colors duration-150 hover:bg-red-500/30" : "inline-flex h-7 items-center rounded-md border border-white/10 bg-white/[0.04] px-2 font-mono text-[10px] tracking-wider text-gray-400 transition-colors duration-150 hover:bg-white/[0.08] hover:text-white"}
-            >
-              WAR
-            </button>
+            <WarModeToggle />
             <span className="h-5 w-px bg-white/10" aria-hidden />
             {PRIMARY_NAV.map((item) => {
               const active = router.pathname === item.match;
@@ -255,7 +245,7 @@ export function Navbar() {
               </div>
               {showTradingChrome ? <SearchBar compact /> : null}
               <div className="mt-4 flex flex-col gap-1">
-                {APP_NAV_LINKS.map((item) => {
+                {APP_NAV_LINKS.filter((it) => !it.isSecondary).map((item) => {
                   const active = item.key === "pricing" ? router.pathname === "/pricing" : router.pathname === item.href;
                   return (
                     <Link
@@ -281,6 +271,31 @@ export function Navbar() {
                     </Link>
                   );
                 })}
+              </div>
+              <div className="mt-6">
+                <p className="px-1 mb-2 text-[10px] font-mono font-semibold uppercase tracking-[0.18em] text-gray-500">
+                  Information
+                </p>
+                <div className="flex flex-col gap-1">
+                  {APP_NAV_LINKS.filter((it) => it.isSecondary).map((item) => {
+                    const active = router.pathname === item.href;
+                    return (
+                      <Link
+                        key={item.key}
+                        href={item.href}
+                        onClick={() => setMenuOpen(false)}
+                        className={`text-[11px] px-2.5 py-1.5 rounded-md no-underline inline-flex items-center justify-between gap-2 ${
+                          active
+                            ? "text-white bg-white/[0.06]"
+                            : "text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]"
+                        }`}
+                        aria-current={active ? "page" : undefined}
+                      >
+                        <span className="truncate">{t(`nav.${item.key}`)}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

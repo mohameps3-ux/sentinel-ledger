@@ -25,7 +25,7 @@ export function WarModeToggle() {
   return (
     <div className="flex items-center gap-2 shrink-0">
       <span
-        className={`hidden sm:inline font-mono uppercase tracking-[0.18em] text-[9px] font-bold transition-colors duration-200 ${labelTone}`}
+        className={`hidden xl:inline font-mono uppercase tracking-[0.18em] text-[9px] font-bold transition-colors duration-200 ${labelTone}`}
         aria-hidden
       >
         {labelText}
