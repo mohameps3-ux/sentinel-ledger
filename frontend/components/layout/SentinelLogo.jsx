@@ -14,32 +14,32 @@ export default function SentinelLogo({ size = 22, className = "" }) {
             className="sl-logo-hex-outer"
             points="16,1 25,5 31,14 31,18 25,27 16,31 7,27 1,18 1,14 7,5"
             fill="none"
-            stroke="#8B5CF6"
+            stroke="#f59e0b"
             strokeWidth="0.6"
-            opacity="0.35"
+            opacity="0.4"
           />
 
-          <circle cx="16" cy="1" r="1" fill="#8B5CF6" className="sl-tick tick-1" />
-          <circle cx="25" cy="5" r="1" fill="#8B5CF6" className="sl-tick tick-2" />
-          <circle cx="31" cy="14" r="1" fill="#8B5CF6" className="sl-tick tick-3" />
-          <circle cx="31" cy="18" r="1" fill="#8B5CF6" className="sl-tick tick-4" />
-          <circle cx="25" cy="27" r="1" fill="#8B5CF6" className="sl-tick tick-5" />
-          <circle cx="16" cy="31" r="1" fill="#8B5CF6" className="sl-tick tick-6" />
-          <circle cx="7" cy="27" r="1" fill="#8B5CF6" className="sl-tick tick-7" />
-          <circle cx="1" cy="14" r="1" fill="#8B5CF6" className="sl-tick tick-8" />
+          <circle cx="16" cy="1" r="1" fill="#fbbf24" className="sl-tick tick-1" />
+          <circle cx="25" cy="5" r="1" fill="#fbbf24" className="sl-tick tick-2" />
+          <circle cx="31" cy="14" r="1" fill="#fbbf24" className="sl-tick tick-3" />
+          <circle cx="31" cy="18" r="1" fill="#fbbf24" className="sl-tick tick-4" />
+          <circle cx="25" cy="27" r="1" fill="#fbbf24" className="sl-tick tick-5" />
+          <circle cx="16" cy="31" r="1" fill="#fbbf24" className="sl-tick tick-6" />
+          <circle cx="7" cy="27" r="1" fill="#fbbf24" className="sl-tick tick-7" />
+          <circle cx="1" cy="14" r="1" fill="#fbbf24" className="sl-tick tick-8" />
 
           <polygon
             points="16,7 21,9.5 24,14 24,18 21,22.5 16,25 11,22.5 8,18 8,14 11,9.5"
             fill="none"
-            stroke="#8B5CF6"
+            stroke="#f59e0b"
             strokeWidth="0.8"
-            opacity="0.5"
+            opacity="0.55"
           />
 
-          <line x1="8" y1="16" x2="13" y2="16" stroke="white" strokeWidth="0.8" opacity="0.5" />
-          <line x1="19" y1="16" x2="24" y2="16" stroke="white" strokeWidth="0.8" opacity="0.5" />
-          <line x1="16" y1="8" x2="16" y2="13" stroke="white" strokeWidth="0.8" opacity="0.5" />
-          <line x1="16" y1="19" x2="16" y2="24" stroke="white" strokeWidth="0.8" opacity="0.5" />
+          <line x1="8" y1="16" x2="13" y2="16" stroke="#fafafa" strokeWidth="0.8" opacity="0.5" />
+          <line x1="19" y1="16" x2="24" y2="16" stroke="#fafafa" strokeWidth="0.8" opacity="0.5" />
+          <line x1="16" y1="8" x2="16" y2="13" stroke="#fafafa" strokeWidth="0.8" opacity="0.5" />
+          <line x1="16" y1="19" x2="16" y2="24" stroke="#fafafa" strokeWidth="0.8" opacity="0.5" />
 
           <line
             className="sl-logo-radar"
@@ -47,12 +47,12 @@ export default function SentinelLogo({ size = 22, className = "" }) {
             y1="16"
             x2="16"
             y2="2"
-            stroke="#8B5CF6"
+            stroke="#fbbf24"
             strokeWidth="1.2"
-            opacity="0.9"
+            opacity="0.95"
           />
 
-          <circle className="sl-logo-center" cx="16" cy="16" r="2.2" fill="#8B5CF6" />
+          <circle className="sl-logo-center" cx="16" cy="16" r="2.2" fill="#fbbf24" />
         </svg>
       </div>
 

@@ -1,36 +1,36 @@
 :root {
-  /* Core backgrounds */
-  --sl-bg-base: #07080f;
-  --sl-bg-surface: #0d0e1a;
-  --sl-bg-elevated: #12141f;
-  --sl-bg-overlay: #181a28;
+  /* Core backgrounds — Bloomberg-Black palette (Phase 7C) */
+  --sl-bg-base: #0a0a0a;
+  --sl-bg-surface: #141414;
+  --sl-bg-elevated: #191919;
+  --sl-bg-overlay: #1f1f1f;
 
-  /* Accent colors */
-  --sl-indigo: #7C3AED;
-  --sl-indigo-dim: #7C3AED20;
-  --sl-purple: #7C3AED;
-  --sl-cyan: #06b6d4;
-  --sl-cyan-dim: #06b6d415;
+  /* Accent colors — amber/gold (kept token names for compatibility) */
+  --sl-indigo: #f59e0b;
+  --sl-indigo-dim: rgba(245, 158, 11, 0.14);
+  --sl-purple: #f59e0b;
+  --sl-cyan: #fbbf24;
+  --sl-cyan-dim: rgba(251, 191, 36, 0.10);
 
-  /* Semantic colors */
+  /* Semantic colors — finance standards */
   --sl-win: #10b981;
-  --sl-win-dim: #10b98115;
+  --sl-win-dim: rgba(16, 185, 129, 0.12);
   --sl-loss: #ef4444;
-  --sl-loss-dim: #ef444415;
+  --sl-loss-dim: rgba(239, 68, 68, 0.12);
   --sl-warn: #f59e0b;
-  --sl-warn-dim: #f59e0b15;
-  --sl-neutral: #64748b;
+  --sl-warn-dim: rgba(245, 158, 11, 0.12);
+  --sl-neutral: #737373;
 
   /* Text */
-  --sl-text-primary: #F8FAFC;
-  --sl-text-secondary: #94A3B8;
-  --sl-text-muted: #64748B;
-  --sl-text-accent: #A78BFA;
+  --sl-text-primary: #fafafa;
+  --sl-text-secondary: #a3a3a3;
+  --sl-text-muted: #737373;
+  --sl-text-accent: #fbbf24;
 
   /* Borders */
-  --sl-border: #1e2235;
-  --sl-border-accent: #6366f130;
-  --sl-border-bright: #6366f160;
+  --sl-border: #1f1f1f;
+  --sl-border-accent: rgba(245, 158, 11, 0.28);
+  --sl-border-bright: rgba(245, 158, 11, 0.55);
 
   /* Typography */
   --sl-font-mono: var(--font-jetbrains-mono), "JetBrains Mono", "Fira Code", monospace;
@@ -46,9 +46,9 @@ body {
 
 body {
   background-image:
-    radial-gradient(circle at 12% 0%, rgba(99, 102, 241, 0.18), transparent 30%),
-    radial-gradient(circle at 88% 10%, rgba(6, 182, 212, 0.12), transparent 32%),
-    linear-gradient(180deg, var(--sl-bg-base), #05060b 58%, var(--sl-bg-base));
+    radial-gradient(circle at 12% 0%, rgba(245, 158, 11, 0.07), transparent 32%),
+    radial-gradient(circle at 88% 10%, rgba(245, 158, 11, 0.04), transparent 34%),
+    linear-gradient(180deg, var(--sl-bg-base), #050505 58%, var(--sl-bg-base));
 }
 
 .mono,
@@ -72,7 +72,7 @@ body {
 
 .sl-card-elevated {
   background:
-    linear-gradient(180deg, rgba(99, 102, 241, 0.08), transparent 44%),
+    linear-gradient(180deg, rgba(245, 158, 11, 0.06), transparent 44%),
     var(--sl-bg-elevated);
   border: 1px solid var(--sl-border-accent);
   border-radius: 8px;
@@ -127,7 +127,7 @@ body {
 .sl-badge-indigo {
   background: var(--sl-indigo-dim);
   color: var(--sl-text-accent);
-  border-color: rgba(99, 102, 241, 0.32);
+  border-color: rgba(245, 158, 11, 0.32);
 }
 
 .sl-table {
@@ -149,7 +149,7 @@ table th {
 .sl-table td,
 table td {
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(30, 34, 53, 0.55);
+  border-bottom: 1px solid rgba(31, 31, 31, 0.85);
   color: var(--sl-text-secondary);
 }
 
@@ -159,7 +159,7 @@ table td {
 }
 
 table tr:hover td {
-  background: rgba(18, 20, 31, 0.66);
+  background: rgba(38, 38, 38, 0.55);
 }
 
 .sl-glow-indigo {
@@ -212,14 +212,14 @@ table tr:hover td {
 }
 
 .sl-input {
-  background: rgba(13, 14, 26, 0.95);
+  background: rgba(20, 20, 20, 0.95);
   border-color: var(--sl-border);
   border-radius: 8px;
 }
 
 .sl-input:focus {
   border-color: var(--sl-border-bright);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.16), 0 0 28px rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18), 0 0 28px rgba(245, 158, 11, 0.10);
 }
 
 .btn-primary,
@@ -236,7 +236,7 @@ a {
   .glass-card:hover {
     border-color: var(--sl-border-bright);
     transform: translateY(-1px);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.48), 0 0 26px rgba(99, 102, 241, 0.12);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 26px rgba(245, 158, 11, 0.10);
   }
 
   .btn-primary:hover,
@@ -245,14 +245,14 @@ a {
   .btn-pro-outline:hover,
   a[class*="border"]:hover {
     transform: translateY(-1px);
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.14);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.14);
   }
 }
 
 .sl-skeleton {
   position: relative;
   overflow: hidden;
-  background: rgba(148, 163, 184, 0.08);
+  background: rgba(163, 163, 163, 0.08);
 }
 
 .sl-skeleton::after {
@@ -273,7 +273,7 @@ a {
 .sl-score-bar {
   height: 6px;
   border-radius: 999px;
-  background: rgba(100, 116, 139, 0.16);
+  background: rgba(115, 115, 115, 0.16);
   overflow: hidden;
 }
 
@@ -281,7 +281,7 @@ a {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--sl-indigo), var(--sl-cyan), var(--sl-win));
+  background: linear-gradient(90deg, var(--sl-warn), var(--sl-text-accent), var(--sl-win));
 }
 
 .sl-status-bar {
@@ -292,7 +292,7 @@ a {
   z-index: 45;
   height: var(--sl-status-h, 24px);
   border-bottom: 1px solid var(--sl-border);
-  background: rgba(13, 14, 26, 0.94);
+  background: rgba(15, 15, 15, 0.94);
   backdrop-filter: blur(16px);
   font-family: var(--sl-font-mono);
   font-size: 10px;
@@ -394,8 +394,8 @@ a {
 
 .sl-logo-wrapper {
   border-radius: 8px;
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.26);
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.28);
 }
 
 .sl-logo-hex-outer {
