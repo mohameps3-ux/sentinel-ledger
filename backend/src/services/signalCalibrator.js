@@ -109,9 +109,65 @@ function getActiveSignalWeightMap() {
   return out;
 }
 
+/**
+ * Sample-weighted historical edge for a set of fired signal/rule names.
+ *
+ * Used by the narrative orchestrator so frontends can show statements like
+ * "similar pattern → +12.4% avg (n=63)" — backed by `signal_performance`
+ * via `runCalibrationOnce`. Pure read against `lastCalibration`; no I/O.
+ *
+ * Returns `null` when there is no eligible sample. That nullability is
+ * intentional: callers fall back to their existing template (no UX
+ * regression while the system is bootstrapping).
+ *
+ * @param {string[]} signalNames
+ * @returns {{ avgOutcomePct:number, samples:number, winRatePct:number, signals:string[] } | null}
+ */
+function getHistoricalEdgeForSignals(signalNames) {
+  if (!Array.isArray(signalNames) || signalNames.length === 0) return null;
+  const lc = lastCalibration;
+  if (!lc?.ok || !Array.isArray(lc.proposals)) return null;
+  const set = new Set(
+    signalNames
+      .map((s) => String(s || "").trim())
+      .filter((s) => s.length > 0)
+  );
+  if (set.size === 0) return null;
+
+  const matched = lc.proposals.filter(
+    (p) => p && p.eligible && set.has(String(p.signal))
+  );
+  if (matched.length === 0) return null;
+
+  let totalSamples = 0;
+  let weightedAvg = 0;
+  let weightedWin = 0;
+  const used = [];
+  for (const p of matched) {
+    const n = Number(p.samples);
+    const a = Number(p.avgOutcomePct);
+    const w = Number(p.winRatePct);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    if (!Number.isFinite(a)) continue;
+    totalSamples += n;
+    weightedAvg += a * n;
+    weightedWin += (Number.isFinite(w) ? w : 0) * n;
+    used.push(String(p.signal));
+  }
+  if (totalSamples === 0) return null;
+
+  return {
+    avgOutcomePct: Math.round((weightedAvg / totalSamples) * 100) / 100,
+    samples: totalSamples,
+    winRatePct: Math.round((weightedWin / totalSamples) * 100) / 100,
+    signals: used
+  };
+}
+
 module.exports = {
   runCalibrationOnce,
   getCalibrationSnapshot,
-  getActiveSignalWeightMap
+  getActiveSignalWeightMap,
+  getHistoricalEdgeForSignals
 };
 

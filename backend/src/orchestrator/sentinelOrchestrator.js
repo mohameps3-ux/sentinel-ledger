@@ -4,6 +4,12 @@ const { randomUUID } = require("crypto");
 const { getSupabase } = require("../lib/supabase");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 const tokenStateMachine = require("../services/tokenStateMachine");
+const { getHistoricalEdgeForSignals } = require("../services/signalCalibrator");
+
+const HISTORICAL_MIN_SAMPLES = Math.max(
+  10,
+  Number(process.env.SENTINEL_NARRATIVE_HIST_MIN_SAMPLES || 30)
+);
 
 const POLL_MS = Math.max(10_000, Number(process.env.SENTINEL_ORCHESTRATOR_POLL_MS || 30_000));
 const STALE_MS = 120_000;
@@ -14,12 +20,18 @@ const CONVERGENCE_WINDOW_MIN = 10;
 
 const TEMPLATES = {
   multi_wallet_entry: "{n} high-win wallets entered within {window}min",
+  multi_wallet_entry_historical:
+    "{n} high-win wallets entered within {window}min · similar pattern → {avgSign}{avg}% avg (n={samples})",
   early_pattern: "Smart wallet re-entered — early pattern repeated ({streak} consecutive wins)",
   outlier_catch: "Low Technical Read but smart money accumulating — outlier pattern",
+  outlier_catch_historical:
+    "Smart money accumulating · outlier pattern → {avgSign}{avg}% avg (n={samples})",
   momentum_warning: "Momentum exhausting — possible overheat ({change}% in {time})",
   entry_window: "Entry window: ~{timeLeft}min left · you are earlier than {percentile}% of traders",
   wallet_streak: "{short_address} buying again — {streak} consecutive wins",
   convergence: "CONVERGENCE: {n} tracked wallets on same token within {window}min",
+  convergence_historical:
+    "CONVERGENCE: {n} wallets within {window}min · similar pattern → {avgSign}{avg}% avg (n={samples})",
   anomaly_liquidity: "Liquidity dropped {pct}% in {time}min — exit risk detected",
   grade_alert: "Grade {grade} signal on {symbol} — {confidence}% confidence"
 };
@@ -164,7 +176,10 @@ function scoreEventFromPayload(score) {
   const previous = state.previousScoreByMint.get(mint);
   state.previousScoreByMint.set(mint, currentScore);
   const delta = previous != null && currentScore != null ? currentScore - previous : 0;
-  const signals = Array.isArray(score.signals) ? score.signals.length : 0;
+  const signalNames = Array.isArray(score.signals)
+    ? score.signals.map((s) => String(s)).filter(Boolean).slice(0, 16)
+    : [];
+  const signals = signalNames.length;
   return {
     source: "score",
     mint,
@@ -173,6 +188,7 @@ function scoreEventFromPayload(score) {
     score: currentScore,
     scoreDelta: delta,
     signals,
+    signalNames,
     action: score.suggestedAction || score.action || score.decision || score.meta?.executionAction || "WATCH",
     entryWindowOpen: score.meta?.entryWindow === "OPEN" || score.entryWindow === "OPEN",
     symbol: score.symbol || score.meta?.symbol || "TOKEN",
@@ -268,8 +284,36 @@ function classify(event) {
   return "TACTICAL";
 }
 
+/**
+ * Returns historical edge slots when the calibrator has eligible samples for
+ * the rules that fired on this event. Returns `null` otherwise so callers can
+ * fall back to the static template (no UX regression while bootstrapping).
+ */
+function buildHistoricalSlots(event) {
+  if (!Array.isArray(event?.signalNames) || event.signalNames.length === 0) return null;
+  let edge = null;
+  try {
+    edge = getHistoricalEdgeForSignals(event.signalNames);
+  } catch (_) {
+    edge = null;
+  }
+  if (!edge || !Number.isFinite(edge.samples) || edge.samples < HISTORICAL_MIN_SAMPLES) {
+    return null;
+  }
+  const avgRaw = Number(edge.avgOutcomePct);
+  if (!Number.isFinite(avgRaw)) return null;
+  const avgRounded = Math.round(avgRaw * 10) / 10;
+  return {
+    avg: Math.abs(avgRounded).toFixed(1),
+    avgSign: avgRounded >= 0 ? "+" : "-",
+    samples: edge.samples
+  };
+}
+
 function chooseTemplate(event, severity) {
   const agg = aggregateForMint(event.mint);
+  const histSlots = buildHistoricalSlots(event);
+
   if (severity === "ANOMALY" && agg.repeatedWallet) {
     return {
       key: "wallet_streak",
@@ -280,7 +324,11 @@ function chooseTemplate(event, severity) {
     return { key: "anomaly_liquidity", slots: { pct: Math.round(event.liquidityDropPct), time: "10" } };
   }
   if (event.templateHint === "convergence" || agg.walletCount >= 2) {
-    return { key: "convergence", slots: { n: Math.max(event.walletCount || 0, agg.walletCount), window: CONVERGENCE_WINDOW_MIN } };
+    const baseSlots = { n: Math.max(event.walletCount || 0, agg.walletCount), window: CONVERGENCE_WINDOW_MIN };
+    if (histSlots) {
+      return { key: "convergence_historical", slots: { ...baseSlots, ...histSlots } };
+    }
+    return { key: "convergence", slots: baseSlots };
   }
   if (event.entryWindowOpen) {
     return { key: "entry_window", slots: { timeLeft: event.timeLeft || "5", percentile: event.percentile || "80" } };
@@ -295,7 +343,14 @@ function chooseTemplate(event, severity) {
     return { key: "momentum_warning", slots: { change: Math.round(Number(event.priceChange24h)), time: "24h" } };
   }
   if (severity === "TACTICAL" && agg.highWinWalletCount > 0) {
-    return { key: "multi_wallet_entry", slots: { n: agg.highWinWalletCount, window: CONVERGENCE_WINDOW_MIN } };
+    const baseSlots = { n: agg.highWinWalletCount, window: CONVERGENCE_WINDOW_MIN };
+    if (histSlots) {
+      return { key: "multi_wallet_entry_historical", slots: { ...baseSlots, ...histSlots } };
+    }
+    return { key: "multi_wallet_entry", slots: baseSlots };
+  }
+  if (histSlots) {
+    return { key: "outlier_catch_historical", slots: histSlots };
   }
   return { key: "outlier_catch", slots: {} };
 }
@@ -341,6 +396,27 @@ function handleObservedEvent(event) {
   } catch (_) {
     tokenState = null;
   }
+  let evidence = null;
+  if (Array.isArray(event.signalNames) && event.signalNames.length) {
+    let edge = null;
+    try {
+      edge = getHistoricalEdgeForSignals(event.signalNames);
+    } catch (_) {
+      edge = null;
+    }
+    evidence = {
+      signals: event.signalNames.slice(0, 8),
+      historical:
+        edge && Number(edge.samples) >= HISTORICAL_MIN_SAMPLES
+          ? {
+              avgOutcomePct: edge.avgOutcomePct,
+              winRatePct: edge.winRatePct,
+              samples: edge.samples
+            }
+          : null
+    };
+  }
+
   const payload = {
     id: randomUUID(),
     mint: event.mint,
@@ -348,6 +424,7 @@ function handleObservedEvent(event) {
     message: narrativeMessage(key, slots, severity),
     cta,
     state: tokenState ? { key: tokenState.state, since: tokenState.since, prev: tokenState.prev } : null,
+    evidence,
     timestamp: nowIso(),
     expiresAt: new Date(Date.now() + NARRATIVE_TTL_MS).toISOString()
   };
@@ -432,6 +509,7 @@ module.exports = {
     narrativeMessage,
     normalizeConfidence,
     planCta,
-    validateCta
+    validateCta,
+    buildHistoricalSlots
   }
 };
