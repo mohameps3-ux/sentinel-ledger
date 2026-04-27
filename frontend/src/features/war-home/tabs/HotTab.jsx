@@ -67,7 +67,7 @@ export function HotTab({
   const displaySignals = useMemo(() => {
     if (!isWarMode) return heatTokensForGrid;
     return [...heatTokensForGrid].sort((a, b) => {
-      return (getScore(b) >= 60 ? 1 : 0) - (getScore(a) >= 60 ? 1 : 0);
+      return (getScore(b) >= 35 ? 1 : 0) - (getScore(a) >= 35 ? 1 : 0);
     });
   }, [heatTokensForGrid, isWarMode]);
 
@@ -192,7 +192,7 @@ export function HotTab({
                     sw: Math.max(0, Math.round(Number(token?.smartWallets || 0)))
                   });
                 }}
-                baseClassName={`apex-card terminal-card-interactive relative group mb-2 ${isWarMode && getScore(token) >= 60 ? "war-target" : ""} sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat p-1.5 sm:p-2 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
+                baseClassName={`apex-card terminal-card-interactive relative group mb-2 ${isWarMode && getScore(token) >= 35 ? "war-target" : ""} sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat p-1.5 sm:p-2 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
                   token?.mint
                     ? "hover:-translate-y-[1px] hover:shadow-[0_0_16px_rgba(250,204,21,0.18)]"
                     : "opacity-75"
@@ -204,7 +204,7 @@ export function HotTab({
               >
                 {({ displayScore, smartMoneyCount }) => (
                   <>
-                {isWarMode && getScore(token) >= 60 && (
+                {isWarMode && getScore(token) >= 35 && (
                   <div
                     className="absolute top-2 right-2 pointer-events-none"
                     style={{ width: "18px", height: "18px", zIndex: 1 }}

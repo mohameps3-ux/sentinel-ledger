@@ -166,7 +166,7 @@ export function LiveTab({
   const displaySignals = useMemo(() => {
     if (!isWarMode) return liveSignalsForGrid;
     return [...liveSignalsForGrid].sort((a, b) => {
-      return (getScore(b) >= 60 ? 1 : 0) - (getScore(a) >= 60 ? 1 : 0);
+      return (getScore(b) >= 35 ? 1 : 0) - (getScore(a) >= 35 ? 1 : 0);
     });
   }, [liveSignalsForGrid, isWarMode]);
 
@@ -226,6 +226,7 @@ export function LiveTab({
     // Heat-fill is always "active" (warm gold) to communicate "pure heat, not validated signal".
     // Live cards derive from signalStrength: >=80 critical (high conviction), >=60 active, else neutral silver.
     const apexState = isHeatFill ? "active" : deriveApexState(sig.signalStrength);
+    console.log("[WAR] score:", getScore(sig), "isWarMode:", isWarMode, "target:", isWarMode && getScore(sig) >= 35);
     return (
       <RealtimeTokenCardShell
         data-testid="sl-war-live-card"
@@ -251,7 +252,7 @@ export function LiveTab({
             sw: Math.max(0, Math.round(Number(sig?.smartWallets || 0)))
           });
         }}
-        baseClassName={`apex-card terminal-card-interactive relative group mb-2 ${isWarMode && getScore(sig) >= 60 ? "war-target" : ""} ${
+        baseClassName={`apex-card terminal-card-interactive relative group mb-2 ${isWarMode && getScore(sig) >= 35 ? "war-target" : ""} ${
           isHeatFill
             ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat bg-gradient-to-b from-amber-950/25 to-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(250,204,21,0.18)]"
             : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live bg-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(250,204,21,0.14)]"
@@ -267,7 +268,7 @@ export function LiveTab({
       >
         {({ displayScore, smartMoneyCount }) => (
           <>
-        {isWarMode && getScore(sig) >= 60 && (
+        {isWarMode && getScore(sig) >= 35 && (
           <div
             className="absolute top-2 right-2 pointer-events-none"
             style={{ width: "18px", height: "18px", zIndex: 1 }}
