@@ -1,55 +1,73 @@
-import { PageHead } from "../components/seo/PageHead";
 import { useLocale } from "../contexts/LocaleContext";
+import {
+  InstitutionalPage,
+  InstitutionalSection,
+  InstitutionalCard,
+  InstitutionalProse,
+  InstitutionalCallout
+} from "../components/institutional";
 
 export default function PrivacyPage() {
   const { t } = useLocale();
   return (
-    <>
-      <PageHead title={t("privacy.pageTitle")} description={t("privacy.lead")} />
-      <div className="max-w-3xl mx-auto px-6 pt-[76px] pb-12">
-        <div className="terminal-panel px-6 py-4 mb-8">
-          <span className="section-title">PRIVACY</span>
-          <h1 className="font-display text-2xl font-bold text-sl-text mt-1">{t("privacy.h1")}</h1>
-        </div>
-        <div className="terminal-panel px-6 py-6">
-        <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.lead")}</p>
+    <InstitutionalPage
+      trackerLabel="PRIVACY · POLICY"
+      title={t("privacy.h1")}
+      subtitle={t("privacy.lead")}
+      pageHeadTitle={t("privacy.pageTitle")}
+      pageHeadDescription={t("privacy.lead")}
+      width="narrow"
+    >
+      <InstitutionalSection trackerLabel="01 · Inputs" title={t("privacy.s1h")}>
+        <InstitutionalCard padded>
+          <InstitutionalProse>
+            <ul>
+              <li>{t("privacy.s1li1")}</li>
+              <li>{t("privacy.s1li2")}</li>
+              <li>{t("privacy.s1li3")}</li>
+              <li>{t("privacy.s1li4")}</li>
+            </ul>
+          </InstitutionalProse>
+        </InstitutionalCard>
+      </InstitutionalSection>
 
-        <section className="space-y-2">
-          <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s1h")}</h2>
-          <ul className="list-disc pl-5 text-sl-sub space-y-1">
-            <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s1li1")}</li>
-            <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s1li2")}</li>
-            <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s1li3")}</li>
-            <li className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s1li4")}</li>
-          </ul>
-        </section>
+      <InstitutionalSection trackerLabel="02 · Payments" title={t("privacy.s2h")}>
+        <InstitutionalCard padded>
+          <InstitutionalProse>
+            <p>{t("privacy.s2p")}</p>
+          </InstitutionalProse>
+        </InstitutionalCard>
+      </InstitutionalSection>
 
-        <section className="space-y-2">
-          <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s2h")}</h2>
-          <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s2p")}</p>
-        </section>
+      <InstitutionalSection trackerLabel="03 · Exclusions" title={t("privacy.s3h")}>
+        <InstitutionalCallout tone="success" title="Never collected">
+          {t("privacy.s3p")}
+        </InstitutionalCallout>
+      </InstitutionalSection>
 
-        <section className="space-y-2">
-          <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s3h")}</h2>
-          <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s3p")}</p>
-        </section>
+      <InstitutionalSection trackerLabel="04 · Basis" title={t("privacy.s4h")}>
+        <InstitutionalCard padded>
+          <InstitutionalProse>
+            <p>{t("privacy.s4p")}</p>
+          </InstitutionalProse>
+        </InstitutionalCard>
+      </InstitutionalSection>
 
-        <section className="space-y-2">
-          <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s4h")}</h2>
-          <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s4p")}</p>
-        </section>
+      <InstitutionalSection trackerLabel="05 · Rights" title={t("privacy.s5h")}>
+        <InstitutionalCard padded tone="accent">
+          <InstitutionalProse>
+            <p>{t("privacy.s5p")}</p>
+          </InstitutionalProse>
+        </InstitutionalCard>
+      </InstitutionalSection>
 
-        <section className="space-y-2">
-          <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s5h")}</h2>
-          <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s5p")}</p>
-        </section>
-
-        <section className="space-y-2">
-          <h2 className="font-display text-lg font-semibold text-sl-text mt-6 mb-3">{t("privacy.s6h")}</h2>
-          <p className="font-ui text-sm text-sl-sub leading-relaxed mb-4">{t("privacy.s6p")}</p>
-        </section>
-        </div>
-      </div>
-    </>
+      <InstitutionalSection trackerLabel="06 · Retention" title={t("privacy.s6h")}>
+        <InstitutionalCard padded>
+          <InstitutionalProse>
+            <p>{t("privacy.s6p")}</p>
+          </InstitutionalProse>
+        </InstitutionalCard>
+      </InstitutionalSection>
+    </InstitutionalPage>
   );
 }
