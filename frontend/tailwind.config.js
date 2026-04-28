@@ -22,6 +22,19 @@ const champagneGoldRamp = {
   950: '#422006'
 };
 
+/** Maps teal/cyan/indigo/purple/violet utilities to the institutional sapphire ramp. */
+const sapphireHueRamp = {
+  100: '#DBEAFE',
+  200: '#BFDBFE',
+  300: '#93C5FD',
+  400: '#60A5FA',
+  500: '#2563EB',
+  600: '#1D4ED8',
+  700: '#1E40AF',
+  800: '#1E3A8A',
+  900: '#1E3A5F',
+};
+
 const neutralRamp = {
   50:  '#fafafa',
   100: '#f5f5f5',
@@ -66,12 +79,13 @@ module.exports = {
         'sl-blue':   '#2563EB',
         'sl-blue-lt': '#60A5FA',
 
-        // Override Tailwind built-ins — warm legacy hues → champagne scale
-        violet:  champagneGoldRamp,
-        purple:  champagneGoldRamp,
-        indigo:  champagneGoldRamp,
+        // Override Tailwind built-ins — cool legacy hues → sapphire scale
+        teal:    sapphireHueRamp,
+        cyan:    sapphireHueRamp,
+        indigo:  sapphireHueRamp,
+        purple:  sapphireHueRamp,
+        violet:  sapphireHueRamp,
         fuchsia: champagneGoldRamp,
-        cyan:    neutralRamp,
         sky:     neutralRamp,
         blue:    neutralRamp,
       },
