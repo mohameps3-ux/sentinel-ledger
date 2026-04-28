@@ -66,7 +66,7 @@ const TONE_CLASS = {
   emerald: "text-emerald-200 border-emerald-500/40 bg-emerald-500/10",
   amber: "text-amber-200 border-amber-500/40 bg-amber-500/10",
   cyan: "text-blue-200 border-blue-500/40 bg-blue-500/10",
-  violet: "text-violet-200 border-violet-500/40 bg-violet-500/10",
+  violet: "text-blue-200 border-blue-500/40 bg-blue-500/10",
   orange: "text-orange-200 border-orange-500/40 bg-orange-500/10",
   slate: "text-slate-200 border-white/15 bg-white/[0.04]"
 };

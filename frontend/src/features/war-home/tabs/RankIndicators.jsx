@@ -24,7 +24,7 @@ export function RankDeltaChip({ delta, isNew }) {
   if (isNew) {
     return (
       <span
-        className="inline-flex items-center gap-0.5 text-[9px] leading-none font-bold uppercase tracking-wider px-1 py-0.5 rounded border border-violet-500/40 bg-violet-500/15 text-violet-200"
+        className="inline-flex items-center gap-0.5 text-[9px] leading-none font-bold uppercase tracking-wider px-1 py-0.5 rounded border border-blue-500/40 bg-blue-500/15 text-blue-200"
         title="New entry in the ranking"
       >
         NEW

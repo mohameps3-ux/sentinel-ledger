@@ -252,7 +252,7 @@ export function HotTab({
                     <span className={`text-[9px] px-1 py-0.5 rounded border ${confidenceTone(signalStrength)}`}>
                       {confidenceTr(signalStrength)}
                     </span>
-                    {confluence ? <span className="text-[8px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1 py-0.5">multi</span> : null}
+                    {confluence ? <span className="text-[8px] text-blue-200 bg-blue-500/10 border border-blue-500/25 rounded px-1 py-0.5">multi</span> : null}
                     {smartMoneyCount > 0 ? (
                       <span className="text-[8px] px-1 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/12 text-indigo-100 font-mono font-bold">
                         {smartMoneyCount} SM

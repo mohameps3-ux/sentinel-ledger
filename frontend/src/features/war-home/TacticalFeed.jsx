@@ -92,10 +92,10 @@ export default function TacticalFeed({
           <div className="glass-card sl-radar-outlier-sheath p-3 sm:p-4">
             <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="sl-label text-[9px] !text-violet-200 tracking-[0.16em]">{t("terminal.lexicon.outlierCatch")}</p>
+                <p className="sl-label text-[9px] !text-blue-200 tracking-[0.16em]">{t("terminal.lexicon.outlierCatch")}</p>
                 <p className="text-xs text-sl-sub mt-1">{t("war.tactical.outlierSub")}</p>
               </div>
-              <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[10px] font-mono text-violet-100">
+              <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[10px] font-mono text-blue-100">
                 {outliers.length}/4
               </span>
             </div>
@@ -113,7 +113,7 @@ export default function TacticalFeed({
                         onSelectMint?.(row.mint, { src: row.source === "HOT" ? "hot" : "live", tr: Math.round(row.score), sw: null });
                       }
                     }}
-                    className="border border-white/[0.08] bg-black/25 p-3 text-left hover:border-violet-400/45 hover:bg-violet-500/[0.06] transition"
+                    className="border border-white/[0.08] bg-black/25 p-3 text-left hover:border-blue-400/45 hover:bg-blue-500/[0.06] transition"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -125,7 +125,7 @@ export default function TacticalFeed({
                       </span>
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2">
-                      <span className="text-[10px] uppercase tracking-[0.12em] text-violet-200">LOCK {Math.round(row.score)}</span>
+                      <span className="text-[10px] uppercase tracking-[0.12em] text-blue-200">LOCK {Math.round(row.score)}</span>
                       <TerminalActionIcons mint={row.mint} className="scale-90 origin-right" />
                     </div>
                   </div>

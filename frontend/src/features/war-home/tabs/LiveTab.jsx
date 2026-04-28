@@ -352,7 +352,7 @@ export function LiveTab({
             </span>
           ) : null}
           {!isHeatFill && (sig._api?.confluence || (!sig._api && sig.signalStrength >= 88)) ? (
-            <span className="text-[8px] text-violet-200 bg-violet-500/10 border border-violet-500/25 rounded px-1 py-0.5 font-mono">
+            <span className="text-[8px] text-blue-200 bg-blue-500/10 border border-blue-500/25 rounded px-1 py-0.5 font-mono">
               multi
             </span>
           ) : null}
