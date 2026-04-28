@@ -72,6 +72,97 @@ function confidenceBadge(row = {}) {
   return "BUILDING";
 }
 
+/** Minute bucket for track-record dedup (floor to start of minute). */
+function trackRecordMinuteBucket(iso) {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return "na";
+  return String(Math.floor(ms / 60000));
+}
+
+/**
+ * Stable dedup key: mint (if present) + minute + rule_id; else symbol + deployer/token_address/id.
+ * @param {Record<string, unknown>} row — enriched track-record signal (mapOracleSignal output)
+ */
+function trackRecordDedupeKey(row) {
+  const sym = String(row.symbol || "")
+    .replace(/\$/g, "")
+    .trim()
+    .toUpperCase();
+  const hasMint = row.mint != null && String(row.mint).trim() !== "";
+  let tokenPart;
+  if (hasMint) {
+    tokenPart = String(row.mint).trim();
+  } else {
+    const suffix = String(row.deployer ?? row.token_address ?? row.id ?? "").trim();
+    tokenPart = sym && suffix ? `${sym}_${suffix}` : suffix || sym || "unknown";
+  }
+  const ruleId = String(row.rule_id || "").trim() || "_";
+  const t = row.created_at || row.time;
+  return `${tokenPart}|${trackRecordMinuteBucket(t)}|${ruleId}`;
+}
+
+/** Higher = stronger signal for tie-break beyond strength. */
+function trackRecordStrengthScore(row) {
+  const s = Number(row.strength ?? 0);
+  if (Number.isFinite(s)) return s;
+  return 0;
+}
+
+/**
+ * Drop duplicate track-record rows that share the same token + minute + rule.
+ * Keeps the row with highest confidence (strength); collapsed groups get evolution metadata.
+ * @param {Record<string, unknown>[]} rows
+ * @returns {{ rows: Record<string, unknown>[], removed: number }}
+ */
+function dedupeTrackRecordSignals(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return { rows: rows || [], removed: 0 };
+  const groups = new Map();
+  for (const row of rows) {
+    const key = trackRecordDedupeKey(row);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  const out = [];
+  let removed = 0;
+  for (const [, group] of groups) {
+    if (group.length === 1) {
+      out.push(group[0]);
+      continue;
+    }
+    removed += group.length - 1;
+    const scores = group.map((r) => trackRecordStrengthScore(r));
+    const minStrength = Math.min(...scores);
+    let winner = group[0];
+    let bestS = scores[0];
+    for (let i = 1; i < group.length; i++) {
+      const s = scores[i];
+      const cand = group[i];
+      if (s > bestS) {
+        bestS = s;
+        winner = cand;
+      } else if (s === bestS) {
+        const idA = String(cand.id ?? "");
+        const idB = String(winner.id ?? "");
+        if (idA > idB) winner = cand;
+      }
+    }
+    out.push({
+      ...winner,
+      signal_evolution: true,
+      previous_strength: minStrength,
+      deduped: true
+    });
+  }
+  out.sort((a, b) => {
+    const ta = Date.parse(a.created_at || a.time || 0);
+    const tb = Date.parse(b.created_at || b.time || 0);
+    const sa = Number.isFinite(ta) ? ta : 0;
+    const sb = Number.isFinite(tb) ? tb : 0;
+    return sb - sa;
+  });
+  return { rows: out, removed };
+}
+
 function bestRegime(row = {}) {
   const perf = row.regime_performance && typeof row.regime_performance === "object" ? row.regime_performance : {};
   const entries = Object.entries(perf)
@@ -97,6 +188,7 @@ function mapOracleSignal(row, signalById, snapshotByMint) {
     signal_id: row.signal_id,
     time: row.created_at,
     created_at: row.created_at,
+    mint: row.mint,
     token: row.mint,
     token_address: row.mint,
     token_name: tokenName(row, snapshot),
@@ -220,11 +312,101 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     };
   });
 
-  const recent = await enrichOracleRows(supabase, pageRes.data || []);
-  const topWins = await enrichOracleRows(supabase, winsRes.data || []);
-  const worstLosses = await enrichOracleRows(supabase, lossesRes.data || []);
+  const recentRaw = await enrichOracleRows(supabase, pageRes.data || []);
+  const topWinsRaw = await enrichOracleRows(supabase, winsRes.data || []);
+  const worstLossesRaw = await enrichOracleRows(supabase, lossesRes.data || []);
   const [bestCall] = best ? await enrichOracleRows(supabase, [best]) : [null];
   const [worstCall] = worst ? await enrichOracleRows(supabase, [worst]) : [null];
+
+  const recentDedup = dedupeTrackRecordSignals(recentRaw);
+  const topWinsDedup = dedupeTrackRecordSignals(topWinsRaw);
+  const worstLossesDedup = dedupeTrackRecordSignals(worstLossesRaw);
+
+  const recent = recentDedup.rows.slice();
+  const recentKeyToIdx = new Map(recent.map((r, i) => [trackRecordDedupeKey(r), i]));
+  let crossSectionRemoved = 0;
+
+  const topWins = [];
+  const topKeyToIdx = new Map();
+  for (const r of topWinsDedup.rows) {
+    const k = trackRecordDedupeKey(r);
+    const ridx = recentKeyToIdx.get(k);
+    if (ridx !== undefined) {
+      if (trackRecordStrengthScore(r) > trackRecordStrengthScore(recent[ridx])) {
+        recent[ridx] = r;
+      }
+      crossSectionRemoved += 1;
+      continue;
+    }
+    const tidx = topKeyToIdx.get(k);
+    if (tidx !== undefined) {
+      if (trackRecordStrengthScore(r) > trackRecordStrengthScore(topWins[tidx])) {
+        topWins[tidx] = r;
+      }
+      crossSectionRemoved += 1;
+      continue;
+    }
+    topKeyToIdx.set(k, topWins.length);
+    topWins.push(r);
+  }
+
+  const worstLosses = [];
+  const worstKeyToIdx = new Map();
+  for (const r of worstLossesDedup.rows) {
+    const k = trackRecordDedupeKey(r);
+    const ridx = recentKeyToIdx.get(k);
+    if (ridx !== undefined) {
+      if (trackRecordStrengthScore(r) > trackRecordStrengthScore(recent[ridx])) {
+        recent[ridx] = r;
+      }
+      crossSectionRemoved += 1;
+      continue;
+    }
+    const tidx = topKeyToIdx.get(k);
+    if (tidx !== undefined) {
+      if (trackRecordStrengthScore(r) > trackRecordStrengthScore(topWins[tidx])) {
+        topWins[tidx] = r;
+      }
+      crossSectionRemoved += 1;
+      continue;
+    }
+    const widx = worstKeyToIdx.get(k);
+    if (widx !== undefined) {
+      if (trackRecordStrengthScore(r) > trackRecordStrengthScore(worstLosses[widx])) {
+        worstLosses[widx] = r;
+      }
+      crossSectionRemoved += 1;
+      continue;
+    }
+    worstKeyToIdx.set(k, worstLosses.length);
+    worstLosses.push(r);
+  }
+
+  const allKeys = new Set([
+    ...recentKeyToIdx.keys(),
+    ...topKeyToIdx.keys(),
+    ...worstKeyToIdx.keys()
+  ]);
+
+  let bestCallOut = bestCall;
+  if (bestCallOut && allKeys.has(trackRecordDedupeKey(bestCallOut))) {
+    bestCallOut = null;
+    crossSectionRemoved += 1;
+  }
+
+  let worstCallOut = worstCall;
+  if (worstCallOut && allKeys.has(trackRecordDedupeKey(worstCallOut))) {
+    worstCallOut = null;
+    crossSectionRemoved += 1;
+  }
+
+  const trackRecordDeduplicatedCount =
+    recentDedup.removed + topWinsDedup.removed + worstLossesDedup.removed + crossSectionRemoved;
+  if (process.env.NODE_ENV !== "production") {
+    console.log("track_record_dedupe_details", {
+      totalRemoved: trackRecordDeduplicatedCount
+    });
+  }
 
   const autoDiscoveredWallets = autoDiscoveredRows
     .map((row) => {
@@ -246,8 +428,8 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     avg_return: returns.length ? returns.reduce((a, b) => a + b, 0) / returns.length : null,
     avg_return_wins: winReturns.length ? winReturns.reduce((a, b) => a + b, 0) / winReturns.length : null,
     max_drawdown: returns.length ? Math.min(...returns) : null,
-    best_call: bestCall,
-    worst_call: worstCall,
+    best_call: bestCallOut,
+    worst_call: worstCallOut,
     rule_performance: rulePerformance,
     recent_signals: recent,
     top_wins: topWins,
@@ -383,7 +565,7 @@ router.get("/track-record", async (req, res) => {
   const filter = String(req.query.filter || "all").toLowerCase();
   const page = Math.max(1, Number(req.query.page || 1));
   const pageSize = Math.max(1, Math.min(50, Number(req.query.limit || 25)));
-  const cacheKey = `signals:track-record:v1:${filter}:${page}:${pageSize}`;
+  const cacheKey = `signals:track-record:v2:${filter}:${page}:${pageSize}`;
   try {
     const cached = await redis.get(cacheKey);
     if (cached) {
