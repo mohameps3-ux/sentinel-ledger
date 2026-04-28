@@ -1,14 +1,12 @@
 /**
  * Sentinel Ledger — Tailwind config
  *
- * Phase 7C+ Champagne Gold (institutional, not terracotta):
- *  - Surfaces: pure black + dark grays
- *  - Accent: clean yellow-gold — #FACC15 base, #FEF08A highlight, #CA8A04 depth
- *    (no copper #c08552 / no amber-500 #f59e0b: reads brown on black)
- *  - Up: emerald, Down: red
+ * Sapphire institutional palette:
+ *  - Surfaces: near-black + slate panels
+ *  - Accent: institutional blue — #2563EB base, #60A5FA highlight
+ *  - Up: emerald, Down: red, Heat/warn: amber
  *
- * Strategy: same token names (sl-violet, etc.), single champagne family.
- * violet/purple/indigo/blue/sky/cyan classNames map to this ramp.
+ * Strategy: same token names (sl-violet, etc.) map to sapphire blue for legacy classes.
  */
 const champagneGoldRamp = {
   50:  '#fffbeb',
@@ -49,26 +47,26 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Surfaces (Bloomberg-Black)
-        'sl-root':   '#0a0a0a',
-        'sl-panel':  '#0d0d0d',
-        'sl-card':   '#141414',
-        'sl-border': '#1f1f1f',
-        'sl-hover':  '#262626',
+        // Surfaces (Bloomberg-Black + sapphire panels)
+        'sl-root':   '#010103',
+        'sl-panel':  '#0B0F14',
+        'sl-card':   '#0B0F14',
+        'sl-border': '#1F2A37',
+        'sl-hover':  '#1E3A5F',
         // Text
-        'sl-text':   '#fafafa',
-        'sl-sub':    '#a3a3a3',
-        'sl-muted':  '#737373',
-        // Brand accent — single champagne gold (hex matches CSS tokens)
-        'sl-violet': '#facc15',
+        'sl-text':   '#E6EDF3',
+        'sl-sub':    '#94A3B8',
+        'sl-muted':  '#475569',
+        // Brand accent — sapphire blue (sl-violet name retained for utilities)
+        'sl-violet': '#2563EB',
         // Semantic
-        'sl-green':  '#10b981',
-        'sl-orange': '#facc15',
-        'sl-red':    '#dc2626',
-        // Legacy 'sl-blue' — same gold accent
-        'sl-blue':   '#facc15',
+        'sl-green':  '#10B981',
+        'sl-orange': '#F59E0B',
+        'sl-red':    '#FF3B30',
+        'sl-blue':   '#2563EB',
+        'sl-blue-lt': '#60A5FA',
 
-        // Override Tailwind built-ins — all warm legacy hues → champagne scale
+        // Override Tailwind built-ins — warm legacy hues → champagne scale
         violet:  champagneGoldRamp,
         purple:  champagneGoldRamp,
         indigo:  champagneGoldRamp,

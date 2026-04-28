@@ -6,32 +6,37 @@
 
 /* —— Design system (spacing + type + actions) —— */
 :root {
-  --current-accent: #8B5CF6;
+  --current-accent: #2563EB;
   --war-glow: 0 0 0 transparent;
+  --sl-bg-base: #010103;
+  --sl-bg-panel: #0B0F14;
   --sl-card-pad: 20px;
   --sl-gap: 16px;
   --sl-section: 40px;
   --sl-page-x: 16px;
   --sl-radius-card: 14px;
   --sl-radius-btn: 10px;
-  /* Champagne gold — one institutional accent (no amber-500 / no copper) */
-  --sl-gold-hi: #fef08a;
-  --sl-gold: #facc15;
-  --sl-gold-mid: #eab308;
-  --sl-gold-dim: #ca8a04;
-  --sl-gold-rgb: 250, 204, 21;
-  --sl-gold-hi-rgb: 254, 240, 138;
-  --sl-violet: #facc15;
-  --sl-text: #fafafa;
-  --sl-sub: #a3a3a3;
-  --sl-muted: #737373;
-  --sl-color-violet: #facc15;
-  --sl-color-text: #fafafa;
-  --sl-color-sub: #a3a3a3;
-  --sl-color-muted: #737373;
+  /* Sapphire institutional accent */
+  --sl-gold-hi: #60A5FA;
+  --sl-gold: #2563EB;
+  --sl-gold-mid: #2563EB;
+  --sl-gold-dim: #1D4ED8;
+  --sl-gold-rgb: 37, 99, 235;
+  --sl-gold-hi-rgb: 96, 165, 250;
+  --sl-violet: #2563EB;
+  --sl-text: #E6EDF3;
+  --sl-sub: #94A3B8;
+  --sl-muted: #475569;
+  --sl-color-violet: #2563EB;
+  --sl-color-text: #E6EDF3;
+  --sl-color-sub: #94A3B8;
+  --sl-color-muted: #475569;
   --sl-surface: theme('colors.sl-card');
   --sl-surface-2: theme('colors.sl-panel');
-  --sl-border: theme('colors.sl-border');
+  --sl-border: #1F2A37;
+  --accent: #2563EB;
+  --accent-lt: #60A5FA;
+  --accent-glow: rgba(37,99,235,0.25);
   /* Readable hierarchy on dark graphite (terminal / mobile) */
   --sl-fg: var(--sl-color-text);
   --sl-fg-muted: var(--sl-color-sub);
@@ -44,7 +49,7 @@
   --safe-right: env(safe-area-inset-right, 0px);
   /* Dense “insights terminal” rail (Sentinel palette, not third-party branding) */
   --sl-terminal-rail-live: rgba(16, 185, 129, 0.88);
-  --sl-terminal-rail-heat: rgba(250, 204, 21, 0.9);
+  --sl-terminal-rail-heat: rgba(96, 165, 250, 0.9);
   --sl-status-h: 24px;
   /* -- Layout skeleton variables (fixed top chrome -> <main> padding) --
      Every fixed element anchored to the top of the viewport declares its
@@ -67,8 +72,8 @@
 }
 
 body.war-mode-active {
-  --current-accent: #FACC15;
-  --war-glow: 0 0 15px rgba(250, 204, 21, 0.15);
+  --current-accent: #FF3B30;
+  --war-glow: 0 0 15px rgba(255, 59, 48, 0.2);
 }
 
 body.war-mode-active .telemetry-strip {
@@ -77,17 +82,17 @@ body.war-mode-active .telemetry-strip {
 }
 
 body.war-mode-active .btn-war-active {
-  border-color: #dc2626;
-  color: #dc2626;
-  background-color: rgba(220, 38, 38, 0.08);
+  border-color: #FF3B30;
+  color: #FF3B30;
+  background-color: rgba(255, 59, 48, 0.08);
 }
 
 body.war-mode-active .sl-logo-radar {
-  stroke: #dc2626;
+  stroke: #FF3B30;
 }
 
 body.war-mode-active .sl-logo-center {
-  fill: #dc2626;
+  fill: #FF3B30;
 }
 
 body.war-mode-active .live-dot {
@@ -143,8 +148,8 @@ body {
   /* Do not set overflow-x on body — it clips fixed wallet modals/dropdowns on mobile. */
   background-color: theme('colors.sl-root');
   background-image:
-    radial-gradient(ellipse 120% 80% at 50% -30%, rgba(250, 204, 21, 0.06) 0%, transparent 55%),
-    radial-gradient(circle at 12% 20%, rgba(250, 204, 21, 0.04) 0, transparent 38%),
+    radial-gradient(ellipse 120% 80% at 50% -30%, rgba(96, 165, 250, 0.06) 0%, transparent 55%),
+    radial-gradient(circle at 12% 20%, rgba(96, 165, 250, 0.04) 0, transparent 38%),
     linear-gradient(180deg, theme('colors.sl-panel') 0%, theme('colors.sl-root') 28%, theme('colors.sl-card') 100%);
   /* fixed backgrounds hurt paint/scroll on iOS Safari; use scroll on small viewports */
   background-attachment: scroll;
@@ -262,8 +267,8 @@ body {
 }
 
 .sl-terminal-shell--heat::before {
-  background: linear-gradient(180deg, var(--sl-terminal-rail-heat), rgba(250, 204, 21, 0.16));
-  box-shadow: 0 0 14px rgba(250, 204, 21, 0.18);
+  background: linear-gradient(180deg, var(--sl-terminal-rail-heat), rgba(96, 165, 250, 0.16));
+  box-shadow: 0 0 14px rgba(96, 165, 250, 0.18);
 }
 
 .sl-terminal-shell > * {
@@ -292,7 +297,7 @@ body {
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
-    linear-gradient(105deg, rgba(250, 204, 21, 0.05) 0%, transparent 42%, rgba(209, 213, 219, 0.04) 100%);
+    linear-gradient(105deg, rgba(96, 165, 250, 0.05) 0%, transparent 42%, rgba(209, 213, 219, 0.04) 100%);
   background-size:
     14px 14px,
     14px 14px,
@@ -311,7 +316,7 @@ body {
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
-    linear-gradient(105deg, rgba(250, 204, 21, 0.05) 0%, transparent 42%, rgba(209, 213, 219, 0.04) 100%);
+    linear-gradient(105deg, rgba(96, 165, 250, 0.05) 0%, transparent 42%, rgba(209, 213, 219, 0.04) 100%);
   background-size:
     14px 14px,
     14px 14px,
@@ -330,7 +335,7 @@ body {
   z-index: 1;
 }
 
-/* Primary CTA — institutional amber with crisp border */
+/* Primary CTA — sapphire institutional */
 .btn-pro {
   display: inline-flex;
   align-items: center;
@@ -341,18 +346,18 @@ body {
   font-weight: 600;
   font-size: 14px;
   line-height: 1.2;
-  color: #0a0a0a;
-  background: linear-gradient(90deg, #facc15, #fef08a);
-  border: 1px solid rgba(250, 204, 21, 0.85);
+  color: #E6EDF3;
+  background: linear-gradient(90deg, #2563EB, #60A5FA);
+  border: 1px solid rgba(96, 165, 250, 0.85);
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.22);
+  box-shadow: 0 4px 16px rgba(96, 165, 250, 0.22);
   transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.15s ease;
 }
 
 .btn-pro:hover {
   opacity: 0.96;
   transform: scale(1.04);
-  box-shadow: 0 8px 24px rgba(250, 204, 21, 0.32);
+  box-shadow: 0 8px 24px rgba(96, 165, 250, 0.32);
 }
 
 .btn-pro:active {
@@ -402,18 +407,18 @@ body {
   border-radius: var(--sl-radius-btn);
   font-weight: 600;
   font-size: 14px;
-  color: #fef08a;
+  color: #60A5FA;
   background: transparent;
-  border: 1px solid rgba(250, 204, 21, 0.55);
+  border: 1px solid rgba(96, 165, 250, 0.55);
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .btn-pro-outline:hover {
   transform: scale(1.04);
-  background: rgba(250, 204, 21, 0.08);
-  border-color: rgba(250, 204, 21, 0.85);
-  color: #fef3c7;
+  background: rgba(96, 165, 250, 0.08);
+  border-color: rgba(96, 165, 250, 0.85);
+  color: #93C5FD;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -439,8 +444,8 @@ body {
 
 .sl-input:focus {
   outline: none;
-  border-color: rgba(250, 204, 21, 0.65);
-  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.14);
+  border-color: rgba(96, 165, 250, 0.65);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.14);
 }
 
 /* Compact home search — more terminal-like density */
@@ -500,11 +505,11 @@ a {
   /* Shared "alive" border behavior for cards/boxes (Apex Obsidian: pearl→gold) */
   .glass-card:hover {
     transform: translateY(-1px);
-    border-color: rgba(250, 204, 21, 0.42);
+    border-color: rgba(96, 165, 250, 0.42);
     box-shadow:
       0 16px 44px rgb(0 0 0 / 0.52),
-      0 0 0 1px rgba(250, 204, 21, 0.18),
-      0 0 18px rgba(250, 204, 21, 0.16),
+      0 0 0 1px rgba(96, 165, 250, 0.18),
+      0 0 18px rgba(96, 165, 250, 0.16),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
 }
@@ -532,8 +537,8 @@ a {
   .sl-glow-info:hover {
     /* Info glow → silver pearl with gold edge (Apex Obsidian). */
     transform: translateY(-1px);
-    border-color: rgba(250, 204, 21, 0.5) !important;
-    box-shadow: 0 0 16px rgba(250, 204, 21, 0.2), 0 0 0 1px rgba(209, 213, 219, 0.16);
+    border-color: rgba(96, 165, 250, 0.5) !important;
+    box-shadow: 0 0 16px rgba(96, 165, 250, 0.2), 0 0 0 1px rgba(209, 213, 219, 0.16);
   }
 }
 
@@ -552,7 +557,7 @@ a {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 70% 50% at 100% 0%, rgba(250, 204, 21, 0.10), transparent 55%),
+  background: radial-gradient(ellipse 70% 50% at 100% 0%, rgba(96, 165, 250, 0.10), transparent 55%),
     radial-gradient(ellipse 60% 45% at 0% 100%, rgba(209, 213, 219, 0.05), transparent 50%);
   pointer-events: none;
 }
@@ -569,7 +574,7 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(
     160deg,
-    rgba(250, 204, 21, 0.05) 0%,
+    rgba(96, 165, 250, 0.05) 0%,
     rgba(19, 23, 26, 0.96) 50%,
     rgba(12, 16, 20, 0.99) 100%
   );
@@ -1021,17 +1026,19 @@ body.war-mode *::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background-color: #facc15;
-  border: 1px solid #facc15;
-  color: #0a0a0a;
+  background-color: #2563EB;
+  border: 1px solid #2563EB;
+  color: #E6EDF3;
   cursor: pointer;
-  transition: opacity 150ms ease, box-shadow 150ms ease;
+  transition: opacity 150ms ease, box-shadow 150ms ease, background-color 150ms ease, border-color 150ms ease;
   border-radius: 2px;
   text-decoration: none;
 }
 .btn-primary:hover {
-  opacity: 0.9;
-  box-shadow: 0 0 14px rgba(250, 204, 21, 0.35);
+  background-color: #1D4ED8;
+  border-color: #1D4ED8;
+  opacity: 0.95;
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.35);
 }
 
 .btn-outline {
@@ -1046,18 +1053,18 @@ body.war-mode *::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background-color: rgba(250, 204, 21, 0.04);
-  border: 1px solid rgba(250, 204, 21, 0.55);
-  color: #fef08a;
+  background-color: transparent;
+  border: 1px solid #2563EB;
+  color: #2563EB;
   cursor: pointer;
   transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
   border-radius: 2px;
   text-decoration: none;
 }
 .btn-outline:hover {
-  background-color: rgba(250, 204, 21, 0.10);
-  border-color: rgba(250, 204, 21, 0.85);
-  color: #fef3c7;
+  background-color: rgba(37, 99, 235, 0.08);
+  border-color: #2563EB;
+  color: #60A5FA;
 }
 
 .btn-ghost {
@@ -1081,9 +1088,9 @@ body.war-mode *::after {
   text-decoration: none;
 }
 .btn-ghost:hover {
-  border-color: rgba(250, 204, 21, 0.55);
+  border-color: rgba(96, 165, 250, 0.55);
   color: #fafafa;
-  background-color: rgba(250, 204, 21, 0.05);
+  background-color: rgba(96, 165, 250, 0.05);
 }
 
 .btn-ghost-sm {
@@ -1107,9 +1114,9 @@ body.war-mode *::after {
   text-decoration: none;
 }
 .btn-ghost-sm:hover {
-  border-color: rgba(250, 204, 21, 0.55);
+  border-color: rgba(96, 165, 250, 0.55);
   color: #fafafa;
-  background-color: rgba(250, 204, 21, 0.05);
+  background-color: rgba(96, 165, 250, 0.05);
 }
 
 .btn-war {
@@ -1166,9 +1173,9 @@ body.war-mode *::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  border: 1px solid rgba(16,185,129,0.3);
-  color: theme('colors.sl-green');
-  background-color: rgba(16,185,129,0.06);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  color: #60A5FA;
+  background-color: rgba(96, 165, 250, 0.06);
   border-radius: 2px;
 }
 
@@ -1182,14 +1189,14 @@ body.war-mode *::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  border: 1px solid rgba(250,204,21,0.3);
-  color: theme('colors.sl-orange');
-  background-color: rgba(250,204,21,0.06);
+  border: 1px solid #1F2A37;
+  color: #60A5FA;
+  background-color: rgba(37, 99, 235, 0.05);
   border-radius: 2px;
 }
 
 .badge-outlier {
-  /* Apex Obsidian: gold for value markers (was violet). */
+  /* Apex: value markers — sapphire */
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1199,14 +1206,14 @@ body.war-mode *::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  border: 1px solid rgba(250, 204, 21, 0.32);
-  color: #fef08a;
-  background-color: rgba(250, 204, 21, 0.06);
+  border: 1px solid #1F2A37;
+  color: #60A5FA;
+  background-color: rgba(37, 99, 235, 0.05);
   border-radius: 2px;
 }
 
 .badge-pro {
-  /* Apex Obsidian: pro tier marker — iridescent gold border + warm fill. */
+  /* Pro tier marker — sapphire */
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1216,9 +1223,9 @@ body.war-mode *::after {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  border: 1px solid rgba(250, 204, 21, 0.42);
-  color: #fef08a;
-  background-color: rgba(250, 204, 21, 0.10);
+  border: 1px solid rgba(37, 99, 235, 0.4);
+  color: #60A5FA;
+  background-color: rgba(37, 99, 235, 0.10);
   border-radius: 2px;
 }
 
@@ -1248,8 +1255,8 @@ body.war-mode *::after {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  border: 1px solid rgba(250,204,21,0.25);
-  color: theme('colors.sl-orange');
+  border: 1px solid #1F2A37;
+  color: #60A5FA;
   background-color: transparent;
   border-radius: 2px;
 }
@@ -1301,7 +1308,7 @@ body.war-mode *::after {
 /* ── TABS ── */
 .tab-active {
   color: theme('colors.sl-text');
-  border-bottom: 2px solid theme('colors.sl-violet');
+  border-bottom: 2px solid #2563EB;
 }
 
 .tab-inactive {
@@ -1377,11 +1384,11 @@ body.war-mode *::after {
 }
 
 .war-mode .sl-logo-radar {
-  stroke: #DC2626;
+  stroke: #FF3B30;
 }
 
 .war-mode .sl-logo-center {
-  fill: #DC2626;
+  fill: #FF3B30;
 }
 
 .war-mode .sentinel-icon {
@@ -1424,15 +1431,10 @@ body.war-mode *::after {
 }
 
 /* ── WAR MODE SYSTEM ── */
-:root {
-  --accent: #8B5CF6;
-  --accent-glow: rgba(139,92,246,0.25);
-}
-
 body.war-mode-active {
   --accent: #FF3B30;
-  --accent-glow: rgba(255,59,48,0.35);
-  background-color: #020204 !important;
+  --accent-glow: rgba(255,59,48,0.40);
+  background-color: #010102 !important;
 }
 
 body.war-mode-active::after {
@@ -1458,11 +1460,11 @@ body.war-mode-active .terminal-card-interactive:not(.war-target) {
 }
 
 body.war-mode-active .war-target {
-  outline: 3px solid #FF3B30 !important;
   border-color: #FF3B30 !important;
-  background: rgba(255,59,48,0.15) !important;
-  box-shadow: 0 0 0 3px #FF3B30 !important;
+  background: rgba(255,59,48,0.03) !important;
+  box-shadow: 0 0 0 1px #FF3B30, 0 0 20px rgba(255,59,48,0.40) !important;
   transform: translateY(-2px) !important;
+  animation: warPulse 2.4s ease-in-out infinite !important;
 }
 
 @keyframes warPulse {
@@ -1483,7 +1485,7 @@ body.war-mode-active .btn-war-active {
 
 body.war-mode-active .sl-logo-radar     { stroke: #FF3B30; }
 body.war-mode-active .sl-logo-center    { fill: #FF3B30; }
-body.war-mode-active .sl-logo-hex-outer { stroke: rgba(255,59,48,0.40); }
+body.war-mode-active .sl-logo-hex-outer { stroke: rgba(255,59,48,0.35); }
 
 body.war-mode-active .live-dot {
   animation: war-blink 0.8s ease-in-out infinite;
