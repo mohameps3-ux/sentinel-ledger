@@ -30,7 +30,7 @@ function isOriginAllowed(origin) {
 const corsMiddlewareOptions = {
   origin: (origin, cb) => cb(null, isOriginAllowed(origin)),
   credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization", "x-fp-hash", "X-Fp-Hash"]
+  allowedHeaders: ["Content-Type", "Authorization", "x-fp-hash", "X-Fp-Hash", "x-ops-key"]
 };
 
 const socketIoCors = {
