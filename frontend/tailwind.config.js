@@ -8,21 +8,7 @@
  *
  * Strategy: same token names (sl-violet, etc.) map to sapphire blue for legacy classes.
  */
-const champagneGoldRamp = {
-  50:  '#fffbeb',
-  100: '#fef3c7',
-  200: '#fef08a',
-  300: '#fde047',
-  400: '#facc15',
-  500: '#eab308',
-  600: '#ca8a04',
-  700: '#a16207',
-  800: '#854d0e',
-  900: '#713f12',
-  950: '#422006'
-};
-
-/** Maps teal/cyan/indigo/purple/violet utilities to the institutional sapphire ramp. */
+/** Institutional sapphire scale for overridden Tailwind hue families. */
 const sapphireHueRamp = {
   100: '#DBEAFE',
   200: '#BFDBFE',
@@ -85,7 +71,7 @@ module.exports = {
         indigo:  sapphireHueRamp,
         purple:  sapphireHueRamp,
         violet:  sapphireHueRamp,
-        fuchsia: champagneGoldRamp,
+        fuchsia: sapphireHueRamp,
         sky:     neutralRamp,
         blue:    neutralRamp,
       },
