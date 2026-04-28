@@ -23,11 +23,15 @@ import { useTerminalMemoryEntry } from "../../hooks/useTerminalMemoryEntry";
  * The `mint` prop may be falsy (skeleton cards); in that case the hook
  * short-circuits inside the store (invalid mint) and no tint is applied.
  */
+/** Sapphire chrome when Terminal Memory marks the mint as watched (replaces amber/yellow ring, glow, tint). */
+const WATCHED_SAPPHIRE_CHROME =
+  "!bg-[rgba(37,99,235,0.05)] !shadow-[0_0_18px_rgba(37,99,235,0.25)] !ring-1 !ring-[#2563EB] hover:!shadow-[0_0_18px_rgba(37,99,235,0.25)]";
+
 export function WatchedCardShell({ mint, baseClassName = "", watchedClassName = "", ...rest }) {
   const entry = useTerminalMemoryEntry(mint);
   const watched = entry?.isWatched === true;
   const cls = watched
-    ? `${baseClassName} ${watchedClassName}`.trim()
+    ? `${baseClassName} ${watchedClassName} ${WATCHED_SAPPHIRE_CHROME}`.trim()
     : baseClassName;
   return <div data-watched={watched ? "1" : undefined} className={cls} {...rest} />;
 }
