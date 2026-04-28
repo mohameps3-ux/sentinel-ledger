@@ -468,7 +468,7 @@ export function LiveTab({
             <div className="flex flex-wrap items-center gap-1">
               <Link
                 href="/wallet-stalker"
-                className="sl-glow-info w-[5cm] max-w-[62vw] h-7 px-2 border border-cyan-500/30 bg-cyan-500/[0.08] text-cyan-100 no-underline inline-flex items-center justify-between gap-1"
+                className="sl-glow-info w-[5cm] max-w-[62vw] h-7 px-2 border border-blue-500/30 bg-blue-500/[0.08] text-blue-100 no-underline inline-flex items-center justify-between gap-1"
               >
                 <span className="text-[10px] uppercase tracking-wide truncate">{t("war.live.walletActivity")}</span>
                 <span className="text-[10px] font-mono shrink-0">{stalkerUnread > 0 ? `+${stalkerUnread}` : "0"}</span>
@@ -504,8 +504,8 @@ export function LiveTab({
           <div className="border border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-transparent px-4 py-5 text-[12px] text-sl-sub leading-relaxed max-w-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             {signalsFeedIsLoading ? (
               <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-cyan-500/25 bg-cyan-500/10">
-                  <Loader2 className="h-4 w-4 text-cyan-300 animate-spin" aria-hidden />
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-blue-500/25 bg-blue-500/10">
+                  <Loader2 className="h-4 w-4 text-blue-300 animate-spin" aria-hidden />
                 </span>
                 <div>
                   <p className="font-semibold text-sl-text/95">{t("war.live.empty.loadingTitle")}</p>
