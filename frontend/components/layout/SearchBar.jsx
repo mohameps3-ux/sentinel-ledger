@@ -134,7 +134,7 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
                     if (!ok) return;
                     router.push(`/token/${encodeURIComponent(mint)}`);
                   }}
-                  className="font-mono text-[6px] px-0.5 py-0 rounded border border-white/[0.08] bg-white/[0.03] text-sl-muted hover:text-sl-text"
+                  className="font-mono text-[6px] px-0.5 py-0 rounded border border-[#1F2A37] bg-[#0B0F14] text-[#E6EDF3] hover:bg-[#1E3A5F] hover:border-[#2563EB] hover:text-[#60A5FA]"
                 >
                   {mint.slice(0, 3)}…{mint.slice(-2)}
                 </button>
@@ -181,7 +181,7 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
                   if (!ok) return;
                   router.push(`/token/${encodeURIComponent(mint)}`);
                 }}
-                className="font-mono text-[9px] px-1.5 py-0.5 rounded border border-white/[0.08] bg-white/[0.03] text-sl-sub hover:text-sl-text hover:border-emerald-500/35 disabled:opacity-40"
+                className="font-mono text-[9px] px-1.5 py-0.5 rounded border border-[#1F2A37] bg-[#0B0F14] text-[#E6EDF3] hover:bg-[#1E3A5F] hover:border-[#2563EB] hover:text-[#60A5FA] disabled:opacity-40"
               >
                 {mint.slice(0, 4)}…{mint.slice(-4)}
               </button>

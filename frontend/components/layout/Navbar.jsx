@@ -113,10 +113,10 @@ export function Navbar() {
             <span className="h-5 w-px bg-white/10" aria-hidden />
             {PRIMARY_NAV.map((item) => {
               const active = router.pathname === item.match;
-              const navLinkClass = `rounded-md px-2.5 py-1.5 text-[11px] font-semibold no-underline transition ${
+              const navLinkClass = `rounded-md px-2.5 py-1.5 text-[11px] font-semibold no-underline border transition ${
                 active
-                  ? "bg-[var(--sl-indigo-dim)] text-[var(--sl-text-accent)]"
-                  : "text-[var(--sl-text-secondary)] hover:bg-white/[0.04] hover:text-white"
+                  ? "border-[#2563EB] bg-[#1E3A5F] text-[#60A5FA]"
+                  : "border-transparent text-[var(--sl-text-secondary)] hover:border-[#2563EB] hover:bg-[#1E3A5F] hover:text-[#60A5FA]"
               }`;
               if (item.href === "/") {
                 return (

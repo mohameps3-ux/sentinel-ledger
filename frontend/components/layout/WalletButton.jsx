@@ -167,8 +167,8 @@ export function WalletButton({ navCompact = false }) {
         onClick={() => setOpen((v) => !v)}
         className={`hidden sm:inline-flex items-center gap-0.5 h-7 pl-1 pr-1 rounded-md border text-[9px] transition max-w-[4.75rem] sm:max-w-[5.5rem] truncate ${
           connected
-            ? "bg-sl-card border-emerald-600/30 text-emerald-300"
-            : "bg-sl-card soft-divider text-sl-sub"
+            ? "bg-[#0B0F14] soft-divider text-[#60A5FA] hover:bg-[#1E3A5F] hover:border-[#2563EB] hover:text-[#60A5FA]"
+            : "bg-[#0B0F14] soft-divider text-[#E6EDF3] hover:bg-[#1E3A5F] hover:border-[#2563EB] hover:text-[#60A5FA]"
         }`}
         aria-expanded={open}
         aria-haspopup="true"
@@ -193,7 +193,7 @@ export function WalletButton({ navCompact = false }) {
       )}
 
       {loading && (
-        <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin ml-1" />
+        <div className="w-4 h-4 border-2 border-[#2563EB] border-t-transparent rounded-full animate-spin ml-1" />
       )}
     </div>
   );
