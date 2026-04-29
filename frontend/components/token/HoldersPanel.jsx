@@ -69,7 +69,7 @@ export function HoldersPanel({ holders }) {
         <div className="text-xs text-gray-500">Risk visualization</div>
         <div className="h-2 rounded-full bg-[#0E1318] overflow-hidden border border-[#2a2f36]">
           <div
-            className={`h-full ${data.top10Percentage > 40 ? "bg-red-500" : data.top10Percentage > 25 ? "bg-amber-500" : "bg-emerald-500"}`}
+            className={`h-full ${data.top10Percentage > 40 ? "bg-red-500" : data.top10Percentage > 25 ? "bg-blue-500" : "bg-emerald-500"}`}
             style={{ width: `${Math.min(data.top10Percentage, 100)}%` }}
           />
         </div>

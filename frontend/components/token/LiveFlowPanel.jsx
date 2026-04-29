@@ -52,7 +52,7 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
             </span>
           ) : null}
           {whaleCount > 0 ? (
-            <span className="inline-flex items-center gap-1 text-amber-200/90 text-[11px] font-semibold">
+            <span className="inline-flex items-center gap-1 text-blue-200/90 text-[11px] font-semibold">
               <Sparkles size={12} />
               {whaleCount} whale{whaleCount === 1 ? "" : "s"} in view
             </span>
@@ -87,7 +87,7 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
           return (
             <div
               key={tx.signature || `${tx.wallet}-${tx.timestamp}-${idx}`}
-              className={`${idx % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"} ${whale ? "ring-1 ring-inset ring-amber-500/20 bg-amber-500/[0.04]" : ""} ${tx.shouldNotify ? "glow-animation" : ""}`}
+              className={`${idx % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"} ${whale ? "ring-1 ring-inset ring-blue-500/20 bg-blue-500/[0.04]" : ""} ${tx.shouldNotify ? "glow-animation" : ""}`}
             >
               <div className="hidden md:grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-sm">
                 <div className="flex flex-col gap-1">
@@ -96,7 +96,7 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
                       tx.type === "buy"
                         ? "bg-emerald-500/15 text-emerald-300"
                         : tx.type === "swap"
-                          ? "bg-amber-500/15 text-amber-200"
+                          ? "bg-blue-500/15 text-blue-200"
                           : "bg-red-500/15 text-red-300"
                     }`}
                   >
@@ -104,7 +104,7 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
                       {tx.type === "buy" ? (
                         <ArrowUp size={11} />
                       ) : tx.type === "swap" ? (
-                        <ArrowUp size={11} className="rotate-45 text-amber-200" />
+                        <ArrowUp size={11} className="rotate-45 text-blue-200" />
                       ) : (
                         <ArrowDown size={11} />
                       )}
@@ -112,7 +112,7 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
                     </span>
                   </span>
                   {whale ? (
-                    <span className="text-[9px] font-bold uppercase tracking-wide text-amber-200/90 inline-flex items-center gap-0.5">
+                    <span className="text-[9px] font-bold uppercase tracking-wide text-blue-200/90 inline-flex items-center gap-0.5">
                       <Sparkles size={10} />
                       Whale
                     </span>
@@ -144,14 +144,14 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
                         tx.type === "buy"
                           ? "bg-emerald-500/15 text-emerald-300"
                           : tx.type === "swap"
-                            ? "bg-amber-500/15 text-amber-200"
+                            ? "bg-blue-500/15 text-blue-200"
                             : "bg-red-500/15 text-red-300"
                       }`}
                     >
                       {tx.type === "buy" ? "BUY" : tx.type === "swap" ? "SWAP" : "SELL"}
                     </span>
                     {whale ? (
-                      <span className="text-[9px] font-bold uppercase text-amber-200/90 inline-flex items-center gap-0.5">
+                      <span className="text-[9px] font-bold uppercase text-blue-200/90 inline-flex items-center gap-0.5">
                         <Sparkles size={10} />
                         Whale
                       </span>

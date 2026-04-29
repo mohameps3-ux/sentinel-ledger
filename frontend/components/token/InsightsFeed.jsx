@@ -39,7 +39,7 @@ const SIGNAL_LABEL = {
 
 const SIGNAL_TONE = {
   whale_accumulation: "text-emerald-200",
-  liquidity_shock: "text-amber-200",
+  liquidity_shock: "text-blue-200",
   cluster_buy: "text-cyan-200",
   new_wallet_confidence: "text-violet-200",
   velocity_spike: "text-orange-200"
