@@ -180,7 +180,7 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
             <>
               {isFrameLoading ? (
                 <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-[#0a0a0a]/85 font-mono text-xs text-[#a3a3a3]">
-                  <Loader2 size={14} className="animate-spin text-[#fef08a]" />
+                  <Loader2 size={14} className="animate-spin text-[#60A5FA]" />
                   Streaming chart…
                 </div>
               ) : null}
@@ -193,7 +193,7 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
               />
               <div className="sl-chart-watermark sl-chart-watermark--corner" aria-hidden>
                 <SentinelChartMark size={28} />
-                <span className="font-mono text-[8px] uppercase tracking-[0.22em] text-[#fef08a]/70 mt-1">
+                <span className="font-mono text-[8px] uppercase tracking-[0.22em] text-[#60A5FA]/70 mt-1">
                   Sentinel
                 </span>
               </div>
@@ -209,7 +209,7 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
             href={dexUrl}
             target="_blank"
             rel={EXTERNAL_ANCHOR_REL}
-            className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#737373] hover:text-[#fef08a] inline-flex items-center gap-1"
+            className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#737373] hover:text-[#60A5FA] inline-flex items-center gap-1"
             title="View markets in a new tab"
           >
             Open in browser <ExternalLink size={9} />
@@ -224,7 +224,7 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
         .sl-chart-container {
           background: #0a0a0a;
           border: 1px solid rgba(255, 255, 255, 0.06);
-          border-top: 1px solid rgba(250, 204, 21, 0.22);
+          border-top: 1px solid rgba(37, 99, 235, 0.22);
           overflow: hidden;
         }
         .sl-chart-container--fs {
@@ -239,7 +239,7 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
           justify-content: space-between;
           gap: 12px;
           padding: 10px 14px;
-          background: linear-gradient(180deg, rgba(250, 204, 21, 0.06), transparent);
+          background: linear-gradient(180deg, rgba(37, 99, 235, 0.06), transparent);
           border-bottom: 1px solid rgba(255, 255, 255, 0.06);
           flex-wrap: wrap;
         }
@@ -280,15 +280,15 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
           font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.14em;
-          color: #fef08a;
-          background: rgba(250, 204, 21, 0.08);
-          border: 1px solid rgba(250, 204, 21, 0.55);
+          color: #60a5fa;
+          background: rgba(37, 99, 235, 0.08);
+          border: 1px solid rgba(37, 99, 235, 0.55);
           cursor: pointer;
           transition: background 120ms ease, border-color 120ms ease;
         }
         :global(.sl-chart-fs-btn:hover) {
-          background: rgba(250, 204, 21, 0.16);
-          border-color: rgba(250, 204, 21, 0.85);
+          background: rgba(37, 99, 235, 0.16);
+          border-color: rgba(37, 99, 235, 0.85);
         }
         .sl-chart-body {
           position: relative;
@@ -341,22 +341,22 @@ function SentinelChartMark({ size = 32 }) {
       <polygon
         points="16,1 25,5 31,14 31,18 25,27 16,31 7,27 1,18 1,14 7,5"
         fill="none"
-        stroke="#facc15"
+        stroke="#2563EB"
         strokeWidth="0.7"
         opacity="0.6"
       />
       <polygon
         points="16,7 21,9.5 24,14 24,18 21,22.5 16,25 11,22.5 8,18 8,14 11,9.5"
         fill="none"
-        stroke="#facc15"
+        stroke="#2563EB"
         strokeWidth="0.9"
         opacity="0.75"
       />
-      <line x1="16" y1="2" x2="16" y2="16" stroke="#fef08a" strokeWidth="1.2" opacity="0.95" />
+      <line x1="16" y1="2" x2="16" y2="16" stroke="#60A5FA" strokeWidth="1.2" opacity="0.95" />
       <line x1="8" y1="16" x2="13" y2="16" stroke="#fafafa" strokeWidth="0.7" opacity="0.55" />
       <line x1="19" y1="16" x2="24" y2="16" stroke="#fafafa" strokeWidth="0.7" opacity="0.55" />
       <line x1="16" y1="19" x2="16" y2="24" stroke="#fafafa" strokeWidth="0.7" opacity="0.55" />
-      <circle cx="16" cy="16" r="2.4" fill="#fef08a" />
+      <circle cx="16" cy="16" r="2.4" fill="#60A5FA" />
     </svg>
   );
 }
