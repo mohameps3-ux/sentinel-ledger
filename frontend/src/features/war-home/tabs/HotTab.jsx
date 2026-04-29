@@ -298,7 +298,7 @@ export function HotTab({
                       ...(Array.isArray(token?.evidenceChips) ? token.evidenceChips : [])
                     ].slice(0, 5).map((r, i) => (
                       <div key={`${r}-${i}`} className="flex items-start gap-2">
-                        <span className="text-sl-violet font-mono text-xs mt-0.5">›</span>
+                        <span className="text-blue-200 font-mono text-xs mt-0.5">›</span>
                         <span className="font-ui text-xs text-sl-sub">{r}</span>
                       </div>
                     ))}

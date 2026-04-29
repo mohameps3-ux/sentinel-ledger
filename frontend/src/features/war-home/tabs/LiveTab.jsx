@@ -382,7 +382,7 @@ export function LiveTab({
           <div className="px-3 pb-3 space-y-1">
             {whyLines.slice(0, 3).map((r, i) => (
               <div key={i} className="flex items-start gap-2">
-                <span className="text-sl-violet font-mono text-xs mt-0.5">›</span>
+                <span className="text-blue-200 font-mono text-xs mt-0.5">›</span>
                 <span className="font-ui text-xs text-sl-sub">{r}</span>
               </div>
             ))}
