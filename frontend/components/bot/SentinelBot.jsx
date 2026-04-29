@@ -17,6 +17,12 @@ export default function SentinelBot() {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener("open-support-chat", handler);
+    return () => window.removeEventListener("open-support-chat", handler);
+  }, []);
+
+  useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }

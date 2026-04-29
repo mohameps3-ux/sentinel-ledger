@@ -19,11 +19,11 @@ const PRIMARY_NAV = [
 ];
 
 const HOME_MENU_PRIMARY = [
-  { href: "/", label: "Home", desc: "Feed + Scanner" },
-  { href: "/scanner", label: "Scanner", desc: "Token analysis" },
-  { href: "/smart-money", label: "Smart Money", desc: "Wallet intelligence" },
-  { href: "/alerts", label: "Alerts PRO", desc: "Signal notifications" },
-  { href: "/graveyard", label: "Track Record", desc: "Verified history" }
+  { href: "/", label: "Home" },
+  { href: "/scanner", label: "Scanner" },
+  { href: "/smart-money", label: "Smart Money" },
+  { href: "/alerts", label: "Alerts" },
+  { href: "/graveyard", label: "Track Record" }
 ];
 
 const HOME_MENU_SECONDARY = [
@@ -31,9 +31,7 @@ const HOME_MENU_SECONDARY = [
   { href: "/watchlist", label: "Watchlist" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/wallet-stalker", label: "Wallet Stalker" },
-  { href: "/results", label: "Results" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/contact", label: "Contact" }
+  { href: "/pricing", label: "Pricing" }
 ];
 
 export function Navbar() {
@@ -44,6 +42,7 @@ export function Navbar() {
   const showTradingChrome = !isControlRoom;
   const navRef = useRef(null);
   const menuRef = useRef(null);
+  const homeMenuRef = useRef(null);
   const [stalkerUnread, setStalkerUnread] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [homeMenuOpen, setHomeMenuOpen] = useState(false);
@@ -76,6 +75,15 @@ export function Navbar() {
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (!homeMenuOpen) return;
+    const onDoc = (e) => {
+      if (homeMenuRef.current && !homeMenuRef.current.contains(e.target)) setHomeMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [homeMenuOpen]);
 
   useLayoutEffect(() => {
     const el = navRef.current;
@@ -118,15 +126,13 @@ export function Navbar() {
                 }`;
                 if (item.href === "/") {
                   return (
-                    <div
-                      key={item.href}
-                      className="relative"
-                      onMouseEnter={() => setHomeMenuOpen(true)}
-                      onMouseLeave={() => setHomeMenuOpen(false)}
-                    >
+                    <div key={item.href} ref={homeMenuRef} className="relative">
                       <Link
                         href={item.href}
-                        onClick={() => setHomeMenuOpen((v) => !v)}
+                        onClick={(e) => {
+                          if (router.pathname === "/") e.preventDefault();
+                          setHomeMenuOpen((v) => !v);
+                        }}
                         className={`inline-flex items-center gap-0.5 ${navLinkClass}`}
                         aria-current={active ? "page" : undefined}
                         aria-expanded={homeMenuOpen}
@@ -134,36 +140,32 @@ export function Navbar() {
                         HOME <ChevronDown size={10} className="inline-block shrink-0" />
                       </Link>
                       {homeMenuOpen ? (
-                        <div
-                          className="absolute left-0 top-full z-[100] mt-1 min-w-[220px] border border-white/[0.08] bg-[rgba(10,12,20,0.98)] py-2 shadow-2xl backdrop-blur-xl"
-                          style={{ borderRadius: "4px" }}
-                        >
-                          <div className="px-3 py-1">
-                            <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500">MAIN</span>
+                        <div className="absolute left-0 top-full z-[100] mt-1 min-w-[220px] border border-sl-border bg-sl-panel py-2">
+                          <div className="px-4 py-1">
+                            <span className="font-mono text-[9px] uppercase tracking-widest text-sl-muted">MAIN</span>
                           </div>
                           {HOME_MENU_PRIMARY.map((menuItem) => (
                             <Link
                               key={menuItem.href}
                               href={menuItem.href}
                               onClick={() => setHomeMenuOpen(false)}
-                              className="flex flex-col px-3 py-2 no-underline transition-colors hover:bg-white/[0.04]"
+                              className="block px-4 py-2 font-mono text-xs text-sl-sub no-underline transition-colors hover:bg-sl-card hover:text-sl-text"
                             >
-                              <span className="font-mono text-[11px] font-semibold text-white">{menuItem.label}</span>
-                              <span className="font-mono text-[10px] text-slate-500">{menuItem.desc}</span>
+                              {menuItem.label}
                             </Link>
                           ))}
-                          <div className="my-1 border-t border-white/[0.06]" />
-                          <div className="px-3 py-1">
-                            <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500">MORE</span>
+                          <div className="my-1 border-t border-sl-border" />
+                          <div className="px-4 py-1">
+                            <span className="font-mono text-[9px] uppercase tracking-widest text-sl-muted">MORE</span>
                           </div>
                           {HOME_MENU_SECONDARY.map((menuItem) => (
                             <Link
                               key={menuItem.href}
                               href={menuItem.href}
                               onClick={() => setHomeMenuOpen(false)}
-                              className="flex px-3 py-1.5 no-underline transition-colors hover:bg-white/[0.04]"
+                              className="block px-4 py-2 font-mono text-xs text-sl-sub no-underline transition-colors hover:bg-sl-card hover:text-sl-text"
                             >
-                              <span className="font-mono text-[11px] text-slate-300">{menuItem.label}</span>
+                              {menuItem.label}
                             </Link>
                           ))}
                         </div>
@@ -191,7 +193,7 @@ export function Navbar() {
               <LanguageMenu compact />
             </div>
             {showTradingChrome ? (
-              <div className="hidden lg:block shrink-0 w-40 min-w-0 mr-2">
+              <div className="hidden lg:block mr-2 min-w-[280px] max-w-[380px] shrink-0">
                 <SearchBar compact />
               </div>
             ) : null}
