@@ -81,7 +81,7 @@ function actionTone(action) {
   const a = String(action || "WATCH").toUpperCase();
   if (a === "ACCUMULATE" || a === "ENTER NOW") return "border-indigo-400/50 bg-indigo-500/15 text-indigo-100";
   if (a === "TOO_LATE" || a === "TOO LATE" || a === "STAY OUT") return "border-red-400/45 bg-red-500/12 text-red-100";
-  return "border-amber-400/45 bg-amber-500/12 text-amber-100";
+  return "border-blue-400/45 bg-blue-500/12 text-blue-100";
 }
 
 function rulePerfTone(perf) {
@@ -623,7 +623,7 @@ export default function TokenPage() {
     connectionState === "connected"
       ? "bg-emerald-400"
       : connectionState === "reconnecting"
-        ? "bg-amber-300"
+        ? "bg-blue-300"
         : "bg-red-400";
   const statusLabel =
     connectionState === "connected"
