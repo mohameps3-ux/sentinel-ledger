@@ -38,9 +38,9 @@ const LED_STYLES = {
   },
   SYNCING: {
     label: "SYNCING",
-    dot: "bg-amber-400",
-    glow: "shadow-[0_0_8px_rgba(254,240,138,0.6)]",
-    pill: "text-amber-200 border-amber-500/30 bg-amber-500/10",
+    dot: "bg-blue-400",
+    glow: "shadow-[0_0_8px_rgba(96,165,250,0.6)]",
+    pill: "text-blue-200 border-blue-500/30 bg-blue-500/10",
     pulse: true
   },
   DEGRADED: {
@@ -80,7 +80,7 @@ function barTone(kind, value) {
   const v = Number.isFinite(value) ? value : 0;
   if (kind === "risk") {
     if (v >= 70) return "from-red-500 to-rose-400";
-    if (v >= 40) return "from-amber-400 to-orange-400";
+    if (v >= 40) return "from-blue-400 to-orange-400";
     return "from-emerald-500 to-teal-400";
   }
   if (kind === "smart") {
@@ -95,7 +95,7 @@ function barTone(kind, value) {
 
 function confidenceTone(c) {
   if (c >= 75) return "text-emerald-300 border-emerald-500/30 bg-emerald-500/10";
-  if (c >= 50) return "text-amber-200 border-amber-500/30 bg-amber-500/10";
+  if (c >= 50) return "text-blue-200 border-blue-500/30 bg-blue-500/10";
   return "text-gray-300 border-white/12 bg-white/[0.04]";
 }
 

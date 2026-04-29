@@ -101,14 +101,14 @@ export function HealthBar({ onlyBadge = false }) {
   if (label === "expired") {
     if (onlyBadge) {
       return (
-        <span className={`${badgeClass} border-amber-500/30 bg-amber-500/10 text-amber-200`}>
+        <span className={`${badgeClass} border-blue-500/30 bg-blue-500/10 text-blue-200`}>
           PRO expired
         </span>
       );
     }
     return (
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
-        <span className="px-2 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-200">
+        <span className="px-2 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-200">
           PRO expired
         </span>
         <Link href="/pricing" className="text-purple-300 hover:text-purple-200">

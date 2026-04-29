@@ -14,7 +14,7 @@ function compactWallet(wallet) {
 }
 
 function tierBadgeClass(tier) {
-  if (tier === 1) return "bg-gradient-to-r from-amber-500/25 to-orange-500/20 text-amber-200 border-amber-500/35";
+  if (tier === 1) return "bg-gradient-to-r from-blue-500/25 to-orange-500/20 text-blue-200 border-blue-500/35";
   if (tier === 2) return "bg-cyan-500/15 text-cyan-200 border-cyan-500/30";
   return "bg-white/[0.06] text-gray-300 border-white/10";
 }
@@ -85,7 +85,7 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
         </div>
         <div className="rounded-[10px] border border-white/[0.08] bg-white/[0.03] px-3 py-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Elite</p>
-          <p className="text-lg font-bold text-amber-200 mt-0.5">{meta.eliteCount ?? "—"}</p>
+          <p className="text-lg font-bold text-blue-200 mt-0.5">{meta.eliteCount ?? "—"}</p>
         </div>
         <div className="rounded-[10px] border border-white/[0.08] bg-white/[0.03] px-3 py-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Helius txs</p>
@@ -188,7 +188,7 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
 
               <div className="flex sm:flex-col items-end justify-between sm:justify-start gap-3 sm:min-w-[148px] border-t sm:border-t-0 sm:border-l border-white/[0.06] pt-3 sm:pt-0 sm:pl-4">
                 {index < 3 && (
-                  <div className="text-[10px] uppercase tracking-wide text-amber-300 inline-flex items-center gap-1 sm:order-first">
+                  <div className="text-[10px] uppercase tracking-wide text-blue-300 inline-flex items-center gap-1 sm:order-first">
                     <Trophy size={12} /> Top 3
                   </div>
                 )}

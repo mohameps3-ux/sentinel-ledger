@@ -9,7 +9,7 @@ import {
 
 function tri(v) {
   if (v === true) return { label: "YES", cls: "text-emerald-300 border-emerald-500/35 bg-emerald-500/10" };
-  if (v === false) return { label: "NO", cls: "text-amber-200 border-amber-500/35 bg-amber-500/10" };
+  if (v === false) return { label: "NO", cls: "text-blue-200 border-blue-500/35 bg-blue-500/10" };
   return { label: "UNK", cls: "text-gray-400 border-white/10 bg-white/[0.04]" };
 }
 

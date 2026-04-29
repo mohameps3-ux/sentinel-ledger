@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, Compass, Shield, Users } from "lucide-reac
 function verdictFromAnalysis(analysis) {
   const confidence = Number(analysis?.confidence || 0);
   if (confidence >= 90) return { label: "High Conviction", tone: "text-emerald-300", chip: "bg-emerald-500/15 border-emerald-500/30" };
-  if (confidence >= 75) return { label: "Watchlist Candidate", tone: "text-amber-300", chip: "bg-amber-500/15 border-amber-500/30" };
+  if (confidence >= 75) return { label: "Watchlist Candidate", tone: "text-blue-300", chip: "bg-blue-500/15 border-blue-500/30" };
   return { label: "High Caution", tone: "text-red-300", chip: "bg-red-500/15 border-red-500/30" };
 }
 

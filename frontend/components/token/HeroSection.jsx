@@ -43,7 +43,7 @@ export function HeroSection({ symbol, price, priceChange, grade, confidence, tok
     } else if (market?.lpLocked === false) {
       badges.push({
         label: "LP not locked",
-        className: "bg-amber-500/15 text-amber-200 border-amber-500/30",
+        className: "bg-blue-500/15 text-blue-200 border-blue-500/30",
         title: "Liquidity can still be withdrawn by deployers."
       });
     }

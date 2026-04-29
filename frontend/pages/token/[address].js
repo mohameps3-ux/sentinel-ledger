@@ -88,7 +88,7 @@ function rulePerfTone(perf) {
   if (!perf?.hasSample) return "border-sl-border bg-white/[0.04] text-sl-sub";
   const c = Number(perf.confidenceScore || 0);
   if (c > 0.7) return "border-emerald-500/35 bg-emerald-500/10 text-emerald-200";
-  if (c >= 0.5) return "border-amber-500/35 bg-amber-500/10 text-amber-200";
+  if (c >= 0.5) return "border-blue-500/35 bg-blue-500/10 text-blue-200";
   return "border-sl-border bg-white/[0.04] text-sl-sub";
 }
 
@@ -299,7 +299,7 @@ function TokenAlertStack({ token, convergence, redSig, coordMeta, t }) {
             redSig === "RED_CONFIRM"
               ? "border-red-500/45 bg-red-500/10"
               : redSig === "RED_PREPARE"
-                ? "border-amber-500/40 bg-amber-500/10"
+                ? "border-blue-500/40 bg-blue-500/10"
                 : "border-slate-500/40 bg-slate-500/5"
           }`}
         >
@@ -393,7 +393,7 @@ function SentinelIntelligence({ address, analysis, terminal, flaggedWallets, rul
                 : "Shadow validation is collecting outcomes before this rule can influence confidence."}
             </p>
             {regimeLine ? <p className="mt-1 text-[11px] opacity-80">{regimeLine}</p> : null}
-            {latestOutcomeLine ? <p className="mt-1 text-[11px] text-amber-100/90">{latestOutcomeLine}</p> : null}
+            {latestOutcomeLine ? <p className="mt-1 text-[11px] text-blue-100/90">{latestOutcomeLine}</p> : null}
           </div>
         ) : null}
         <Link
@@ -594,7 +594,7 @@ export default function TokenPage() {
         <PageHead title={`${shortMint(address)} — Sentinel Ledger`} description={t("token.pageDescMint")} />
         <div className="max-w-xl mx-auto px-4 py-20">
           <div className="glass-card p-8 text-center space-y-4">
-            <h2 className="text-xl font-semibold text-amber-200">{t("token.incompleteTitle")}</h2>
+            <h2 className="text-xl font-semibold text-blue-200">{t("token.incompleteTitle")}</h2>
             <p className="text-sl-sub text-sm leading-relaxed">{t("token.incompleteBody")}</p>
             <button
               type="button"
@@ -623,7 +623,7 @@ export default function TokenPage() {
     connectionState === "connected"
       ? "bg-emerald-400"
       : connectionState === "reconnecting"
-        ? "bg-amber-300"
+        ? "bg-blue-300"
         : "bg-red-400";
   const statusLabel =
     connectionState === "connected"

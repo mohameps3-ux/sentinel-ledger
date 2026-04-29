@@ -23,8 +23,8 @@ export function WalletThreatBanner({ walletIntel }) {
     walletIntel.level === "high"
       ? "border-red-500/50 bg-red-950/25"
       : walletIntel.level === "medium"
-        ? "border-amber-500/45 bg-amber-950/20"
-        : "border-amber-600/35 bg-[#13171A]";
+        ? "border-blue-500/45 bg-blue-950/20"
+        : "border-blue-600/35 bg-[#13171A]";
 
   return (
     <div className={`border p-4 ${border}`}>
@@ -33,7 +33,7 @@ export function WalletThreatBanner({ walletIntel }) {
           {walletIntel.level === "high" ? (
             <ShieldAlert className="text-red-400" size={22} />
           ) : (
-            <AlertTriangle className="text-amber-400" size={22} />
+            <AlertTriangle className="text-blue-400" size={22} />
           )}
         </div>
         <div className="min-w-0 space-y-2">

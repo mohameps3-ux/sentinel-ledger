@@ -83,7 +83,7 @@ export function LiveTensionBar() {
     freshness.state === "LIVE"
       ? "bg-emerald-400 text-emerald-200 border-emerald-500/25"
       : freshness.state === "STALE"
-        ? "bg-amber-400 text-amber-200 border-amber-500/25"
+        ? "bg-blue-400 text-blue-200 border-blue-500/25"
         : "bg-red-400 text-red-200 border-red-500/25";
 
   return (
