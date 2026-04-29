@@ -24,8 +24,7 @@ const ALL_PAGES_SECTIONS = [
     title: "MAIN",
     links: [
       { href: "/", label: "Home" },
-      { href: "/scanner", label: "Token Intel / Terminal" },
-      { href: "/scanner", label: "Scanner" },
+      { href: "/scanner", label: "Scanner / Token Intel" },
       { href: "/smart-money", label: "Smart Money" },
       { href: "/alerts", label: "Alerts" },
       { href: "/graveyard", label: "Track Record" }
