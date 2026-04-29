@@ -18,11 +18,11 @@ export default function GuestTrialBanner() {
   }
 
   if (isTrialActive) {
-    const borderClass = isCritical ? "border-[#2563EB]/60" : "border-sl-violet/30";
-    const bgClass = isCritical ? "bg-[#2563EB]/5" : "bg-sl-violet/5";
-    const textClass = isCritical ? "text-[#2563EB]" : "text-sl-violet";
-    const dotClass = isCritical ? "bg-[#2563EB]" : "bg-sl-violet";
-    const glowStyle = isCritical ? { boxShadow: "0 0 15px rgba(37,99,235,0.15)" } : {};
+    const borderClass = isCritical ? "border-[#FACC15]/60" : "border-sl-violet/30";
+    const bgClass = isCritical ? "bg-[#FACC15]/5" : "bg-sl-violet/5";
+    const textClass = isCritical ? "text-[#FACC15]" : "text-sl-violet";
+    const dotClass = isCritical ? "bg-[#FACC15]" : "bg-sl-violet";
+    const glowStyle = isCritical ? { boxShadow: "0 0 15px rgba(250,204,21,0.15)" } : {};
 
     return (
       <div
@@ -43,7 +43,7 @@ export default function GuestTrialBanner() {
           </span>
           {isCritical && (
             <span
-              className="font-mono text-[9px] text-[#2563EB] uppercase 
+              className="font-mono text-[9px] text-[#FACC15] uppercase 
                          tracking-widest animate-pulse hidden sm:block flex-shrink-0"
             >
               ACCESS REVOCATION IMMINENT
@@ -59,8 +59,8 @@ export default function GuestTrialBanner() {
           style={{
             height: "24px",
             borderRadius: "2px",
-            background: isCritical ? "#2563EB" : "var(--sl-violet, #8B5CF6)",
-            color: "#fff",
+            background: isCritical ? "#FACC15" : "var(--sl-violet, #8B5CF6)",
+            color: isCritical ? "#000" : "#fff",
             border: "none"
           }}
         >
