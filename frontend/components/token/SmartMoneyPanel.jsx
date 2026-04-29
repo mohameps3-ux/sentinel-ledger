@@ -14,7 +14,7 @@ function compactWallet(wallet) {
 }
 
 function tierBadgeClass(tier) {
-  if (tier === 1) return "bg-gradient-to-r from-amber-500/25 to-orange-500/20 text-amber-200 border-amber-500/35";
+  if (tier === 1) return "bg-gradient-to-r from-blue-500/25 to-orange-500/20 text-blue-200 border-blue-500/35";
   if (tier === 2) return "bg-cyan-500/15 text-cyan-200 border-cyan-500/30";
   return "bg-white/[0.06] text-gray-300 border-white/10";
 }

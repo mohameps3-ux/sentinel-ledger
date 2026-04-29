@@ -299,7 +299,7 @@ function TokenAlertStack({ token, convergence, redSig, coordMeta, t }) {
             redSig === "RED_CONFIRM"
               ? "border-red-500/45 bg-red-500/10"
               : redSig === "RED_PREPARE"
-                ? "border-amber-500/40 bg-amber-500/10"
+                ? "border-blue-500/40 bg-blue-500/10"
                 : "border-slate-500/40 bg-slate-500/5"
           }`}
         >
@@ -393,7 +393,7 @@ function SentinelIntelligence({ address, analysis, terminal, flaggedWallets, rul
                 : "Shadow validation is collecting outcomes before this rule can influence confidence."}
             </p>
             {regimeLine ? <p className="mt-1 text-[11px] opacity-80">{regimeLine}</p> : null}
-            {latestOutcomeLine ? <p className="mt-1 text-[11px] text-amber-100/90">{latestOutcomeLine}</p> : null}
+            {latestOutcomeLine ? <p className="mt-1 text-[11px] text-blue-100/90">{latestOutcomeLine}</p> : null}
           </div>
         ) : null}
         <Link
@@ -623,7 +623,7 @@ export default function TokenPage() {
     connectionState === "connected"
       ? "bg-emerald-400"
       : connectionState === "reconnecting"
-        ? "bg-blue-300"
+        ? "bg-amber-300"
         : "bg-red-400";
   const statusLabel =
     connectionState === "connected"
