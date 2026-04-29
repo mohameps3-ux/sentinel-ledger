@@ -124,6 +124,108 @@
   animation: apex-pulse-critical 2.8s ease-in-out infinite;
 }
 
+/* Token terminal meta aside — institutional blue (matches globals .btn-primary #2563EB) */
+.apex-card.apex-card--terminal-blue::before {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.16),
+    rgba(96, 165, 250, 0.06) 12%,
+    rgba(37, 99, 235, 0.22) 28%,
+    rgba(96, 165, 250, 0.14) 42%,
+    rgba(148, 163, 184, 0.16) 58%,
+    rgba(96, 165, 250, 0.06) 72%,
+    rgba(37, 99, 235, 0.22) 86%,
+    rgba(148, 163, 184, 0.16)
+  );
+}
+
+.apex-card.apex-card--terminal-blue[data-apex-state="active"]::before {
+  background: linear-gradient(
+    90deg,
+    rgba(37, 99, 235, 0.35),
+    rgba(59, 130, 246, 0.22) 18%,
+    rgba(37, 99, 235, 0.5) 36%,
+    rgba(147, 197, 253, 0.28) 52%,
+    rgba(59, 130, 246, 0.22) 70%,
+    rgba(37, 99, 235, 0.42) 84%,
+    rgba(37, 99, 235, 0.35)
+  );
+}
+
+.apex-card.apex-card--terminal-blue[data-apex-state="active"] {
+  animation: apex-pulse-active-blue 4.6s ease-in-out infinite;
+}
+
+.apex-card.apex-card--terminal-blue[data-apex-state="critical"]::before {
+  background: linear-gradient(
+    90deg,
+    rgba(37, 99, 235, 0.55),
+    rgba(147, 197, 253, 0.45) 25%,
+    rgba(37, 99, 235, 0.85) 50%,
+    rgba(147, 197, 253, 0.45) 75%,
+    rgba(37, 99, 235, 0.55)
+  );
+}
+
+.apex-card.apex-card--terminal-blue[data-apex-state="critical"]::after {
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(37, 99, 235, 0.12), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(37, 99, 235, 0.08), transparent 55%);
+}
+
+.apex-card.apex-card--terminal-blue[data-apex-state="critical"] {
+  animation: apex-pulse-critical-blue 2.8s ease-in-out infinite;
+}
+
+@keyframes apex-pulse-active-blue {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  50%      { box-shadow: 0 0 22px -10px rgba(37, 99, 235, 0.22); }
+}
+
+@keyframes apex-pulse-critical-blue {
+  0%, 100% { box-shadow: 0 0 26px -8px rgba(37, 99, 235, 0.28); }
+  50%      { box-shadow: 0 0 38px -4px rgba(37, 99, 235, 0.48); }
+}
+
+/* Secondary buttons + Sentinel score — sapphire inside terminal-blue panel only */
+.apex-card.apex-card--terminal-blue .apex-btn-secondary {
+  color: #93c5fd;
+  border-color: rgba(37, 99, 235, 0.42);
+  background: linear-gradient(
+    180deg,
+    rgba(37, 99, 235, 0.12) 0%,
+    rgba(37, 99, 235, 0.04) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(96, 165, 250, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.apex-card.apex-card--terminal-blue .apex-btn-secondary:hover {
+  border-color: rgba(96, 165, 250, 0.55);
+  color: #dbeafe;
+  background: linear-gradient(
+    180deg,
+    rgba(37, 99, 235, 0.22) 0%,
+    rgba(37, 99, 235, 0.08) 100%
+  );
+}
+
+.apex-card.apex-card--terminal-blue .apex-iridescent {
+  background: conic-gradient(
+    from var(--apex-angle, 0deg),
+    #dbeafe,
+    #93c5fd 16%,
+    #60a5fa 32%,
+    #2563eb 48%,
+    #cbd5e1 58%,
+    #60a5fa 74%,
+    #dbeafe 88%,
+    #dbeafe
+  );
+  filter: drop-shadow(0 0 14px rgba(37, 99, 235, 0.2));
+}
+
 @keyframes apex-flow {
   to { background-position: 100% 0%; }
 }

@@ -18,7 +18,7 @@ import { FinancialDisclaimer } from "../../components/layout/FinancialDisclaimer
 import { PageHead } from "../../components/seo/PageHead";
 import { useLocale } from "../../contexts/LocaleContext";
 import { recordRecentToken } from "../../lib/recentTokens";
-import { ApexCard, ApexButton, IridescentScore, deriveApexState } from "../../components/apex";
+import { ApexCard, IridescentScore, deriveApexState } from "../../components/apex";
 import {
   buildDexscreenerSolanaTokenUrl,
   buildJupiterSwapUrl,
@@ -189,7 +189,7 @@ function TokenMetaAside({
       as="aside"
       id="token-meta"
       state={apexState}
-      className="order-1 w-full max-w-full shrink-0 p-3 backdrop-blur-sm xl:order-2 xl:max-w-[20rem] xl:shrink-0"
+      className="apex-card--terminal-blue order-1 w-full max-w-full shrink-0 p-3 backdrop-blur-sm xl:order-2 xl:max-w-[20rem] xl:shrink-0"
     >
       <div className="space-y-3">
         <div className="min-w-0">
@@ -197,10 +197,10 @@ function TokenMetaAside({
             {market.name || market.symbol || "Token"}
           </h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <span className="border border-[rgba(209,213,219,0.22)] bg-[rgba(209,213,219,0.06)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#d1d5db]">
+            <span className="border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-100">
               SOLANA
             </span>
-            <span className="border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.025)] px-2 py-0.5 font-mono text-[10px] text-[#a3a3a3]">
+            <span className="border border-blue-400/15 bg-blue-950/30 px-2 py-0.5 font-mono text-[10px] text-blue-100/85">
               {shortMint(address)}
             </span>
           </div>
@@ -215,7 +215,7 @@ function TokenMetaAside({
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="border border-[rgba(209,213,219,0.18)] bg-[rgba(209,213,219,0.04)] px-2 py-2 text-center sm:px-3">
+          <div className="border border-blue-500/20 bg-blue-500/5 px-2 py-2 text-center sm:px-3">
             <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[#737373]">Grade</p>
             <p className="mt-0.5 text-lg font-black leading-none text-[#fafafa] sm:text-xl">{analysis.grade || "—"}</p>
           </div>
@@ -224,9 +224,9 @@ function TokenMetaAside({
           </div>
         </div>
 
-        <ApexButton as="a" href={jupiterUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} size="md" className="w-full">
+        <a href={jupiterUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="btn-primary inline-flex w-full justify-center">
           TRADE NOW
-        </ApexButton>
+        </a>
 
         <div className="flex flex-wrap items-stretch justify-start gap-1.5">
           <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="apex-btn-secondary">
@@ -242,8 +242,8 @@ function TokenMetaAside({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-[rgba(255,255,255,0.06)] pt-2">
-          <span className="inline-flex items-center gap-2 border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.03)] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-[#a3a3a3]">
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-blue-500/18 pt-2">
+          <span className="inline-flex items-center gap-2 border border-blue-400/22 bg-blue-950/25 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-blue-100/80">
             <span className={`h-1.5 w-1.5 rounded-full ${statusTone}`} />
             {statusLabel}
           </span>
