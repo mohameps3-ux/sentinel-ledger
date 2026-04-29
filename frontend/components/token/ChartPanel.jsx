@@ -104,15 +104,15 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
                 <polygon
                   points="16,2 26,8 26,24 16,30 6,24 6,8"
                   fill="none"
-                  stroke="#facc15"
+                  stroke="#2563EB"
                   strokeWidth="1.2"
                   opacity="0.65"
                 />
-                <circle cx="16" cy="16" r="2.4" fill="#fef08a" />
-                <line x1="16" y1="16" x2="16" y2="6" stroke="#fef08a" strokeWidth="1" opacity="0.85" />
+                <circle cx="16" cy="16" r="2.4" fill="#60A5FA" />
+                <line x1="16" y1="16" x2="16" y2="6" stroke="#60A5FA" strokeWidth="1" opacity="0.85" />
               </svg>
             </span>
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#fef08a]">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#60A5FA]">
               SENTINEL
             </span>
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a3a3a3]">·</span>
@@ -262,13 +262,13 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
           transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
         }
         :global(.sl-chart-tf-pill:hover) {
-          border-color: rgba(250, 204, 21, 0.45);
+          border-color: rgba(37, 99, 235, 0.45);
           color: #fafafa;
         }
         :global(.sl-chart-tf-pill--active) {
-          background: rgba(250, 204, 21, 0.12);
-          border-color: rgba(250, 204, 21, 0.85);
-          color: #fef08a;
+          background: rgba(37, 99, 235, 0.1);
+          border-color: #2563eb;
+          color: #60a5fa;
         }
         :global(.sl-chart-fs-btn) {
           display: inline-flex;
