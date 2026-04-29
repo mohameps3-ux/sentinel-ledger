@@ -101,16 +101,14 @@ export function Navbar() {
       data-sentinel-build={process.env.NEXT_PUBLIC_GIT_SHA}
       className="fixed top-0 left-0 right-0 w-full z-50 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(8,9,15,0.95)] backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
     >
-      <div ref={menuRef} className="max-w-7xl mx-auto px-2 sm:px-4 relative">
-        <div className="hidden sm:flex items-center justify-between gap-3 min-h-12 h-12 min-w-0">
-          <div className="flex min-w-0 items-center gap-2">
-            <WalletButton navCompact />
-            <span className="inline-flex h-7 items-center rounded-full border border-indigo-400/30 bg-indigo-500/15 px-2.5 font-mono text-[10px] font-bold tracking-[0.12em] text-indigo-100">
-              FREE
-            </span>
-            <LanguageMenu compact />
-            <WarModeToggle />
-            <span className="h-5 w-px bg-white/10" aria-hidden />
+      <div ref={menuRef} className="max-w-7xl mx-auto px-6 sm:px-8 relative">
+        <div className="hidden sm:flex items-center gap-3 min-h-12 h-12 min-w-0 w-full">
+          <div className="flex shrink-0 items-center gap-2 min-w-0">
+            <SentinelLogo />
+          </div>
+
+          <div className="flex flex-1 min-w-0 items-center justify-center gap-1 overflow-x-auto">
+            <span className="h-5 w-px bg-white/10 shrink-0" aria-hidden />
             {PRIMARY_NAV.map((item) => {
               const active = router.pathname === item.match;
               const navLinkClass = `rounded-md px-2.5 py-1.5 text-[11px] font-semibold no-underline border transition ${
@@ -184,11 +182,12 @@ export function Navbar() {
                 </Link>
               );
             })}
-            <span className="h-5 w-px bg-white/10" aria-hidden />
-            <span className="sl-badge border-white/10 bg-white/[0.03] text-gray-500">v1.0 BETA</span>
+            <span className="h-5 w-px bg-white/10 shrink-0" aria-hidden />
           </div>
 
-          <div className="flex items-center justify-end gap-3 min-w-0">
+          <div className="flex shrink-0 items-center justify-end gap-3 min-w-0">
+            <span className="sl-badge border-white/10 bg-white/[0.03] text-gray-500">v1.0 BETA</span>
+            <LanguageMenu compact />
             {showTradingChrome ? (
               <div className="hidden lg:block shrink-0 w-40 min-w-0">
                 <SearchBar compact />
@@ -206,11 +205,18 @@ export function Navbar() {
             >
               HELP
             </button>
-            <SentinelLogo />
+            <span className="inline-flex h-7 items-center rounded-full border border-indigo-400/30 bg-indigo-500/15 px-2.5 font-mono text-[10px] font-bold tracking-[0.12em] text-indigo-100">
+              FREE
+            </span>
+            <WarModeToggle />
+            <WalletButton navCompact />
           </div>
         </div>
 
         <div className="sm:hidden flex h-12 items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1 shrink-0 min-w-0">
+              <SentinelLogo />
+            </div>
             <div className="flex items-center gap-1 shrink-0 min-w-0">
               <button
                 type="button"
@@ -223,9 +229,6 @@ export function Navbar() {
               >
                 {menuOpen ? <X size={12} /> : <Menu size={12} />}
               </button>
-            </div>
-            <div className="flex items-center gap-0.5 shrink-0">
-              <SentinelLogo />
             </div>
         </div>
 
