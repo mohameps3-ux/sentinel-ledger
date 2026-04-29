@@ -358,7 +358,11 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
     const chain = String(req.query.chain || "solana").toLowerCase();
     const pageLimit = Math.min(100, Math.max(1, Number(req.query.limit ?? 50)));
 
-    let q = supabase.from("smart_wallets").select("*").order("win_rate", { ascending: false }).limit(240);
+    let q = supabase
+      .from("smart_wallets")
+      .select("*")
+      .order("total_trades", { ascending: false })
+      .limit(240);
     if (minWr > 0) q = q.gte("win_rate", minWr);
     const { data, error } = await q;
     if (error) throw error;
@@ -431,12 +435,23 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       const wb = behaviorByWallet.get(r.wallet);
       const avg = Math.max(1, r.avgPositionSize);
       const roiMult = r.pnl30d / avg;
+
+      // ✅ composite score (0–100)
+      const tradesWeight = Math.min(1, r.totalTrades / 50); // saturates at 50 trades
+      const pnlWeight = r.pnl30d ? Math.max(-50, Math.min(50, r.pnl30d)) : 0;
+
+      const score =
+        r.winRate * 0.5 + // 50% win rate
+        tradesWeight * 100 * 0.3 + // 30% trades confidence
+        pnlWeight * 0.2; // 20% pnl influence
+
       return {
         ...r,
         roi30dVsAvgSize: Number(roiMult.toFixed(2)),
         bestTradePct: bt ? Number(Number(bt.pct).toFixed(2)) : null,
         bestTradeMint: bt?.token || null,
         bestTradeAt: bt?.at || null,
+        score: Number(score.toFixed(2)),
         profile: wb
           ? {
               winRateReal: wb.win_rate_real != null ? Number(wb.win_rate_real) : null,
@@ -463,12 +478,14 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       };
     });
 
+    const sorted = enriched.sort((a, b) => b.score - a.score);
+
     return res.json({
       ok: true,
-      rows: enriched,
+      rows: sorted,
       meta: {
         source: "supabase",
-        count: enriched.length,
+        count: sorted.length,
         limit: pageLimit,
         chain: chain === "all" ? "all" : "solana",
         filters: { minWinRate: minWr, minTrades }

@@ -63,8 +63,8 @@ create table if not exists alerts (
 
 create table if not exists smart_wallets (
   wallet_address text primary key,
-  win_rate numeric(5,2) not null default 0,
-  pnl_30d numeric(18,2) not null default 0,
+  win_rate numeric(5,2),
+  pnl_30d numeric(18,2),
   avg_position_size numeric(18,2) not null default 0,
   recent_hits int not null default 0,
   source text not null default 'manual',

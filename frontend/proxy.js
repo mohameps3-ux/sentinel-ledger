@@ -6,8 +6,22 @@ const STATIC_EXT = /\.(ico|png|jpg|jpeg|gif|webp|svg|json|js|map|css|txt|xml|wof
  * Browsers and installed PWAs (display: standalone) can serve a stale first HTML shell;
  * this nudges the CDN/client to revalidate the document (JS chunks stay immutable).
  */
+function opsPageEnabled() {
+  const v = process.env.NEXT_PUBLIC_OPS_PAGE_ENABLED;
+  return v === "1" || String(v || "").toLowerCase() === "true";
+}
+
+/**
+ * Hide `/ops` on public production: unset `NEXT_PUBLIC_OPS_PAGE_ENABLED`; local `next dev` still allows Ops.
+ */
 export function proxy(request) {
   const p = request.nextUrl.pathname;
+  if (p === "/ops" || p.startsWith("/ops/")) {
+    const isProd = process.env.NODE_ENV === "production";
+    if (isProd && !opsPageEnabled()) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
   if (p.startsWith("/_next/") || p.startsWith("/_static/") || p.startsWith("/_vercel") || p.startsWith("/api/")) {
     return NextResponse.next();
   }

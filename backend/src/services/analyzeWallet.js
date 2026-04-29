@@ -186,19 +186,61 @@ async function analyzeWallet(walletAddress) {
     ? clusterScores.reduce((a, b) => a + b, 0) / clusterScores.length
     : 0;
   const consistency = computeConsistencyScore(winRateRatio, totalTrades);
-  const smartScore = Math.max(
-    0,
-    Math.min(100, winRateRatio * 40 + (avgEarlyEntry / 100) * 30 + (consistency / 100) * 30)
-  );
+
+  const since30dIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: signalRows, error: signalsError } = await supabase
+    .from("smart_wallet_signals")
+    .select("result_pct")
+    .eq("wallet_address", walletAddress)
+    .not("result_pct", "is", null)
+    .gte("created_at", since30dIso)
+    .order("created_at", { ascending: true })
+    .limit(10000);
+
+  let totalTradesFromSignals = 0;
+  let wins = 0;
+  let sumPct = 0;
+
+  if (Array.isArray(signalRows)) {
+    for (const row of signalRows) {
+      const p = Number(row?.result_pct);
+      if (!Number.isFinite(p)) continue;
+
+      totalTradesFromSignals += 1;
+      sumPct += p;
+      if (p > 0) wins += 1;
+    }
+  }
+
+  const winRateFromSignals =
+    totalTradesFromSignals > 0 ? (wins / totalTradesFromSignals) * 100 : null;
+
+  const pnl30dFromSignals =
+    totalTradesFromSignals > 0 ? Math.round(sumPct * 100) / 100 : null;
+
+  if (signalsError) {
+    console.warn("analyzeWallet smart_wallet_signals:", signalsError.message);
+  }
+
+  const smartScore =
+    totalTradesFromSignals > 0
+      ? Math.max(
+          0,
+          Math.min(
+            100,
+            winRateFromSignals * 0.6 + Math.min(totalTradesFromSignals, 50) * 0.4
+          )
+        )
+      : null;
 
   const nowIso = new Date().toISOString();
   await upsertSmartWalletRow(supabase, {
     wallet_address: walletAddress,
-    win_rate: winRateRatio * 100,
-    pnl_30d: 0,
+    win_rate: winRateFromSignals,
+    pnl_30d: pnl30dFromSignals,
     avg_position_size: totalTrades ? totalUsd / totalTrades : 0,
     recent_hits: profitableTrades,
-    total_trades: totalTrades,
+    total_trades: totalTradesFromSignals,
     profitable_trades: profitableTrades,
     early_entry_score: avgEarlyEntry,
     cluster_score: avgCluster,
