@@ -74,12 +74,12 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
   const inputCls = headerMicro
     ? "bg-transparent border-none outline-none w-full min-w-0 text-[10px] text-sl-sub placeholder:text-sl-muted"
     : compact
-      ? "min-w-[280px] w-full max-w-[380px] border border-sl-border bg-sl-root px-3 py-1.5 font-mono text-xs text-sl-text outline-none transition-colors duration-150 placeholder:text-sl-muted focus:border-sl-blue"
+      ? "min-w-0 flex-1 rounded border border-sl-border bg-sl-root px-3 py-1.5 font-mono text-xs text-sl-text outline-none transition-colors placeholder:text-sl-muted focus:border-sl-blue focus:ring-0"
       : "bg-transparent border-none outline-none w-full text-sm text-sl-sub placeholder:text-sl-muted";
 
   if (navCommand) {
     return (
-      <form id={formId} onSubmit={onSearch} className="relative flex w-full min-w-[280px] max-w-[380px] items-center">
+      <form id={formId} onSubmit={onSearch} className="relative flex w-full max-w-[380px] items-center">
         <Search size={14} className="absolute left-2.5 text-sl-muted" aria-hidden />
         <input
           value={query}
@@ -87,7 +87,7 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
           placeholder={ph}
           autoComplete="off"
           spellCheck={false}
-          className="h-8 w-full min-w-[280px] max-w-[380px] border border-sl-border bg-sl-root py-1.5 pl-8 pr-16 font-mono text-xs text-sl-text outline-none transition-colors duration-150 placeholder:text-sl-muted focus:border-sl-blue focus:ring-0"
+          className="h-8 w-full border border-sl-border bg-sl-root pl-8 pr-16 font-mono text-xs text-sl-text outline-none transition-colors duration-150 placeholder:text-sl-muted focus:border-sl-violet focus:ring-0"
         />
         <span className="absolute right-2 border border-sl-border bg-sl-card px-1.5 py-0.5 font-mono text-2xs text-sl-muted">
           Ctrl+K
@@ -148,14 +148,11 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
 
   return (
     <div className="w-full min-w-0">
-      <form
-        onSubmit={onSearch}
-        className={`w-full flex items-center gap-1.5 sm:gap-2 ${compact ? "min-w-[280px] max-w-[380px]" : ""}`}
-      >
+      <form onSubmit={onSearch} className="w-full flex items-center gap-1.5 sm:gap-2">
         <div
           className={
             compact
-              ? `${h} flex flex-1 min-w-0 items-center gap-1.5 sm:gap-2 rounded-md`
+              ? `${h} flex min-w-[280px] w-full max-w-[380px] flex-1 items-center gap-1.5 sm:gap-2`
               : `sl-input ${h} px-2.5 sm:px-3 flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0`
           }
         >
@@ -166,7 +163,7 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
             placeholder={ph}
             autoComplete="off"
             spellCheck={false}
-            className={compact ? `${inputCls} flex-1 rounded-md` : inputCls}
+            className={inputCls}
           />
         </div>
         <button

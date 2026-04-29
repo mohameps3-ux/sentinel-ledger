@@ -42,7 +42,7 @@ export function Navbar() {
   const showTradingChrome = !isControlRoom;
   const navRef = useRef(null);
   const menuRef = useRef(null);
-  const homeMenuRef = useRef(null);
+  const homeNavRef = useRef(null);
   const [stalkerUnread, setStalkerUnread] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [homeMenuOpen, setHomeMenuOpen] = useState(false);
@@ -79,7 +79,7 @@ export function Navbar() {
   useEffect(() => {
     if (!homeMenuOpen) return;
     const onDoc = (e) => {
-      if (homeMenuRef.current && !homeMenuRef.current.contains(e.target)) setHomeMenuOpen(false);
+      if (homeNavRef.current && !homeNavRef.current.contains(e.target)) setHomeMenuOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
@@ -126,11 +126,11 @@ export function Navbar() {
                 }`;
                 if (item.href === "/") {
                   return (
-                    <div key={item.href} ref={homeMenuRef} className="relative">
+                    <div key={item.href} ref={homeNavRef} className="relative">
                       <Link
                         href={item.href}
                         onClick={(e) => {
-                          if (router.pathname === "/") e.preventDefault();
+                          e.preventDefault();
                           setHomeMenuOpen((v) => !v);
                         }}
                         className={`inline-flex items-center gap-0.5 ${navLinkClass}`}
@@ -142,7 +142,7 @@ export function Navbar() {
                       {homeMenuOpen ? (
                         <div className="absolute left-0 top-full z-[100] mt-1 min-w-[220px] border border-sl-border bg-sl-panel py-2">
                           <div className="px-4 py-1">
-                            <span className="font-mono text-[9px] uppercase tracking-widest text-sl-muted">MAIN</span>
+                            <span className="font-mono text-[9px] uppercase tracking-wider text-sl-muted">MAIN</span>
                           </div>
                           {HOME_MENU_PRIMARY.map((menuItem) => (
                             <Link
@@ -156,7 +156,7 @@ export function Navbar() {
                           ))}
                           <div className="my-1 border-t border-sl-border" />
                           <div className="px-4 py-1">
-                            <span className="font-mono text-[9px] uppercase tracking-widest text-sl-muted">MORE</span>
+                            <span className="font-mono text-[9px] uppercase tracking-wider text-sl-muted">MORE</span>
                           </div>
                           {HOME_MENU_SECONDARY.map((menuItem) => (
                             <Link
@@ -193,7 +193,7 @@ export function Navbar() {
               <LanguageMenu compact />
             </div>
             {showTradingChrome ? (
-              <div className="hidden lg:block mr-2 min-w-[280px] max-w-[380px] shrink-0">
+              <div className="hidden lg:block shrink-0 min-w-[280px] max-w-[380px] mr-2">
                 <SearchBar compact />
               </div>
             ) : null}
