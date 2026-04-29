@@ -5,7 +5,7 @@ import { SearchBar } from "./SearchBar";
 import { APP_NAV_LINKS } from "./appNavConfig";
 import { LanguageMenu } from "./LanguageMenu";
 import { useLocale } from "../../contexts/LocaleContext";
-import { useLayoutEffect, useRef, useEffect, useState } from "react";
+import { useLayoutEffect, useRef, useEffect, useState, Fragment } from "react";
 import { Menu, X } from "lucide-react";
 import { SentinelLogo } from "./SentinelLogo";
 import { WarModeToggle } from "../cockpit/WarModeToggle";
@@ -161,14 +161,24 @@ export function Navbar() {
                         {section.title}
                       </div>
                       {section.links.map((link) => (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          onClick={() => setAllPagesOpen(false)}
-                          className="block px-4 py-1.5 font-mono text-xs text-sl-sub no-underline transition-colors duration-150 hover:bg-sl-card hover:text-sl-text"
-                        >
-                          {link.label}
-                        </Link>
+                        <Fragment key={link.href}>
+                          <Link
+                            href={link.href}
+                            onClick={() => setAllPagesOpen(false)}
+                            className="block px-4 py-1.5 font-mono text-xs text-sl-sub no-underline transition-colors duration-150 hover:bg-sl-card hover:text-sl-text"
+                          >
+                            {link.label}
+                          </Link>
+                          {section.key === "main" && link.href === "/" ? (
+                            <Link
+                              href="/terminal"
+                              className="block px-4 py-1.5 font-mono text-xs text-sl-sub hover:text-sl-text hover:bg-sl-card transition-colors duration-150"
+                              onClick={() => setAllPagesOpen(false)}
+                            >
+                              Terminal
+                            </Link>
+                          ) : null}
+                        </Fragment>
                       ))}
                     </div>
                   ))}
