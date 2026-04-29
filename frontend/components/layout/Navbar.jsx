@@ -101,95 +101,97 @@ export function Navbar() {
       data-sentinel-build={process.env.NEXT_PUBLIC_GIT_SHA}
       className="fixed top-0 left-0 right-0 w-full z-50 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(8,9,15,0.95)] backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
     >
-      <div ref={menuRef} className="max-w-7xl mx-auto px-6 sm:px-8 relative">
-        <div className="hidden sm:flex items-center gap-3 min-h-12 h-12 min-w-0 w-full">
-          <div className="flex shrink-0 items-center gap-2 min-w-0">
+      <div ref={menuRef} className="relative w-full">
+        <div className="hidden sm:flex items-center justify-between w-full h-12 px-8">
+          <div className="flex shrink-0 items-center gap-3 min-w-0">
             <SentinelLogo />
           </div>
 
-          <div className="flex flex-1 min-w-0 items-center justify-center gap-1 overflow-x-auto">
-            <span className="h-5 w-px bg-white/10 shrink-0" aria-hidden />
-            {PRIMARY_NAV.map((item) => {
-              const active = router.pathname === item.match;
-              const navLinkClass = `rounded-md px-2.5 py-1.5 text-[11px] font-semibold no-underline border transition ${
-                active
-                  ? "border-[#2563EB] bg-[#1E3A5F] text-[#60A5FA]"
-                  : "border-transparent text-[var(--sl-text-secondary)] hover:border-[#2563EB] hover:bg-[#1E3A5F] hover:text-[#60A5FA]"
-              }`;
-              if (item.href === "/") {
-                return (
-                  <div
-                    key={item.href}
-                    className="relative"
-                    onMouseEnter={() => setHomeMenuOpen(true)}
-                    onMouseLeave={() => setHomeMenuOpen(false)}
-                  >
-                    <Link
-                      href={item.href}
-                      onClick={() => setHomeMenuOpen((v) => !v)}
-                      className={navLinkClass}
-                      aria-current={active ? "page" : undefined}
-                      aria-expanded={homeMenuOpen}
+          <div className="flex flex-1 min-w-0 justify-center items-center gap-5">
+            <div className="flex items-center gap-1 min-w-0 overflow-x-auto">
+              {PRIMARY_NAV.map((item) => {
+                const active = router.pathname === item.match;
+                const navLinkClass = `px-3 py-1 font-mono text-xs uppercase tracking-wider no-underline border-b-2 transition-colors whitespace-nowrap ${
+                  active
+                    ? "text-sl-text border-sl-blue"
+                    : "text-sl-muted border-transparent hover:text-sl-sub"
+                }`;
+                if (item.href === "/") {
+                  return (
+                    <div
+                      key={item.href}
+                      className="relative"
+                      onMouseEnter={() => setHomeMenuOpen(true)}
+                      onMouseLeave={() => setHomeMenuOpen(false)}
                     >
-                      HOME <ChevronDown size={10} className="inline-block ml-0.5" />
-                    </Link>
-                    {homeMenuOpen ? (
-                      <div
-                        className="absolute left-0 top-full z-[100] mt-1 min-w-[220px] border border-white/[0.08] bg-[rgba(10,12,20,0.98)] py-2 shadow-2xl backdrop-blur-xl"
-                        style={{ borderRadius: "4px" }}
+                      <Link
+                        href={item.href}
+                        onClick={() => setHomeMenuOpen((v) => !v)}
+                        className={`inline-flex items-center gap-0.5 ${navLinkClass}`}
+                        aria-current={active ? "page" : undefined}
+                        aria-expanded={homeMenuOpen}
                       >
-                        <div className="px-3 py-1">
-                          <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500">MAIN</span>
+                        HOME <ChevronDown size={10} className="inline-block shrink-0" />
+                      </Link>
+                      {homeMenuOpen ? (
+                        <div
+                          className="absolute left-0 top-full z-[100] mt-1 min-w-[220px] border border-white/[0.08] bg-[rgba(10,12,20,0.98)] py-2 shadow-2xl backdrop-blur-xl"
+                          style={{ borderRadius: "4px" }}
+                        >
+                          <div className="px-3 py-1">
+                            <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500">MAIN</span>
+                          </div>
+                          {HOME_MENU_PRIMARY.map((menuItem) => (
+                            <Link
+                              key={menuItem.href}
+                              href={menuItem.href}
+                              onClick={() => setHomeMenuOpen(false)}
+                              className="flex flex-col px-3 py-2 no-underline transition-colors hover:bg-white/[0.04]"
+                            >
+                              <span className="font-mono text-[11px] font-semibold text-white">{menuItem.label}</span>
+                              <span className="font-mono text-[10px] text-slate-500">{menuItem.desc}</span>
+                            </Link>
+                          ))}
+                          <div className="my-1 border-t border-white/[0.06]" />
+                          <div className="px-3 py-1">
+                            <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500">MORE</span>
+                          </div>
+                          {HOME_MENU_SECONDARY.map((menuItem) => (
+                            <Link
+                              key={menuItem.href}
+                              href={menuItem.href}
+                              onClick={() => setHomeMenuOpen(false)}
+                              className="flex px-3 py-1.5 no-underline transition-colors hover:bg-white/[0.04]"
+                            >
+                              <span className="font-mono text-[11px] text-slate-300">{menuItem.label}</span>
+                            </Link>
+                          ))}
                         </div>
-                        {HOME_MENU_PRIMARY.map((menuItem) => (
-                          <Link
-                            key={menuItem.href}
-                            href={menuItem.href}
-                            onClick={() => setHomeMenuOpen(false)}
-                            className="flex flex-col px-3 py-2 no-underline transition-colors hover:bg-white/[0.04]"
-                          >
-                            <span className="font-mono text-[11px] font-semibold text-white">{menuItem.label}</span>
-                            <span className="font-mono text-[10px] text-slate-500">{menuItem.desc}</span>
-                          </Link>
-                        ))}
-                        <div className="my-1 border-t border-white/[0.06]" />
-                        <div className="px-3 py-1">
-                          <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500">MORE</span>
-                        </div>
-                        {HOME_MENU_SECONDARY.map((menuItem) => (
-                          <Link
-                            key={menuItem.href}
-                            href={menuItem.href}
-                            onClick={() => setHomeMenuOpen(false)}
-                            className="flex px-3 py-1.5 no-underline transition-colors hover:bg-white/[0.04]"
-                          >
-                            <span className="font-mono text-[11px] text-slate-300">{menuItem.label}</span>
-                          </Link>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
+                      ) : null}
+                    </div>
+                  );
+                }
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={navLinkClass}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    {item.label}
+                  </Link>
                 );
-              }
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={navLinkClass}
-                  aria-current={active ? "page" : undefined}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-            <span className="h-5 w-px bg-white/10 shrink-0" aria-hidden />
+              })}
+            </div>
+            <span className="sl-badge shrink-0 border-white/10 bg-white/[0.03] text-gray-500">v1.0 BETA</span>
           </div>
 
-          <div className="flex shrink-0 items-center justify-end gap-3 min-w-0">
-            <span className="sl-badge border-white/10 bg-white/[0.03] text-gray-500">v1.0 BETA</span>
-            <LanguageMenu compact />
+          <div className="flex shrink-0 items-center min-w-0">
+            <div className="mr-2">
+              <LanguageMenu compact />
+            </div>
             {showTradingChrome ? (
-              <div className="hidden lg:block shrink-0 w-40 min-w-0">
+              <div className="hidden lg:block shrink-0 w-40 min-w-0 mr-2">
                 <SearchBar compact />
               </div>
             ) : null}
@@ -200,20 +202,24 @@ export function Navbar() {
                   window.dispatchEvent(new CustomEvent("open-support-chat"));
                 }
               }}
-              className="inline-flex h-7 items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 font-mono text-[10px] tracking-wider text-gray-400 transition-colors duration-150 hover:bg-white/[0.08] hover:text-white"
+              className="mr-2 inline-flex h-7 items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 font-mono text-[10px] tracking-wider text-gray-400 transition-colors duration-150 hover:bg-white/[0.08] hover:text-white"
               title="Support"
             >
               HELP
             </button>
-            <span className="inline-flex h-7 items-center rounded-full border border-indigo-400/30 bg-indigo-500/15 px-2.5 font-mono text-[10px] font-bold tracking-[0.12em] text-indigo-100">
+            <span className="mr-2 inline-flex h-7 items-center rounded-full border border-indigo-400/30 bg-indigo-500/15 px-2.5 font-mono text-[10px] font-bold tracking-[0.12em] text-indigo-100">
               FREE
             </span>
-            <WarModeToggle />
-            <WalletButton navCompact />
+            <div className="mr-3">
+              <WarModeToggle />
+            </div>
+            <div className="ml-2">
+              <WalletButton navCompact />
+            </div>
           </div>
         </div>
 
-        <div className="sm:hidden flex h-12 items-center justify-between gap-1.5">
+        <div className="sm:hidden flex h-12 items-center justify-between gap-1.5 px-6 sm:px-8">
             <div className="flex items-center gap-1 shrink-0 min-w-0">
               <SentinelLogo />
             </div>
