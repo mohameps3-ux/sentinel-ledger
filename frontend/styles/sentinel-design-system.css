@@ -30,7 +30,8 @@
   /* Borders */
   --sl-border: #1f1f1f;
   --sl-border-accent: rgba(212, 175, 55, 0.28);
-  --sl-border-bright: rgba(212, 175, 55, 0.55);
+  /* Hover/focus rim — blue (matches card/button focus rings) */
+  --sl-border-bright: rgba(37, 99, 235, 0.5);
 
   /* Typography */
   --sl-font-mono: var(--font-jetbrains-mono), "JetBrains Mono", "Fira Code", monospace;
@@ -218,8 +219,8 @@ table tr:hover td {
 }
 
 .sl-input:focus {
-  border-color: var(--sl-border-bright);
-  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.18), 0 0 28px rgba(250, 204, 21, 0.10);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
 }
 
 .btn-primary,
@@ -232,11 +233,16 @@ a {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .sl-card:hover,
-  .glass-card:hover {
-    border-color: var(--sl-border-bright);
+  .sl-card:hover {
+    border-color: rgba(37, 99, 235, 0.4);
     transform: translateY(-1px);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 26px rgba(250, 204, 21, 0.10);
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(37, 99, 235, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
   }
 
   .btn-primary:hover,
@@ -245,7 +251,7 @@ a {
   .btn-pro-outline:hover,
   a[class*="border"]:hover {
     transform: translateY(-1px);
-    box-shadow: 0 0 20px rgba(250, 204, 21, 0.14);
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.18);
   }
 }
 
