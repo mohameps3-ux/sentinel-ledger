@@ -6,7 +6,7 @@ import { APP_NAV_LINKS } from "./appNavConfig";
 import { LanguageMenu } from "./LanguageMenu";
 import { useLocale } from "../../contexts/LocaleContext";
 import { useLayoutEffect, useRef, useEffect, useState } from "react";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { SentinelLogo } from "./SentinelLogo";
 import { WarModeToggle } from "../cockpit/WarModeToggle";
 
@@ -18,34 +18,60 @@ const PRIMARY_NAV = [
   { href: "/scanner", label: "Scanner", match: "/scanner" }
 ];
 
-const HOME_MENU_PRIMARY = [
-  { href: "/", label: "Home" },
-  { href: "/scanner", label: "Scanner" },
-  { href: "/smart-money", label: "Smart Money" },
-  { href: "/alerts", label: "Alerts" },
-  { href: "/graveyard", label: "Track Record" }
-];
-
-const HOME_MENU_SECONDARY = [
-  { href: "/compare", label: "Compare" },
-  { href: "/watchlist", label: "Watchlist" },
-  { href: "/portfolio", label: "Portfolio" },
-  { href: "/wallet-stalker", label: "Wallet Stalker" },
-  { href: "/pricing", label: "Pricing" }
+const ALL_PAGES_SECTIONS = [
+  {
+    key: "main",
+    title: "MAIN",
+    links: [
+      { href: "/", label: "Home" },
+      { href: "/scanner", label: "Scanner" },
+      { href: "/smart-money", label: "Smart Money" },
+      { href: "/alerts", label: "Alerts" },
+      { href: "/graveyard", label: "Track Record" }
+    ]
+  },
+  {
+    key: "analysis",
+    title: "ANALYSIS",
+    links: [
+      { href: "/compare", label: "Compare" },
+      { href: "/watchlist", label: "Watchlist" },
+      { href: "/portfolio", label: "Portfolio" },
+      { href: "/results", label: "Results" },
+      { href: "/wallet-stalker", label: "Wallet Stalker" }
+    ]
+  },
+  {
+    key: "account",
+    title: "ACCOUNT",
+    links: [
+      { href: "/pricing", label: "Pricing" },
+      { href: "/contact", label: "Contact" }
+    ]
+  },
+  {
+    key: "system",
+    title: "SYSTEM",
+    links: [
+      { href: "/ops", label: "Ops" },
+      { href: "/legal", label: "Legal" },
+      { href: "/privacy", label: "Privacy" },
+      { href: "/terms", label: "Terms" }
+    ]
+  }
 ];
 
 export function Navbar() {
   const { t } = useLocale();
   const router = useRouter();
-  const isHome = router.pathname === "/";
   const isControlRoom = ["/ops", "/pricing", "/legal", "/privacy", "/terms", "/contact"].includes(router.pathname);
   const showTradingChrome = !isControlRoom;
   const navRef = useRef(null);
   const menuRef = useRef(null);
-  const homeNavRef = useRef(null);
+  const allPagesRef = useRef(null);
   const [stalkerUnread, setStalkerUnread] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [homeMenuOpen, setHomeMenuOpen] = useState(false);
+  const [allPagesOpen, setAllPagesOpen] = useState(false);
 
   const clearStalker = () => {
     if (typeof window !== "undefined") {
@@ -64,7 +90,7 @@ export function Navbar() {
 
   useEffect(() => {
     setMenuOpen(false);
-    setHomeMenuOpen(false);
+    setAllPagesOpen(false);
   }, [router.pathname]);
 
   useEffect(() => {
@@ -77,13 +103,13 @@ export function Navbar() {
   }, [menuOpen]);
 
   useEffect(() => {
-    if (!homeMenuOpen) return;
+    if (!allPagesOpen) return;
     const onDoc = (e) => {
-      if (homeNavRef.current && !homeNavRef.current.contains(e.target)) setHomeMenuOpen(false);
+      if (allPagesRef.current && !allPagesRef.current.contains(e.target)) setAllPagesOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, [homeMenuOpen]);
+  }, [allPagesOpen]);
 
   useLayoutEffect(() => {
     const el = navRef.current;
@@ -113,6 +139,42 @@ export function Navbar() {
         <div className="hidden sm:flex items-center justify-between w-full h-12 px-8">
           <div className="flex shrink-0 items-center gap-3 min-w-0">
             <SentinelLogo />
+            <div ref={allPagesRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setAllPagesOpen((v) => !v)}
+                className="h-8 w-8 flex items-center justify-center border border-sl-border bg-sl-card hover:border-sl-blue hover:text-sl-text text-sl-muted transition-colors duration-150"
+                style={{ borderRadius: "2px" }}
+                aria-expanded={allPagesOpen}
+                aria-haspopup="true"
+                aria-label="All pages"
+                title="All pages"
+              >
+                <Menu size={16} aria-hidden />
+              </button>
+              {allPagesOpen ? (
+                <div className="absolute left-0 top-full z-[100] mt-1 min-w-[240px] border border-sl-border bg-sl-panel py-2">
+                  {ALL_PAGES_SECTIONS.map((section, si) => (
+                    <div key={section.key}>
+                      {si > 0 ? <div className="my-1 border-t border-sl-border" /> : null}
+                      <div className="px-4 py-1 font-mono text-2xs text-sl-muted uppercase tracking-widest">
+                        {section.title}
+                      </div>
+                      {section.links.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          onClick={() => setAllPagesOpen(false)}
+                          className="block px-4 py-1.5 font-mono text-xs text-sl-sub no-underline transition-colors duration-150 hover:bg-sl-card hover:text-sl-text"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
 
           <div className="flex flex-1 min-w-0 justify-center items-center gap-5">
@@ -124,55 +186,6 @@ export function Navbar() {
                     ? "text-sl-text border-sl-blue"
                     : "text-sl-muted border-transparent hover:text-sl-sub"
                 }`;
-                if (item.href === "/") {
-                  return (
-                    <div key={item.href} ref={homeNavRef} className="relative">
-                      <Link
-                        href={item.href}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setHomeMenuOpen((v) => !v);
-                        }}
-                        className={`inline-flex items-center gap-0.5 ${navLinkClass}`}
-                        aria-current={active ? "page" : undefined}
-                        aria-expanded={homeMenuOpen}
-                      >
-                        HOME <ChevronDown size={10} className="inline-block shrink-0" />
-                      </Link>
-                      {homeMenuOpen ? (
-                        <div className="absolute left-0 top-full z-[100] mt-1 min-w-[220px] border border-sl-border bg-sl-panel py-2">
-                          <div className="px-4 py-1">
-                            <span className="font-mono text-[9px] uppercase tracking-wider text-sl-muted">MAIN</span>
-                          </div>
-                          {HOME_MENU_PRIMARY.map((menuItem) => (
-                            <Link
-                              key={menuItem.href}
-                              href={menuItem.href}
-                              onClick={() => setHomeMenuOpen(false)}
-                              className="block px-4 py-2 font-mono text-xs text-sl-sub no-underline transition-colors hover:bg-sl-card hover:text-sl-text"
-                            >
-                              {menuItem.label}
-                            </Link>
-                          ))}
-                          <div className="my-1 border-t border-sl-border" />
-                          <div className="px-4 py-1">
-                            <span className="font-mono text-[9px] uppercase tracking-wider text-sl-muted">MORE</span>
-                          </div>
-                          {HOME_MENU_SECONDARY.map((menuItem) => (
-                            <Link
-                              key={menuItem.href}
-                              href={menuItem.href}
-                              onClick={() => setHomeMenuOpen(false)}
-                              className="block px-4 py-2 font-mono text-xs text-sl-sub no-underline transition-colors hover:bg-sl-card hover:text-sl-text"
-                            >
-                              {menuItem.label}
-                            </Link>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                }
                 return (
                   <Link
                     key={item.href}
