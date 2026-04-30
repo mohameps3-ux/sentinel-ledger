@@ -730,7 +730,7 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-left: 4px solid transparent;
   border-radius: 10px;
-  padding: 20px;
+  padding: 24px;
   margin-bottom: 10px;
   transition: box-shadow 0.3s;
 }
@@ -763,12 +763,12 @@ a {
 }
 .war-hero-symbol {
   font-family: "JetBrains Mono", monospace;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: #fff;
 }
 .war-hero-narrative {
-  font-size: 19px;
+  font-size: 22px;
   font-weight: 700;
   color: #fff;
   line-height: 1.3;
@@ -778,6 +778,59 @@ a {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.war-pattern-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.war-pattern-chip {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+.war-pattern-chip.chip-green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+.war-pattern-chip.chip-amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+.war-pattern-chip.chip-blue {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+.war-pattern-chip.chip-red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.war-token-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+.war-token-img-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .war-hero-right {
@@ -792,8 +845,8 @@ a {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 80px;
-  height: 80px;
+  width: 90px;
+  height: 90px;
   border-radius: 50%;
   border: 3px solid rgba(255, 255, 255, 0.15);
   transition:
@@ -810,7 +863,7 @@ a {
 }
 .war-hero-score-num {
   font-family: "JetBrains Mono", monospace;
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 700;
   color: #fff;
 }

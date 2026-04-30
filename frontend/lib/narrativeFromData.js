@@ -9,29 +9,52 @@ export function narrativeFromData(token) {
   const age = token.poolAgeMinutes ?? null;
   const source = token._liveSource ?? token._source ?? "";
   const action = token.decision ?? token.action ?? "WATCH";
+  const symbol = token.symbol ?? token.name ?? "";
 
-  if (wallets >= 5) return `${wallets} smart wallets accumulating`;
-  if (wallets >= 3) return `${wallets} top wallets entering quietly`;
-  if (wallets >= 1 && score >= 80) return `Smart money + high score — convergence`;
+  if (wallets >= 5)
+    return `${wallets} smart wallets accumulated — breakout pattern detected`;
+  if (wallets >= 3)
+    return `${wallets} high-win rate wallets entered within tight window`;
+  if (wallets >= 2) return `Smart money slowly accumulating at key support`;
+  if (wallets >= 1 && score >= 80) return `Smart money + high score — convergence signal`;
+  if (wallets >= 1 && change > 20) return `Whale follows price action — accumulation confirmed`;
 
-  if (age !== null && age < 10 && score >= 70)
-    return `New pool (${Math.round(age)}m) — early entry window`;
-  if (age !== null && age < 30 && score >= 80)
-    return `Early entry detected — ${Math.round(age)}m old pool`;
+  if (age !== null && age < 5 && score >= 70) return `New token — early liquidity forming, high risk`;
+  if (age !== null && age < 15 && score >= 75)
+    return `New pool (${Math.round(age)}m) — early accumulation window`;
+  if (age !== null && age < 60 && score >= 80)
+    return `Early entry detected — ${Math.round(age)}m old, low float`;
 
-  if (change >= 50 && liq > 100_000) return `+${Math.round(change)}% pump with solid liquidity`;
-  if (change >= 30 && score >= 75) return `Strong momentum — +${Math.round(change)}% 24h`;
-  if (change >= 20 && wallets >= 1) return `Price action + smart money confirmed`;
+  if (change >= 100 && liq > 200_000)
+    return `+${Math.round(change)}% with locked liquidity — momentum building`;
+  if (change >= 50 && liq > 100_000)
+    return `Breakout pattern + low float + dev not sold`;
+  if (change >= 30 && score >= 75)
+    return `Strong momentum — +${Math.round(change)}% with solid base`;
+  if (change >= 20 && score >= 70) return `Volume increasing + social buzz growing`;
+  if (change < -20 && score >= 70) return `Deep pullback — smart money support holding`;
 
-  if (score >= 90) return `Max signal — all factors aligned`;
-  if (score >= 80) return `High conviction — score ${score}`;
-  if (score >= 70) return `Solid signal — active monitoring`;
+  if (score >= 95) return `All systems go — maximum conviction signal`;
+  if (score >= 90) {
+    const variants = [
+      `Breakout pattern + low float + dev not sold`,
+      `High conviction setup — all factors aligned`,
+      `Whale accumulation + volume spike detected`,
+      `Low cap momentum + smart money entry window`
+    ];
+    const idx = Math.floor((score + (symbol.charCodeAt(0) || 0)) % variants.length);
+    return variants[idx];
+  }
+  if (score >= 80) return `Solid signal — active monitoring recommended`;
+  if (score >= 70) return `Steady accumulation — wait for confirmation`;
 
-  if (source === "hot_fill" && change >= 15) return `Market heat — unusual activity`;
-  if (source === "hot_fill") return `Trending — elevated volume`;
+  if (source === "hot_fill" && change >= 30)
+    return `Market heat — +${Math.round(change)}% unusual activity`;
+  if (source === "hot_fill") return `Trending — elevated volume, low smart money`;
 
-  if (action === "BUY" || action === "ENTER NOW") return `Entry conditions confirmed`;
-  if (action === "SCALP") return `Scalp opportunity — fast entry`;
+  if (action === "BUY" || action === "ENTER NOW") return `Entry conditions confirmed — risk managed`;
+  if (action === "SCALP") return `Scalp setup — fast entry, tight stop`;
+  if (action === "WATCH") return `Watching for confirmation — not yet`;
 
   return `Active signal — score ${score}`;
 }

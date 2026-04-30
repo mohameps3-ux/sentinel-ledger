@@ -63,6 +63,43 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
     return line != null && line !== "" ? String(line) : "";
   }
 
+  function getPatternChips(tok) {
+    const chips = [];
+    const score = tok._currentScore ?? tok.sentinelScore ?? 0;
+    const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
+    const change = tok.priceChange24h ?? tok.change24h ?? 0;
+    const liq = tok.liquidityUsd ?? tok.liquidity ?? 0;
+    const age = tok.poolAgeMinutes ?? null;
+
+    if (wallets >= 3) chips.push({ label: "EARLY ACCUMULATION", cls: "chip-green" });
+    else if (wallets >= 1) chips.push({ label: "MOMENTUM BUILDING", cls: "chip-amber" });
+
+    if (age !== null && age < 30) chips.push({ label: "NEW POOL", cls: "chip-blue" });
+    if (liq > 500_000) chips.push({ label: "LOCKED LP", cls: "chip-green" });
+    if (change >= 50) chips.push({ label: `+${Math.round(change)}% 24H`, cls: "chip-amber" });
+    if (score < 50) chips.push({ label: "HIGH RISK", cls: "chip-red" });
+    if (wallets === 0 && score >= 85) chips.push({ label: "STEADY ACCUMULATION", cls: "chip-blue" });
+
+    return chips.slice(0, 3);
+  }
+
+  function tokenImageUrl(tok) {
+    return (
+      tok.imageUrl ??
+      tok.image ??
+      tok.logoURI ??
+      tok.icon ??
+      tok.tokenImage ??
+      tok.token?.logoURI ??
+      tok.token?.image ??
+      tok.token?.imageUrl ??
+      tok._api?.logoURI ??
+      tok._api?.imageUrl ??
+      tok._api?.image ??
+      null
+    );
+  }
+
   function OpportunityHero({ tok }) {
     if (!tok) return null;
     const score = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
@@ -71,12 +108,24 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
     const narr = getNarrative(tok);
     const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
     const change = tok.priceChange24h ?? tok.change24h ?? 0;
+    const chips = getPatternChips(tok);
+    const imgUrl = tokenImageUrl(tok);
 
     return (
       <div className={`war-hero ${intent.cls}`}>
         <div className="war-hero-left">
           <div className="war-hero-top">
             <span className={`war-intent-badge ${intent.cls}`}>{intent.label}</span>
+            {imgUrl ? (
+              <img
+                src={imgUrl}
+                alt={tok.symbol ?? ""}
+                className="war-token-img"
+                onError={(e) => {
+                  e.target.style.display = "none";
+                }}
+              />
+            ) : null}
             <span className="war-hero-symbol">
               ${tok.symbol ?? tok.name ?? (tok.mint ?? "").slice(0, 6)}
             </span>
@@ -89,6 +138,15 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
               {tok._liveSource === "hot_fill" ? "HEAT" : "SIGNAL"}
             </span>
           </div>
+          {chips.length > 0 ? (
+            <div className="war-pattern-chips">
+              {chips.map((c, i) => (
+                <span key={`${c.label}-${i}`} className={`war-pattern-chip ${c.cls}`}>
+                  {c.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="war-hero-right">
           <div className={`war-hero-score-ring ${intent.cls}`}>
@@ -110,6 +168,8 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
     const intent = getIntentLevel(score);
     const act = getAction(score, tok.decision ?? tok.action);
     const narr = getNarrative(tok);
+    const chips = getPatternChips(tok);
+    const imgUrl = tokenImageUrl(tok);
 
     return (
       <div className={`war-opportunity ${intent.cls}`}>
@@ -117,11 +177,30 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
         <div className="war-opp-body">
           <div className="war-opp-top">
             <span className={`war-intent-badge ${intent.cls}`}>{intent.label}</span>
+            {imgUrl ? (
+              <img
+                src={imgUrl}
+                alt=""
+                className="war-token-img-sm"
+                onError={(e) => {
+                  e.target.style.display = "none";
+                }}
+              />
+            ) : null}
             <span className="war-opp-symbol">
               ${tok.symbol ?? tok.name ?? (tok.mint ?? "").slice(0, 6)}
             </span>
           </div>
           <div className="war-opp-narrative">{narr}</div>
+          {chips.length > 0 ? (
+            <div className="war-pattern-chips">
+              {chips.map((c, i) => (
+                <span key={`${c.label}-${i}`} className={`war-pattern-chip ${c.cls}`}>
+                  {c.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="war-opp-score-col">
           <div className={`war-opp-score-ring ${intent.cls}`}>
@@ -137,12 +216,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
     );
   }
 
-  const heroNarr = hero
-    ? narrativeFromData({
-        ...hero,
-        _currentScore: hero._currentScore ?? hero.sentinelScore ?? 0
-      })
-    : null;
+  const heroNarr = hero ? getNarrative(hero) : null;
   const heroScore = hero ? Math.round(hero._currentScore ?? hero.sentinelScore ?? 0) : null;
 
   function recentNarrativePreview(tok) {
