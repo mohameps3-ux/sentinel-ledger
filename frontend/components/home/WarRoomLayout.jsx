@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useMarketStore } from "@/lib/store/marketStore";
 import { useSortedTokens } from "@/hooks/useSortedTokens";
@@ -123,11 +123,12 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
 
   useEffect(() => {
     if (sorted.length < 2) return;
+    if (activeMint) return;
     const timer = setInterval(() => {
       setRotationIndex((prev) => (prev + 1) % sorted.length);
-    }, 6000);
+    }, 10_000);
     return () => clearInterval(timer);
-  }, [sorted.length]);
+  }, [sorted.length, activeMint]);
 
   const visible =
     sorted.length >= 2
@@ -245,25 +246,29 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
     const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
     const change = tok.priceChange24h ?? tok.change24h ?? 0;
 
+    const animateVals = useMemo(
+      () => ({
+        opacity: isActive ? 1 : activeMint ? 0.55 : 1,
+        y: 0,
+        scale: isActive ? 1.015 : activeMint ? 0.985 : 1,
+        filter: isActive
+          ? "brightness(1.08)"
+          : activeMint
+            ? "brightness(0.8)"
+            : "brightness(1)"
+      }),
+      [isActive, activeMint]
+    );
+
     return (
       <motion.div
-        layout
         role="button"
         onClick={() => onSelect?.(tok)}
         className={`war-opportunity ${intent.cls} ${
           activeMint ? (isActive ? "war-card-active" : "war-card-inactive") : ""
         }`}
         initial={{ opacity: 0, y: 10, scale: 0.98 }}
-        animate={{
-          opacity: isActive ? 1 : activeMint ? 0.55 : 1,
-          y: 0,
-          scale: isActive ? 1.015 : activeMint ? 0.985 : 1,
-          filter: isActive
-            ? "brightness(1.08)"
-            : activeMint
-              ? "brightness(0.8)"
-              : "brightness(1)"
-        }}
+        animate={animateVals}
         whileHover={
           !isActive
             ? {
@@ -309,7 +314,6 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
           </div>
           <motion.div
             className="war-opp-narrative"
-            layout
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.08, duration: 0.25 }}
@@ -410,7 +414,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
             <span className="war-room-section-sub">Sorted by Smart Money Intent</span>
           </div>
 
-          <motion.div className="war-opportunities-list" layout>
+          <div className="war-opportunities-list">
             {visible.map((tok, i) => {
               const m = tok.mint ?? tok.address;
               return (
@@ -425,7 +429,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
                 />
               );
             })}
-          </motion.div>
+          </div>
         </div>
 
         <div className="war-room-aside">
