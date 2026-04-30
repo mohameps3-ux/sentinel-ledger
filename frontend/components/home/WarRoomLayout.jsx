@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useMarketStore } from "@/lib/store/marketStore";
 import { useSortedTokens } from "@/hooks/useSortedTokens";
 import { narrativeFromData } from "@/lib/narrativeFromData";
@@ -11,9 +12,36 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
       (h) => !signals.find((s) => (s.mint ?? s.address) === (h.mint ?? h.address))
     )
   ];
-  const sorted = useSortedTokens(allTokens).slice(0, 4);
-  const hero = sorted[0];
-  const rest = sorted.slice(1);
+  const sorted = useSortedTokens(allTokens);
+  const [rotationIndex, setRotationIndex] = useState(0);
+  const [newMint, setNewMint] = useState(null);
+
+  useEffect(() => {
+    if (sorted.length <= 4) return;
+    const timer = setInterval(() => {
+      setRotationIndex((prev) => (prev + 1) % sorted.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [sorted.length]);
+
+  const visible =
+    sorted.length > 4
+      ? [...sorted.slice(rotationIndex), ...sorted.slice(0, rotationIndex)].slice(0, 4)
+      : sorted.slice(0, 4);
+
+  const hero = visible[0];
+  const rest = visible.slice(1);
+
+  useEffect(() => {
+    if (!hero) {
+      setNewMint(null);
+      return;
+    }
+    const mint = hero.mint ?? hero.address;
+    setNewMint(mint);
+    const t = setTimeout(() => setNewMint(null), 2000);
+    return () => clearTimeout(t);
+  }, [hero]);
 
   function getIntentLevel(score) {
     if (score >= 85) return { label: "EXTREME", cls: "intent-extreme" };
@@ -100,7 +128,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
     );
   }
 
-  function OpportunityHero({ tok }) {
+  function OpportunityHero({ tok, isNew = false }) {
     if (!tok) return null;
     const score = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
     const intent = getIntentLevel(score);
@@ -129,6 +157,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
             <span className="war-hero-symbol">
               ${tok.symbol ?? tok.name ?? (tok.mint ?? "").slice(0, 6)}
             </span>
+            {isNew ? <span className="war-new-badge">NEW</span> : null}
           </div>
           <div className="war-hero-narrative">{narr}</div>
           <div className="war-hero-chips">
@@ -269,7 +298,10 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
             <span className="war-room-section-sub">Sorted by Smart Money Intent</span>
           </div>
 
-          <OpportunityHero tok={hero} />
+          <OpportunityHero
+            tok={hero}
+            isNew={Boolean(hero && newMint === (hero.mint ?? hero.address))}
+          />
 
           <div className="war-opportunities-list">
             {rest.map((tok, i) => (
@@ -287,7 +319,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
             <div className="war-aside-title">
               ⬤ RECENT SIGNALS <span style={{ color: "#22c55e", marginLeft: 4 }}>Live</span>
             </div>
-            {sorted.map((tok, i) => {
+            {visible.map((tok, i) => {
               const sc = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
               const intent = getIntentLevel(sc);
               return (
