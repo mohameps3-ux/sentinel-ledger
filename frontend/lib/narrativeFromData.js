@@ -34,18 +34,39 @@ export function narrativeFromData(token) {
   if (change >= 20 && score >= 70) return `Volume increasing + social buzz growing`;
   if (change < -20 && score >= 70) return `Deep pullback — smart money support holding`;
 
-  if (score >= 95) return `All systems go — maximum conviction signal`;
-  if (score >= 90) {
-    const variants = [
-      `Breakout pattern + low float + dev not sold`,
-      `High conviction setup — all factors aligned`,
-      `Whale accumulation + volume spike detected`,
-      `Low cap momentum + smart money entry window`
+  if (score >= 95) {
+    const v = [
+      `Smart money cluster detected — early accumulation phase`,
+      `Whales entering before breakout — momentum building`,
+      `High conviction wallets stacking quietly`,
+      `All systems firing — maximum conviction setup`,
+      `Aggressive entries detected — breakout imminent`
     ];
-    const idx = Math.floor((score + (symbol.charCodeAt(0) || 0)) % variants.length);
-    return variants[idx];
+    const hash = (symbol.charCodeAt(0) ?? 0) + (symbol.charCodeAt(1) ?? 0) + score;
+    return v[hash % v.length];
   }
-  if (score >= 80) return `Solid signal — active monitoring recommended`;
+  if (score >= 90) {
+    const v = [
+      `Liquidity forming under resistance — breakout setup`,
+      `High conviction setup — low float detected`,
+      `Whale accumulation + volume spike confirmed`,
+      `Low cap momentum — smart money entry window`,
+      `Breakout pattern + dev not sold — bullish structure`,
+      `Strong hands holding — distribution unlikely`
+    ];
+    const hash = (symbol.charCodeAt(0) ?? 0) * 3 + (symbol.charCodeAt(2) ?? 1) + Math.floor(score);
+    return v[hash % v.length];
+  }
+  if (score >= 80) {
+    const v = [
+      `Steady accumulation — wait for volume confirmation`,
+      `Smart money slowly building position`,
+      `Support holding — watching for breakout trigger`,
+      `Volume increasing + social buzz growing`
+    ];
+    const hash = (symbol.charCodeAt(0) ?? 0) + (symbol.length ?? 1);
+    return v[hash % v.length];
+  }
   if (score >= 70) return `Steady accumulation — wait for confirmation`;
 
   if (source === "hot_fill" && change >= 30)

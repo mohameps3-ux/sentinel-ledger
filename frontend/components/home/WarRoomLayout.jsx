@@ -3,6 +3,102 @@ import { useMarketStore } from "@/lib/store/marketStore";
 import { useSortedTokens } from "@/hooks/useSortedTokens";
 import { narrativeFromData } from "@/lib/narrativeFromData";
 
+function SmartMoneyFlow({ tok }) {
+  if (!tok) return null;
+
+  const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
+  const change = tok.priceChange24h ?? tok.change24h ?? 0;
+  const liq = tok.liquidityUsd ?? tok.liquidity ?? 0;
+  const score = tok._currentScore ?? tok.sentinelScore ?? 0;
+  const symbol = tok.symbol ?? tok.name ?? "TOKEN";
+
+  const baseBuy = change >= 0
+    ? Math.min(90, 55 + Math.round(Math.abs(change) * 0.3) + wallets * 3)
+    : Math.max(25, 50 - Math.round(Math.abs(change) * 0.4));
+  const buyPct = Math.min(95, Math.max(5, baseBuy));
+  const sellPct = 100 - buyPct;
+
+  const events = [];
+  if (wallets >= 1) {
+    events.push({
+      type: "buy",
+      text: `${wallets} smart wallet${wallets > 1 ? "s" : ""} accumulating`,
+      time: "< 1m",
+      size: "large"
+    });
+  }
+  if (change >= 20) {
+    events.push({
+      type: "buy",
+      text: `Volume spike +${Math.round(change)}%`,
+      time: "2m ago",
+      size: "medium"
+    });
+  }
+  if (score >= 85 && wallets === 0) {
+    events.push({
+      type: "buy",
+      text: `High conviction signal detected`,
+      time: "3m ago",
+      size: "small"
+    });
+  }
+  if (liq > 100_000) {
+    events.push({
+      type: "buy",
+      text: `Liquidity holding at $${(liq / 1000).toFixed(0)}K`,
+      time: "5m ago",
+      size: "small"
+    });
+  }
+  if (change < 0 && Math.abs(change) > 10) {
+    events.push({
+      type: "sell",
+      text: `Price down ${Math.round(Math.abs(change))}%`,
+      time: "4m ago",
+      size: "medium"
+    });
+  }
+  if (events.length === 0) {
+    events.push({
+      type: "neutral",
+      text: `Monitoring ${symbol}`,
+      time: "now",
+      size: "small"
+    });
+  }
+
+  return (
+    <div className="war-aside-section war-smflow">
+      <div className="war-aside-title">
+        ⬤ SMART MONEY FLOW
+        <span className="war-smflow-live">LIVE</span>
+      </div>
+
+      <div className="war-pressure-row">
+        <div className="war-pressure-labels">
+          <span className="war-pressure-buy">BUY {buyPct}%</span>
+          <span className="war-pressure-sell">SELL {sellPct}%</span>
+        </div>
+        <div className="war-pressure-bar">
+          <div className="war-pressure-fill-buy" style={{ width: `${buyPct}%` }} />
+          <div className="war-pressure-fill-sell" style={{ width: `${sellPct}%` }} />
+        </div>
+      </div>
+
+      <div className="war-smflow-events">
+        {events.slice(0, 4).map((ev, i) => (
+          <div key={i} className={`war-smflow-event war-smflow-${ev.type}`}>
+            <span className={`war-smflow-dot war-smflow-dot-${ev.type}`} />
+            <span className="war-smflow-text">{ev.text}</span>
+            <span className="war-smflow-time">{ev.time}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
   const narratives = useMarketStore((s) => s.narratives);
 
@@ -17,15 +113,15 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
   const [newMint, setNewMint] = useState(null);
 
   useEffect(() => {
-    if (sorted.length <= 4) return;
+    if (sorted.length < 2) return;
     const timer = setInterval(() => {
       setRotationIndex((prev) => (prev + 1) % sorted.length);
-    }, 5000);
+    }, 6000);
     return () => clearInterval(timer);
   }, [sorted.length]);
 
   const visible =
-    sorted.length > 4
+    sorted.length >= 2
       ? [...sorted.slice(rotationIndex), ...sorted.slice(0, rotationIndex)].slice(0, 4)
       : sorted.slice(0, 4);
 
@@ -37,11 +133,11 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
       setNewMint(null);
       return;
     }
-    const mint = hero.mint ?? hero.address;
+    const mint = hero.mint ?? hero.address ?? String(rotationIndex);
     setNewMint(mint);
-    const t = setTimeout(() => setNewMint(null), 2000);
+    const t = setTimeout(() => setNewMint(null), 2500);
     return () => clearTimeout(t);
-  }, [hero]);
+  }, [rotationIndex, hero]);
 
   function getIntentLevel(score) {
     if (score >= 85) return { label: "EXTREME", cls: "intent-extreme" };
@@ -346,6 +442,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
               ★ MANAGE WATCHLIST
             </a>
           </div>
+          <SmartMoneyFlow tok={hero} />
         </div>
       </div>
 
