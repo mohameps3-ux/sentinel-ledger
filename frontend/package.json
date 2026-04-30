@@ -2,6 +2,9 @@
   "name": "sentinel-ledger-frontend",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "next dev --webpack",
     "dev:fresh": "node scripts/kill-next-ports.cjs && node scripts/clean-next.cjs && next dev --webpack",
