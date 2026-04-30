@@ -24,13 +24,53 @@ jobs:
       - run: node -e "require('./src/routes/heliusWebhook'); require('./src/routes/walletNarrative'); require('./src/lib/corsOptions'); require('./src/lib/smartMoneyTier'); require('./src/lib/solanaAddress'); require('./src/services/xMarketing'); require('./src/ingestion/sentinelEvent'); require('./src/ingestion/dedupe'); require('./src/ingestion/ingestionState'); require('./src/scoring/state'); require('./src/scoring/engine'); console.log('backend modules ok')"
       - run: node test-ingestion.js
 
-  frontend-build:
+  # Regenerate frontend/package-lock.json with Node 20 (matches Vercel). Skipped on PRs.
+  sync-lockfile:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Regenerate lock file on Node 20
+        run: |
+          cd frontend
+          rm -f package-lock.json
+          npm install
+      - name: Commit updated lock file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add frontend/package-lock.json
+          if git diff --staged --quiet; then
+            echo "package-lock.json already matches Node 20 tree"
+          else
+            git commit -m "ci: regenerate package-lock.json on Node 20"
+            git push
+          fi
+
+  frontend-build:
+    needs: [sync-lockfile]
+    if: always() && (needs.sync-lockfile.result == 'success' || needs.sync-lockfile.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Update workspace after lockfile sync commit
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        working-directory: ${{ github.workspace }}
+        run: git pull --ff-only origin ${{ github.ref_name }} || true
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
