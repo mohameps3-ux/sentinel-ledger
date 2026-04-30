@@ -130,10 +130,13 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
     return () => clearInterval(timer);
   }, [sorted.length, activeMint]);
 
-  const visible =
-    sorted.length >= 2
-      ? [...sorted.slice(rotationIndex), ...sorted.slice(0, rotationIndex)].slice(0, 4)
-      : sorted.slice(0, 4);
+  const visible = useMemo(() => {
+    const base =
+      sorted.length >= 2
+        ? [...sorted.slice(rotationIndex), ...sorted.slice(0, rotationIndex)].slice(0, 4)
+        : sorted.slice(0, 4);
+    return base.filter((tok) => tok.mint ?? tok.address);
+  }, [rotationIndex, sorted.length]);
 
   const topSlotMint = visible[0]?.mint ?? visible[0]?.address ?? null;
 
@@ -416,15 +419,15 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
 
           <div className="war-opportunities-list">
             {visible.map((tok, i) => {
-              const m = tok.mint ?? tok.address;
+              const mint = tok.mint ?? tok.address;
               return (
                 <OpportunityRow
-                  key={tok.mint ?? tok.address ?? i}
+                  key={mint}
                   tok={tok}
                   rank={i + 1}
                   onSelect={handleSelectToken}
-                  isActive={Boolean(m && activeMint === m)}
-                  isNew={Boolean(m && newMint === m)}
+                  isActive={Boolean(mint && activeMint === mint)}
+                  isNew={Boolean(mint && newMint === mint)}
                   activeMint={activeMint}
                 />
               );
@@ -440,11 +443,11 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
             {visible.map((tok, i) => {
               const sc = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
               const intent = getIntentLevel(sc);
-              const m = tok.mint ?? tok.address;
-              const isRecentActive = Boolean(m && activeMint === m);
+              const mint = tok.mint ?? tok.address;
+              const isRecentActive = Boolean(mint && activeMint === mint);
               return (
                 <div
-                  key={tok.mint ?? tok.address ?? i}
+                  key={mint}
                   className={`war-recent-signal${isRecentActive ? " war-recent-active" : ""}`}
                   onClick={() => handleSelectToken(tok)}
                   style={{ cursor: "pointer" }}

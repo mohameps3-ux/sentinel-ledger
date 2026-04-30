@@ -63,6 +63,7 @@ export function RealtimeTokenCardShell({
   const [flash, setFlash] = useState(null);
   const lastAnimatedAtRef = useRef(0);
   const renderedScoreRef = useRef(targetScore);
+  const prevScoreRef = useRef(null);
   const flashTimerRef = useRef(null);
 
   useEffect(() => {
@@ -94,12 +95,25 @@ export function RealtimeTokenCardShell({
     renderedScoreRef.current = targetScore;
     lastAnimatedAtRef.current = nowMs;
     setDisplayScore(targetScore);
-    setFlash(targetScore > previous ? "up" : "down");
-
-    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = window.setTimeout(() => setFlash(null), FLASH_MS);
     return undefined;
   }, [isFresh, staticScoreSafe, targetScore]);
+
+  useEffect(() => {
+    if (!isFresh) {
+      prevScoreRef.current = displayScore;
+      return;
+    }
+    const prev = prevScoreRef.current;
+    const next = displayScore;
+    if (prev === null || next === null || prev === next) {
+      prevScoreRef.current = next;
+      return;
+    }
+    prevScoreRef.current = next;
+    setFlash(next > prev ? "up" : "down");
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = window.setTimeout(() => setFlash(null), FLASH_MS);
+  }, [displayScore, isFresh]);
 
   useEffect(
     () => () => {
