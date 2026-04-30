@@ -217,9 +217,8 @@ export function LiveTab({
             ? "ring-1 ring-amber-500/45 shadow-[0_0_16px_rgba(250,204,21,0.16)]"
             : "ring-1 ring-amber-500/40 shadow-[0_0_18px_rgba(250,204,21,0.16)]"
         }
-        narrativeToken={sig}
       >
-        {({ displayScore, smartMoneyCount, narrative, narrativeFromTokenData }) => {
+        {({ displayScore, smartMoneyCount, narrative }) => {
           const toneScore = Number.isFinite(Number(displayScore)) ? Number(displayScore) : Number(sig.signalStrength) || 0;
           const safeScore = Number.isFinite(Number(displayScore)) ? Math.round(Number(displayScore)) : "--";
           const safeAction = String(sig._api?.decision ?? sig.decision ?? actionKey ?? "WATCH");
@@ -235,8 +234,10 @@ export function LiveTab({
             narrative?.message
               ?? sig.whyNowBulletLines?.[0]
               ?? whyLines[0]
-              ?? narrativeFromTokenData
-              ?? narrativeFromData({ ...sig, _currentScore: toneScore });
+              ?? narrativeFromData({
+                  ...sig,
+                  _currentScore: sig._currentScore ?? sig.sentinelScore ?? 0
+                });
           const severityClass =
             narrative?.severity === "URGENT"
               ? "narrative-urgent"
