@@ -865,7 +865,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             </div>
             <TrackRecordPanel />
         </div>
-        <div className="w-[340px] flex-shrink-0 hidden lg:block">
+        <div className="w-[340px] flex-shrink-0 hidden lg:block lg:self-start sticky top-0 h-screen overflow-y-auto">
           <TokenDesk key={selectedMint ?? "__desk_none__"} mint={selectedMint} deskRadarHint={deskRadarHint} />
         </div>
       </div>
