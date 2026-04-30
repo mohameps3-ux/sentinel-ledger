@@ -7,12 +7,19 @@ const STATIC_EXT = /\.(ico|png|jpg|jpeg|gif|webp|svg|json|js|map|css|txt|xml|wof
  * this nudges the CDN/client to revalidate the document (JS chunks stay immutable).
  */
 function opsPageEnabled() {
-  const v = process.env.NEXT_PUBLIC_OPS_PAGE_ENABLED;
-  return v === "1" || String(v || "").toLowerCase() === "true";
+  const v1 = (process.env.NEXT_PUBLIC_OPS_PAGE_ENABLED || "").trim();
+  const v2 = (process.env.OPS_PAGE_ENABLED || "").trim();
+  return (
+    v1 === "1" ||
+    v1.toLowerCase() === "true" ||
+    v2 === "1" ||
+    v2.toLowerCase() === "true"
+  );
 }
 
 /**
- * Hide `/ops` on public production: unset `NEXT_PUBLIC_OPS_PAGE_ENABLED`; local `next dev` still allows Ops.
+ * Hide `/ops` on public production unless `NEXT_PUBLIC_OPS_PAGE_ENABLED` or `OPS_PAGE_ENABLED` is "1"/"true".
+ * Local `next dev` skips redirect (`NODE_ENV` ≠ production).
  */
 export function proxy(request) {
   const p = request.nextUrl.pathname;
