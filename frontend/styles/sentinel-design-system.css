@@ -455,3 +455,23 @@ a {
   max-height: 122px;
   overflow: hidden;
 }
+
+/* Live card narrative strip (global score socket → marketStore) */
+.sentinel-narrative {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+.narrative-urgent {
+  color: #f59e0b;
+}
+.narrative-anomaly {
+  color: #ef4444;
+}
+.narrative-tactical {
+  color: #60a5fa;
+}
+.narrative-default {
+  color: var(--color-text-secondary, #94a3b8);
+}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useScoreSocket } from "../../hooks/useScoreSocket";
+import { useMarketStore, isScoreFresh } from "@/lib/store/marketStore";
 import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 import { WatchedCardShell } from "./WatchedCardShell";
 
@@ -11,26 +11,6 @@ function clampScore(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
   return Math.max(0, Math.min(100, Math.round(n)));
-}
-
-function liveScoreFromPayload(score) {
-  return clampScore(score?.confidence ?? score?.sentinelScore ?? score?.score ?? score?.scores?.smart);
-}
-
-function smartMoneyCountFromPayload(score, fallback) {
-  const candidates = [
-    score?.smartMoneyCount,
-    score?.smartWallets,
-    score?.smart_wallets,
-    Array.isArray(score?.smartMoney) ? score.smartMoney.length : null,
-    Array.isArray(score?.wallets) ? score.wallets.length : null,
-    fallback
-  ];
-  for (const candidate of candidates) {
-    const n = Number(candidate);
-    if (Number.isFinite(n) && n > 0) return Math.round(n);
-  }
-  return 0;
 }
 
 function normalizeAction(action) {
@@ -56,13 +36,19 @@ export function RealtimeTokenCardShell({
   children,
   ...rest
 }) {
-  const canSubscribe = mint && isProbableSolanaMint(mint);
-  const { score, lastScoreAt } = useScoreSocket(canSubscribe ? mint : undefined);
-  const [now, setNow] = useState(Date.now());
-  const staticScoreSafe = clampScore(staticScore) ?? 0;
-  const liveScore = liveScoreFromPayload(score);
-  const isFresh = Boolean(lastScoreAt && now - lastScoreAt <= STALE_AFTER_MS);
-  const targetScore = isFresh && liveScore != null ? liveScore : staticScoreSafe;
+  const scoreEntry = useMarketStore((s) =>
+    mint && isProbableSolanaMint(mint) ? s.scores.get(mint) : undefined
+  );
+  const narrative = useMarketStore((s) =>
+    mint && isProbableSolanaMint(mint) ? s.narratives.get(mint) : undefined
+  );
+  const [, setNowTick] = useState(0);
+  const now = Date.now();
+  const isFresh = isScoreFresh(scoreEntry, now);
+  const liveScore = isFresh ? clampScore(scoreEntry?.score) : null;
+  const staticClamped = clampScore(staticScore);
+  const staticScoreSafe = staticClamped ?? 0;
+  const targetScore = liveScore != null ? liveScore : staticScoreSafe;
   const [displayScore, setDisplayScore] = useState(targetScore);
   const [flash, setFlash] = useState(null);
   const lastAnimatedAtRef = useRef(0);
@@ -70,16 +56,16 @@ export function RealtimeTokenCardShell({
   const flashTimerRef = useRef(null);
 
   useEffect(() => {
-    const last = Number(lastScoreAt);
-    if (!Number.isFinite(last) || last <= 0) return undefined;
-    const msUntilStale = Math.max(0, last + STALE_AFTER_MS - Date.now() + 50);
-    const timer = window.setTimeout(() => setNow(Date.now()), msUntilStale);
+    const ts = scoreEntry?._ts;
+    if (ts == null || !Number.isFinite(Number(ts))) return undefined;
+    const msUntilStale = Math.max(0, Number(ts) + STALE_AFTER_MS - Date.now() + 50);
+    const timer = window.setTimeout(() => setNowTick((x) => x + 1), msUntilStale);
     return () => window.clearTimeout(timer);
-  }, [lastScoreAt]);
+  }, [scoreEntry?._ts]);
 
   useEffect(() => {
-    setNow(Date.now());
-  }, [score]);
+    setNowTick((x) => x + 1);
+  }, [scoreEntry?.score, scoreEntry?._ts]);
 
   useEffect(() => {
     if (!isFresh) {
@@ -112,11 +98,8 @@ export function RealtimeTokenCardShell({
     []
   );
 
-  const action = useMemo(
-    () => normalizeAction(score?.suggestedAction || score?.action || score?.decision || actionKey),
-    [actionKey, score?.action, score?.decision, score?.suggestedAction]
-  );
-  const smCount = smartMoneyCountFromPayload(score, smartMoneyCount);
+  const action = useMemo(() => normalizeAction(actionKey), [actionKey]);
+  const smCount = Math.max(0, Math.round(Number(smartMoneyCount) || 0));
   const flashClass =
     flash === "up"
       ? "!border-emerald-400/90 shadow-[0_0_22px_rgba(16,185,129,0.32)]"
@@ -132,7 +115,9 @@ export function RealtimeTokenCardShell({
       data-live-stale={isFresh ? undefined : "1"}
       {...rest}
     >
-      {typeof children === "function" ? children({ displayScore, isFresh, smartMoneyCount: smCount }) : children}
+      {typeof children === "function"
+        ? children({ displayScore, isFresh, smartMoneyCount: smCount, narrative: narrative ?? null })
+        : children}
       <div
         className={`pointer-events-none absolute inset-x-0 bottom-0 h-[3px] ${bottomBarClass(action)}`}
         title={`Execution state: ${action}${isFresh ? "" : " · stale/static"}`}

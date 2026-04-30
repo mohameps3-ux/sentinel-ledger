@@ -35,17 +35,6 @@ function cockpitCardClickTargetIsInteractive(e) {
   return Boolean(el.closest("a, button, summary, details"));
 }
 
-function narrativeClass(severity) {
-  // URGENT — the apex moment: iridescent gold border + warm halo (matches Apex Obsidian critical state).
-  if (severity === "URGENT") return "border-[rgba(250,204,21,0.5)] bg-gradient-to-r from-[rgba(250,204,21,0.14)] via-[rgba(254,240,138,0.12)] to-[rgba(250,204,21,0.14)] text-amber-50 shadow-[0_0_20px_rgba(250,204,21,0.28)] animate-pulse";
-  // TACTICAL — solid gold base (already on-palette).
-  if (severity === "TACTICAL") return "border-amber-300/60 bg-amber-500/85 text-black";
-  // ANOMALY — semantic red (preserved, danger signal).
-  if (severity === "ANOMALY") return "border-red-400/80 bg-red-950/90 text-red-50 shadow-[0_0_16px_rgba(248,113,113,0.25)]";
-  // Default — silver pearl frame.
-  return "border-[rgba(209,213,219,0.18)] bg-zinc-950/90 text-zinc-100";
-}
-
 function normalizeSignalDecision(action) {
   const raw = String(action || "").trim().toUpperCase();
   if (["ACCUMULATE", "ENTER NOW", "ENTER_NOW", "BUY", "LONG"].includes(raw)) return "ACCUMULATE";
@@ -62,22 +51,6 @@ function accentColorForDecision(decision, score) {
   if (n >= 60) return "#10B981";
   if (n >= 40) return "#F59E0B";
   return "#DC2626";
-}
-
-function SentinelNarrativeBanner({ narrative }) {
-  if (!narrative) return null;
-  return (
-    <Link
-      href={`/token/${encodeURIComponent(narrative.mint)}`}
-      className={`mb-1.5 block border px-2 py-1.5 text-[10px] font-semibold leading-snug no-underline ${narrativeClass(
-        narrative.severity
-      )}`}
-      title={narrative.cta?.label || "Open token desk"}
-    >
-      <span className="font-mono text-[8px] uppercase tracking-[0.14em] opacity-80">{narrative.severity}</span>
-      <span className="ml-1">{narrative.message}</span>
-    </Link>
-  );
 }
 
 export function LiveTab({
@@ -104,7 +77,6 @@ export function LiveTab({
 }) {
   const { t } = useLocale();
   const [stalkerUnread, setStalkerUnread] = useState(0);
-  const [narratives, setNarratives] = useState([]);
 
   const confidenceTr = useCallback(
     (signalStrength) => {
@@ -121,43 +93,6 @@ export function LiveTab({
     refresh();
     window.addEventListener("wallet-stalker-update", refresh);
     return () => window.removeEventListener("wallet-stalker-update", refresh);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-    let socket;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { io } = await import("socket.io-client");
-        const { getPublicWsUrl } = await import("../../../../lib/publicRuntime");
-        socket = io(getPublicWsUrl(), { transports: ["websocket", "polling"], autoConnect: true });
-        socket.on("sentinel:narrative", (payload) => {
-          if (cancelled || !payload?.id || !payload?.mint || !payload?.message) return;
-          const expiresAt = payload.expiresAt ? Date.parse(payload.expiresAt) : Date.now() + 30_000;
-          setNarratives((prev) =>
-            [
-              {
-                ...payload,
-                expiresAt: Number.isFinite(expiresAt) ? expiresAt : Date.now() + 30_000
-              },
-              ...prev.filter((n) => n.id !== payload.id && n.mint !== payload.mint)
-            ].slice(0, 3)
-          );
-        });
-      } catch (_) {}
-    })();
-    const sweep = window.setInterval(() => {
-      const now = Date.now();
-      setNarratives((prev) => prev.filter((n) => Number(n.expiresAt) > now).slice(0, 3));
-    }, 1000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(sweep);
-      try {
-        socket?.disconnect?.();
-      } catch (_) {}
-    };
   }, []);
 
   const { isWarMode } = useWarMode();
@@ -214,7 +149,6 @@ export function LiveTab({
     const hot = idx === signalCursor % Math.max(1, displaySignals.length);
     const coordOnCard =
       selectedMint && sig.mint === selectedMint && deskCoordination?.redSignal ? deskCoordination.redSignal : null;
-    const narrative = narratives.find((n) => n.mint === sig.mint) || null;
     const whyLines = whyNowBulletLines(sig);
     const rankInfo = signalsRankDeltas.get(sig.mint) || { rank: idx + 1, delta: 0, isNew: false };
     const tick = sig.mint ? tickerByMint[sig.mint] : null;
@@ -226,7 +160,6 @@ export function LiveTab({
     // Heat-fill is always "active" (warm gold) to communicate "pure heat, not validated signal".
     // Live cards derive from signalStrength: >=80 critical (high conviction), >=60 active, else neutral silver.
     const apexState = isHeatFill ? "active" : deriveApexState(sig.signalStrength);
-    console.log("[WAR] score:", getScore(sig), "isWarMode:", isWarMode, "target:", isWarMode && getScore(sig) >= 35);
     return (
       <RealtimeTokenCardShell
         data-testid="sl-war-live-card"
@@ -259,14 +192,37 @@ export function LiveTab({
         } ${hot ? "ring-1 ring-[rgba(250,204,21,0.32)]" : ""} ${
           sig.mint && isProbableSolanaMint(sig.mint) ? "cursor-pointer" : ""
         } ${selectedMint && sig.mint === selectedMint ? "ring-2 ring-[rgba(250,204,21,0.5)]" : ""}`}
-        style={{ borderLeft: `3px solid ${accentColor}` }}
+        style={{ borderLeft: `3px solid ${accentColor}`, transition: `all ${isWarMode ? 150 : 300}ms ease` }}
         watchedClassName={
           isHeatFill
             ? "ring-1 ring-amber-500/45 shadow-[0_0_16px_rgba(250,204,21,0.16)]"
             : "ring-1 ring-amber-500/40 shadow-[0_0_18px_rgba(250,204,21,0.16)]"
         }
       >
-        {({ displayScore, smartMoneyCount }) => (
+        {({ displayScore, smartMoneyCount, narrative }) => {
+          const toneScore = Number.isFinite(Number(displayScore)) ? Number(displayScore) : Number(sig.signalStrength) || 0;
+          const safeScore = Number.isFinite(Number(displayScore)) ? Math.round(Number(displayScore)) : "--";
+          const safeAction = String(sig._api?.decision ?? sig.decision ?? actionKey ?? "WATCH");
+          const safeLiq = sig.liquidityUsd ?? sig.token?.liquidity ?? sig.liquidity ?? null;
+          const safeWallets = sig.smartMoneyCount ?? sig.smartWallets ?? 0;
+          const safeChange = sig.priceChange24h ?? sig.change24h ?? sig.token?.change ?? null;
+          const safePoolAge = sig.poolAge ?? sig.pairCreatedAt ?? null;
+          const symbolMetaTitle =
+            [safeLiq != null && `Liq ${safeLiq}`, safeChange != null && `Δ24h ${safeChange}%`, safePoolAge && `Pool ${safePoolAge}`]
+              .filter(Boolean)
+              .join(" · ") || undefined;
+          const warFallback = `Score ${safeScore} — ${safeAction}`;
+          const displayNarrative =
+            narrative?.message ?? (isWarMode ? warFallback : whyLines[0] ?? null);
+          const severityClass =
+            narrative?.severity === "URGENT"
+              ? "narrative-urgent"
+              : narrative?.severity === "ANOMALY"
+                ? "narrative-anomaly"
+                : narrative?.severity === "TACTICAL"
+                  ? "narrative-tactical"
+                  : "narrative-default";
+          return (
           <>
         {isWarMode && getScore(sig) >= 35 && (
           <div
@@ -279,7 +235,9 @@ export function LiveTab({
             </svg>
           </div>
         )}
-        <SentinelNarrativeBanner narrative={narrative} />
+        {displayNarrative ? (
+          <div className={`sentinel-narrative ${severityClass}`}>{displayNarrative}</div>
+        ) : null}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-1 mb-0 flex-wrap">
@@ -295,8 +253,8 @@ export function LiveTab({
                 </span>
               )}
             </div>
-            <p className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight">${sig.symbol}</p>
-            {hasPx || hasChg ? (
+            <p className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight" title={symbolMetaTitle}>${sig.symbol}</p>
+            {!isWarMode && (hasPx || hasChg) ? (
               <div
                 className={`mt-0.5 flex items-baseline justify-between gap-2 text-[10px] font-mono leading-tight ${
                   quotesPricesFetching ? "opacity-90" : ""
@@ -317,21 +275,24 @@ export function LiveTab({
               </div>
             ) : null}
           </div>
+          {!isWarMode ? (
           <span
-            className={`shrink-0 text-[8px] max-w-[4.75rem] text-right leading-tight px-1.5 py-0.5 rounded border line-clamp-1 ${confidenceTone(sig.signalStrength)}`}
-            title={confidenceTr(sig.signalStrength)}
+            className={`shrink-0 text-[8px] max-w-[4.75rem] text-right leading-tight px-1.5 py-0.5 rounded border line-clamp-1 ${confidenceTone(toneScore)}`}
+            title={confidenceTr(toneScore)}
           >
-            {confidenceTr(sig.signalStrength)}
+            {confidenceTr(toneScore)}
           </span>
+          ) : null}
         </div>
 
+        {!isWarMode ? (
         <div className="space-y-1">
           <div className="h-1 rounded-full bg-sl-card overflow-hidden ring-1 ring-white/8">
-            <div className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(sig.signalStrength)}`} style={{ width: `${displayScore}%` }} />
+            <div className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(toneScore)}`} style={{ width: `${displayScore}%` }} />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-[11px] font-bold tabular-nums text-sl-text">{displayScore}/100</span>
-            <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-sl-muted">{confidenceTr(sig.signalStrength)}</span>
+            <span className="font-mono text-[11px] font-bold tabular-nums text-sl-text">{safeScore}/100</span>
+            <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-sl-muted">{confidenceTr(toneScore)}</span>
           </div>
           <div className="score-track mx-3 mb-2">
             <div
@@ -340,40 +301,48 @@ export function LiveTab({
             />
           </div>
         </div>
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-0.5">
-          <span className={`inline-flex items-center justify-center ${feedDecisionPillClass(actionKey, sig.signalStrength)}`}>
+          <span className={`inline-flex items-center justify-center ${feedDecisionPillClass(actionKey, toneScore)}`}>
             {decisionEmoji}
             {actionLabel}
           </span>
+          {!isWarMode ? (
+          <>
           {coordOnCard ? (
             <span className="text-[8px] px-1 py-0.5 rounded border border-rose-500/40 bg-rose-500/15 text-rose-200 font-mono" title="Wallet cluster coordination (same as token page)">
               {String(coordOnCard).replace(/_/g, " ")}
             </span>
           ) : null}
-          {!isHeatFill && (sig._api?.confluence || (!sig._api && sig.signalStrength >= 88)) ? (
+          {!isHeatFill && (sig._api?.confluence || (!sig._api && toneScore >= 88)) ? (
             <span className="text-[8px] text-blue-200 bg-blue-500/10 border border-blue-500/25 rounded px-1 py-0.5 font-mono">
               multi
             </span>
           ) : null}
-          {smartMoneyCount > 0 ? (
+          {safeWallets > 0 ? (
             <span className="text-[8px] px-1 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/12 text-indigo-100 font-mono font-bold">
-              {smartMoneyCount} SM
+              {safeWallets} SM
             </span>
           ) : null}
           <RulePerformanceBadge performance={sig._api?.rulePerformance} compact />
+          </>
+          ) : null}
         </div>
 
-        <LiveCardOverlay mint={sig.mint} />
+        {!isWarMode ? <LiveCardOverlay mint={sig.mint} /> : null}
 
-        {redFlagsForSignal(sig).length ? (
+        {!isWarMode && redFlagsForSignal(sig).length ? (
           <p className="text-[9px] text-red-200/95 truncate leading-tight">RED: {redFlagsForSignal(sig).join(" · ")}</p>
         ) : null}
 
+        {!isWarMode ? (
         <span className="font-mono text-2xs text-sl-muted">
           {isHeatFill ? t("war.live.heatNoEntry") : win.label === "CLOSED" || timeLeft <= 0 ? "CLOSED" : `${timeLeft}m`}
         </span>
+        ) : null}
 
+        {!isWarMode ? (
         <details className="border-t border-sl-border">
           <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 w-full font-mono text-2xs text-sl-muted hover:text-sl-sub transition-colors duration-150">
             <span>WHY NOW</span>
@@ -388,6 +357,7 @@ export function LiveTab({
             ))}
           </div>
         </details>
+        ) : null}
 
         <div className="flex flex-wrap gap-0.5 pt-0.5 border-t border-white/[0.04] mt-0.5">
           {[0.5, 1, 5].map((size) => {
@@ -419,7 +389,8 @@ export function LiveTab({
           ) : null}
         </div>
           </>
-        )}
+          );
+        }}
       </RealtimeTokenCardShell>
     );
   }

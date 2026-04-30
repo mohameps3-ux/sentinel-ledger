@@ -199,10 +199,38 @@ export function HotTab({
                 } ${token?.mint && isProbableSolanaMint(token.mint) ? "cursor-pointer" : ""} ${
                   selectedMint && token?.mint === selectedMint ? "ring-2 ring-[rgba(250,204,21,0.5)]" : ""
                 }`}
-                style={{ borderLeft: `3px solid ${accentColor}` }}
+                style={{ borderLeft: `3px solid ${accentColor}`, transition: `all ${isWarMode ? 150 : 300}ms ease` }}
                 watchedClassName="ring-1 ring-amber-500/45 shadow-[0_0_18px_rgba(250,204,21,0.16)]"
               >
-                {({ displayScore, smartMoneyCount }) => (
+                {({ displayScore, smartMoneyCount, narrative }) => {
+                  const toneScore = Number.isFinite(Number(displayScore)) ? Number(displayScore) : signalStrength;
+                  const safeScore = Number.isFinite(Number(displayScore)) ? Math.round(Number(displayScore)) : "--";
+                  const safeAction = String(token?.decision ?? token?.action ?? actionKey ?? "WATCH");
+                  const safeLiq = token?.liquidityUsd ?? token?.liquidity ?? null;
+                  const safeWallets = token?.smartMoneyCount ?? token?.smartWallets ?? 0;
+                  const safeChange = token?.priceChange24h ?? token?.change24h ?? token?.change ?? null;
+                  const safePoolAge = token?.poolAge ?? token?.pairCreatedAt ?? null;
+                  const symbolMetaTitle =
+                    [safeLiq != null && `Liq ${safeLiq}`, safeChange != null && `Δ24h ${safeChange}%`, safePoolAge && `Pool ${safePoolAge}`]
+                      .filter(Boolean)
+                      .join(" · ") || undefined;
+                  const whyHint =
+                    Array.isArray(token?.whyTrade) && token.whyTrade[0]
+                      ? String(token.whyTrade[0])
+                      : Array.isArray(token?.evidenceChips) && token.evidenceChips[0]
+                        ? String(token.evidenceChips[0])
+                        : null;
+                  const warFallback = `Score ${safeScore} — ${safeAction}`;
+                  const displayNarrative = narrative?.message ?? (isWarMode ? warFallback : whyHint);
+                  const severityClass =
+                    narrative?.severity === "URGENT"
+                      ? "narrative-urgent"
+                      : narrative?.severity === "ANOMALY"
+                        ? "narrative-anomaly"
+                        : narrative?.severity === "TACTICAL"
+                          ? "narrative-tactical"
+                          : "narrative-default";
+                  return (
                   <>
                 {isWarMode && getScore(token) >= 35 && (
                   <div
@@ -215,6 +243,9 @@ export function HotTab({
                     </svg>
                   </div>
                 )}
+                {displayNarrative ? (
+                  <div className={`sentinel-narrative ${severityClass}`}>{displayNarrative}</div>
+                ) : null}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     {token?.mint ? (
@@ -223,13 +254,18 @@ export function HotTab({
                         <RankDeltaChip delta={trendingRank.delta} isNew={trendingRank.isNew} />
                       </div>
                     ) : null}
-                    <p className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight">{token?.symbol || "Loading"}</p>
+                    <p className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight" title={symbolMetaTitle}>
+                      {token?.symbol || "Loading"}
+                    </p>
                   </div>
+                  {!isWarMode ? (
                   <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border ${gradeClass(token?.grade || "C")}`}>
                     {token?.grade || "…"}
                   </span>
+                  ) : null}
                 </div>
 
+                {!isWarMode ? (
                 <div className="space-y-1">
                   <div className="h-1 rounded-full bg-sl-card overflow-hidden">
                     <div className="h-full rounded-full bg-gradient-to-r from-[#fef08a] via-[#facc15] to-[#ca8a04]" style={{ width: `${displayScore}%` }} />
@@ -240,22 +276,22 @@ export function HotTab({
                     </span>
                     <span
                       className={`text-[8px] font-bold px-1 py-0.5 rounded border ${
-                        signalStrength >= 85
+                        toneScore >= 85
                           ? "text-emerald-300 bg-emerald-500/10 border-emerald-500/30"
-                          : signalStrength >= 65
+                          : toneScore >= 65
                             ? "text-amber-200 bg-amber-500/10 border-amber-500/30"
                             : "text-red-300 bg-red-500/10 border-red-500/30"
-                      } ${signalStrength > 90 ? "animate-pulse" : ""}`}
+                      } ${toneScore > 90 ? "animate-pulse" : ""}`}
                     >
                       {actionLabel}
                     </span>
-                    <span className={`text-[9px] px-1 py-0.5 rounded border ${confidenceTone(signalStrength)}`}>
-                      {confidenceTr(signalStrength)}
+                    <span className={`text-[9px] px-1 py-0.5 rounded border ${confidenceTone(toneScore)}`}>
+                      {confidenceTr(toneScore)}
                     </span>
                     {confluence ? <span className="text-[8px] text-blue-200 bg-blue-500/10 border border-blue-500/25 rounded px-1 py-0.5">multi</span> : null}
-                    {smartMoneyCount > 0 ? (
+                    {safeWallets > 0 ? (
                       <span className="text-[8px] px-1 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/12 text-indigo-100 font-mono font-bold">
-                        {smartMoneyCount} SM
+                        {safeWallets} SM
                       </span>
                     ) : null}
                     <RulePerformanceBadge performance={token?.rulePerformance} compact />
@@ -267,9 +303,25 @@ export function HotTab({
                     />
                   </div>
                 </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-0.5">
+                    <span
+                      className={`text-[8px] font-bold px-1 py-0.5 rounded border ${
+                        toneScore >= 85
+                          ? "text-emerald-300 bg-emerald-500/10 border-emerald-500/30"
+                          : toneScore >= 65
+                            ? "text-amber-200 bg-amber-500/10 border-amber-500/30"
+                            : "text-red-300 bg-red-500/10 border-red-500/30"
+                      }`}
+                    >
+                      {actionLabel}
+                    </span>
+                  </div>
+                )}
 
-                {token?.mint ? <LiveCardOverlay mint={token.mint} /> : null}
+                {!isWarMode && token?.mint ? <LiveCardOverlay mint={token.mint} /> : null}
 
+                {!isWarMode ? (
                 <div className="flex items-baseline justify-between gap-2 text-[10px] font-mono">
                   <span className="text-sl-text truncate">
                     <AnimatedNumber value={Number(token?.price || 0)} prefix="$" decimalPlaces={6} />
@@ -278,15 +330,17 @@ export function HotTab({
                     <AnimatedNumber value={changeNum} decimalPlaces={1} prefix={changeNum >= 0 ? "+" : ""} suffix="%" />
                   </span>
                 </div>
+                ) : null}
 
-                {timeAdvantage || entryWindowLabel ? (
+                {!isWarMode && (timeAdvantage || entryWindowLabel) ? (
                   <span className="font-mono text-2xs text-sl-muted">
                     {entryWindowLabel === "CLOSED" || timeLeft <= 0 ? "CLOSED" : `${timeLeft}m`}
                   </span>
                 ) : null}
 
-                {redFlags.length ? <p className="text-[9px] text-red-200/95 truncate leading-tight">⚠ {redFlags.join(" · ")}</p> : null}
+                {!isWarMode && redFlags.length ? <p className="text-[9px] text-red-200/95 truncate leading-tight">⚠ {redFlags.join(" · ")}</p> : null}
 
+                {!isWarMode ? (
                 <details className="border-t border-sl-border">
                   <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 w-full font-mono text-2xs text-sl-muted hover:text-sl-sub transition-colors duration-150">
                     <span>WHY NOW</span>
@@ -304,6 +358,7 @@ export function HotTab({
                     ))}
                   </div>
                 </details>
+                ) : null}
 
                 <div className="mt-auto pt-0.5 space-y-1 border-t border-white/[0.04]">
                   <div className="grid grid-cols-3 gap-0.5">
@@ -344,7 +399,8 @@ export function HotTab({
                   )}
                 </div>
                   </>
-                )}
+                  );
+                }}
               </RealtimeTokenCardShell>
             );
           })}
