@@ -37,6 +37,7 @@ import { useWarMode } from "../contexts/WarModeContext";
 import { useLocale } from "../contexts/LocaleContext";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useLastGoodArray } from "../hooks/useLastGoodArray";
+import { motion, AnimatePresence } from "framer-motion";
 
 function HomeMetricStrip({ signalsToday, activeWallets, avgConfidence, bestSignal }) {
   const metrics = [
@@ -871,7 +872,18 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             <TrackRecordPanel />
         </div>
         <div className="w-[340px] flex-shrink-0 hidden lg:block lg:self-start sticky top-0 h-screen overflow-y-auto">
-          <TokenDesk key={selectedMint ?? "__desk_none__"} mint={selectedMint} deskRadarHint={deskRadarHint} />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedMint ?? "__desk_none__"}
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              style={{ height: "100%" }}
+            >
+              <TokenDesk mint={selectedMint} deskRadarHint={deskRadarHint} />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </>

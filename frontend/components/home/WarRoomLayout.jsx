@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useMarketStore } from "@/lib/store/marketStore";
 import { useSortedTokens } from "@/hooks/useSortedTokens";
 import { narrativeFromData } from "@/lib/narrativeFromData";
@@ -233,7 +234,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
     );
   }
 
-  function OpportunityRow({ tok, rank, onSelect, isActive, isNew }) {
+  function OpportunityRow({ tok, rank, onSelect, isActive, isNew, activeMint }) {
     const mint = tok.mint ?? tok.address ?? "";
     const score = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
     const intent = getIntentLevel(score);
@@ -244,19 +245,41 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
     const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
     const change = tok.priceChange24h ?? tok.change24h ?? 0;
 
-    const cardClass =
-      activeMint != null
-        ? isActive
-          ? "war-card-active"
-          : "war-card-inactive"
-        : "";
-
     return (
-      <div
-        className={["war-opportunity", intent.cls, cardClass].filter(Boolean).join(" ")}
-        onClick={() => onSelect?.(tok)}
-        style={{ cursor: "pointer" }}
+      <motion.div
+        layout
         role="button"
+        onClick={() => onSelect?.(tok)}
+        className={`war-opportunity ${intent.cls} ${
+          activeMint ? (isActive ? "war-card-active" : "war-card-inactive") : ""
+        }`}
+        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+        animate={{
+          opacity: isActive ? 1 : activeMint ? 0.55 : 1,
+          y: 0,
+          scale: isActive ? 1.015 : activeMint ? 0.985 : 1,
+          filter: isActive
+            ? "brightness(1.08)"
+            : activeMint
+              ? "brightness(0.8)"
+              : "brightness(1)"
+        }}
+        whileHover={
+          !isActive
+            ? {
+                opacity: 0.85,
+                scale: 1.0,
+                x: 3,
+                filter: "brightness(0.95)"
+              }
+            : {}
+        }
+        transition={{
+          type: "spring",
+          stiffness: 260,
+          damping: 24
+        }}
+        style={{ cursor: "pointer" }}
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -284,7 +307,15 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
             </span>
             {isNew ? <span className="war-new-badge">NEW</span> : null}
           </div>
-          <div className="war-opp-narrative">{narr}</div>
+          <motion.div
+            className="war-opp-narrative"
+            layout
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.08, duration: 0.25 }}
+          >
+            {narr}
+          </motion.div>
 
           {isActive ? (
             <>
@@ -318,7 +349,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
             {isActive ? <span className="war-opp-action-target"> · {act.target}</span> : null}
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
@@ -379,7 +410,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
             <span className="war-room-section-sub">Sorted by Smart Money Intent</span>
           </div>
 
-          <div className="war-opportunities-list">
+          <motion.div className="war-opportunities-list" layout>
             {visible.map((tok, i) => {
               const m = tok.mint ?? tok.address;
               return (
@@ -390,10 +421,11 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
                   onSelect={handleSelectToken}
                   isActive={Boolean(m && activeMint === m)}
                   isNew={Boolean(m && newMint === m)}
+                  activeMint={activeMint}
                 />
               );
             })}
-          </div>
+          </motion.div>
         </div>
 
         <div className="war-room-aside">

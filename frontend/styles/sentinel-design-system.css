@@ -841,9 +841,12 @@ a {
   min-height: 120px !important;
   background: rgba(255, 255, 255, 0.06) !important;
   border-color: rgba(255, 255, 255, 0.18) !important;
-  transform: scale(1.015);
   z-index: 2;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.war-card-inactive {
+  /* opacity, scale, hover: framer-motion */
 }
 
 .war-card-active .war-opp-narrative {
@@ -859,16 +862,6 @@ a {
   font-size: 22px;
 }
 
-.war-card-inactive {
-  opacity: 0.55;
-  transform: scale(0.985);
-}
-
-.war-card-inactive:hover {
-  opacity: 0.85;
-  transform: scale(1);
-}
-
 .war-card-active.intent-extreme {
   box-shadow:
     0 0 30px rgba(255, 59, 48, 0.3),
@@ -881,8 +874,7 @@ a {
     0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
-.war-opportunity:hover:not(.war-card-active):not(.war-card-inactive) {
-  transform: translateX(3px);
+.war-opportunity:hover {
   background: rgba(255, 255, 255, 0.05);
 }
 
