@@ -12,6 +12,7 @@ import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WarModeProvider } from "../contexts/WarModeContext";
 import { LocaleProvider } from "../contexts/LocaleContext";
+import { ScoreSocketProvider } from "@/components/providers/ScoreSocketProvider";
 import { Toaster } from "react-hot-toast";
 import { AppErrorBoundary } from "../components/layout/AppErrorBoundary";
 import { Navbar } from "../components/layout/Navbar";
@@ -109,6 +110,7 @@ export default function App({ Component, pageProps }) {
           <QueryClientProvider client={queryClient}>
             <LocaleProvider>
             <WarModeProvider>
+            <ScoreSocketProvider>
             <div
               className={`${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} ${inter.className} min-h-screen bg-[var(--sl-bg-base)] text-white antialiased selection:bg-emerald-500/25 selection:text-emerald-100`}
               translate="no"
@@ -157,6 +159,7 @@ export default function App({ Component, pageProps }) {
                 }}
               />
             </div>
+            </ScoreSocketProvider>
             </WarModeProvider>
             </LocaleProvider>
           </QueryClientProvider>
