@@ -34,6 +34,8 @@ export function RealtimeTokenCardShell({
   smartMoneyCount = 0,
   baseClassName = "",
   watchedClassName = "",
+  /** War-mode cards use a minimal layout; hide the execution strip. */
+  hideExecutionBar = false,
   children,
   ...rest
 }) {
@@ -126,11 +128,13 @@ export function RealtimeTokenCardShell({
       {typeof children === "function"
         ? children({ displayScore, isFresh, smartMoneyCount: smCount, narrative: narrative ?? null })
         : children}
-      <div
-        className={`pointer-events-none absolute inset-x-0 bottom-0 h-[3px] ${bottomBarClass(action)}`}
-        title={`Execution state: ${action}${isFresh ? "" : " · stale/static"}`}
-        aria-hidden
-      />
+      {hideExecutionBar ? null : (
+        <div
+          className={`pointer-events-none absolute inset-x-0 bottom-0 h-[3px] ${bottomBarClass(action)}`}
+          title={`Execution state: ${action}${isFresh ? "" : " · stale/static"}`}
+          aria-hidden
+        />
+      )}
     </WatchedCardShell>
   );
 }

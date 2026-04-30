@@ -3,7 +3,7 @@ import { useMarketStore, isScoreFresh } from '@/lib/store/marketStore'
 
 const STRATEGY_HIGH = { conservative: 90, balanced: 85, aggressive: 80 }
 const WAR_MIN       = 35
-const WAR_TOP       = 8
+const WAR_TOP       = 6
 
 export function useSortedTokens(tokens = []) {
   const scores    = useMarketStore((s) => s.scores)

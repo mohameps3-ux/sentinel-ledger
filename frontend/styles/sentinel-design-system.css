@@ -475,3 +475,91 @@ a {
 .narrative-default {
   color: var(--color-text-secondary, #94a3b8);
 }
+
+/* --- War mode: narrative-first live cards --- */
+.war-narrative-hero {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #ffffff;
+  margin: 8px 0 10px 0;
+  letter-spacing: -0.01em;
+}
+
+.war-score-secondary {
+  font-size: 10px;
+  font-family: "JetBrains Mono", monospace;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* WAR badge pulse */
+.war-mode-active .war-badge {
+  animation: war-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes war-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 59, 48, 0);
+  }
+}
+
+/* Card entry animation in WAR mode */
+.war-mode-active .sl-terminal-shell--live,
+.war-mode-active .sl-terminal-shell--heat {
+  animation: war-enter 0.15s ease-out;
+}
+
+.war-mode-active .sl-home-card-compact {
+  max-height: none;
+}
+
+@keyframes war-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Score-based glow on card left border */
+.war-target-critical {
+  border-left: 3px solid #ff3b30 !important;
+  box-shadow: inset 2px 0 8px rgba(255, 59, 48, 0.25);
+}
+
+.war-target-high {
+  border-left: 3px solid rgba(255, 59, 48, 0.6) !important;
+}
+
+.war-target-low {
+  border-left: 3px solid rgba(255, 59, 48, 0.2) !important;
+}
+
+/* Visual hierarchy by score level */
+.war-target-critical .war-narrative-hero {
+  font-size: 16px;
+  color: #ffffff;
+}
+
+.war-target-high .war-narrative-hero {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.war-target-low .war-narrative-hero {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.war-target-low {
+  opacity: 0.6;
+}
