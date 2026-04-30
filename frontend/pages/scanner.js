@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { PageHead } from "../components/seo/PageHead";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
 import { useLocale } from "../contexts/LocaleContext";
 import { TerminalActionIcons } from "../components/terminal/TerminalActionIcons";
+import { useSortedTokens } from "@/hooks/useSortedTokens";
 
 const NARRATIVE_OPTIONS = ["ALL", "AI", "DeFi", "Gaming", "Meme", "RWA", "L2", "Dog", "Cat"];
 const FILTER_CHIPS = ["All", "Pump.fun", "Raydium", "New (<24h)", "High Score"];
@@ -15,6 +16,21 @@ export default function ScannerPage() {
   const [narrative, setNarrative] = useState("ALL");
   const router = useRouter();
   const trending = useTrendingTokens([], {}, narrative === "ALL" ? "" : narrative);
+
+  const scannerSource = useMemo(() => trending.data?.data || [], [trending.data?.data]);
+  const normalizedScanner = useMemo(
+    () =>
+      scannerSource.map((t) => ({
+        ...t,
+        mint: t.mint ?? t.address ?? t.tokenAddress,
+        sentinelScore: t.sentinelScore ?? t.score ?? t.signalStrength ?? 0,
+        smartMoneyCount: t.smartMoneyCount ?? t.smartWallets ?? 0,
+        liquidityUsd: t.liquidityUsd ?? t.liquidity ?? 0,
+        priceChange24h: t.priceChange24h ?? t.change24h ?? t.priceChange ?? t.change ?? 0
+      })),
+    [scannerSource]
+  );
+  const sorted = useSortedTokens(normalizedScanner);
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -89,7 +105,7 @@ export default function ScannerPage() {
             ))}
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {(trending.data?.data || []).slice(0, 12).map((token) => {
+            {sorted.slice(0, 12).map((token) => {
               const mint = token.tokenAddress;
               const score = Math.max(0, Math.min(100, Math.round(Number(token.sentinelScore || 0))));
               const change = Number(token.change ?? token.change24h);

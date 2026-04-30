@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useClientAuthToken } from "../hooks/useClientAuthToken";
+import { useSortedTokens } from "@/hooks/useSortedTokens";
 import { formatTokenPrice } from "../lib/formatStable";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { PageHead } from "../components/seo/PageHead";
@@ -47,6 +48,20 @@ export default function PortfolioPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const normalizedPositions = useMemo(
+    () =>
+      positions.map((p) => ({
+        ...p,
+        mint: p.mint ?? p.address ?? p.tokenAddress,
+        sentinelScore: p.sentinelScore ?? p.score ?? p.signalStrength ?? 0,
+        smartMoneyCount: p.smartMoneyCount ?? p.smartWallets ?? 0,
+        liquidityUsd: p.liquidityUsd ?? p.liquidity ?? 0,
+        priceChange24h: p.priceChange24h ?? p.change24h ?? p.change24hPct ?? p.priceChange ?? 0
+      })),
+    [positions]
+  );
+  const sorted = useSortedTokens(normalizedPositions);
 
   const reality = positions.reduce(
     (acc, p) => {
@@ -194,7 +209,7 @@ export default function PortfolioPage() {
                 </tr>
               </thead>
               <tbody>
-                {positions.map((p) => (
+                {sorted.map((p) => (
                   <tr key={p.tokenAddress}>
                     <td className="data-td"><span className="text-sl-text">${p.symbol}</span><p className="font-mono text-[11px] text-sl-muted">{p.tokenAddress?.slice(0, 6)}…{p.tokenAddress?.slice(-6)}</p></td>
                     <td className="data-td">${p.priceUsd != null ? formatTokenPrice(p.priceUsd) : "—"}</td>

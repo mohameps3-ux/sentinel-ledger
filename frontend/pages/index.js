@@ -59,33 +59,79 @@ function HomeMetricStrip({ signalsToday, activeWallets, avgConfidence, bestSigna
 }
 
 function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onToggleSound }) {
+  const profile = useMarketStore((s) => s.profile);
+  const setProfile = useMarketStore((s) => s.setProfile);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("sentinelProfile", profile);
+    } catch (_) {}
+  }, [profile]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem("sentinelProfile");
+      if (saved && ["balanced", "sniper", "liquidity", "momentum"].includes(saved)) {
+        setProfile(saved);
+      }
+    } catch (_) {}
+  }, [setProfile]);
+
+  const pill = (active) =>
+    active
+      ? "border-indigo-400/45 bg-indigo-500/15 text-indigo-100"
+      : "border-sl-border bg-sl-card text-sl-sub hover:text-sl-text";
+
   return (
-    <div className="flex items-center gap-1 flex-wrap">
-      {["conservative", "balanced", "aggressive"].map((mode) => (
-        <button
-          key={mode}
-          type="button"
-          onClick={() => onStrategyModeChange(mode)}
-          className={`rounded-md border px-2 py-0.5 text-[10px] font-mono capitalize transition-colors ${
-            strategyMode === mode
-              ? "border-indigo-400/45 bg-indigo-500/15 text-indigo-100"
-              : "border-sl-border bg-sl-card text-sl-sub hover:text-sl-text"
-          }`}
-        >
-          {mode}
-        </button>
-      ))}
-      <button
-        type="button"
-        onClick={onToggleSound}
-        className={`rounded-md border px-2 py-0.5 text-[10px] font-mono transition-colors ${
-          soundEnabled
-            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-            : "border-sl-border bg-sl-card text-sl-sub hover:text-sl-text"
-        }`}
-      >
-        {soundEnabled ? "🔔 Sound On" : "🔕 Sound Off"}
-      </button>
+    <div className="flex flex-col gap-2 w-full min-w-0">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span className="text-[9px] font-mono uppercase tracking-[0.12em] text-sl-muted shrink-0">Mode</span>
+        <div className="flex items-center gap-1 flex-wrap justify-end">
+          {["conservative", "balanced", "aggressive"].map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onStrategyModeChange(mode)}
+              className={`rounded-md border px-2 py-0.5 text-[10px] font-mono capitalize transition-colors ${pill(strategyMode === mode)}`}
+            >
+              {mode}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={onToggleSound}
+            className={`rounded-md border px-2 py-0.5 text-[10px] font-mono transition-colors ${
+              soundEnabled
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                : "border-sl-border bg-sl-card text-sl-sub hover:text-sl-text"
+            }`}
+          >
+            {soundEnabled ? "🔔 Sound On" : "🔕 Sound Off"}
+          </button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span className="text-[9px] font-mono uppercase tracking-[0.12em] text-sl-muted shrink-0">Profile</span>
+        <div className="flex items-center gap-1 flex-wrap justify-end">
+          {[
+            ["balanced", "Balanced"],
+            ["sniper", "Sniper"],
+            ["liquidity", "Liquidity"],
+            ["momentum", "Momentum"]
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setProfile(id)}
+              className={`rounded-md border px-2 py-0.5 text-[10px] font-mono transition-colors ${pill(profile === id)}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -744,8 +790,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               avgConfidence={homeMetrics.avgConfidence}
               bestSignal={homeMetrics.bestSignal}
             />
-            <div className="flex items-center justify-between gap-2 mt-1">
-              <span className="text-[9px] font-mono uppercase tracking-[0.12em] text-sl-muted">Mode</span>
+            <div className="mt-1">
               <HomeSettings
                 strategyMode={strategyMode}
                 onStrategyModeChange={setStrategyMode}
