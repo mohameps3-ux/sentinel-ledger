@@ -756,6 +756,14 @@ a {
   opacity: 0.8;
 }
 
+.war-hero:hover {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.06);
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
 .war-hero-left {
   flex: 1;
   display: flex;
@@ -952,6 +960,14 @@ a {
 .war-opportunity.intent-low {
   border-left-color: rgba(255, 255, 255, 0.2);
   opacity: 0.7;
+}
+
+.war-opportunity:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .war-opp-rank {
@@ -1157,6 +1173,14 @@ a {
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
 }
+
+.war-recent-signal:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: 0 -4px;
+}
+
 .war-recent-symbol {
   font-weight: 600;
   color: #fff;

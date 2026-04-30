@@ -813,7 +813,12 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               />
             </div>
             {isWarMode ? (
-              <WarRoomLayout signals={warRoomSignals} hotTokens={warRoomHotTokens} kpis={warRoomKpis} />
+              <WarRoomLayout
+                signals={warRoomSignals}
+                hotTokens={warRoomHotTokens}
+                kpis={warRoomKpis}
+                onSelectMint={pushDeskMint}
+              />
             ) : (
               <>
                 <HomeMetricStrip

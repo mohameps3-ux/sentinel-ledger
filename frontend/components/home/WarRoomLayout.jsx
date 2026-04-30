@@ -99,8 +99,14 @@ function SmartMoneyFlow({ tok }) {
   );
 }
 
-export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
+export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelectMint }) {
   const narratives = useMarketStore((s) => s.narratives);
+
+  const handleSelectToken = (tok) => {
+    if (!onSelectMint || !tok) return;
+    const mint = tok.mint ?? tok.address ?? tok.tokenAddress;
+    if (mint) onSelectMint(mint);
+  };
 
   const allTokens = [
     ...signals,
@@ -224,7 +230,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
     );
   }
 
-  function OpportunityHero({ tok, isNew = false }) {
+  function OpportunityHero({ tok, isNew = false, onSelect }) {
     if (!tok) return null;
     const score = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
     const intent = getIntentLevel(score);
@@ -236,7 +242,23 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
     const imgUrl = tokenImageUrl(tok);
 
     return (
-      <div className={`war-hero ${intent.cls}`}>
+      <div
+        className={`war-hero ${intent.cls}`}
+        onClick={() => onSelect?.(tok)}
+        style={{ cursor: onSelect ? "pointer" : undefined }}
+        role={onSelect ? "button" : undefined}
+        tabIndex={onSelect ? 0 : undefined}
+        onKeyDown={
+          onSelect
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(tok);
+                }
+              }
+            : undefined
+        }
+      >
         <div className="war-hero-left">
           <div className="war-hero-top">
             <span className={`war-intent-badge ${intent.cls}`}>{intent.label}</span>
@@ -288,7 +310,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
     );
   }
 
-  function OpportunityRow({ tok, rank }) {
+  function OpportunityRow({ tok, rank, onSelect }) {
     const score = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
     const intent = getIntentLevel(score);
     const act = getAction(score, tok.decision ?? tok.action);
@@ -297,7 +319,23 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
     const imgUrl = tokenImageUrl(tok);
 
     return (
-      <div className={`war-opportunity ${intent.cls}`}>
+      <div
+        className={`war-opportunity ${intent.cls}`}
+        onClick={() => onSelect?.(tok)}
+        style={{ cursor: onSelect ? "pointer" : undefined }}
+        role={onSelect ? "button" : undefined}
+        tabIndex={onSelect ? 0 : undefined}
+        onKeyDown={
+          onSelect
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(tok);
+                }
+              }
+            : undefined
+        }
+      >
         <div className="war-opp-rank">{rank}</div>
         <div className="war-opp-body">
           <div className="war-opp-top">
@@ -397,6 +435,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
           <OpportunityHero
             tok={hero}
             isNew={Boolean(hero && newMint === (hero.mint ?? hero.address))}
+            onSelect={handleSelectToken}
           />
 
           <div className="war-opportunities-list">
@@ -405,6 +444,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
                 key={tok.mint ?? tok.address ?? i}
                 tok={tok}
                 rank={i + 2}
+                onSelect={handleSelectToken}
               />
             ))}
           </div>
@@ -419,7 +459,24 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {} }) {
               const sc = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
               const intent = getIntentLevel(sc);
               return (
-                <div key={tok.mint ?? tok.address ?? i} className="war-recent-signal">
+                <div
+                  key={tok.mint ?? tok.address ?? i}
+                  className="war-recent-signal"
+                  onClick={() => handleSelectToken(tok)}
+                  style={{ cursor: onSelectMint ? "pointer" : undefined }}
+                  role={onSelectMint ? "button" : undefined}
+                  tabIndex={onSelectMint ? 0 : undefined}
+                  onKeyDown={
+                    onSelectMint
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleSelectToken(tok);
+                          }
+                        }
+                      : undefined
+                  }
+                >
                   <span className={`war-intent-dot ${intent.cls}`} />
                   <span className="war-recent-symbol">
                     ${tok.symbol ?? tok.name ?? "TOKEN"}
