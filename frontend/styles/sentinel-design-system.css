@@ -938,6 +938,62 @@ a {
   gap: 8px;
   min-width: 90px;
 }
+
+.war-score-ring-live {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  flex-shrink: 0;
+}
+.score-level-low {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.score-level-medium {
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.15);
+}
+.score-level-high {
+  border-color: rgba(245, 158, 11, 0.65);
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.2);
+}
+.score-level-extreme {
+  border-color: rgba(255, 59, 48, 0.85);
+  box-shadow: 0 0 22px rgba(255, 59, 48, 0.3);
+  animation: score-breathe 1.6s ease-in-out infinite;
+}
+.war-card-active .war-score-ring-live {
+  width: 72px;
+  height: 72px;
+}
+.war-score-ring-live.flash-up {
+  transform: scale(1.08);
+  border-color: rgba(34, 197, 94, 0.95) !important;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.4) !important;
+  animation: none !important;
+}
+.war-score-ring-live.flash-down {
+  transform: scale(0.95);
+  border-color: rgba(239, 68, 68, 0.95) !important;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4) !important;
+  animation: none !important;
+}
+@keyframes score-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
 .war-opp-score-ring {
   display: flex;
   flex-direction: column;
