@@ -30,6 +30,8 @@ import {
   liquidityFromApiRedFlags,
   initialCountdownSec
 } from "@/lib/signalUtils";
+import { useMarketStore } from "@/lib/store/marketStore";
+import { useSortedTokens } from "@/hooks/useSortedTokens";
 import { useWarMode } from "../contexts/WarModeContext";
 import { useLocale } from "../contexts/LocaleContext";
 import { useWebSocket } from "../hooks/useWebSocket";
@@ -265,7 +267,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const [alerts, setAlerts] = useState([]);
   const [signalCursor, setSignalCursor] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const [strategyMode, setStrategyMode] = useState("balanced");
+  const strategyMode = useMarketStore((s) => s.strategy);
+  const setStrategyMode = useMarketStore((s) => s.setStrategy);
   const [tacticalTab, setTacticalTab] = useState("live");
   const [historyRows, setHistoryRows] = useState([]);
   const [outcomesSummary, setOutcomesSummary] = useState(null);
@@ -297,6 +300,10 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
 
   const { coordination: deskCoordination } = useWebSocket(selectedMint);
   const { isWarMode } = useWarMode();
+  const setWarMode = useMarketStore((s) => s.setWarMode);
+  useEffect(() => {
+    setWarMode(isWarMode);
+  }, [isWarMode, setWarMode]);
   const isFallbackSource = useCallback((meta) => {
     const src = String(meta?.source || "").toLowerCase();
     if (!src) return true;
@@ -429,20 +436,25 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       if (sig._liveSource === "hot_fill") hotFill.push(sig);
       else signals.push(sig);
     }
-    // Product: ordering is by network / signal strength only. Tactical (execution) regime does not affect rank â see TacticalRegimePill on cards (display-only).
-    // Product: order is by network signal only; tactical (execution) regime is display-only on cards, not a sort key.
-    signals.sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
-    hotFill.sort((a, b) => (Number(b.signalStrength) || 0) - (Number(a.signalStrength) || 0));
-    return [...signals, ...hotFill];
+    const merged = [...signals, ...hotFill];
+    return merged.map((t) => ({
+      ...t,
+      sentinelScore: Number(t.sentinelScore ?? t.signalStrength ?? t._api?.sentinelScore) || 0,
+      smartMoneyCount: t.smartMoneyCount ?? t.smartWallets ?? 0,
+      liquidityUsd: (t.liquidityUsd ?? Number(t.token?.liquidity ?? t._api?.liquidityUsd ?? 0)) || 0,
+      priceChange24h: Number(t.priceChange24h ?? t.token?.change ?? t._api?.change24h ?? 0) || 0
+    }));
   }, [interpretedSignals]);
+
+  const sortedSignalPool = useSortedTokens(liveSignalPool);
 
   const liveSignalsForGrid = useMemo(
     () =>
-      liveSignalPool.slice(
+      sortedSignalPool.slice(
         0,
         liveExpanded ? UI_CONFIG.GRID_EXPANDED_MAX_CARDS : UI_CONFIG.GRID_COMPACT_CARDS
       ),
-    [liveExpanded, liveSignalPool]
+    [liveExpanded, sortedSignalPool]
   );
 
   // Hysteresis: toggling at a single count (e.g. 50â51) used to swap Grid vs Virtuoso and remount *all* cards.
@@ -748,7 +760,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           liveExpanded={liveExpanded}
           onToggleLiveExpanded={() => setLiveExpanded((v) => !v)}
           liveSignalsForGrid={liveSignalsForGrid}
-          liveSignalPool={liveSignalPool}
+          liveSignalPool={sortedSignalPool}
           signalsFeedIsError={signalsFeedQuery.isError}
           signalsFeedIsDegraded={signalsFeedIsDegraded}
           signalsFeedIsLoading={signalsFeedQuery.isLoading}
