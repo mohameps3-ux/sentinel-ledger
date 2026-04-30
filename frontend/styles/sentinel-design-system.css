@@ -604,3 +604,570 @@ a {
 .war-target-low {
   opacity: 0.6;
 }
+
+/* ═══════════════════════════════
+   WAR ROOM LAYOUT v2
+═══════════════════════════════ */
+.war-room-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  min-height: 100vh;
+  background: #060608;
+}
+.war-room-header {
+  padding-bottom: 4px;
+}
+.war-room-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.war-room-icon {
+  font-size: 22px;
+  color: #ff3b30;
+}
+.war-room-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  font-family: "JetBrains Mono", monospace;
+  text-transform: uppercase;
+}
+.war-room-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 4px;
+}
+
+.war-room-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 768px) {
+  .war-room-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.war-kpi {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 59, 48, 0.2);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.war-kpi-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+}
+.war-kpi-value {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+.war-kpi-red {
+  color: #ff3b30;
+}
+.war-kpi-green {
+  color: #22c55e;
+}
+.war-kpi-white {
+  color: #fff;
+}
+.war-kpi-delta {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+}
+.war-kpi-danger {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.war-room-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .war-room-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.war-room-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.war-room-section-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ff3b30;
+}
+.war-room-section-sub {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ── HERO ── */
+.war-hero {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 4px solid transparent;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 10px;
+  transition: box-shadow 0.3s;
+}
+.war-hero.intent-extreme {
+  border-left-color: #ff3b30;
+  box-shadow: 0 0 30px rgba(255, 59, 48, 0.25);
+}
+.war-hero.intent-high {
+  border-left-color: #f59e0b;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+}
+.war-hero.intent-medium {
+  border-left-color: #3b82f6;
+}
+.war-hero.intent-low {
+  border-left-color: rgba(255, 255, 255, 0.2);
+  opacity: 0.8;
+}
+
+.war-hero-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.war-hero-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.war-hero-symbol {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+.war-hero-narrative {
+  font-size: 19px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+.war-hero-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.war-hero-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 110px;
+}
+.war-hero-score-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
+}
+.war-hero-score-ring.intent-extreme {
+  border-color: #ff3b30;
+  box-shadow: 0 0 30px rgba(255, 59, 48, 0.4);
+}
+.war-hero-score-ring.intent-high {
+  border-color: #f59e0b;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+}
+.war-hero-score-num {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+.war-hero-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-align: center;
+}
+.war-hero-action-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.war-hero-action-meta {
+  font-size: 10px;
+  opacity: 0.7;
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* ── OPPORTUNITY ROWS ── */
+.war-opportunities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.war-opportunity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-left: 3px solid transparent;
+  border-radius: 8px;
+  padding: 14px 16px;
+  transition: box-shadow 0.2s;
+}
+.war-opportunity.intent-extreme {
+  border-left-color: #ff3b30;
+  box-shadow: 0 0 20px rgba(255, 59, 48, 0.15);
+}
+.war-opportunity.intent-high {
+  border-left-color: #f59e0b;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.12);
+}
+.war-opportunity.intent-medium {
+  border-left-color: #3b82f6;
+}
+.war-opportunity.intent-low {
+  border-left-color: rgba(255, 255, 255, 0.2);
+  opacity: 0.7;
+}
+
+.war-opp-rank {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.2);
+  min-width: 28px;
+}
+.war-opportunity.intent-extreme .war-opp-rank {
+  color: #ff3b30;
+}
+.war-opportunity.intent-high .war-opp-rank {
+  color: #f59e0b;
+}
+.war-opp-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.war-opp-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.war-opp-symbol {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+.war-opp-narrative {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.war-opp-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.war-opp-chip {
+  font-size: 10px;
+  font-family: "JetBrains Mono", monospace;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  padding: 2px 7px;
+  color: rgba(255, 255, 255, 0.5);
+}
+.war-opp-score-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 90px;
+}
+.war-opp-score-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
+}
+.war-opp-score-ring.intent-extreme {
+  border-color: #ff3b30;
+  box-shadow: 0 0 16px rgba(255, 59, 48, 0.3);
+}
+.war-opp-score-ring.intent-high {
+  border-color: #f59e0b;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+}
+.war-opp-score-num {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+.war-opp-score-label {
+  font-size: 7px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+}
+.war-opp-action {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.war-opp-action-target {
+  opacity: 0.6;
+}
+.war-opp-buy {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+.war-opp-scalp {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.war-opp-watch {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.war-opp-avoid {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ── INTENT BADGES / DOTS ── */
+.war-intent-badge {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 2px 7px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+.war-intent-badge.intent-extreme {
+  background: rgba(255, 59, 48, 0.2);
+  color: #ff3b30;
+}
+.war-intent-badge.intent-high {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+.war-intent-badge.intent-medium {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+.war-intent-badge.intent-low {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
+}
+.war-intent-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.war-intent-dot.intent-extreme {
+  background: #ff3b30;
+}
+.war-intent-dot.intent-high {
+  background: #f59e0b;
+}
+.war-intent-dot.intent-medium {
+  background: #3b82f6;
+}
+.war-intent-dot.intent-low {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ── ASIDE ── */
+.war-room-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.war-aside-section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.war-aside-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 4px;
+}
+.war-recent-signal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+}
+.war-recent-symbol {
+  font-weight: 600;
+  color: #fff;
+  min-width: 60px;
+}
+.war-recent-narrative {
+  flex: 1;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.war-recent-score {
+  color: rgba(255, 255, 255, 0.4);
+}
+.war-quick-action {
+  display: block;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.15s;
+}
+.war-quick-action:hover {
+  color: #fff;
+  border-color: rgba(255, 59, 48, 0.4);
+  background: rgba(255, 59, 48, 0.05);
+}
+
+/* ── NARRATIVE BAR ── */
+.war-narrative-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 59, 48, 0.08);
+  border: 1px solid rgba(255, 59, 48, 0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  flex-wrap: wrap;
+}
+.war-narrative-engine-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ff3b30;
+  letter-spacing: 0.07em;
+}
+.war-narrative-engine-sub {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.3);
+}
+.war-narrative-bar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+}
+.war-narrative-bar-center {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  font-style: italic;
+}
+.war-narrative-bar-text {
+}
+.war-conviction-badge {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ── PULSE animation for extreme ── */
+@keyframes war-glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(255, 59, 48, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 59, 48, 0.5);
+  }
+}
+.war-hero.intent-extreme {
+  animation: war-glow-pulse 2s ease-in-out infinite;
+}
+

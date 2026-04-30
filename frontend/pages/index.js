@@ -20,6 +20,7 @@ import {
   scrubDeskRadarParamsFromQuery
 } from "../lib/deskRadarCtx.mjs";
 import TacticalFeed from "@/features/war-home/TacticalFeed";
+import { WarRoomLayout } from "../components/home/WarRoomLayout";
 import {
   TACTICAL_TAB_LS_KEY,
   UI_CONFIG
@@ -779,17 +780,30 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     };
   }, [interpretedSignals, outcomesSummary?.resolved, rankedWallets.length, topWalletsApi.length]);
 
+  const warRoomKpis = useMemo(
+    () => ({
+      highIntentCount: interpretedSignals.filter(
+        (s) => (Number(s.signalStrength) || Number(s.sentinelScore) || 0) >= 75
+      ).length,
+      activeWallets: homeMetrics.activeWallets,
+      bestScore: homeMetrics.bestSignal != null ? Math.round(homeMetrics.bestSignal) : undefined,
+      marketTemp: feedIsLive ? "LIVE" : String(feedLabel || "ACTIVE")
+    }),
+    [interpretedSignals, homeMetrics.activeWallets, homeMetrics.bestSignal, feedIsLive, feedLabel]
+  );
+
+  const warRoomSignals = useMemo(
+    () => liveSignalPool.filter((t) => t._liveSource !== "hot_fill"),
+    [liveSignalPool]
+  );
+
+  const warRoomHotTokens = useMemo(() => heatTokenPool, [heatTokenPool]);
+
   return (
     <>
       <PageHead title={t("home.pageTitle")} description={t("home.pageDesc")} />
       <div className="flex gap-4 px-4 pb-4 pt-[76px]">
         <div className="flex-1 flex flex-col gap-3 min-w-0">
-            <HomeMetricStrip
-              signalsToday={homeMetrics.signalsToday}
-              activeWallets={homeMetrics.activeWallets}
-              avgConfidence={homeMetrics.avgConfidence}
-              bestSignal={homeMetrics.bestSignal}
-            />
             <div className="mt-1">
               <HomeSettings
                 strategyMode={strategyMode}
@@ -798,41 +812,53 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                 onToggleSound={() => setSoundEnabled((v) => !v)}
               />
             </div>
-        <TacticalFeed
-          tacticalTab={tacticalTab}
-          onTabChange={setTacticalTab}
-          historyRows={historyRows}
-          liveExpanded={liveExpanded}
-          onToggleLiveExpanded={() => setLiveExpanded((v) => !v)}
-          liveSignalsForGrid={liveSignalsForGrid}
-          liveSignalPool={sortedSignalPool}
-          signalsFeedIsError={signalsFeedQuery.isError}
-          signalsFeedIsDegraded={signalsFeedIsDegraded}
-          signalsFeedIsLoading={signalsFeedQuery.isLoading}
-          signalsAgeSec={signalsAgeSec}
-          isWarMode={isWarMode}
-          liveUseVirtualizedLayout={useLiveVirtualized}
-          liveVirtuosoRows={liveVirtuosoRows}
-          entryCountdownByMint={entryCountdownByMint}
-          strategyMode={strategyMode}
-          signalCursor={signalCursor}
-          signalsRankDeltas={signalsRankDeltas}
-          tickerByMint={tickerByMint}
-          quotesPricesFetching={quotesQuery.isFetching}
-          selectedMint={selectedMint}
-          deskCoordination={deskCoordination}
-          onSelectMint={pushDeskMint}
-          heatExpanded={heatExpanded}
-          onToggleHeatExpanded={() => setHeatExpanded((v) => !v)}
-          heatTokensForGrid={heatTokensForGrid}
-          heatTokenPool={heatTokenPool}
-          feedStatus={feedStatus}
-          feedIsLive={feedIsLive}
-          feedLabel={feedLabel}
-          feedAgeSec={feedAgeSec}
-          trendingMinLiquidityUsd={trendingMeta.minLiquidityUsd}
-          trendingRankDeltas={trendingRankDeltas}
-        />
+            {isWarMode ? (
+              <WarRoomLayout signals={warRoomSignals} hotTokens={warRoomHotTokens} kpis={warRoomKpis} />
+            ) : (
+              <>
+                <HomeMetricStrip
+                  signalsToday={homeMetrics.signalsToday}
+                  activeWallets={homeMetrics.activeWallets}
+                  avgConfidence={homeMetrics.avgConfidence}
+                  bestSignal={homeMetrics.bestSignal}
+                />
+                <TacticalFeed
+                  tacticalTab={tacticalTab}
+                  onTabChange={setTacticalTab}
+                  historyRows={historyRows}
+                  liveExpanded={liveExpanded}
+                  onToggleLiveExpanded={() => setLiveExpanded((v) => !v)}
+                  liveSignalsForGrid={liveSignalsForGrid}
+                  liveSignalPool={sortedSignalPool}
+                  signalsFeedIsError={signalsFeedQuery.isError}
+                  signalsFeedIsDegraded={signalsFeedIsDegraded}
+                  signalsFeedIsLoading={signalsFeedQuery.isLoading}
+                  signalsAgeSec={signalsAgeSec}
+                  isWarMode={isWarMode}
+                  liveUseVirtualizedLayout={useLiveVirtualized}
+                  liveVirtuosoRows={liveVirtuosoRows}
+                  entryCountdownByMint={entryCountdownByMint}
+                  strategyMode={strategyMode}
+                  signalCursor={signalCursor}
+                  signalsRankDeltas={signalsRankDeltas}
+                  tickerByMint={tickerByMint}
+                  quotesPricesFetching={quotesQuery.isFetching}
+                  selectedMint={selectedMint}
+                  deskCoordination={deskCoordination}
+                  onSelectMint={pushDeskMint}
+                  heatExpanded={heatExpanded}
+                  onToggleHeatExpanded={() => setHeatExpanded((v) => !v)}
+                  heatTokensForGrid={heatTokensForGrid}
+                  heatTokenPool={heatTokenPool}
+                  feedStatus={feedStatus}
+                  feedIsLive={feedIsLive}
+                  feedLabel={feedLabel}
+                  feedAgeSec={feedAgeSec}
+                  trendingMinLiquidityUsd={trendingMeta.minLiquidityUsd}
+                  trendingRankDeltas={trendingRankDeltas}
+                />
+              </>
+            )}
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               <SmartWalletsPreview wallets={rankedWallets} labelFor={topWalletLabel} titleFor={topWalletTitle} />
               <RecentAlertsPreview alerts={alerts} />
