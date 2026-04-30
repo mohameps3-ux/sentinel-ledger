@@ -54,6 +54,13 @@ function accentColorForDecision(decision, score) {
   return "#DC2626";
 }
 
+function warActionBadgeClass(safeAction) {
+  const a = String(safeAction ?? "").trim().toUpperCase();
+  if (a === "BUY" || a === "ENTER NOW" || a === "ENTER_NOW" || a === "SCALP") return "war-action-buy";
+  if (a === "WATCH" || a === "PREPARE") return "war-action-watch";
+  return "war-action-avoid";
+}
+
 export function LiveTab({
   liveExpanded,
   onToggleLiveExpanded,
@@ -233,7 +240,7 @@ export function LiveTab({
           const displayNarrative =
             narrative?.message
               ?? sig.whyNowBulletLines?.[0]
-              ?? whyLines[0]
+              ?? whyLines?.[0]
               ?? narrativeFromData({
                   ...sig,
                   _currentScore: sig._currentScore ?? sig.sentinelScore ?? 0
@@ -248,6 +255,7 @@ export function LiveTab({
                   : "narrative-default";
 
           if (isWarMode) {
+            const warAc = warActionBadgeClass(safeAction);
             return (
               <>
                 <div className="flex items-start justify-between gap-2">
@@ -257,7 +265,7 @@ export function LiveTab({
                   >
                     ${sig.symbol}
                   </p>
-                  <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end max-w-[58%]">
+                  <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
                     {isHeatFill ? (
                       <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-amber-500/45 bg-amber-500/15 text-amber-100/95 war-badge">
                         {t("war.live.badgeHeat")}
@@ -267,21 +275,11 @@ export function LiveTab({
                         {t("war.live.badgeSignal")}
                       </span>
                     )}
-                    <span
-                      className={`inline-flex items-center justify-center shrink-0 ${feedDecisionPillClass(
-                        actionKey,
-                        toneScore
-                      )}`}
-                    >
-                      {decisionEmoji}
-                      {actionLabel}
-                    </span>
                   </div>
                 </div>
+                <span className={`war-action-badge ${warAc}`}>{safeAction}</span>
                 {displayNarrative ? <div className="war-narrative-hero">{displayNarrative}</div> : null}
-                <span className="war-score-secondary block">
-                  {safeScore} · {safeAction}
-                </span>
+                <span className="war-score-secondary">{safeScore} confidence</span>
               </>
             );
           }

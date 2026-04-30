@@ -16,6 +16,7 @@ import {
 } from "@/lib/signalUtils";
 import { redFlagsForSignal } from "@/lib/redFlags";
 import { UI_CONFIG } from "@/constants/homeData";
+import { narrativeFromData } from "@/lib/narrativeFromData";
 import { RankBadge, RankDeltaChip } from "./RankIndicators";
 import { useLocale } from "../../../../contexts/LocaleContext";
 import { deriveApexState } from "../../../../components/apex";
@@ -45,6 +46,13 @@ function accentColorForDecision(decision, score) {
   return "#DC2626";
 }
 
+function warActionBadgeClass(safeAction) {
+  const a = String(safeAction ?? "").trim().toUpperCase();
+  if (a === "BUY" || a === "ENTER NOW" || a === "ENTER_NOW" || a === "SCALP") return "war-action-buy";
+  if (a === "WATCH" || a === "PREPARE") return "war-action-watch";
+  return "war-action-avoid";
+}
+
 export function HotTab({
   heatExpanded,
   onToggleHeatExpanded,
@@ -65,10 +73,11 @@ export function HotTab({
   const getScore = (item) => item?.score ?? item?.sentinelScore ?? item?.unified_score ?? 0;
 
   const displaySignals = useMemo(() => {
-    if (!isWarMode) return heatTokensForGrid;
-    return [...heatTokensForGrid].sort((a, b) => {
+    let list = !isWarMode ? heatTokensForGrid : [...heatTokensForGrid].sort((a, b) => {
       return (getScore(b) >= 35 ? 1 : 0) - (getScore(a) >= 35 ? 1 : 0);
     });
+    if (isWarMode) list = list.slice(0, 6);
+    return list;
   }, [heatTokensForGrid, isWarMode]);
 
   const feedLabelTr =
@@ -87,7 +96,7 @@ export function HotTab({
   };
 
   return (
-    <section className="sl-section">
+    <section className={`sl-section${isWarMode ? " war-mode-active" : ""}`}>
       <div className="glass-card sl-glow-heat p-3 sm:p-3.5">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div className="flex items-start gap-2.5 min-w-0">
@@ -170,6 +179,14 @@ export function HotTab({
             const changeNum = Number(token?.change || 0);
             const redFlags = Array.isArray(token?.redFlags) ? token.redFlags : redFlagsForSignal({ signalStrength, token: token || {} });
             const trendingRank = trendingRankDeltas.get(token?.mint) || { rank: idx + 1, delta: 0, isNew: false };
+            const warScore = Number.isFinite(Number(token?._currentScore)) ? Number(token._currentScore) : getScore(token);
+            const warIntensityClass = isWarMode
+              ? warScore >= 90
+                ? "war-target-critical"
+                : warScore >= 70
+                  ? "war-target-high"
+                  : "war-target-low"
+              : "";
 
             const apexState = deriveApexState(signalStrength);
             return (
@@ -192,14 +209,19 @@ export function HotTab({
                     sw: Math.max(0, Math.round(Number(token?.smartWallets || 0)))
                   });
                 }}
-                baseClassName={`apex-card terminal-card-interactive relative group mb-2 ${isWarMode && getScore(token) >= 35 ? "war-target" : ""} sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat p-1.5 sm:p-2 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
+                hideExecutionBar={isWarMode}
+                baseClassName={`apex-card terminal-card-interactive relative group mb-2 ${warIntensityClass} sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat p-1.5 sm:p-2 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
                   token?.mint
                     ? "hover:-translate-y-[1px] hover:shadow-[0_0_16px_rgba(250,204,21,0.18)]"
                     : "opacity-75"
                 } ${token?.mint && isProbableSolanaMint(token.mint) ? "cursor-pointer" : ""} ${
                   selectedMint && token?.mint === selectedMint ? "ring-2 ring-[rgba(250,204,21,0.5)]" : ""
                 }`}
-                style={{ borderLeft: `3px solid ${accentColor}`, transition: `all ${isWarMode ? 150 : 300}ms ease` }}
+                style={
+                  isWarMode
+                    ? { transition: "all 150ms ease" }
+                    : { borderLeft: `3px solid ${accentColor}`, transition: `all ${isWarMode ? 150 : 300}ms ease` }
+                }
                 watchedClassName="ring-1 ring-amber-500/45 shadow-[0_0_18px_rgba(250,204,21,0.16)]"
               >
                 {({ displayScore, smartMoneyCount, narrative }) => {
@@ -220,8 +242,16 @@ export function HotTab({
                       : Array.isArray(token?.evidenceChips) && token.evidenceChips[0]
                         ? String(token.evidenceChips[0])
                         : null;
-                  const warFallback = `Score ${safeScore} — ${safeAction}`;
-                  const displayNarrative = narrative?.message ?? (isWarMode ? warFallback : whyHint);
+                  const displayNarrative =
+                    narrative?.message
+                      ?? (isWarMode
+                        ? narrativeFromData({
+                            ...token,
+                            _currentScore:
+                              token._currentScore ?? token.sentinelScore ?? token.score ?? signalStrength ?? 0,
+                            _liveSource: token._liveSource ?? "hot_fill"
+                          })
+                        : whyHint);
                   const severityClass =
                     narrative?.severity === "URGENT"
                       ? "narrative-urgent"
@@ -230,19 +260,31 @@ export function HotTab({
                         : narrative?.severity === "TACTICAL"
                           ? "narrative-tactical"
                           : "narrative-default";
+
+                  if (isWarMode) {
+                    const warAc = warActionBadgeClass(safeAction);
+                    return (
+                      <>
+                        <div className="flex items-start justify-between gap-2">
+                          <p
+                            className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight min-w-0"
+                            title={symbolMetaTitle}
+                          >
+                            ${token?.symbol || "Loading"}
+                          </p>
+                          <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-orange-500/45 bg-orange-500/15 text-orange-100/95 war-badge shrink-0">
+                            HEAT
+                          </span>
+                        </div>
+                        <span className={`war-action-badge ${warAc}`}>{safeAction}</span>
+                        {displayNarrative ? <div className="war-narrative-hero">{displayNarrative}</div> : null}
+                        <span className="war-score-secondary">{safeScore} confidence</span>
+                      </>
+                    );
+                  }
+
                   return (
                   <>
-                {isWarMode && getScore(token) >= 35 && (
-                  <div
-                    className="absolute top-2 right-2 pointer-events-none"
-                    style={{ width: "18px", height: "18px", zIndex: 1 }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5">
-                      <circle cx="12" cy="12" r="9" strokeOpacity="0.35" />
-                      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round" />
-                    </svg>
-                  </div>
-                )}
                 {displayNarrative ? (
                   <div className={`sentinel-narrative ${severityClass}`}>{displayNarrative}</div>
                 ) : null}
@@ -258,14 +300,11 @@ export function HotTab({
                       {token?.symbol || "Loading"}
                     </p>
                   </div>
-                  {!isWarMode ? (
                   <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border ${gradeClass(token?.grade || "C")}`}>
                     {token?.grade || "…"}
                   </span>
-                  ) : null}
                 </div>
 
-                {!isWarMode ? (
                 <div className="space-y-1">
                   <div className="h-1 rounded-full bg-sl-card overflow-hidden">
                     <div className="h-full rounded-full bg-gradient-to-r from-[#fef08a] via-[#facc15] to-[#ca8a04]" style={{ width: `${displayScore}%` }} />
@@ -303,25 +342,9 @@ export function HotTab({
                     />
                   </div>
                 </div>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-0.5">
-                    <span
-                      className={`text-[8px] font-bold px-1 py-0.5 rounded border ${
-                        toneScore >= 85
-                          ? "text-emerald-300 bg-emerald-500/10 border-emerald-500/30"
-                          : toneScore >= 65
-                            ? "text-amber-200 bg-amber-500/10 border-amber-500/30"
-                            : "text-red-300 bg-red-500/10 border-red-500/30"
-                      }`}
-                    >
-                      {actionLabel}
-                    </span>
-                  </div>
-                )}
 
-                {!isWarMode && token?.mint ? <LiveCardOverlay mint={token.mint} /> : null}
+                {token?.mint ? <LiveCardOverlay mint={token.mint} /> : null}
 
-                {!isWarMode ? (
                 <div className="flex items-baseline justify-between gap-2 text-[10px] font-mono">
                   <span className="text-sl-text truncate">
                     <AnimatedNumber value={Number(token?.price || 0)} prefix="$" decimalPlaces={6} />
@@ -330,17 +353,15 @@ export function HotTab({
                     <AnimatedNumber value={changeNum} decimalPlaces={1} prefix={changeNum >= 0 ? "+" : ""} suffix="%" />
                   </span>
                 </div>
-                ) : null}
 
-                {!isWarMode && (timeAdvantage || entryWindowLabel) ? (
+                {(timeAdvantage || entryWindowLabel) ? (
                   <span className="font-mono text-2xs text-sl-muted">
                     {entryWindowLabel === "CLOSED" || timeLeft <= 0 ? "CLOSED" : `${timeLeft}m`}
                   </span>
                 ) : null}
 
-                {!isWarMode && redFlags.length ? <p className="text-[9px] text-red-200/95 truncate leading-tight">⚠ {redFlags.join(" · ")}</p> : null}
+                {redFlags.length ? <p className="text-[9px] text-red-200/95 truncate leading-tight">⚠ {redFlags.join(" · ")}</p> : null}
 
-                {!isWarMode ? (
                 <details className="border-t border-sl-border">
                   <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 w-full font-mono text-2xs text-sl-muted hover:text-sl-sub transition-colors duration-150">
                     <span>WHY NOW</span>
@@ -358,7 +379,6 @@ export function HotTab({
                     ))}
                   </div>
                 </details>
-                ) : null}
 
                 <div className="mt-auto pt-0.5 space-y-1 border-t border-white/[0.04]">
                   <div className="grid grid-cols-3 gap-0.5">

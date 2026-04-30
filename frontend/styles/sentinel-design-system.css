@@ -478,20 +478,61 @@ a {
 
 /* --- War mode: narrative-first live cards --- */
 .war-narrative-hero {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.25;
   color: #ffffff;
-  margin: 8px 0 10px 0;
-  letter-spacing: -0.01em;
+  margin: 6px 0 12px 0;
+  letter-spacing: -0.02em;
+  display: block;
 }
 
 .war-score-secondary {
-  font-size: 10px;
+  font-size: 9px;
   font-family: "JetBrains Mono", monospace;
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  display: block;
+  margin-top: 8px;
+}
+
+.war-mode-active .score-hero,
+.war-mode-active .score-number,
+.war-mode-active [class*="score-display"],
+.war-mode-active [class*="score-large"] {
+  display: none !important;
+}
+
+.war-action-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.war-action-buy {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.war-action-watch {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.war-action-avoid {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
 }
 
 /* WAR badge pulse */
