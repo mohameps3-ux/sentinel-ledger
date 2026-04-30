@@ -40,5 +40,5 @@ jobs:
         run: npm ci --include=optional || npm install --include=optional
       - name: Desk radar ctx (unit)
         run: npm run test:desk-radar-ctx
-      - name: Build (prebuild = deploy-contract: slim nav + stamp)
+      - name: "Build (prebuild = deploy-contract: slim nav + stamp)"
         run: npm run build
