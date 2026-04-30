@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useMarketStore } from "@/lib/store/marketStore";
 import { useSortedTokens } from "@/hooks/useSortedTokens";
@@ -100,16 +100,245 @@ function SmartMoneyFlow({ tok }) {
   );
 }
 
+function getIntentLevel(score) {
+  if (score >= 85) return { label: "EXTREME", cls: "intent-extreme" };
+  if (score >= 70) return { label: "HIGH", cls: "intent-high" };
+  if (score >= 50) return { label: "MEDIUM", cls: "intent-medium" };
+  return { label: "LOW", cls: "intent-low" };
+}
+
+function getAction(score, action) {
+  const a = action ?? "WATCH";
+  if (a === "BUY" || a === "ENTER NOW" || score >= 85)
+    return {
+      label: "🚀 STRONG BUY",
+      cls: "war-opp-buy",
+      target: score >= 85 ? "3–5x" : "2–3x",
+      time: score >= 85 ? "< 30m" : "30m – 2h"
+    };
+  if (a === "SCALP" || score >= 70)
+    return {
+      label: "⚡ SCALP",
+      cls: "war-opp-scalp",
+      target: "1–2x",
+      time: "< 15m"
+    };
+  if (a === "WATCH" || a === "PREPARE")
+    return {
+      label: "👁 WATCH",
+      cls: "war-opp-watch",
+      target: "1–2x",
+      time: "1 – 3h"
+    };
+  return {
+    label: "✕ STAY OUT",
+    cls: "war-opp-avoid",
+    target: "N/A",
+    time: "N/A"
+  };
+}
+
+function getPatternChips(tok) {
+  const chips = [];
+  const score = tok._currentScore ?? tok.sentinelScore ?? 0;
+  const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
+  const change = tok.priceChange24h ?? tok.change24h ?? 0;
+  const liq = tok.liquidityUsd ?? tok.liquidity ?? 0;
+  const age = tok.poolAgeMinutes ?? null;
+
+  if (wallets >= 3) chips.push({ label: "EARLY ACCUMULATION", cls: "chip-green" });
+  else if (wallets >= 1) chips.push({ label: "MOMENTUM BUILDING", cls: "chip-amber" });
+
+  if (age !== null && age < 30) chips.push({ label: "NEW POOL", cls: "chip-blue" });
+  if (liq > 500_000) chips.push({ label: "LOCKED LP", cls: "chip-green" });
+  if (change >= 50) chips.push({ label: `+${Math.round(change)}% 24H`, cls: "chip-amber" });
+  if (score < 50) chips.push({ label: "HIGH RISK", cls: "chip-red" });
+  if (wallets === 0 && score >= 85) chips.push({ label: "STEADY ACCUMULATION", cls: "chip-blue" });
+
+  return chips.slice(0, 3);
+}
+
+function tokenImageUrl(tok) {
+  return (
+    tok.imageUrl ??
+    tok.image ??
+    tok.logoURI ??
+    tok.icon ??
+    tok.tokenImage ??
+    tok.token?.logoURI ??
+    tok.token?.image ??
+    tok.token?.imageUrl ??
+    tok._api?.logoURI ??
+    tok._api?.imageUrl ??
+    tok._api?.image ??
+    null
+  );
+}
+
+/** Narrative for one mint only — avoids war layout subscribing to the full narratives map. */
+const WarNarrativeSnippet = React.memo(function WarNarrativeSnippet({ tok, maxLen }) {
+  const mint = tok.mint ?? tok.address;
+  const narrativeEntry = useMarketStore((s) => (mint ? s.narratives.get(mint) : undefined));
+  const score = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
+  const full = (() => {
+    const line =
+      narrativeEntry?.message ??
+      tok.whyNowBulletLines?.[0] ??
+      narrativeFromData({ ...tok, _currentScore: score });
+    return line != null && line !== "" ? String(line) : "";
+  })();
+  if (maxLen != null && full.length > maxLen) return `${full.slice(0, maxLen)}…`;
+  return full;
+});
+
+const OpportunityRow = React.memo(function OpportunityRow({
+  tok,
+  rank,
+  onSelect,
+  isActive,
+  isNew,
+  activeMint
+}) {
+  const mint = tok.mint ?? tok.address ?? "";
+  const narrativeEntry = useMarketStore((s) => (mint ? s.narratives.get(mint) : undefined));
+  const score = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
+  const intent = getIntentLevel(score);
+  const act = getAction(score, tok.decision ?? tok.action);
+  const narr = (() => {
+    const line =
+      narrativeEntry?.message ??
+      tok.whyNowBulletLines?.[0] ??
+      narrativeFromData({ ...tok, _currentScore: score });
+    return line != null && line !== "" ? String(line) : "";
+  })();
+  const chips = getPatternChips(tok);
+  const imgUrl = tokenImageUrl(tok);
+  const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
+  const change = tok.priceChange24h ?? tok.change24h ?? 0;
+
+  const animateVals = useMemo(
+    () => ({
+      opacity: isActive ? 1 : activeMint ? 0.55 : 1,
+      y: 0,
+      scale: isActive ? 1.015 : activeMint ? 0.985 : 1,
+      filter: isActive
+        ? "brightness(1.08)"
+        : activeMint
+          ? "brightness(0.8)"
+          : "brightness(1)"
+    }),
+    [isActive, activeMint]
+  );
+
+  return (
+    <motion.div
+      role="button"
+      onClick={() => onSelect?.(tok)}
+      className={`war-opportunity ${intent.cls} ${
+        activeMint ? (isActive ? "war-card-active" : "war-card-inactive") : ""
+      }`}
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+      animate={animateVals}
+      whileHover={
+        !isActive
+          ? {
+              opacity: 0.85,
+              scale: 1.0,
+              x: 3,
+              filter: "brightness(0.95)"
+            }
+          : {}
+      }
+      transition={{
+        type: "spring",
+        stiffness: 260,
+        damping: 24
+      }}
+      style={{ cursor: "pointer" }}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect?.(tok);
+        }
+      }}
+    >
+      <div className="war-opp-rank">{rank}</div>
+      <div className="war-opp-body">
+        <div className="war-opp-top">
+          {imgUrl ? (
+            <img
+              src={imgUrl}
+              alt=""
+              className="war-token-img-sm"
+              onError={(e) => {
+                e.target.style.display = "none";
+              }}
+            />
+          ) : null}
+          <span className={`war-intent-badge ${intent.cls}`}>{intent.label}</span>
+          <span className="war-opp-symbol">
+            ${tok.symbol ?? tok.name ?? mint.slice(0, 6)}
+          </span>
+          {isNew ? <span className="war-new-badge">NEW</span> : null}
+        </div>
+        <motion.div
+          className="war-opp-narrative"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.08, duration: 0.25 }}
+        >
+          {narr}
+        </motion.div>
+
+        {isActive ? (
+          <>
+            <div className="war-opp-meta">
+              {wallets > 0 && (
+                <span className="war-opp-chip">{wallets} smart wallets</span>
+              )}
+              {change > 0 && (
+                <span className="war-opp-chip">+{Math.round(change)}% 24h</span>
+              )}
+            </div>
+            {chips.length > 0 ? (
+              <div className="war-pattern-chips">
+                {chips.map((c, i) => (
+                  <span key={`${c.label}-${i}`} className={`war-pattern-chip ${c.cls}`}>
+                    {c.label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+      <div className="war-opp-score-col">
+        <div className={`war-opp-score-ring ${intent.cls}`}>
+          <span className="war-opp-score-num">{score}</span>
+          <span className="war-opp-score-label">INTENT</span>
+        </div>
+        <div className={`war-opp-action ${act.cls}`}>
+          {act.label}
+          {isActive ? <span className="war-opp-action-target"> · {act.target}</span> : null}
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+
 export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelectMint }) {
-  const narratives = useMarketStore((s) => s.narratives);
   const [activeMint, setActiveMint] = useState(null);
 
-  const handleSelectToken = (tok) => {
-    const mint = tok.mint ?? tok.address ?? tok.tokenAddress;
-    if (!mint) return;
-    setActiveMint(mint);
-    onSelectMint?.(mint);
-  };
+  const handleSelectToken = useCallback(
+    (tok) => {
+      const mint = tok.mint ?? tok.address ?? tok.tokenAddress;
+      if (!mint) return;
+      setActiveMint(mint);
+      onSelectMint?.(mint);
+    },
+    [onSelectMint]
+  );
 
   const allTokens = [
     ...signals,
@@ -153,220 +382,6 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
   const activeTok =
     visible.find((t) => (t.mint ?? t.address) === activeMint) ?? visible[0] ?? null;
 
-  function getIntentLevel(score) {
-    if (score >= 85) return { label: "EXTREME", cls: "intent-extreme" };
-    if (score >= 70) return { label: "HIGH", cls: "intent-high" };
-    if (score >= 50) return { label: "MEDIUM", cls: "intent-medium" };
-    return { label: "LOW", cls: "intent-low" };
-  }
-
-  function getAction(score, action) {
-    const a = action ?? "WATCH";
-    if (a === "BUY" || a === "ENTER NOW" || score >= 85)
-      return {
-        label: "🚀 STRONG BUY",
-        cls: "war-opp-buy",
-        target: score >= 85 ? "3–5x" : "2–3x",
-        time: score >= 85 ? "< 30m" : "30m – 2h"
-      };
-    if (a === "SCALP" || score >= 70)
-      return {
-        label: "⚡ SCALP",
-        cls: "war-opp-scalp",
-        target: "1–2x",
-        time: "< 15m"
-      };
-    if (a === "WATCH" || a === "PREPARE")
-      return {
-        label: "👁 WATCH",
-        cls: "war-opp-watch",
-        target: "1–2x",
-        time: "1 – 3h"
-      };
-    return {
-      label: "✕ STAY OUT",
-      cls: "war-opp-avoid",
-      target: "N/A",
-      time: "N/A"
-    };
-  }
-
-  function getNarrative(tok) {
-    const mint = tok.mint ?? tok.address;
-    const score = tok._currentScore ?? tok.sentinelScore ?? 0;
-    const line =
-      (mint ? narratives.get(mint)?.message : null) ??
-      tok.whyNowBulletLines?.[0] ??
-      narrativeFromData({ ...tok, _currentScore: score });
-    return line != null && line !== "" ? String(line) : "";
-  }
-
-  function getPatternChips(tok) {
-    const chips = [];
-    const score = tok._currentScore ?? tok.sentinelScore ?? 0;
-    const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
-    const change = tok.priceChange24h ?? tok.change24h ?? 0;
-    const liq = tok.liquidityUsd ?? tok.liquidity ?? 0;
-    const age = tok.poolAgeMinutes ?? null;
-
-    if (wallets >= 3) chips.push({ label: "EARLY ACCUMULATION", cls: "chip-green" });
-    else if (wallets >= 1) chips.push({ label: "MOMENTUM BUILDING", cls: "chip-amber" });
-
-    if (age !== null && age < 30) chips.push({ label: "NEW POOL", cls: "chip-blue" });
-    if (liq > 500_000) chips.push({ label: "LOCKED LP", cls: "chip-green" });
-    if (change >= 50) chips.push({ label: `+${Math.round(change)}% 24H`, cls: "chip-amber" });
-    if (score < 50) chips.push({ label: "HIGH RISK", cls: "chip-red" });
-    if (wallets === 0 && score >= 85) chips.push({ label: "STEADY ACCUMULATION", cls: "chip-blue" });
-
-    return chips.slice(0, 3);
-  }
-
-  function tokenImageUrl(tok) {
-    return (
-      tok.imageUrl ??
-      tok.image ??
-      tok.logoURI ??
-      tok.icon ??
-      tok.tokenImage ??
-      tok.token?.logoURI ??
-      tok.token?.image ??
-      tok.token?.imageUrl ??
-      tok._api?.logoURI ??
-      tok._api?.imageUrl ??
-      tok._api?.image ??
-      null
-    );
-  }
-
-  function OpportunityRow({ tok, rank, onSelect, isActive, isNew, activeMint }) {
-    const mint = tok.mint ?? tok.address ?? "";
-    const score = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
-    const intent = getIntentLevel(score);
-    const act = getAction(score, tok.decision ?? tok.action);
-    const narr = getNarrative(tok);
-    const chips = getPatternChips(tok);
-    const imgUrl = tokenImageUrl(tok);
-    const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
-    const change = tok.priceChange24h ?? tok.change24h ?? 0;
-
-    const animateVals = useMemo(
-      () => ({
-        opacity: isActive ? 1 : activeMint ? 0.55 : 1,
-        y: 0,
-        scale: isActive ? 1.015 : activeMint ? 0.985 : 1,
-        filter: isActive
-          ? "brightness(1.08)"
-          : activeMint
-            ? "brightness(0.8)"
-            : "brightness(1)"
-      }),
-      [isActive, activeMint]
-    );
-
-    return (
-      <motion.div
-        role="button"
-        onClick={() => onSelect?.(tok)}
-        className={`war-opportunity ${intent.cls} ${
-          activeMint ? (isActive ? "war-card-active" : "war-card-inactive") : ""
-        }`}
-        initial={{ opacity: 0, y: 10, scale: 0.98 }}
-        animate={animateVals}
-        whileHover={
-          !isActive
-            ? {
-                opacity: 0.85,
-                scale: 1.0,
-                x: 3,
-                filter: "brightness(0.95)"
-              }
-            : {}
-        }
-        transition={{
-          type: "spring",
-          stiffness: 260,
-          damping: 24
-        }}
-        style={{ cursor: "pointer" }}
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onSelect?.(tok);
-          }
-        }}
-      >
-        <div className="war-opp-rank">{rank}</div>
-        <div className="war-opp-body">
-          <div className="war-opp-top">
-            {imgUrl ? (
-              <img
-                src={imgUrl}
-                alt=""
-                className="war-token-img-sm"
-                onError={(e) => {
-                  e.target.style.display = "none";
-                }}
-              />
-            ) : null}
-            <span className={`war-intent-badge ${intent.cls}`}>{intent.label}</span>
-            <span className="war-opp-symbol">
-              ${tok.symbol ?? tok.name ?? mint.slice(0, 6)}
-            </span>
-            {isNew ? <span className="war-new-badge">NEW</span> : null}
-          </div>
-          <motion.div
-            className="war-opp-narrative"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.08, duration: 0.25 }}
-          >
-            {narr}
-          </motion.div>
-
-          {isActive ? (
-            <>
-              <div className="war-opp-meta">
-                {wallets > 0 && (
-                  <span className="war-opp-chip">{wallets} smart wallets</span>
-                )}
-                {change > 0 && (
-                  <span className="war-opp-chip">+{Math.round(change)}% 24h</span>
-                )}
-              </div>
-              {chips.length > 0 ? (
-                <div className="war-pattern-chips">
-                  {chips.map((c, i) => (
-                    <span key={`${c.label}-${i}`} className={`war-pattern-chip ${c.cls}`}>
-                      {c.label}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-        <div className="war-opp-score-col">
-          <div className={`war-opp-score-ring ${intent.cls}`}>
-            <span className="war-opp-score-num">{score}</span>
-            <span className="war-opp-score-label">INTENT</span>
-          </div>
-          <div className={`war-opp-action ${act.cls}`}>
-            {act.label}
-            {isActive ? <span className="war-opp-action-target"> · {act.target}</span> : null}
-          </div>
-        </div>
-      </motion.div>
-    );
-  }
-
-  function recentNarrativePreview(tok) {
-    const full = getNarrative(tok);
-    if (full.length <= 32) return full;
-    return `${full.slice(0, 32)}…`;
-  }
-
-  const focusNarr = activeTok ? getNarrative(activeTok) : null;
   const focusScore = activeTok
     ? Math.round(activeTok._currentScore ?? activeTok.sentinelScore ?? 0)
     : null;
@@ -440,7 +455,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
             <div className="war-aside-title">
               ⬤ RECENT SIGNALS <span style={{ color: "#22c55e", marginLeft: 4 }}>Live</span>
             </div>
-            {visible.map((tok, i) => {
+            {visible.map((tok) => {
               const sc = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
               const intent = getIntentLevel(sc);
               const mint = tok.mint ?? tok.address;
@@ -464,7 +479,9 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
                   <span className="war-recent-symbol">
                     ${tok.symbol ?? tok.name ?? "TOKEN"}
                   </span>
-                  <span className="war-recent-narrative">{recentNarrativePreview(tok)}</span>
+                  <span className="war-recent-narrative">
+                    <WarNarrativeSnippet tok={tok} maxLen={32} />
+                  </span>
                   <span className="war-recent-score">{sc}</span>
                 </div>
               );
@@ -492,7 +509,11 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
           <span className="war-narrative-engine-sub">Generating insights...</span>
         </div>
         <div className="war-narrative-bar-center">
-          {focusNarr && <span className="war-narrative-bar-text">&quot;{focusNarr}&quot;</span>}
+          {activeTok ? (
+            <span className="war-narrative-bar-text">
+              &quot;<WarNarrativeSnippet tok={activeTok} />&quot;
+            </span>
+          ) : null}
         </div>
         <div className="war-narrative-bar-right">
           <span className="war-conviction-badge">

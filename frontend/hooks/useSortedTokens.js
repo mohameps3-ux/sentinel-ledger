@@ -1,45 +1,46 @@
 import { useMemo, useRef } from 'react'
-import { useMarketStore, isScoreFresh } from '@/lib/store/marketStore'
+import { useMarketStore } from '@/lib/store/marketStore'
 
 const STRATEGY_HIGH = { conservative: 90, balanced: 85, aggressive: 80 }
 const WAR_MIN       = 35
 const WAR_TOP       = 6
 
+function applyProfileFilter(result, profile, _isWarMode) {
+  if (profile === 'sniper') {
+    return result.filter((t) =>
+      t._currentScore >= 70 || t.smartMoneyCount > 0
+    )
+  }
+  if (profile === 'liquidity') {
+    return result
+      .filter((t) => (t.liquidityUsd ?? 0) > 50_000)
+      .sort((a, b) => (b.liquidityUsd ?? 0) - (a.liquidityUsd ?? 0))
+  }
+  if (profile === 'momentum') {
+    return [...result].sort((a, b) =>
+      (b.priceChange24h ?? 0) - (a.priceChange24h ?? 0)
+    )
+  }
+  return result
+}
+
 export function useSortedTokens(tokens = []) {
-  const scores    = useMarketStore((s) => s.scores)
   const isWarMode = useMarketStore((s) => s.isWarMode)
   const strategy  = useMarketStore((s) => s.strategy)
   const profile   = useMarketStore((s) => s.profile)
 
-  // Cache del orden anterior para evitar reordenamientos innecesarios
   const prevOrderRef = useRef([])
 
   return useMemo(() => {
     if (!tokens.length) return []
 
-    // Calcular now UNA sola vez fuera de cualquier loop reactivo
-    const now = Date.now()
+    const enriched = tokens.map((t) => ({
+      ...t,
+      _mint: t.mint ?? t.address,
+      _currentScore: t._currentScore ?? t.sentinelScore ?? 0,
+      _isLive: false,
+    }))
 
-    // 1. Enriquecer con score efectivo
-    const enriched = tokens.map((t) => {
-      const mint  = t.mint ?? t.address
-      const entry = scores.get(mint)
-      const live = isScoreFresh(entry, now)
-        ? Number.isFinite(Number(entry.confidence))
-          ? Math.round(Number(entry.confidence))
-          : Number.isFinite(Number(entry.score))
-            ? Math.round(Number(entry.score))
-            : null
-        : null
-      return {
-        ...t,
-        _mint:         mint,
-        _currentScore: live ?? t.sentinelScore ?? 0,
-        _isLive:       live !== null,
-      }
-    })
-
-    // 2. Filtrar y ordenar
     let result
     if (isWarMode) {
       result = enriched
@@ -55,23 +56,9 @@ export function useSortedTokens(tokens = []) {
       result = [...top, ...rest]
     }
 
-    // 3. Filtro por perfil cognitivo
-    if (profile === 'sniper') {
-      result = result.filter((t) =>
-        t._currentScore >= 70 || t.smartMoneyCount > 0
-      )
-    } else if (profile === 'liquidity') {
-      result = result
-        .filter((t) => (t.liquidityUsd ?? 0) > 50_000)
-        .sort((a, b) => (b.liquidityUsd ?? 0) - (a.liquidityUsd ?? 0))
-    } else if (profile === 'momentum') {
-      result = result.sort((a, b) =>
-        (b.priceChange24h ?? 0) - (a.priceChange24h ?? 0)
-      )
-    }
-
+    result = applyProfileFilter(result, profile, isWarMode)
     prevOrderRef.current = result.map((t) => t._mint)
     return result
 
-  }, [tokens, scores, isWarMode, strategy, profile])
+  }, [tokens, isWarMode, strategy, profile])
 }
