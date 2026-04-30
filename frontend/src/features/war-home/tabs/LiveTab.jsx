@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronsDown, ChevronsUp, Info, Inbox, Loader2, Sparkles, WifiOff } from "lucide-react";
 import { Virtuoso } from "react-virtuoso";
 import { UI_CONFIG } from "@/constants/homeData";
+import { narrativeFromData } from "@/lib/narrativeFromData";
 import {
   confidenceTone,
   entryWindowFromCountdown,
@@ -216,8 +217,9 @@ export function LiveTab({
             ? "ring-1 ring-amber-500/45 shadow-[0_0_16px_rgba(250,204,21,0.16)]"
             : "ring-1 ring-amber-500/40 shadow-[0_0_18px_rgba(250,204,21,0.16)]"
         }
+        narrativeToken={sig}
       >
-        {({ displayScore, smartMoneyCount, narrative }) => {
+        {({ displayScore, smartMoneyCount, narrative, narrativeFromTokenData }) => {
           const toneScore = Number.isFinite(Number(displayScore)) ? Number(displayScore) : Number(sig.signalStrength) || 0;
           const safeScore = Number.isFinite(Number(displayScore)) ? Math.round(Number(displayScore)) : "--";
           const safeAction = String(sig._api?.decision ?? sig.decision ?? actionKey ?? "WATCH");
@@ -229,9 +231,12 @@ export function LiveTab({
             [safeLiq != null && `Liq ${safeLiq}`, safeChange != null && `Δ24h ${safeChange}%`, safePoolAge && `Pool ${safePoolAge}`]
               .filter(Boolean)
               .join(" · ") || undefined;
-          const warFallback = `Score ${safeScore} — ${safeAction}`;
           const displayNarrative =
-            narrative?.message ?? (isWarMode ? warFallback : whyLines[0] ?? null);
+            narrative?.message
+              ?? sig.whyNowBulletLines?.[0]
+              ?? whyLines[0]
+              ?? narrativeFromTokenData
+              ?? narrativeFromData({ ...sig, _currentScore: toneScore });
           const severityClass =
             narrative?.severity === "URGENT"
               ? "narrative-urgent"

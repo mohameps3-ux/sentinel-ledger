@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMarketStore, isScoreFresh } from "@/lib/store/marketStore";
+import { narrativeFromData } from "@/lib/narrativeFromData";
 import { useScoreRoom } from "@/hooks/useScoreRoom";
 import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 import { WatchedCardShell } from "./WatchedCardShell";
@@ -126,7 +127,13 @@ export function RealtimeTokenCardShell({
       {...rest}
     >
       {typeof children === "function"
-        ? children({ displayScore, isFresh, smartMoneyCount: smCount, narrative: narrative ?? null })
+        ? children({
+            displayScore,
+            isFresh,
+            smartMoneyCount: smCount,
+            narrative: narrative ?? null,
+            narrativeFromTokenData
+          })
         : children}
       {hideExecutionBar ? null : (
         <div
