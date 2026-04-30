@@ -101,11 +101,13 @@ function SmartMoneyFlow({ tok }) {
 
 export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelectMint }) {
   const narratives = useMarketStore((s) => s.narratives);
+  const [activeMint, setActiveMint] = useState(null);
 
   const handleSelectToken = (tok) => {
-    if (!onSelectMint || !tok) return;
     const mint = tok.mint ?? tok.address ?? tok.tokenAddress;
-    if (mint) onSelectMint(mint);
+    if (!mint) return;
+    setActiveMint(mint);
+    onSelectMint?.(mint);
   };
 
   const allTokens = [
@@ -131,19 +133,20 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
       ? [...sorted.slice(rotationIndex), ...sorted.slice(0, rotationIndex)].slice(0, 4)
       : sorted.slice(0, 4);
 
-  const hero = visible[0];
-  const rest = visible.slice(1);
+  const topSlotMint = visible[0]?.mint ?? visible[0]?.address ?? null;
 
   useEffect(() => {
-    if (!hero) {
+    if (!topSlotMint) {
       setNewMint(null);
       return;
     }
-    const mint = hero.mint ?? hero.address ?? String(rotationIndex);
-    setNewMint(mint);
+    setNewMint(topSlotMint);
     const t = setTimeout(() => setNewMint(null), 2500);
     return () => clearTimeout(t);
-  }, [rotationIndex, hero]);
+  }, [rotationIndex, topSlotMint]);
+
+  const activeTok =
+    visible.find((t) => (t.mint ?? t.address) === activeMint) ?? visible[0] ?? null;
 
   function getIntentLevel(score) {
     if (score >= 85) return { label: "EXTREME", cls: "intent-extreme" };
@@ -230,116 +233,41 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
     );
   }
 
-  function OpportunityHero({ tok, isNew = false, onSelect }) {
-    if (!tok) return null;
+  function OpportunityRow({ tok, rank, onSelect, isActive, isNew }) {
+    const mint = tok.mint ?? tok.address ?? "";
     const score = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
     const intent = getIntentLevel(score);
     const act = getAction(score, tok.decision ?? tok.action);
     const narr = getNarrative(tok);
+    const chips = getPatternChips(tok);
+    const imgUrl = tokenImageUrl(tok);
     const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
     const change = tok.priceChange24h ?? tok.change24h ?? 0;
-    const chips = getPatternChips(tok);
-    const imgUrl = tokenImageUrl(tok);
+
+    const cardClass =
+      activeMint != null
+        ? isActive
+          ? "war-card-active"
+          : "war-card-inactive"
+        : "";
 
     return (
       <div
-        className={`war-hero ${intent.cls}`}
+        className={["war-opportunity", intent.cls, cardClass].filter(Boolean).join(" ")}
         onClick={() => onSelect?.(tok)}
-        style={{ cursor: onSelect ? "pointer" : undefined }}
-        role={onSelect ? "button" : undefined}
-        tabIndex={onSelect ? 0 : undefined}
-        onKeyDown={
-          onSelect
-            ? (e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect(tok);
-                }
-              }
-            : undefined
-        }
-      >
-        <div className="war-hero-left">
-          <div className="war-hero-top">
-            <span className={`war-intent-badge ${intent.cls}`}>{intent.label}</span>
-            {imgUrl ? (
-              <img
-                src={imgUrl}
-                alt={tok.symbol ?? ""}
-                className="war-token-img"
-                onError={(e) => {
-                  e.target.style.display = "none";
-                }}
-              />
-            ) : null}
-            <span className="war-hero-symbol">
-              ${tok.symbol ?? tok.name ?? (tok.mint ?? "").slice(0, 6)}
-            </span>
-            {isNew ? <span className="war-new-badge">NEW</span> : null}
-          </div>
-          <div className="war-hero-narrative">{narr}</div>
-          <div className="war-hero-chips">
-            {wallets > 0 && <span className="war-opp-chip">{wallets} smart wallets</span>}
-            {change > 0 && <span className="war-opp-chip">+{Math.round(change)}% 24h</span>}
-            <span className="war-opp-chip">
-              {tok._liveSource === "hot_fill" ? "HEAT" : "SIGNAL"}
-            </span>
-          </div>
-          {chips.length > 0 ? (
-            <div className="war-pattern-chips">
-              {chips.map((c, i) => (
-                <span key={`${c.label}-${i}`} className={`war-pattern-chip ${c.cls}`}>
-                  {c.label}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        <div className="war-hero-right">
-          <div className={`war-hero-score-ring ${intent.cls}`}>
-            <span className="war-hero-score-num">{score}</span>
-            <span className="war-opp-score-label">INTENT</span>
-          </div>
-          <div className={`war-hero-action ${act.cls}`}>
-            <span className="war-hero-action-label">{act.label}</span>
-            <span className="war-hero-action-meta">Target: {act.target}</span>
-            <span className="war-hero-action-meta">Time: {act.time}</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function OpportunityRow({ tok, rank, onSelect }) {
-    const score = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
-    const intent = getIntentLevel(score);
-    const act = getAction(score, tok.decision ?? tok.action);
-    const narr = getNarrative(tok);
-    const chips = getPatternChips(tok);
-    const imgUrl = tokenImageUrl(tok);
-
-    return (
-      <div
-        className={`war-opportunity ${intent.cls}`}
-        onClick={() => onSelect?.(tok)}
-        style={{ cursor: onSelect ? "pointer" : undefined }}
-        role={onSelect ? "button" : undefined}
-        tabIndex={onSelect ? 0 : undefined}
-        onKeyDown={
-          onSelect
-            ? (e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect(tok);
-                }
-              }
-            : undefined
-        }
+        style={{ cursor: "pointer" }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect?.(tok);
+          }
+        }}
       >
         <div className="war-opp-rank">{rank}</div>
         <div className="war-opp-body">
           <div className="war-opp-top">
-            <span className={`war-intent-badge ${intent.cls}`}>{intent.label}</span>
             {imgUrl ? (
               <img
                 src={imgUrl}
@@ -350,19 +278,34 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
                 }}
               />
             ) : null}
+            <span className={`war-intent-badge ${intent.cls}`}>{intent.label}</span>
             <span className="war-opp-symbol">
-              ${tok.symbol ?? tok.name ?? (tok.mint ?? "").slice(0, 6)}
+              ${tok.symbol ?? tok.name ?? mint.slice(0, 6)}
             </span>
+            {isNew ? <span className="war-new-badge">NEW</span> : null}
           </div>
           <div className="war-opp-narrative">{narr}</div>
-          {chips.length > 0 ? (
-            <div className="war-pattern-chips">
-              {chips.map((c, i) => (
-                <span key={`${c.label}-${i}`} className={`war-pattern-chip ${c.cls}`}>
-                  {c.label}
-                </span>
-              ))}
-            </div>
+
+          {isActive ? (
+            <>
+              <div className="war-opp-meta">
+                {wallets > 0 && (
+                  <span className="war-opp-chip">{wallets} smart wallets</span>
+                )}
+                {change > 0 && (
+                  <span className="war-opp-chip">+{Math.round(change)}% 24h</span>
+                )}
+              </div>
+              {chips.length > 0 ? (
+                <div className="war-pattern-chips">
+                  {chips.map((c, i) => (
+                    <span key={`${c.label}-${i}`} className={`war-pattern-chip ${c.cls}`}>
+                      {c.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </>
           ) : null}
         </div>
         <div className="war-opp-score-col">
@@ -372,21 +315,23 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
           </div>
           <div className={`war-opp-action ${act.cls}`}>
             {act.label}
-            <span className="war-opp-action-target"> · {act.target}</span>
+            {isActive ? <span className="war-opp-action-target"> · {act.target}</span> : null}
           </div>
         </div>
       </div>
     );
   }
 
-  const heroNarr = hero ? getNarrative(hero) : null;
-  const heroScore = hero ? Math.round(hero._currentScore ?? hero.sentinelScore ?? 0) : null;
-
   function recentNarrativePreview(tok) {
     const full = getNarrative(tok);
     if (full.length <= 32) return full;
     return `${full.slice(0, 32)}…`;
   }
+
+  const focusNarr = activeTok ? getNarrative(activeTok) : null;
+  const focusScore = activeTok
+    ? Math.round(activeTok._currentScore ?? activeTok.sentinelScore ?? 0)
+    : null;
 
   return (
     <div className="war-room-container">
@@ -416,7 +361,9 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
         </div>
         <div className="war-kpi">
           <span className="war-kpi-label">BEST SIGNAL</span>
-          <span className="war-kpi-value war-kpi-white">{kpis.bestScore ?? heroScore ?? "--"}</span>
+          <span className="war-kpi-value war-kpi-white">
+            {kpis.bestScore ?? focusScore ?? "--"}
+          </span>
           <span className="war-kpi-delta">confidence</span>
         </div>
         <div className="war-kpi war-kpi-danger">
@@ -432,21 +379,20 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
             <span className="war-room-section-sub">Sorted by Smart Money Intent</span>
           </div>
 
-          <OpportunityHero
-            tok={hero}
-            isNew={Boolean(hero && newMint === (hero.mint ?? hero.address))}
-            onSelect={handleSelectToken}
-          />
-
           <div className="war-opportunities-list">
-            {rest.map((tok, i) => (
-              <OpportunityRow
-                key={tok.mint ?? tok.address ?? i}
-                tok={tok}
-                rank={i + 2}
-                onSelect={handleSelectToken}
-              />
-            ))}
+            {visible.map((tok, i) => {
+              const m = tok.mint ?? tok.address;
+              return (
+                <OpportunityRow
+                  key={tok.mint ?? tok.address ?? i}
+                  tok={tok}
+                  rank={i + 1}
+                  onSelect={handleSelectToken}
+                  isActive={Boolean(m && activeMint === m)}
+                  isNew={Boolean(m && newMint === m)}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -458,24 +404,22 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
             {visible.map((tok, i) => {
               const sc = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
               const intent = getIntentLevel(sc);
+              const m = tok.mint ?? tok.address;
+              const isRecentActive = Boolean(m && activeMint === m);
               return (
                 <div
                   key={tok.mint ?? tok.address ?? i}
-                  className="war-recent-signal"
+                  className={`war-recent-signal${isRecentActive ? " war-recent-active" : ""}`}
                   onClick={() => handleSelectToken(tok)}
-                  style={{ cursor: onSelectMint ? "pointer" : undefined }}
-                  role={onSelectMint ? "button" : undefined}
-                  tabIndex={onSelectMint ? 0 : undefined}
-                  onKeyDown={
-                    onSelectMint
-                      ? (e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleSelectToken(tok);
-                          }
-                        }
-                      : undefined
-                  }
+                  style={{ cursor: "pointer" }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleSelectToken(tok);
+                    }
+                  }}
                 >
                   <span className={`war-intent-dot ${intent.cls}`} />
                   <span className="war-recent-symbol">
@@ -499,7 +443,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
               ★ MANAGE WATCHLIST
             </a>
           </div>
-          <SmartMoneyFlow tok={hero} />
+          <SmartMoneyFlow tok={activeTok} />
         </div>
       </div>
 
@@ -509,11 +453,11 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
           <span className="war-narrative-engine-sub">Generating insights...</span>
         </div>
         <div className="war-narrative-bar-center">
-          {heroNarr && <span className="war-narrative-bar-text">&quot;{heroNarr}&quot;</span>}
+          {focusNarr && <span className="war-narrative-bar-text">&quot;{focusNarr}&quot;</span>}
         </div>
         <div className="war-narrative-bar-right">
           <span className="war-conviction-badge">
-            HIGH CONVICTION · {heroScore ?? "--"}% Confidence
+            HIGH CONVICTION · {focusScore ?? "--"}% Confidence
           </span>
         </div>
       </div>
