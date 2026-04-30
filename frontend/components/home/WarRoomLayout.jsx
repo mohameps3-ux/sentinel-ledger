@@ -7,72 +7,91 @@ import { narrativeFromData } from "@/lib/narrativeFromData";
 function SmartMoneyFlow({ tok }) {
   if (!tok) return null;
 
+  const mint = tok.mint ?? tok.address ?? "";
+  const symbol = tok.symbol ?? tok.name ?? mint.slice(0, 8);
   const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
   const change = tok.priceChange24h ?? tok.change24h ?? 0;
   const liq = tok.liquidityUsd ?? tok.liquidity ?? 0;
   const score = tok._currentScore ?? tok.sentinelScore ?? 0;
-  const symbol = tok.symbol ?? tok.name ?? "TOKEN";
+  const actionRaw = tok.decision ?? tok.action ?? "WATCH";
+  const action = String(actionRaw).trim().toUpperCase().replace(/_/g, " ");
+  const source = tok._liveSource ?? tok._source ?? "";
 
-  const baseBuy = change >= 0
-    ? Math.min(90, 55 + Math.round(Math.abs(change) * 0.3) + wallets * 3)
-    : Math.max(25, 50 - Math.round(Math.abs(change) * 0.4));
-  const buyPct = Math.min(95, Math.max(5, baseBuy));
+  const buyPct = Math.min(
+    95,
+    Math.max(
+      5,
+      change >= 0
+        ? Math.min(90, 52 + Math.round(Math.abs(change) * 0.25) + wallets * 4)
+        : Math.max(20, 48 - Math.round(Math.abs(change) * 0.35))
+    )
+  );
   const sellPct = 100 - buyPct;
 
   const events = [];
-  if (wallets >= 1) {
+
+  if (wallets >= 3) {
     events.push({
       type: "buy",
-      text: `${wallets} smart wallet${wallets > 1 ? "s" : ""} accumulating`,
-      time: "< 1m",
-      size: "large"
+      text: `${wallets} smart wallets accumulating $${symbol}`,
+      time: "< 1m"
     });
-  }
-  if (change >= 20) {
+  } else if (wallets >= 1) {
     events.push({
       type: "buy",
-      text: `Volume spike +${Math.round(change)}%`,
-      time: "2m ago",
-      size: "medium"
+      text: `${wallets} smart wallet entered $${symbol}`,
+      time: "< 2m"
     });
   }
-  if (score >= 85 && wallets === 0) {
-    events.push({
-      type: "buy",
-      text: `High conviction signal detected`,
-      time: "3m ago",
-      size: "small"
-    });
-  }
-  if (liq > 100_000) {
-    events.push({
-      type: "buy",
-      text: `Liquidity holding at $${(liq / 1000).toFixed(0)}K`,
-      time: "5m ago",
-      size: "small"
-    });
-  }
-  if (change < 0 && Math.abs(change) > 10) {
+
+  if (change >= 50) {
+    events.push({ type: "buy", text: `+${Math.round(change)}% surge detected`, time: "recent" });
+  } else if (change >= 20) {
+    events.push({ type: "buy", text: `+${Math.round(change)}% price action`, time: "recent" });
+  } else if (change <= -15) {
     events.push({
       type: "sell",
-      text: `Price down ${Math.round(Math.abs(change))}%`,
-      time: "4m ago",
-      size: "medium"
+      text: `${Math.round(Math.abs(change))}% pullback on $${symbol}`,
+      time: "recent"
     });
   }
-  if (events.length === 0) {
+
+  if (liq > 500_000) {
     events.push({
-      type: "neutral",
-      text: `Monitoring ${symbol}`,
-      time: "now",
-      size: "small"
+      type: "buy",
+      text: `$${(liq / 1000).toFixed(0)}K liquidity — solid base`,
+      time: "now"
     });
+  } else if (liq > 0 && liq < 50_000) {
+    events.push({
+      type: "sell",
+      text: `Low liquidity $${(liq / 1000).toFixed(1)}K — caution`,
+      time: "now"
+    });
+  }
+
+  if (score >= 90 && wallets === 0 && change === 0) {
+    events.push({ type: "buy", text: `High conviction signal on $${symbol}`, time: "3m ago" });
+  }
+
+  if (action === "BUY" || action === "ENTER NOW") {
+    events.push({ type: "buy", text: `Entry signal confirmed`, time: "now" });
+  } else if (action === "STAY OUT" || action === "AVOID") {
+    events.push({ type: "sell", text: `Avoid signal active`, time: "now" });
+  }
+
+  if (source === "hot_fill") {
+    events.push({ type: "neutral", text: `Trending token — elevated volume`, time: "5m ago" });
+  }
+
+  if (events.length === 0) {
+    events.push({ type: "neutral", text: `Monitoring $${symbol}`, time: "now" });
   }
 
   return (
     <div className="war-aside-section war-smflow">
       <div className="war-aside-title">
-        ⬤ SMART MONEY FLOW
+        ⬤ SMART MONEY FLOW — {symbol}
         <span className="war-smflow-live">LIVE</span>
       </div>
 
@@ -379,8 +398,9 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
     return () => clearTimeout(t);
   }, [rotationIndex, topSlotMint]);
 
-  const activeTok =
-    visible.find((t) => (t.mint ?? t.address) === activeMint) ?? visible[0] ?? null;
+  const activeTok = activeMint
+    ? visible.find((t) => (t.mint ?? t.address) === activeMint) ?? visible[0] ?? null
+    : visible[0] ?? null;
 
   const focusScore = activeTok
     ? Math.round(activeTok._currentScore ?? activeTok.sentinelScore ?? 0)
@@ -499,7 +519,10 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
               ★ MANAGE WATCHLIST
             </a>
           </div>
-          <SmartMoneyFlow tok={activeTok} />
+          <SmartMoneyFlow
+            key={activeTok?.mint ?? activeTok?.address ?? "default"}
+            tok={activeTok}
+          />
         </div>
       </div>
 
