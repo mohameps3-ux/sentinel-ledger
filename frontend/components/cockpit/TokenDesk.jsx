@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useRouter } from "next/router";
-import { useScoreSocket } from "../../hooks/useScoreSocket";
+import { useMarketStore, scoreSnapshot } from "@/lib/store/marketStore";
+import { useScoreRoom } from "@/hooks/useScoreRoom";
 import { useTokenData } from "../../hooks/useTokenData";
 import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 import { AccordionSection } from "./AccordionSection";
@@ -47,13 +48,17 @@ function MiniBar({ label, value, gradient }) {
 }
 
 /**
- * Cockpit Zone C — Intel desk: live score (`useScoreSocket`) plus lazy accordions
+ * Cockpit Zone C — Intel desk: live score from global marketStore plus lazy accordions
  * backed by `useTokenData` (one REST load per pinned mint for structural intel).
  */
 export function TokenDesk({ mint, deskRadarHint = null }) {
   const { t } = useLocale();
   const router = useRouter();
-  const { score, isConnected } = useScoreSocket(mint || undefined);
+  useScoreRoom(mint || undefined);
+  const scoreEntry = useMarketStore((s) => (mint ? s.scores.get(mint) : undefined));
+  const isConnected = useMarketStore((s) => s.scoreSocketConnected);
+  const narrative = useMarketStore((s) => (mint ? s.narratives.get(mint) : undefined));
+  const score = scoreEntry?.scores ? scoreSnapshot(scoreEntry) : null;
   const tokenQuery = useTokenData(mint || "");
   const token = tokenQuery.data?.data;
   const flaggedWallets = useFlaggedWalletSet(token);
@@ -125,6 +130,10 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
       </div>
 
       {deskRadarHint ? <DeskRadarHintStrip hint={deskRadarHint} /> : null}
+
+      {narrative?.message ? (
+        <div className="sentinel-narrative narrative-tactical shrink-0 text-[11px] leading-snug">{narrative.message}</div>
+      ) : null}
 
       {tokenQuery.isPending ? (
         <p className="text-[11px] text-gray-500 shrink-0">{t("cockpit.desk.loadingToken")}</p>

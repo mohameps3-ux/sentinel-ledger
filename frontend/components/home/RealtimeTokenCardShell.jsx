@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMarketStore, isScoreFresh } from "@/lib/store/marketStore";
+import { useScoreRoom } from "@/hooks/useScoreRoom";
 import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 import { WatchedCardShell } from "./WatchedCardShell";
 
@@ -36,6 +37,7 @@ export function RealtimeTokenCardShell({
   children,
   ...rest
 }) {
+  useScoreRoom(mint && isProbableSolanaMint(mint) ? mint : undefined);
   const scoreEntry = useMarketStore((s) =>
     mint && isProbableSolanaMint(mint) ? s.scores.get(mint) : undefined
   );
@@ -45,7 +47,13 @@ export function RealtimeTokenCardShell({
   const [, setNowTick] = useState(0);
   const now = Date.now();
   const isFresh = isScoreFresh(scoreEntry, now);
-  const liveScore = isFresh ? clampScore(scoreEntry?.score) : null;
+  const liveScore = isFresh
+    ? clampScore(
+        Number.isFinite(Number(scoreEntry?.confidence))
+          ? scoreEntry.confidence
+          : scoreEntry?.score
+      )
+    : null;
   const staticClamped = clampScore(staticScore);
   const staticScoreSafe = staticClamped ?? 0;
   const targetScore = liveScore != null ? liveScore : staticScoreSafe;

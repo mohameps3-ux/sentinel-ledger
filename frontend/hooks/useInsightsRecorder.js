@@ -11,16 +11,13 @@ const CONFIDENCE_JUMP_DELTA = 10;
  *
  * Why accept `score` as an argument instead of subscribing internally?
  * -------------------------------------------------------------------
- * The token detail page already calls `useScoreSocket(asset)` for its
- * rendering needs. If this hook also subscribed, we'd have two parallel
- * setState pairs tracking the same underlying singleton socket for the
- * same mint. Taking `score` as a param keeps the recorder a pure
- * side-effect and collapses to one subscription per page.
+ * The token detail page reads the live score snapshot from `marketStore`
+ * (ScoreSocketProvider) and passes it here.
  *
  * Contract
  * --------
  *  - Caller provides `asset` and the current `score` object from
- *    `useScoreSocket` (or any equivalent source).
+ *    the global store snapshot (or any equivalent source).
  *  - Maintains the previous-observed snapshot in a ref (signals Set +
  *    confidence + timestamp).
  *  - On each new score:

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Activity, AlertTriangle, Radio } from "lucide-react";
-import { useScoreSocket } from "../../hooks/useScoreSocket";
+import { useMarketStore, scoreSnapshot } from "@/lib/store/marketStore";
+import { useScoreRoom } from "@/hooks/useScoreRoom";
 import { useGlobalHealth } from "../../hooks/useGlobalHealth";
 import { useInsightsRecorder } from "../../hooks/useInsightsRecorder";
 import { InsightsFeed } from "./InsightsFeed";
@@ -13,7 +14,9 @@ import { InsightsFeed } from "./InsightsFeed";
  *
  * Design notes
  * ------------
- * - Score socket is a module-level singleton shared across consumers.
+ * - Score stream is centralized in ScoreSocketProvider → marketStore; this
+ *   card calls `useScoreRoom(asset)` for room join and reads snapshot + LED
+ *   fields from the store.
  * - `/health/sync` is polled ONCE per tab via `useGlobalHealth`, not per card.
  * - The age readout re-renders on a requestAnimationFrame loop that only
  *   commits state when the integer second changes, and pauses while the tab
@@ -199,7 +202,19 @@ function ScoreBar({ label, value, kind }) {
 }
 
 export function ScoreTerminalCard({ asset }) {
-  const { score, isConnected, lastScoreAt } = useScoreSocket(asset);
+  useScoreRoom(asset);
+  const scoreEntry = useMarketStore((s) => (asset ? s.scores.get(asset) : undefined));
+  const isConnected = useMarketStore((s) => s.scoreSocketConnected);
+  const narrative = useMarketStore((s) => (asset ? s.narratives.get(asset) : undefined));
+  const score = scoreEntry?.scores ? scoreSnapshot(scoreEntry) : null;
+  const parsedTs = scoreEntry?.timestamp ? Date.parse(scoreEntry.timestamp) : NaN;
+  const lastScoreAt = scoreEntry
+    ? Number.isFinite(parsedTs)
+      ? parsedTs
+      : Number.isFinite(scoreEntry._ts)
+        ? scoreEntry._ts
+        : null
+    : null;
   const { status: globalStatus, reason: globalReason } = useGlobalHealth();
   useTickOnThreshold(lastScoreAt);
   // Feed the live score stream into the local, per-asset rolling log
@@ -268,6 +283,10 @@ export function ScoreTerminalCard({ asset }) {
           <span className="text-[10px] text-gray-500">+{signals.length - 4}</span>
         ) : null}
       </div>
+
+      {narrative?.message ? (
+        <div className="sentinel-narrative narrative-tactical">{narrative.message}</div>
+      ) : null}
 
       <div className="rounded-md border border-white/[0.08] bg-black/40 px-3 py-2">
         <div className="flex items-center justify-between gap-2">

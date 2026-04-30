@@ -24,7 +24,13 @@ export function useSortedTokens(tokens = []) {
     const enriched = tokens.map((t) => {
       const mint  = t.mint ?? t.address
       const entry = scores.get(mint)
-      const live  = isScoreFresh(entry, now) ? entry.score : null
+      const live = isScoreFresh(entry, now)
+        ? Number.isFinite(Number(entry.confidence))
+          ? Math.round(Number(entry.confidence))
+          : Number.isFinite(Number(entry.score))
+            ? Math.round(Number(entry.score))
+            : null
+        : null
       return {
         ...t,
         _mint:         mint,

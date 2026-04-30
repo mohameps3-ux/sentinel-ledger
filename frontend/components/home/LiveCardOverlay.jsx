@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { Eye } from "lucide-react";
-import { useScoreSocket } from "../../hooks/useScoreSocket";
+import { useMarketStore, isScoreFresh } from "@/lib/store/marketStore";
+import { useScoreRoom } from "@/hooks/useScoreRoom";
 import { useTerminalMemoryEntry } from "../../hooks/useTerminalMemoryEntry";
 import { recordSeen, togglePin } from "../../lib/terminalMemory";
 
@@ -33,8 +34,9 @@ import { recordSeen, togglePin } from "../../lib/terminalMemory";
  *
  * Performance
  * -----------
- *  - The live score subscription stays exactly as it was
- *    (one singleton socket, shared bootstrap queue).
+ *  - The live score is read from the global market store (ScoreSocketProvider);
+ *    this component calls `useScoreRoom(mint)` so the shared socket joins the
+ *    token room for fan-out.
  *  - The memory subscription uses `useSyncExternalStore`; cards whose
  *    memory entry didn't change don't re-render on unrelated mutations.
  *  - `recordSeen` is called on every incoming score update, but its
@@ -142,7 +144,11 @@ function MemoryChip({ variant, title }) {
 }
 
 function LiveCardOverlayImpl({ mint }) {
-  const { score } = useScoreSocket(mint);
+  useScoreRoom(mint);
+  const scoreEntry = useMarketStore((s) => (mint ? s.scores.get(mint) : undefined));
+  const now = Date.now();
+  const isFresh = isScoreFresh(scoreEntry, now);
+  const score = isFresh && scoreEntry ? scoreEntry : null;
   const memEntry = useTerminalMemoryEntry(mint);
 
   // Capture the remembered score ONCE at mount so the BREAKOUT chip has

@@ -1,3 +1,6 @@
+// DEPRECATED: replaced by global marketStore (ScoreSocketProvider) + useScoreRoom for room join.
+// Safe to delete after v3 release is stable.
+
 import { useEffect, useRef, useState } from "react";
 
 /**
