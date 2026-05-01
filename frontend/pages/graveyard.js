@@ -122,10 +122,13 @@ function computeInstitutionalMetrics(signals) {
   };
 }
 
-function AnimatedDonut({ pct, color, label, size = 62, segments }) {
-  const r = 22;
+function AnimatedDonut({ pct, color, label, size = 108, segments }) {
+  const r = Math.round((22 * size) / 62);
+  const strokeW = Math.max(7, Math.round((8 * size) / 62));
   const circ = 2 * Math.PI * r;
   const ref = useRef(null);
+  const labelSize = Math.max(6, Math.round((5 * size) / 62));
+  const pctSize = Math.max(9, Math.round((9 * size) / 62));
 
   useEffect(() => {
     if (!ref.current) return;
@@ -139,7 +142,7 @@ function AnimatedDonut({ pct, color, label, size = 62, segments }) {
         el.setAttribute("stroke-dasharray", `${fill} ${circ - fill}`);
       });
     });
-  }, [pct]);
+  }, [pct, circ]);
 
   if (segments) {
     const total = segments.reduce((a, s) => a + s.pct, 0) || 1;
@@ -158,7 +161,7 @@ function AnimatedDonut({ pct, color, label, size = 62, segments }) {
     });
     return (
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1f2937" strokeWidth="8" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1f2937" strokeWidth={strokeW} />
         {arcs.map((a, i) => (
           <circle
             key={i}
@@ -167,7 +170,7 @@ function AnimatedDonut({ pct, color, label, size = 62, segments }) {
             r={r}
             fill="none"
             stroke={a.color}
-            strokeWidth="8"
+            strokeWidth={strokeW}
             strokeDasharray={a.dash}
             transform={`rotate(${a.rotate} ${size / 2} ${size / 2})`}
             style={{ transition: `stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1) ${i * 0.15}s` }}
@@ -175,16 +178,23 @@ function AnimatedDonut({ pct, color, label, size = 62, segments }) {
         ))}
         <text
           x={size / 2}
-          y={size / 2 - 3}
+          y={size / 2 - labelSize * 0.35}
           textAnchor="middle"
           fill="#e2e8f0"
-          fontSize="9"
+          fontSize={pctSize}
           fontFamily="monospace"
           fontWeight="500"
         >
           {Math.round(pct)}%
         </text>
-        <text x={size / 2} y={size / 2 + 8} textAnchor="middle" fill="#6b7280" fontSize="5" fontFamily="monospace">
+        <text
+          x={size / 2}
+          y={size / 2 + pctSize * 0.75}
+          textAnchor="middle"
+          fill="#6b7280"
+          fontSize={labelSize}
+          fontFamily="monospace"
+        >
           {label}
         </text>
       </svg>
@@ -194,7 +204,7 @@ function AnimatedDonut({ pct, color, label, size = 62, segments }) {
   const fill = (pct / 100) * circ;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1f2937" strokeWidth="8" />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1f2937" strokeWidth={strokeW} />
       <circle
         ref={ref}
         cx={size / 2}
@@ -202,22 +212,29 @@ function AnimatedDonut({ pct, color, label, size = 62, segments }) {
         r={r}
         fill="none"
         stroke={color}
-        strokeWidth="8"
+        strokeWidth={strokeW}
         strokeDasharray={`0 ${circ}`}
         transform={`rotate(-90 ${size / 2} ${size / 2})`}
       />
       <text
         x={size / 2}
-        y={size / 2 - 3}
+        y={size / 2 - labelSize * 0.35}
         textAnchor="middle"
         fill="#e2e8f0"
-        fontSize="9"
+        fontSize={pctSize}
         fontFamily="monospace"
         fontWeight="500"
       >
         {Math.round(pct)}%
       </text>
-      <text x={size / 2} y={size / 2 + 8} textAnchor="middle" fill="#6b7280" fontSize="5" fontFamily="monospace">
+      <text
+        x={size / 2}
+        y={size / 2 + pctSize * 0.75}
+        textAnchor="middle"
+        fill="#6b7280"
+        fontSize={labelSize}
+        fontFamily="monospace"
+      >
         {label}
       </text>
     </svg>
@@ -226,9 +243,9 @@ function AnimatedDonut({ pct, color, label, size = 62, segments }) {
 
 function LineChart({ signals }) {
   const ref = useRef(null);
-  const W = 360;
-  const H = 120;
-  const PAD = 14;
+  const W = 520;
+  const H = 200;
+  const PAD = 16;
 
   const points = useMemo(() => {
     if (!signals?.length) return "";
@@ -290,45 +307,80 @@ function LineChart({ signals }) {
   }, [signals]);
 
   return (
-    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
+    <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id="graveLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#34d399" />
           <stop offset="100%" stopColor="#f87171" />
         </linearGradient>
+        <filter id="graveLineGlow" x="-6%" y="-6%" width="112%" height="112%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0.65" result="b" />
+          <feMerge>
+            <feMergeNode in="b" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
-      <line x1={PAD} y1={H / 2} x2={W - PAD} y2={H / 2} stroke="#1f2937" strokeWidth="0.5" strokeDasharray="3 3" />
-      <text x={PAD} y={10} fill="#64748b" fontSize="5" fontFamily="monospace">
+      <line
+        x1={PAD}
+        y1={H / 2}
+        x2={W - PAD}
+        y2={H / 2}
+        stroke="#1f2937"
+        strokeWidth="0.5"
+        strokeDasharray="3 3"
+      />
+      <text x={PAD} y={12} fill="#64748b" fontSize="6" fontFamily="monospace">
         +
       </text>
-      <text x={PAD} y={H / 2 + 4} fill="#64748b" fontSize="5" fontFamily="monospace">
+      <text x={PAD} y={H / 2 + 5} fill="#64748b" fontSize="6" fontFamily="monospace">
         0%
       </text>
-      <text x={PAD} y={H - 4} fill="#64748b" fontSize="5" fontFamily="monospace">
+      <text x={PAD} y={H - 6} fill="#64748b" fontSize="6" fontFamily="monospace">
         -
       </text>
       {points ? (
-        <polyline ref={ref} fill="none" stroke="url(#graveLineGrad)" strokeWidth="1.5" points={points} />
+        <>
+          <polyline
+            fill="none"
+            stroke="url(#graveLineGrad)"
+            strokeWidth="5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.14"
+            points={points}
+          />
+          <polyline
+            ref={ref}
+            fill="none"
+            stroke="url(#graveLineGrad)"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter="url(#graveLineGlow)"
+            points={points}
+          />
+        </>
       ) : (
-        <text x={W / 2} y={H / 2 + 4} textAnchor="middle" fill="#64748b" fontSize="6" fontFamily="monospace">
+        <text x={W / 2} y={H / 2 + 4} textAnchor="middle" fill="#64748b" fontSize="7" fontFamily="monospace">
           Serie en formación
         </text>
       )}
       {lastPct != null ? (
         <>
-          <rect x={W - 46} y={H - 18} width={34} height={9} rx="2" fill="rgba(92, 38, 38, 0.85)" />
-          <text x={W - 44} y={H - 11} fill="#e89191" fontSize="6" fontFamily="monospace">
+          <rect x={W - 52} y={H - 22} width={40} height={11} rx="2" fill="rgba(92, 38, 38, 0.85)" />
+          <text x={W - 50} y={H - 13} fill="#e89191" fontSize="7" fontFamily="monospace">
             {(lastPct * 100).toFixed(2)}%
           </text>
         </>
       ) : null}
-      <text x={PAD} y={H} fill="#64748b" fontSize="5" fontFamily="monospace">
+      <text x={PAD} y={H} fill="#64748b" fontSize="6" fontFamily="monospace">
         -48h
       </text>
-      <text x={W / 2 - 8} y={H} fill="#64748b" fontSize="5" fontFamily="monospace">
+      <text x={W / 2 - 10} y={H} fill="#64748b" fontSize="6" fontFamily="monospace">
         -24h
       </text>
-      <text x={W - 24} y={H} fill="#64748b" fontSize="5" fontFamily="monospace">
+      <text x={W - 28} y={H} fill="#64748b" fontSize="6" fontFamily="monospace">
         Actual
       </text>
     </svg>
@@ -336,9 +388,10 @@ function LineChart({ signals }) {
 }
 
 function ScatterPlot({ signals, correlation }) {
-  const W = 180;
-  const H = 88;
-  const PAD = 18;
+  const W = 220;
+  const H = 120;
+  const PAD = 16;
+  const plotBottom = H - 14;
 
   const dots = useMemo(() => {
     if (!signals?.length) return [];
@@ -352,55 +405,66 @@ function ScatterPlot({ signals, correlation }) {
         const ret = Number(outcomeRaw(s) ?? 0);
         const x = PAD + (conf / 100) * (W - PAD * 2);
         const clampedRet = Math.max(-0.2, Math.min(0.2, ret));
-        const y = H / 2 - (clampedRet / 0.5) * ((H - PAD * 2) / 2);
+        const midY = (PAD + plotBottom) / 2;
+        const halfSpan = (plotBottom - PAD) / 2;
+        const y = midY - (clampedRet / 0.2) * halfSpan;
         return { x, y, ret };
       });
   }, [signals]);
 
   return (
-    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
-      <line x1={PAD} y1={PAD} x2={PAD} y2={H - 8} stroke="#1f2937" strokeWidth="0.5" />
-      <line x1={PAD} y1={H / 2} x2={W - 4} y2={H / 2} stroke="#1f2937" strokeWidth="0.5" />
-      <line x1={PAD} y1={H / 2 - 12} x2={W - 4} y2={H / 2 + 16} stroke="#818cf8" strokeWidth="0.5" strokeDasharray="3 3" opacity="0.5" />
+    <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
+      <line x1={PAD} y1={PAD} x2={PAD} y2={plotBottom} stroke="#1f2937" strokeWidth="0.6" />
+      <line x1={PAD} y1={(PAD + plotBottom) / 2} x2={W - 6} y2={(PAD + plotBottom) / 2} stroke="#1f2937" strokeWidth="0.6" />
+      <line
+        x1={PAD}
+        y1={plotBottom}
+        x2={W - 6}
+        y2={PAD}
+        stroke="#818cf8"
+        strokeWidth="1.2"
+        strokeDasharray="4 4"
+        opacity="0.72"
+      />
       {dots.length > 0 ? (
         dots.map((d, i) => (
           <circle
             key={i}
             cx={d.x}
             cy={d.y}
-            r="2"
+            r="3"
             fill={d.ret > 0 ? "#a78bfa" : "#818cf8"}
-            opacity="0.8"
+            opacity="0.9"
             style={{
               animation: `dotFadeIn 0.3s ease ${i * 0.05}s both`
             }}
           />
         ))
       ) : (
-        <text x={W / 2} y={H / 2} textAnchor="middle" fill="#64748b" fontSize="6" fontFamily="monospace">
+        <text x={W / 2} y={H / 2} textAnchor="middle" fill="#64748b" fontSize="7" fontFamily="monospace">
           Cobertura parcial
         </text>
       )}
-      <text x={PAD + 2} y={8} fill="#4a5568" fontSize="5" fontFamily="monospace">
+      <text x={PAD + 2} y={11} fill="#4a5568" fontSize="6" fontFamily="monospace">
         50%
       </text>
-      <text x={PAD + 2} y={H / 2 + 4} fill="#4a5568" fontSize="5" fontFamily="monospace">
+      <text x={PAD + 2} y={(PAD + plotBottom) / 2 + 5} fill="#4a5568" fontSize="6" fontFamily="monospace">
         0%
       </text>
-      <text x={PAD + 2} y={H - 6} fill="#4a5568" fontSize="5" fontFamily="monospace">
+      <text x={PAD + 2} y={plotBottom - 2} fill="#4a5568" fontSize="6" fontFamily="monospace">
         -50%
       </text>
-      <text x={PAD + 2} y={H} fill="#4a5568" fontSize="5" fontFamily="monospace">
+      <text x={PAD + 2} y={H} fill="#4a5568" fontSize="6" fontFamily="monospace">
         0
       </text>
-      <text x={W / 2} y={H} fill="#4a5568" fontSize="5" fontFamily="monospace">
+      <text x={W / 2} y={H} fill="#4a5568" fontSize="6" fontFamily="monospace">
         50
       </text>
-      <text x={W - 12} y={H} fill="#4a5568" fontSize="5" fontFamily="monospace">
+      <text x={W - 14} y={H} fill="#4a5568" fontSize="6" fontFamily="monospace">
         100
       </text>
       {correlation != null && Number.isFinite(correlation) ? (
-        <text x={W - 42} y={10} fill="#818cf8" fontSize="5" fontFamily="monospace">
+        <text x={W - 48} y={12} fill="#818cf8" fontSize="6" fontFamily="monospace">
           r={correlation.toFixed(2)}
         </text>
       ) : null}
@@ -695,7 +759,9 @@ export default function GraveyardPage() {
             <div className="grave-core-left">
               <div className="grave-cc-t grave-cc-t--chart">Curva de rendimiento</div>
               <div className="grave-chart-sub">Serie acumulada de resultados</div>
-              <LineChart signals={completed} />
+              <div className="grave-linechart-host">
+                <LineChart signals={completed} />
+              </div>
             </div>
 
             <div className="grave-core-right">
@@ -704,11 +770,8 @@ export default function GraveyardPage() {
                 <div className="grave-ml-hero">{(modelScore * 100).toFixed(1)}%</div>
                 <div className="grave-ml-caption">Confianza del modelo (R²)</div>
                 <div className="grave-ml-meta">
-                  Calibración (decil superior): {(calibratedConfidence * 100).toFixed(1)}% · n={rankedML.length}
-                </div>
-                <div className="grave-ml-meta">
-                  Pesos activos · conf. {weights[0].toFixed(2)} · clúster {weights[1].toFixed(2)} · wallet{" "}
-                  {weights[2].toFixed(2)}
+                  Calibración (decil superior): {(calibratedConfidence * 100).toFixed(1)}% · n={rankedML.length} · pesos{" "}
+                  {weights[0].toFixed(2)}/{weights[1].toFixed(2)}/{weights[2].toFixed(2)}
                 </div>
                 <div
                   className={
@@ -759,6 +822,7 @@ export default function GraveyardPage() {
               <div className="grave-cc-t">Distribución</div>
               <div className="grave-box-chart-host">
                 <AnimatedDonut
+                  size={108}
                   pct={hasMetrics ? winRate * 100 : 0}
                   label="tasa acierto"
                   segments={[
@@ -771,7 +835,7 @@ export default function GraveyardPage() {
 
             <div className="grave-box">
               <div className="grave-cc-t">Confianza vs retorno</div>
-              <div className="grave-box-chart-host grave-box-chart-host--short">
+              <div className="grave-box-chart-host">
                 <ScatterPlot signals={completed} correlation={correlationValue} />
               </div>
             </div>
@@ -780,6 +844,7 @@ export default function GraveyardPage() {
               <div className="grave-cc-t">Fuente de señal</div>
               <div className="grave-box-chart-host">
                 <AnimatedDonut
+                  size={108}
                   pct={75}
                   label="por origen"
                   segments={[

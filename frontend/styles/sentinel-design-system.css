@@ -2371,30 +2371,30 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 
 /* ─── Institutional quant terminal tokens ─── */
 .grave-root {
-  --g-bg: #040a12;
-  --g-surface: #0a111d;
-  --g-surface-elevated: #0c1420;
-  --g-border: #1c2736;
-  --g-border-muted: #243041;
+  --g-bg: #050814;
+  --g-surface: #08111f;
+  --g-surface-elevated: #0b1324;
+  --g-border: #1e293b;
+  --g-border-muted: #273549;
   --g-border-inner: #162033;
-  --g-text: #e8eef2;
-  --g-text-dim: #8b9aab;
-  --g-label: #5c6d7e;
-  --g-pos: #3d9470;
-  --g-neg: #b55c5c;
-  --g-warn: #b8953a;
+  --g-text: #e2e8f0;
+  --g-text-dim: #94a3b8;
+  --g-label: #64748b;
+  --g-pos: #34d399;
+  --g-neg: #f87171;
+  --g-warn: #f59e0b;
   --g-accent: #5a7dae;
-  --g-accent-soft: rgba(90, 125, 174, 0.14);
-  --g-green-edge: rgba(61, 148, 112, 0.35);
-  --g-red-edge: rgba(181, 92, 92, 0.4);
+  --g-accent-soft: rgba(90, 125, 174, 0.12);
+  --g-green-edge: rgba(52, 211, 153, 0.35);
+  --g-red-edge: rgba(248, 113, 113, 0.35);
   --g-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
   --g-fast: 150ms;
 
   display: grid;
   grid-template-columns: 250px 1fr;
   min-height: 100vh;
-  background: var(--g-bg);
-  color: var(--g-text);
+  background: #050814;
+  color: #e2e8f0;
   font-family: JetBrains Mono, monospace;
   font-size: 11px;
   -webkit-font-smoothing: antialiased;
@@ -2423,12 +2423,12 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   top: 0;
   height: 100vh;
   width: 250px;
-  background: #090e18;
-  border-right: 1px solid var(--g-border);
-  padding: 8px 9px;
+  background: #0a0f1f;
+  border-right: 1px solid #1f2937;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
   overflow-y: auto;
 }
 
@@ -2629,10 +2629,10 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 
 /* ─── Main column ─── */
 .grave-main {
-  padding: 8px 10px 10px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   overflow-x: hidden;
   min-width: 0;
   min-height: 100vh;
@@ -2682,17 +2682,15 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 }
 
 .grave-sys-badge--ok {
-  background: rgba(61, 148, 112, 0.12);
+  background: rgba(52, 211, 153, 0.1);
   color: var(--g-pos);
   border: 1px solid var(--g-green-edge);
-  box-shadow: 0 0 8px rgba(61, 148, 112, 0.08);
 }
 
 .grave-sys-badge--bad {
-  background: rgba(181, 92, 92, 0.11);
+  background: rgba(248, 113, 113, 0.08);
   color: var(--g-neg);
   border: 1px solid var(--g-red-edge);
-  box-shadow: 0 0 8px rgba(181, 92, 92, 0.07);
 }
 
 .grave-period-group {
@@ -2734,15 +2732,16 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 .grave-mrow {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
+  gap: 8px;
 }
 
 .grave-mc {
-  background: var(--g-surface-elevated);
-  border: 1px solid var(--g-border);
-  border-radius: 7px;
-  padding: 7px 9px;
-  min-height: 68px;
+  background: #0b1324;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 74px;
+  max-height: 74px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -2751,17 +2750,17 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 }
 
 .grave-mc:hover {
-  border-color: var(--g-border-muted);
-  background: #0e1724;
+  border-color: #334155;
+  background: #0f1729;
 }
 
 .grave-mc:first-child {
-  border-color: rgba(90, 125, 174, 0.32);
-  background: rgba(90, 125, 174, 0.06);
+  border-color: rgba(90, 125, 174, 0.38);
+  background: rgba(90, 125, 174, 0.08);
 }
 
 .grave-mc:first-child:hover {
-  border-color: rgba(90, 125, 174, 0.42);
+  border-color: rgba(90, 125, 174, 0.48);
 }
 
 .grave-mc-l {
@@ -2769,16 +2768,16 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   color: var(--g-label);
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   white-space: nowrap;
   line-height: 1.2;
   font-weight: 600;
 }
 
 .grave-mc-v {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 750;
-  line-height: 1.15;
+  line-height: 1.12;
   letter-spacing: 0.01em;
 }
 
@@ -2792,21 +2791,22 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 /* ─── Core chart + ML ─── */
 .grave-core {
   display: grid;
-  grid-template-columns: 2.2fr 1fr;
-  gap: 8px;
+  grid-template-columns: 2.15fr 1fr;
+  gap: 10px;
   align-items: stretch;
   min-height: 0;
 }
 
 .grave-core-left {
-  background: var(--g-surface);
-  border: 1px solid var(--g-border);
+  background: #08111f;
+  border: 1px solid #1e293b;
   border-radius: 8px;
-  padding: 8px 9px 9px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  min-height: 250px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  min-height: 255px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .grave-core-left .grave-cc-t {
@@ -2817,25 +2817,37 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   margin-bottom: 2px;
 }
 
-.grave-core-left svg {
-  flex: 1;
+.grave-linechart-host {
+  flex: 1 1 auto;
   min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.grave-linechart-host svg {
+  width: 100%;
+  height: 100%;
+  min-height: 188px;
+  display: block;
 }
 
 .grave-chart-sub {
   font-size: 7px;
   color: var(--g-label);
   letter-spacing: 0.05em;
-  line-height: 1.45;
-  margin-bottom: 6px;
+  line-height: 1.4;
+  margin-bottom: 4px;
+  flex-shrink: 0;
 }
 
 .grave-mini-lead {
   font-size: 7px;
   color: var(--g-label);
   letter-spacing: 0.04em;
-  line-height: 1.4;
-  margin-bottom: 6px;
+  line-height: 1.35;
+  margin-bottom: 5px;
   margin-top: -1px;
 }
 
@@ -2851,17 +2863,20 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 .grave-core-right {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   min-height: 0;
 }
 
 .grave-ml-panel {
-  background: var(--g-surface);
-  border: 1px solid var(--g-border-strong, #243041);
+  background: #08111f;
+  border: 1px solid #1e293b;
   border-radius: 8px;
-  padding: 8px 9px 9px;
-  min-height: 118px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  padding: 8px 10px;
+  min-height: 122px;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .grave-cc-t--ml {
@@ -2870,39 +2885,41 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   letter-spacing: 0.08em;
   color: var(--g-text-dim);
   text-transform: uppercase;
-  margin-bottom: 6px;
-  text-shadow: 0 0 18px rgba(90, 125, 174, 0.18);
+  margin-bottom: 4px;
+  flex-shrink: 0;
 }
 
 .grave-ml-hero {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 750;
-  line-height: 1.05;
+  line-height: 1;
   color: #8b9fd4;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   letter-spacing: -0.02em;
 }
 
 .grave-ml-caption {
-  font-size: 9px;
+  font-size: 8px;
   color: var(--g-text-dim);
-  margin-bottom: 5px;
-  line-height: 1.4;
+  margin-bottom: 2px;
+  line-height: 1.35;
   letter-spacing: 0.03em;
 }
 
 .grave-ml-meta {
-  font-size: 8px;
+  font-size: 7px;
   color: var(--g-label);
-  line-height: 1.45;
+  line-height: 1.35;
   letter-spacing: 0.02em;
 }
 
 .grave-ml-state {
-  margin-top: 6px;
+  margin-top: auto;
+  padding-top: 4px;
   font-size: 8px;
   letter-spacing: 0.05em;
   font-weight: 650;
+  flex-shrink: 0;
 }
 
 .grave-ml-state--high {
@@ -2922,11 +2939,15 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 }
 
 .grave-top-signals {
-  background: var(--g-surface);
-  border: 1px solid var(--g-border);
+  background: #08111f;
+  border: 1px solid #1e293b;
   border-radius: 8px;
-  padding: 7px 9px 8px;
-  min-height: 118px;
+  padding: 6px 10px 8px;
+  min-height: 122px;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .grave-cc-t--signals {
@@ -2935,7 +2956,8 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   color: var(--g-label);
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
+  flex-shrink: 0;
 }
 
 .grave-top-signal-row {
@@ -2943,10 +2965,11 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   justify-content: space-between;
   align-items: center;
   font-size: 8px;
-  padding: 3px 2px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.65);
-  border-radius: 4px;
-  margin: 0 -2px;
+  padding: 2px 1px;
+  min-height: 18px;
+  border-bottom: 1px solid #0f172a;
+  border-radius: 2px;
+  margin: 0 -1px;
   transition: background var(--g-fast) var(--g-ease);
 }
 
@@ -2955,7 +2978,7 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 }
 
 .grave-top-signal-row:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .grave-top-signal-sym {
@@ -3003,92 +3026,115 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 .grave-secondary {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
 
 .grave-box {
-  background: var(--g-surface);
-  border: 1px solid var(--g-border);
+  background: #08111f;
+  border: 1px solid #1e293b;
   border-radius: 8px;
-  padding: 8px 9px;
-  min-height: 188px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.015);
+  padding: 10px;
+  min-height: 168px;
+  box-sizing: border-box;
   transition: border-color var(--g-fast) var(--g-ease);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.grave-box .grave-cc-t {
+  flex-shrink: 0;
+  margin-bottom: 6px;
 }
 
 .grave-box .grave-box-chart-host {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
 }
 
 .grave-box:hover {
-  border-color: var(--g-border-muted);
+  border-color: #334155;
 }
 
 .grave-box-chart-host {
   display: flex;
   justify-content: center;
   align-items: center;
-  flex: 1;
-  min-height: 136px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.grave-box-chart-host svg {
+  flex-shrink: 0;
 }
 
 .grave-box-chart-host--short {
-  min-height: 136px;
+  min-height: 0;
 }
 
 .grave-insight-row {
   display: grid;
-  grid-template-columns: 1.2fr 1.2fr 0.8fr;
-  gap: 8px;
-  align-items: start;
+  grid-template-columns: 1.15fr 1.15fr 0.85fr;
+  gap: 10px;
+  align-items: stretch;
 }
 
 .grave-oracle-panel {
-  background: rgba(11, 27, 18, 0.92);
-  border: 1px solid rgba(61, 148, 112, 0.28);
+  background: #0b1b12;
+  border: 1px solid #166534;
   border-radius: 8px;
-  padding: 8px 9px;
-  min-height: 168px;
+  padding: 10px;
+  min-height: 174px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: auto;
   transition: border-color var(--g-fast) var(--g-ease), background var(--g-fast) var(--g-ease);
 }
 
 .grave-oracle-panel:hover {
-  border-color: rgba(61, 148, 112, 0.42);
+  border-color: rgba(22, 101, 52, 0.55);
 }
 
 .grave-mistakes-panel {
-  background: rgba(26, 11, 11, 0.88);
-  border: 1px solid rgba(181, 92, 92, 0.28);
+  background: #1a0b0b;
+  border: 1px solid #7f1d1d;
   border-radius: 8px;
-  padding: 8px 9px;
-  min-height: 168px;
+  padding: 10px;
+  min-height: 174px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: auto;
   transition: border-color var(--g-fast) var(--g-ease), background var(--g-fast) var(--g-ease);
 }
 
 .grave-mistakes-panel:hover {
-  border-color: rgba(181, 92, 92, 0.4);
+  border-color: rgba(127, 29, 29, 0.55);
 }
 
 .grave-status-stack {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .grave-mini-panel {
-  background: var(--g-surface);
-  border: 1px solid var(--g-border);
+  background: #08111f;
+  border: 1px solid #1e293b;
   border-radius: 8px;
-  padding: 8px 9px;
+  padding: 8px 10px;
   min-height: 112px;
-  transition: border-color var(--g-fast) var(--g-ease);
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  transition: border-color var(--g-fast) var(--g-ease), background var(--g-fast) var(--g-ease);
 }
 
 .grave-mini-panel:hover {
-  border-color: var(--g-border-muted);
+  border-color: #334155;
+  background: #0c1524;
 }
 
 .grave-kill-stat {
@@ -3151,10 +3197,10 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 
 /* Feed table */
 .grave-tbl {
-  background: var(--g-surface);
-  border: 1px solid var(--g-border);
+  background: #08111f;
+  border: 1px solid #1e293b;
   border-radius: 8px;
-  padding: 8px 9px 6px;
+  padding: 10px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -3163,7 +3209,7 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 7px;
+  margin-bottom: 6px;
   gap: 8px;
 }
 
@@ -3183,7 +3229,7 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 
 .grave-feed-filter {
   font-size: 8px;
-  padding: 3px 8px;
+  padding: 2px 7px;
   border-radius: 6px;
   border: 1px solid var(--g-border-inner);
   background: transparent;
@@ -3197,7 +3243,7 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 
 .grave-feed-filter:hover {
   background: rgba(255, 255, 255, 0.03);
-  border-color: var(--g-border-muted);
+  border-color: #334155;
   color: var(--g-text-dim);
 }
 
@@ -3215,10 +3261,10 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 
 .grave-thdr {
   display: grid;
-  grid-template-columns: 18px 1.5fr 1fr 0.6fr 0.9fr 0.9fr 0.7fr 0.5fr;
-  gap: 7px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid var(--g-border);
+  grid-template-columns: 18px 1.55fr 1fr 0.6fr 0.9fr 0.9fr 0.7fr 0.5fr;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #1e293b;
 }
 
 .grave-th-cell {
@@ -3231,27 +3277,28 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 
 .grave-trow {
   display: grid;
-  grid-template-columns: 18px 1.5fr 1fr 0.6fr 0.9fr 0.9fr 0.7fr 0.5fr;
-  gap: 7px;
+  grid-template-columns: 18px 1.55fr 1fr 0.6fr 0.9fr 0.9fr 0.7fr 0.5fr;
+  gap: 8px;
   align-items: center;
-  padding: 4px 0;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.55);
-  min-height: 31px;
+  padding: 5px 0;
+  border-bottom: 1px solid #0f172a;
+  min-height: 34px;
+  max-height: 36px;
   font-size: 8px;
   transition: background var(--g-fast) var(--g-ease);
 }
 
 .grave-trow:hover {
-  background: rgba(22, 32, 51, 0.5);
+  background: rgba(22, 32, 51, 0.45);
 }
 
 .grave-tbl-more {
   text-align: center;
-  padding: 7px 6px 4px;
+  padding: 6px 6px 4px;
   font-size: 7px;
   color: var(--g-label);
-  border-top: 1px solid var(--g-border-inner);
-  margin-top: 3px;
+  border-top: 1px solid #0f172a;
+  margin-top: 2px;
   cursor: pointer;
   letter-spacing: 0.04em;
   transition: color var(--g-fast) var(--g-ease), background var(--g-fast) var(--g-ease);
