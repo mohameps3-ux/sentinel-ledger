@@ -52,6 +52,13 @@ function outcomeRaw(s) {
   return null;
 }
 
+function sourceWeight(source) {
+  const s = String(source ?? "unknown").toLowerCase();
+  if (s.includes("cluster")) return 1.2;
+  if (s.includes("whale")) return 1.15;
+  return 1.0;
+}
+
 function computeInstitutionalMetrics(signals) {
   const completed = (signals ?? []).filter((s) => outcomeRaw(s) != null);
   const wins = completed.filter((s) => (outcomeRaw(s) ?? 0) > 0);
@@ -597,6 +604,101 @@ export default function GraveyardPage() {
     return "NEUTRAL";
   }, [sharpeLike, edgeScore]);
 
+  const features = useMemo(() => {
+    return completed.map((s, idx) => {
+      const r = outcomeRaw(s);
+      const conf = Number(s.confidence || 0) / 100;
+
+      return {
+        signalKey: s?.id != null ? String(s.id) : `ml-${idx}-${String(s.emitted_at || s.time || s.mint || "")}`,
+        raw: r,
+        conf,
+        time: new Date(s.emitted_at || s.time || s.created_at || Date.now()).getTime(),
+        source: s.signals?.[0] || "unknown"
+      };
+    });
+  }, [completed]);
+
+  const withDecay = useMemo(() => {
+    const now = Date.now();
+
+    return features.map((f) => {
+      const ageMin = (now - f.time) / 60000;
+
+      const decay = Math.exp(-ageMin / 120);
+
+      return {
+        ...f,
+        decay
+      };
+    });
+  }, [features]);
+
+  const normalized = useMemo(() => {
+    const returns = withDecay.map((f) => f.raw).filter((v) => v != null);
+
+    const min = Math.min(...returns, -0.2);
+    const max = Math.max(...returns, 0.2);
+    const range = max - min || 1;
+
+    return withDecay.map((f) => {
+      const normR = f.raw != null ? (f.raw - min) / range : 0.5;
+
+      return {
+        ...f,
+        normR
+      };
+    });
+  }, [withDecay]);
+
+  const scoredSignals = useMemo(() => {
+    return normalized.map((f) => {
+      const score =
+        f.normR * 0.4 + f.conf * 0.25 + f.decay * 0.2 + sourceWeight(f.source) * 0.15;
+
+      return {
+        ...f,
+        score
+      };
+    });
+  }, [normalized]);
+
+  const predictedAlpha = useMemo(() => {
+    if (!scoredSignals.length) return 0;
+
+    const total = scoredSignals.reduce((a, b) => a + b.score, 0);
+    return total / scoredSignals.length;
+  }, [scoredSignals]);
+
+  const rankedSignals = useMemo(() => {
+    return [...scoredSignals].filter((s) => s.raw != null).sort((a, b) => b.score - a.score);
+  }, [scoredSignals]);
+
+  const calibratedConfidence = useMemo(() => {
+    if (!rankedSignals.length) return 0;
+
+    const top = rankedSignals.slice(0, 10);
+
+    const avg = top.reduce((a, b) => a + b.conf, 0) / top.length;
+
+    return avg;
+  }, [rankedSignals]);
+
+  const modelState = useMemo(() => {
+    if (predictedAlpha > 0.65) return "HIGH_ALPHA";
+    if (predictedAlpha > 0.55) return "MODERATE_ALPHA";
+    if (predictedAlpha < 0.45) return "NEGATIVE_ALPHA";
+    return "NEUTRAL";
+  }, [predictedAlpha]);
+
+  const mlScoreByKey = useMemo(() => {
+    const m = new Map();
+    for (const x of rankedSignals) {
+      m.set(x.signalKey, x.score);
+    }
+    return m;
+  }, [rankedSignals]);
+
   return (
     <>
       <PageHead title="Verified Track Record — Sentinel Ledger" description="Every signal, every outcome, nothing hidden." />
@@ -870,6 +972,52 @@ export default function GraveyardPage() {
               </div>
               );
             })}
+          </div>
+
+          <div className="grave-brow">
+            <div className="grave-cc grave-glow-blue">
+              <div className="grave-cc-t">ML SIGNAL ENGINE</div>
+
+              <div>Predicted Alpha: {(predictedAlpha * 100).toFixed(1)}%</div>
+              <div>Top Confidence: {(calibratedConfidence * 100).toFixed(1)}%</div>
+              <div>Signals Ranked: {rankedSignals.length}</div>
+
+              <div
+                style={{
+                  marginTop: "6px",
+                  fontSize: "8px",
+                  color:
+                    modelState === "HIGH_ALPHA"
+                      ? "#34d399"
+                      : modelState === "MODERATE_ALPHA"
+                        ? "#60a5fa"
+                        : modelState === "NEGATIVE_ALPHA"
+                          ? "#f87171"
+                          : "#9ca3af"
+                }}
+              >
+                {modelState}
+              </div>
+            </div>
+
+            <div className="grave-cc">
+              <div className="grave-cc-t">TOP ML SIGNALS</div>
+
+              {rankedSignals.slice(0, 6).map((sig, i) => (
+                <div
+                  key={`${sig.signalKey}-${i}`}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "7px",
+                    marginBottom: "3px"
+                  }}
+                >
+                  <span>{String(sig.source).slice(0, 8)}</span>
+                  <span style={{ color: "#34d399" }}>{(sig.score * 100).toFixed(1)}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="grave-brow">
@@ -1251,19 +1399,25 @@ export default function GraveyardPage() {
 
               const tRaw = s.emitted_at || s.time || s.created_at;
 
-              const intensity = Math.min(Math.abs(raw || 0) * 6, 1);
-              const rowBg =
-                raw == null
-                  ? undefined
-                  : raw > 0
-                    ? `rgba(52,211,153,${0.04 + intensity * 0.25})`
-                    : `rgba(248,113,113,${0.04 + intensity * 0.25})`;
+              const cIdx = completed.findIndex(
+                (c) => (s?.id != null && c?.id != null && String(c.id) === String(s.id)) || c === s
+              );
+              const signalKey =
+                s?.id != null
+                  ? String(s.id)
+                  : cIdx >= 0
+                    ? `ml-${cIdx}-${String(completed[cIdx]?.emitted_at || completed[cIdx]?.time || completed[cIdx]?.mint || "")}`
+                    : `ml-unranked-${i}`;
+
+              const mlScore = mlScoreByKey.get(signalKey) ?? 0;
+              const intensity = Math.min(mlScore * 2, 1);
+              const rowBg = `rgba(99,102,241,${0.05 + intensity * 0.3})`;
 
               return (
                 <div
                   key={s.id != null ? String(s.id) : `row-${i}`}
                   className="grave-trow-wrap"
-                  style={rowBg ? { background: rowBg } : undefined}
+                  style={{ background: rowBg }}
                 >
                   <div
                     className="grave-tbar"
