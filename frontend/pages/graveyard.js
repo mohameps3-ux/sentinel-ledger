@@ -576,36 +576,11 @@ export default function GraveyardPage() {
       <PageHead title="Verified Track Record — Sentinel Ledger" description="Every signal, every outcome, nothing hidden." />
       <div className="grave-root">
         <aside className="grave-sidebar">
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "4px 2px",
-              marginBottom: "4px",
-              borderBottom: "1px solid #1f2937"
-            }}
-          >
-            <div
-              style={{
-                width: "22px",
-                height: "22px",
-                background: "#4c1d95",
-                borderRadius: "4px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "9px",
-                color: "#a78bfa",
-                fontWeight: "600",
-                flexShrink: 0
-              }}
-            >
-              S
-            </div>
+          <div className="grave-side-brand">
+            <div className="grave-side-brand-mark">S</div>
             <div>
-              <div style={{ fontSize: "10px", fontWeight: "600", color: "#e2e8f0", lineHeight: 1.1 }}>SENTINEL</div>
-              <div style={{ fontSize: "7px", color: "#6b7280" }}>Meme Intel</div>
+              <div className="grave-side-brand-title">SENTINEL</div>
+              <div className="grave-side-brand-sub">Meme Intel</div>
             </div>
           </div>
 
@@ -617,117 +592,38 @@ export default function GraveyardPage() {
             { href: "/alerts", label: "Alertas", sub: "Telegram/PRO", icon: "◫", active: false },
             { href: "/pricing", label: "Precios", sub: "Planes", icon: "$", active: false }
           ].map((item) => (
-            <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "7px 8px",
-                  borderRadius: "8px",
-                  marginBottom: "4px",
-                  cursor: "pointer",
-                  background: item.active ? "#111827" : "transparent",
-                  border: item.active ? "1px solid #2563eb" : "1px solid transparent"
-                }}
-              >
-                <div
-                  style={{
-                    width: "18px",
-                    height: "18px",
-                    borderRadius: "4px",
-                    background: item.active ? "#1e3a5f" : "#1f2937",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "8px",
-                    flexShrink: 0,
-                    color: item.active ? "#60a5fa" : "#9ca3af"
-                  }}
-                >
-                  {item.icon}
-                </div>
-                <div>
-                  <div style={{ fontSize: "9px", color: "#d1d5db", fontWeight: "600" }}>{item.label}</div>
-                  <div style={{ fontSize: "7px", color: "#6b7280" }}>{item.sub}</div>
+            <Link key={item.href} href={item.href} className="grave-nav-link">
+              <div className={item.active ? "grave-nav-item grave-nav-item--active" : "grave-nav-item"}>
+                <div className="grave-nav-ic">{item.icon}</div>
+                <div className="grave-nav-text">
+                  <div className="grave-nav-label">{item.label}</div>
+                  <div className="grave-nav-sub">{item.sub}</div>
                 </div>
               </div>
             </Link>
           ))}
 
-          <div
-            style={{
-              marginTop: "8px",
-              background: "#1a1a2e",
-              border: "1px solid #4c1d95",
-              borderRadius: "8px",
-              padding: "8px"
-            }}
-          >
-            <div style={{ fontSize: "8px", fontWeight: "600", color: "#a78bfa", marginBottom: "4px" }}>PRO</div>
-            <div style={{ fontSize: "7px", color: "#9ca3af", marginBottom: "4px" }}>Desbloquea todo</div>
+          <div className="grave-side-pro">
+            <div className="grave-side-pro-title">PRO</div>
+            <div className="grave-side-pro-lead">Desbloquea todo</div>
             {["Alertas Telegram", "Edge en tiempo real", "Más filtros", "Sin límites"].map((t) => (
-              <div
-                key={t}
-                style={{
-                  fontSize: "7px",
-                  color: "#9ca3af",
-                  marginBottom: "2px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "3px"
-                }}
-              >
-                <span style={{ color: "#34d399" }}>✓</span>
+              <div key={t} className="grave-side-pro-line">
+                <span className="grave-side-pro-check">✓</span>
                 {t}
               </div>
             ))}
             <Link href="/pricing">
-              <button
-                type="button"
-                style={{
-                  width: "100%",
-                  background: "#7c3aed",
-                  border: "none",
-                  borderRadius: "6px",
-                  color: "#fff",
-                  fontSize: "8px",
-                  padding: "6px",
-                  cursor: "pointer",
-                  marginTop: "6px",
-                  fontFamily: "JetBrains Mono,monospace"
-                }}
-              >
+              <button type="button" className="grave-side-pro-btn">
                 Ver Planes
               </button>
             </Link>
           </div>
 
-          <div
-            style={{
-              marginTop: "auto",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              fontSize: "7px",
-              color: "#6b7280",
-              paddingTop: "8px",
-              borderTop: "1px solid #1f2937"
-            }}
-          >
-            <div
-              className="grave-online-dot"
-              style={{
-                width: "6px",
-                height: "6px",
-                borderRadius: "50%",
-                background: "#34d399",
-                flexShrink: 0
-              }}
-            />
+          <div className="grave-side-foot">
+            <div className="grave-online-dot grave-online-dot--lg" />
             <div>
-              <div style={{ color: "#34d399", fontSize: "7px" }}>Sistema OK</div>
-              <div style={{ fontSize: "6px", color: "#6b7280" }}>ONLINE</div>
+              <div className="grave-side-foot-ok">Sistema OK</div>
+              <div className="grave-side-foot-sub">ONLINE</div>
             </div>
           </div>
         </aside>
@@ -735,52 +631,19 @@ export default function GraveyardPage() {
         <main className="grave-main">
           <div className="grave-header">
             <div>
-              <div style={{ fontSize: "12px", fontWeight: "700", color: "#e2e8f0", letterSpacing: ".03em" }}>
-                Resumen general · Últimas 48h
-              </div>
-              <div style={{ fontSize: "7px", color: "#6b7280" }}>Track record verificado on-chain · nada oculto</div>
+              <div className="grave-hd-title">Resumen general · Últimas 48h</div>
+              <div className="grave-hd-sub">Track record verificado on-chain · nada oculto</div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div
-                style={{
-                  fontSize: "7px",
-                  padding: "3px 8px",
-                  borderRadius: "999px",
-                  background: isSystemBad ? "#2a1111" : "#0d2818",
-                  color: isSystemBad ? "#f87171" : "#34d399",
-                  border: isSystemBad ? "1px solid #7f1d1d" : "1px solid #166534",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px"
-                }}
-              >
-                <div
-                  className="grave-online-dot"
-                  style={{
-                    width: "5px",
-                    height: "5px",
-                    borderRadius: "50%",
-                    background: isSystemBad ? "#f87171" : "#34d399"
-                  }}
-                />
+            <div className="grave-header-actions">
+              <div className={isSystemBad ? "grave-sys-badge grave-sys-badge--bad" : "grave-sys-badge grave-sys-badge--ok"}>
+                <div className="grave-online-dot grave-online-dot--sm" />
                 {isSystemBad ? "Degradado" : "Operativo"}
               </div>
 
-              <div style={{ display: "flex", gap: "4px" }}>
+              <div className="grave-period-group">
                 {["24H", "48H", "7D", "30D"].map((t) => (
-                  <div
-                    key={t}
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      fontSize: "8px",
-                      color: t === "48H" ? "#60a5fa" : "#6b7280",
-                      border: t === "48H" ? "1px solid #2563eb" : "1px solid #1f2937",
-                      background: t === "48H" ? "#1a3a5c" : "transparent",
-                      cursor: "pointer"
-                    }}
-                  >
+                  <div key={t} className={t === "48H" ? "grave-period-pill grave-period-pill--active" : "grave-period-pill"}>
                     {t}
                   </div>
                 ))}
@@ -817,46 +680,38 @@ export default function GraveyardPage() {
 
           <div className="grave-core">
             <div className="grave-core-left">
-              <div className="grave-cc-t" style={{ marginBottom: "6px" }}>
-                Rendimiento (P&amp;L%)
-              </div>
+              <div className="grave-cc-t grave-cc-t--chart">Rendimiento (P&amp;L%)</div>
               <LineChart signals={completed} />
             </div>
 
             <div className="grave-core-right">
               <div className="grave-ml-panel">
-                <div className="grave-cc-t">ML SIGNAL ENGINE</div>
-                <div style={{ fontSize: "30px", fontWeight: "700", lineHeight: 1, color: "#818cf8", marginBottom: "4px" }}>
-                  {(modelScore * 100).toFixed(1)}%
-                </div>
-                <div style={{ fontSize: "10px", color: "#94a3b8", marginBottom: "4px" }}>Model Confidence (R²)</div>
-                <div style={{ fontSize: "9px", color: "#64748b", lineHeight: 1.5 }}>
+                <div className="grave-cc-t grave-cc-t--ml">ML SIGNAL ENGINE</div>
+                <div className="grave-ml-hero">{(modelScore * 100).toFixed(1)}%</div>
+                <div className="grave-ml-caption">Model Confidence (R²)</div>
+                <div className="grave-ml-meta">
                   Calibrated (top decile): {(calibratedConfidence * 100).toFixed(1)}% · ranked {rankedML.length}
                 </div>
-                <div style={{ fontSize: "9px", color: "#64748b", lineHeight: 1.5 }}>
+                <div className="grave-ml-meta">
                   W_conf: {weights[0].toFixed(2)} · W_cluster: {weights[1].toFixed(2)} · W_whale: {weights[2].toFixed(2)}
                 </div>
                 <div
-                  style={{
-                    marginTop: "6px",
-                    fontSize: "8px",
-                    color:
-                      modelState === "HIGH_ALPHA"
-                        ? "#34d399"
-                        : modelState === "MODERATE_ALPHA"
-                          ? "#60a5fa"
-                          : modelState === "NEGATIVE_ALPHA"
-                            ? "#f87171"
-                            : "#9ca3af",
-                    letterSpacing: ".04em"
-                  }}
+                  className={
+                    modelState === "HIGH_ALPHA"
+                      ? "grave-ml-state grave-ml-state--high"
+                      : modelState === "MODERATE_ALPHA"
+                        ? "grave-ml-state grave-ml-state--mod"
+                        : modelState === "NEGATIVE_ALPHA"
+                          ? "grave-ml-state grave-ml-state--neg"
+                          : "grave-ml-state grave-ml-state--neutral"
+                  }
                 >
                   {modelState}
                 </div>
               </div>
 
               <div className="grave-top-signals">
-                <div className="grave-cc-t">TOP ALPHA SIGNALS</div>
+                <div className="grave-cc-t grave-cc-t--signals">TOP ALPHA SIGNALS</div>
                 {rankedML.slice(0, 5).map((sig, i) => {
                   const cIdx = completed.findIndex((c, j) => {
                     const k =
@@ -866,21 +721,11 @@ export default function GraveyardPage() {
                   const srcRow = cIdx >= 0 ? completed[cIdx] : null;
                   const pred = sig.score;
                   return (
-                    <div
-                      key={`${sig.signalKey}-${i}`}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        fontSize: "8px",
-                        padding: "4px 0",
-                        borderBottom: i < 4 ? "1px solid #0f172a" : "none"
-                      }}
-                    >
-                      <span style={{ color: "#e2e8f0" }}>
+                    <div key={`${sig.signalKey}-${i}`} className="grave-top-signal-row">
+                      <span className="grave-top-signal-sym">
                         {(srcRow?.asset || srcRow?.symbol || sig.source || "???").slice(0, 8)}
                       </span>
-                      <span style={{ color: "#34d399", fontWeight: "600" }}>{(pred * 100).toFixed(1)}%</span>
+                      <span className="grave-top-signal-pct">{(pred * 100).toFixed(1)}%</span>
                     </div>
                   );
                 })}
@@ -891,7 +736,7 @@ export default function GraveyardPage() {
           <div className="grave-secondary">
             <div className="grave-box">
               <div className="grave-cc-t">Distribución resultados</div>
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", minHeight: 140 }}>
+              <div className="grave-box-chart-host">
                 <AnimatedDonut
                   pct={hasMetrics ? winRate * 100 : 0}
                   label="win rate"
@@ -905,14 +750,14 @@ export default function GraveyardPage() {
 
             <div className="grave-box">
               <div className="grave-cc-t">Confidence vs Return</div>
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 140 }}>
+              <div className="grave-box-chart-host grave-box-chart-host--short">
                 <ScatterPlot signals={completed} correlation={correlationValue} />
               </div>
             </div>
 
             <div className="grave-box">
               <div className="grave-cc-t">Señales por fuente</div>
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", minHeight: 140 }}>
+              <div className="grave-box-chart-host">
                 <AnimatedDonut
                   pct={75}
                   label="señales"
@@ -1112,26 +957,14 @@ export default function GraveyardPage() {
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Signals killed</span>
-                    <b style={{ color: "#f59e0b" }}>{killedCount ?? 0}</b>
+                    <b className="grave-kill-stat">{killedCount ?? 0}</b>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Capped max DD</span>
                     <b style={{ color: "#f87171" }}>−10.00%</b>
                   </div>
                 </div>
-                <div
-                  style={{
-                    marginTop: "8px",
-                    fontSize: "8px",
-                    padding: "8px",
-                    borderRadius: "6px",
-                    background: "#2a1111",
-                    border: "1px solid #7f1d1d",
-                    color: "#f87171"
-                  }}
-                >
-                  UNSURVIVABLE — improve entry quality
-                </div>
+                <div className="grave-kill-banner">UNSURVIVABLE — improve entry quality</div>
               </div>
 
               <div className="grave-mini-panel">
@@ -1159,24 +992,15 @@ export default function GraveyardPage() {
           </div>
 
           <div className="grave-tbl">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-              <div style={{ fontSize: "9px", color: "#e2e8f0", fontWeight: "700", letterSpacing: ".04em" }}>RECENT SIGNAL FEED</div>
-              <div style={{ display: "flex", gap: "4px" }}>
+            <div className="grave-tbl-toolbar">
+              <div className="grave-tbl-title">RECENT SIGNAL FEED</div>
+              <div className="grave-feed-filters">
                 {["all", "wins", "losses", "pending"].map((f) => (
                   <button
                     key={f}
                     type="button"
                     onClick={() => setFilter(f)}
-                    style={{
-                      fontSize: "8px",
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      border: filter === f ? "1px solid #2563eb" : "1px solid #1f2937",
-                      background: filter === f ? "#1a3a5c" : "transparent",
-                      color: filter === f ? "#60a5fa" : "#6b7280",
-                      cursor: "pointer",
-                      fontFamily: "JetBrains Mono,monospace"
-                    }}
+                    className={filter === f ? "grave-feed-filter grave-feed-filter--on" : "grave-feed-filter"}
                   >
                     {f === "all" ? "Todas" : f === "wins" ? "Wins ✓" : f === "losses" ? "Losses ✗" : "Pending ⏳"}
                   </button>
@@ -1186,7 +1010,7 @@ export default function GraveyardPage() {
 
             <div className="grave-thdr">
               {["", "Token", "Fuente", "Conf", "Precio entrada", "P&L 60m", "Estado", "Hora"].map((h, idx) => (
-                <div key={idx} style={{ fontSize: "7px", color: "#4a5568", letterSpacing: ".04em" }}>
+                <div key={idx} className="grave-th-cell">
                   {h}
                 </div>
               ))}
@@ -1346,19 +1170,11 @@ export default function GraveyardPage() {
               );
             })}
 
-            <div
-              style={{
-                textAlign: "center",
-                padding: "8px",
-                fontSize: "7px",
-                color: "#6b7280",
-                borderTop: "1px solid #1f2937",
-                marginTop: "4px",
-                cursor: "pointer"
-              }}
-            >
-              ↓ Cargar más señales
-            </div>
+              <div
+                className="grave-tbl-more"
+              >
+                ↓ Cargar más señales
+              </div>
           </div>
         </main>
       </div>
