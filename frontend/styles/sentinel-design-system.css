@@ -2302,13 +2302,8 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   color: #e2e8f0;
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
+  width: 100%;
   min-height: 100vh;
-  width: 100vw;
-  position: fixed;
-  top: 0;
-  left: 0;
-  overflow: hidden;
-  z-index: 9999;
 }
 
 .grave-sidebar {
@@ -2318,10 +2313,7 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
+  min-height: 100vh;
 }
 
 .grave-main {
@@ -2329,8 +2321,8 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  overflow-y: auto;
-  height: 100vh;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .grave-mrow {
@@ -2368,7 +2360,7 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 
 .grave-crow {
   display: grid;
-  grid-template-columns: 1fr 100px 110px 100px 120px;
+  grid-template-columns: 1fr 1fr 1.2fr 1fr 1fr;
   gap: 4px;
 }
 
@@ -2401,17 +2393,17 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 
 .grave-trow {
   display: grid;
-  grid-template-columns: 16px 110px 100px 55px 80px 75px 60px 36px;
-  gap: 2px;
-  padding: 3px 0;
+  grid-template-columns: 16px 1fr 90px 50px 80px 80px 60px 40px;
+  gap: 3px;
+  padding: 4px 0;
   border-bottom: 0.5px solid #0f1420;
   align-items: center;
 }
 
 .grave-thdr {
   display: grid;
-  grid-template-columns: 16px 110px 100px 55px 80px 75px 60px 36px;
-  gap: 2px;
+  grid-template-columns: 16px 1fr 90px 50px 80px 80px 60px 40px;
+  gap: 3px;
   padding: 2px 0;
   border-bottom: 0.5px solid #1f2937;
   margin-bottom: 1px;
