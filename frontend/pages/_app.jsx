@@ -115,26 +115,30 @@ export default function App({ Component, pageProps }) {
               className={`${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} ${inter.className} min-h-screen bg-[var(--sl-bg-base)] text-white antialiased selection:bg-emerald-500/25 selection:text-emerald-100`}
               translate="no"
             >
-              <Navbar />
-              <GlobalStatusBar />
+              {!Component.standalone && <Navbar />}
+              {!Component.standalone && <GlobalStatusBar />}
               {/* padding-top is derived from CSS variables published by the
                   fixed top chrome (see :root in globals.css and the
                   `data-has-tension-bar` contract in LiveTensionBar.jsx).
                   This main no longer needs to know which page it is on. */}
-              <main
-                style={{
-                  paddingTop:
-                    "calc(var(--sl-nav-actual, var(--sl-nav-h)) + var(--sl-status-h) + var(--sl-bar-h) + var(--sl-safe-gap))"
-                }}
-                className="pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0"
-              >
-                {router.pathname !== "/" ? <GlobalWayfinding /> : null}
-                <AppErrorBoundary>
-                  <Component {...pageProps} />
-                </AppErrorBoundary>
-              </main>
-              <GlobalCommandHud />
-              <SiteFooter />
+              {Component.standalone ? (
+                <Component {...pageProps} />
+              ) : (
+                <main
+                  style={{
+                    paddingTop:
+                      "calc(var(--sl-nav-actual, var(--sl-nav-h)) + var(--sl-status-h) + var(--sl-bar-h) + var(--sl-safe-gap))"
+                  }}
+                  className="pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0"
+                >
+                  {router.pathname !== "/" ? <GlobalWayfinding /> : null}
+                  <AppErrorBoundary>
+                    <Component {...pageProps} />
+                  </AppErrorBoundary>
+                </main>
+              )}
+              {!Component.standalone && <GlobalCommandHud />}
+              {!Component.standalone && <SiteFooter />}
               {showDevUiBadge ? (
                 <div className="fixed left-2 bottom-2 z-[260] pointer-events-none select-none text-[10px] leading-tight px-2 py-1 rounded-md border border-[rgba(209,213,219,0.28)] bg-[#0a0a0a]/92 text-[#d1d5db] font-mono shadow-[0_0_14px_rgba(250,204,21,0.18)]">
                   DEV · UI {devUiStamp} · BUILD {buildStamp}

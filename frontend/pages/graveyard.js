@@ -371,7 +371,7 @@ function ScatterPlot({ signals }) {
   );
 }
 
-export default function VerifiedTrackRecordPage() {
+export default function GraveyardPage() {
   const [filter, setFilter] = useState("all");
 
   const query = useQuery({
@@ -1118,6 +1118,8 @@ export default function VerifiedTrackRecordPage() {
     </>
   );
 }
+
+GraveyardPage.standalone = true;
 
 function regimeKeyForRow(s) {
   const r = String(s.regime ?? s.emission_regime ?? s.gate_meta?.regime ?? "unknown").toLowerCase();
