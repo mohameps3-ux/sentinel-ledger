@@ -243,6 +243,7 @@ function TerminalCenter({
   return (
     <div className="tpt-center">
       <div className="tpt-c-header">
+        <div className="tpt-c-breadcrumb">TOKEN · TERMINAL</div>
         <div className="tpt-c-token-img">
           {img ? (
             <img src={img} alt={sym} onError={(e) => { e.currentTarget.style.display = "none"; }} />

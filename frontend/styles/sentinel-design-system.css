@@ -1366,6 +1366,10 @@ a {
   overflow: hidden;
   background: #080a0e;
 }
+/* Token terminal: hide global wayfinding strip (subnav links + ESTÁS EN breadcrumb) */
+main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
+  display: none;
+}
 @media (max-width: 1280px) {
   .tpt-root {
     grid-template-columns: 1fr;
@@ -1599,6 +1603,18 @@ a {
   background: #0a0c12;
   overflow-x: auto;
 }
+.tpt-c-breadcrumb {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.25);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  flex-shrink: 0;
+  align-self: center;
+  user-select: none;
+}
 .tpt-c-token-img {
   width: 40px;
   height: 40px;
@@ -1771,7 +1787,7 @@ a {
 }
 .tpt-c-chart {
   position: relative;
-  flex: 0 0 250px;
+  flex: 0 0 320px;
   overflow: hidden;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
@@ -2034,7 +2050,7 @@ a {
 .tpt-c-trade-bar {
   display: flex;
   gap: 6px;
-  padding: 10px 14px;
+  padding: 7px 14px;
   background: #090b12;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   flex-shrink: 0;
@@ -2044,20 +2060,20 @@ a {
   flex: 2;
   background: #2563eb;
   border: none;
-  border-radius: 6px;
+  border-radius: 5px;
   color: #fff;
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  padding: 9px 14px;
+  padding: 7px 14px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  gap: 2px;
+  gap: 1px;
 }
 .tpt-c-trade-sub {
   font-size: 8px;
@@ -2068,11 +2084,11 @@ a {
   flex: 1;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
+  border-radius: 5px;
   color: rgba(255, 255, 255, 0.6);
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
-  padding: 8px 4px;
+  padding: 6px 4px;
   cursor: pointer;
   text-align: center;
   display: flex;
