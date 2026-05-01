@@ -2270,3 +2270,143 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   flex-shrink: 0;
 }
 
+@keyframes dotFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+}
+
+@keyframes gravePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.grave-online-dot {
+  animation: gravePulse 2s ease-in-out infinite;
+}
+
+.grave-root {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  background: #0a0c14;
+  color: #e2e8f0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  min-height: 100vh;
+}
+
+.grave-sidebar {
+  background: #0d0f1a;
+  border-right: 0.5px solid #1f2937;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.grave-main {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow-x: hidden;
+}
+
+.grave-mrow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.grave-mc {
+  background: #111827;
+  border: 0.5px solid #1f2937;
+  border-radius: 3px;
+  padding: 4px 5px;
+}
+
+.grave-mc-l {
+  font-size: 6px;
+  color: #6b7280;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+
+.grave-mc-v {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.grave-mc-d {
+  font-size: 6px;
+  margin-top: 1px;
+  color: #6b7280;
+}
+
+.grave-crow {
+  display: grid;
+  grid-template-columns: 1fr 100px 110px 100px 120px;
+  gap: 4px;
+}
+
+.grave-cc {
+  background: #111827;
+  border: 0.5px solid #1f2937;
+  border-radius: 3px;
+  padding: 5px;
+}
+
+.grave-cc-t {
+  font-size: 6px;
+  color: #6b7280;
+  letter-spacing: 0.06em;
+  margin-bottom: 3px;
+}
+
+.grave-brow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.grave-tbl {
+  background: #111827;
+  border: 0.5px solid #1f2937;
+  border-radius: 3px;
+  padding: 5px;
+}
+
+.grave-trow {
+  display: grid;
+  grid-template-columns: 16px 110px 100px 55px 80px 75px 60px 36px;
+  gap: 2px;
+  padding: 3px 0;
+  border-bottom: 0.5px solid #0f1420;
+  align-items: center;
+}
+
+.grave-thdr {
+  display: grid;
+  grid-template-columns: 16px 110px 100px 55px 80px 75px 60px 36px;
+  gap: 2px;
+  padding: 2px 0;
+  border-bottom: 0.5px solid #1f2937;
+  margin-bottom: 1px;
+}
+

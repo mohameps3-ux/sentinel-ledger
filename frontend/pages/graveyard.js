@@ -1,17 +1,8 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { PageHead } from "../components/seo/PageHead";
 import { getPublicApiUrl } from "../lib/publicRuntime";
-import { useLocale } from "../contexts/LocaleContext";
-
-const FILTERS = [
-  { id: "all", label: "All" },
-  { id: "wins", label: "Wins ✓" },
-  { id: "losses", label: "Losses ✗" },
-  { id: "pending", label: "Pending ⏳" }
-];
 
 /** Cap pages to avoid flooding the API on very large ledgers. */
 const METRICS_MAX_PAGES = 40;
@@ -59,69 +50,6 @@ function outcomeRaw(s) {
   if (s?.result_pct != null && Number.isFinite(Number(s.result_pct))) return Number(s.result_pct);
   if (s?.outcome_60m != null && Number.isFinite(Number(s.outcome_60m))) return Number(s.outcome_60m);
   return null;
-}
-
-function pct(v, unit = true) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  const value = unit ? n * 100 : n;
-  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
-}
-
-function int(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return Math.round(n).toLocaleString();
-}
-
-function time(raw) {
-  const t = raw ? new Date(raw) : null;
-  if (!t || Number.isNaN(t.getTime())) return "—";
-  return t.toLocaleString(undefined, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-}
-
-function rowTone(result) {
-  if (result === "WIN") return "border-emerald-500/20 bg-emerald-500/[0.055]";
-  if (result === "LOSS") return "border-red-500/20 bg-red-500/[0.045]";
-  if (result === "NEUTRAL") return "border-slate-500/20 bg-slate-500/[0.035]";
-  return "border-slate-500/20 bg-white/[0.025]";
-}
-
-function ruleTone(winRate) {
-  const n = Number(winRate);
-  if (!Number.isFinite(n)) return "border-white/[0.08]";
-  if (n > 0.65) return "border-emerald-500/25 bg-emerald-500/[0.04]";
-  if (n >= 0.45) return "border-amber-500/25 bg-amber-500/[0.04]";
-  return "border-red-500/25 bg-red-500/[0.04]";
-}
-
-function Stat({ label, value, hint, className = "", valueClassName = "" }) {
-  return (
-    <div className={`border border-white/[0.08] bg-black/25 px-3 py-2 ${className}`}>
-      <p className="text-[10px] uppercase tracking-[0.14em] text-sl-muted font-semibold">{label}</p>
-      <p className={`mt-1 font-mono text-lg font-semibold text-sl-text ${valueClassName}`}>{value}</p>
-      {hint ? <p className="mt-0.5 text-[11px] text-sl-muted">{hint}</p> : null}
-    </div>
-  );
-}
-
-function outcomeTone(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "text-slate-500";
-  if (n > 0) return "text-emerald-300";
-  if (n < 0) return "text-red-300";
-  return "text-slate-300";
-}
-
-function ruleConfidence(count, wr) {
-  const c = Math.max(0, Number(count) || 0);
-  const w = Number(wr);
-  if (c < 10) return { label: "Gathering data", cls: "text-sl-muted" };
-  if (c < 30) return { label: "Low confidence", cls: "text-orange-400" };
-  if (c < 50) return { label: "Moderate", cls: "text-blue-400" };
-  if (c >= 50 && Number.isFinite(w) && w > 0.45) return { label: "High confidence", cls: "text-emerald-400" };
-  if (c >= 50 && Number.isFinite(w) && w > 0 && w <= 0.45) return { label: "Low edge", cls: "text-orange-400" };
-  return { label: "Low confidence", cls: "text-orange-400" };
 }
 
 function computeInstitutionalMetrics(signals) {
@@ -187,131 +115,263 @@ function computeInstitutionalMetrics(signals) {
   };
 }
 
-function callLabel(s) {
-  if (!s) return "—";
-  const raw = outcomeRaw(s);
-  const sym = s.symbol ?? s.asset?.slice(0, 8) ?? (s.mint ? String(s.mint).slice(0, 6) : null) ?? "???";
-  if (raw == null || !Number.isFinite(raw)) return `${sym} —`;
-  const nPct = raw * 100;
-  const sign = nPct > 0 ? "+" : "";
-  return `${sym} ${sign}${nPct.toFixed(1)}%`;
-}
+function AnimatedDonut({ pct, color, label, size = 62, segments }) {
+  const r = 22;
+  const circ = 2 * Math.PI * r;
+  const ref = useRef(null);
 
-function regimeKey(s) {
-  const r = String(s.regime ?? s.emission_regime ?? s.gate_meta?.regime ?? "unknown").toLowerCase();
-  if (["calm", "trending", "volatile"].includes(r)) return r;
-  return "unknown";
-}
+  useEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    el.style.transition = "none";
+    el.setAttribute("stroke-dasharray", `0 ${circ}`);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.style.transition = "stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)";
+        const fill = (pct / 100) * circ;
+        el.setAttribute("stroke-dasharray", `${fill} ${circ - fill}`);
+      });
+    });
+  }, [pct]);
 
-function regimeBreakdown(completed) {
-  const regimes = ["calm", "trending", "volatile", "unknown"];
-  return regimes
-    .map((r) => {
-      const group = completed.filter((s) => regimeKey(s) === r);
-      if (group.length === 0) return null;
-      const gWins = group.filter((s) => (outcomeRaw(s) ?? 0) > 0);
-      const gLosses = group.filter((s) => (outcomeRaw(s) ?? 0) <= 0);
-      const gWinRate = gWins.length / group.length;
-      const gAvgRet = group.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0) / group.length;
-      const avgGw = gWins.length > 0 ? gWins.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0) / gWins.length : 0;
-      const avgGl =
-        gLosses.length > 0 ? gLosses.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0) / gLosses.length : 0;
-      const gExp = gWinRate * avgGw + (1 - gWinRate) * avgGl;
-      return { regime: r, count: group.length, winRate: gWinRate, avgRet: gAvgRet, expectancy: gExp };
-    })
-    .filter(Boolean);
-}
-
-function resultBadgeMeta(row) {
-  const res = row.result;
-  if (res === "WIN")
-    return { label: "WIN", cls: "border-emerald-500/40 bg-emerald-500/15 text-emerald-200" };
-  if (res === "LOSS") return { label: "LOSS", cls: "border-red-500/40 bg-red-500/15 text-red-200" };
-  if (res === "PENDING")
-    return { label: "PENDING", cls: "border-white/15 bg-white/[0.06] text-slate-400" };
-  if (res === "MISSING") return { label: "FAILED", cls: "border-orange-500/40 bg-orange-500/15 text-orange-200" };
-  if (res === "NEUTRAL")
-    return { label: "NEUTRAL", cls: "border-slate-500/40 bg-slate-500/10 text-slate-300" };
-  return { label: "PENDING", cls: "border-white/15 bg-white/[0.06] text-slate-400" };
-}
-
-function tokenDisplaySym(row) {
-  const sym = row.symbol?.replace(/^\$/, "") || "";
-  if (sym) return sym;
-  if (row.token || row.mint) {
-    const m = String(row.token || row.mint);
-    return `${m.slice(0, 4)}…${m.slice(-4)}`;
+  if (segments) {
+    const colors = segments.map((s) => s.color);
+    let offset = 0;
+    const arcs = segments.map((s, i) => {
+      const fill = (s.pct / 100) * circ;
+      const dash = `${fill} ${circ - fill}`;
+      const rotate = -90 + (offset / 100) * 360;
+      offset += s.pct;
+      return { dash, rotate, color: colors[i], label: s.label, pct: s.pct };
+    });
+    return (
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1f2937" strokeWidth="8" />
+        {arcs.map((a, i) => (
+          <circle
+            key={i}
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke={a.color}
+            strokeWidth="8"
+            strokeDasharray={a.dash}
+            transform={`rotate(${a.rotate} ${size / 2} ${size / 2})`}
+            style={{ transition: `stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1) ${i * 0.15}s` }}
+          />
+        ))}
+        <text
+          x={size / 2}
+          y={size / 2 - 3}
+          textAnchor="middle"
+          fill="#e2e8f0"
+          fontSize="9"
+          fontFamily="monospace"
+          fontWeight="500"
+        >
+          {Math.round(pct)}%
+        </text>
+        <text x={size / 2} y={size / 2 + 8} textAnchor="middle" fill="#6b7280" fontSize="5" fontFamily="monospace">
+          {label}
+        </text>
+      </svg>
+    );
   }
-  return "—";
-}
 
-function filterRows(rows, filterId) {
-  if (filterId === "all") return rows;
-  if (filterId === "wins") return rows.filter((r) => r.result === "WIN");
-  if (filterId === "losses") return rows.filter((r) => r.result === "LOSS");
-  if (filterId === "pending") return rows.filter((r) => r.result === "PENDING" || r.result === "MISSING");
-  return rows;
-}
-
-function EmptyState({ children }) {
+  const fill = (pct / 100) * circ;
   return (
-    <div className="border border-white/[0.08] bg-white/[0.025] px-4 py-5 text-sm text-sl-sub">
-      {children}
-    </div>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1f2937" strokeWidth="8" />
+      <circle
+        ref={ref}
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth="8"
+        strokeDasharray={`0 ${circ}`}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+      <text
+        x={size / 2}
+        y={size / 2 - 3}
+        textAnchor="middle"
+        fill="#e2e8f0"
+        fontSize="9"
+        fontFamily="monospace"
+        fontWeight="500"
+      >
+        {Math.round(pct)}%
+      </text>
+      <text x={size / 2} y={size / 2 + 8} textAnchor="middle" fill="#6b7280" fontSize="5" fontFamily="monospace">
+        {label}
+      </text>
+    </svg>
   );
 }
 
-const CALIBRATION_MILESTONES = [
-  { id: "first_metric", target: 10, label: "First metric", description: "Win rate / avg return become visible" },
-  { id: "rule_confidence", target: 30, label: "Rule confidence", description: "Per-rule weights start adapting" },
-  { id: "mature", target: 80, label: "Mature calibration", description: "Validation Oracle fully operational" }
-];
+function LineChart({ signals }) {
+  const ref = useRef(null);
+  const W = 200;
+  const H = 72;
+  const PAD = 14;
 
-function CalibrationProgress({ resolved, total }) {
-  const r = Math.max(0, Number(resolved) || 0);
-  const t = Math.max(r, Number(total) || 0);
+  const points = useMemo(() => {
+    if (!signals?.length) return "";
+    const sorted = [...signals]
+      .filter((s) => s.outcome_pct != null || s.outcome_60m != null || outcomeRaw(s) != null)
+      .sort(
+        (a, b) =>
+          new Date(a.emitted_at || a.created_at || a.time || 0) -
+          new Date(b.emitted_at || b.created_at || b.time || 0)
+      );
+    if (!sorted.length) return "";
+
+    let cumulative = 0;
+    const vals = sorted.map((s) => {
+      const v = Number(s.outcome_pct ?? s.outcome_60m ?? outcomeRaw(s) ?? 0);
+      cumulative += v;
+      return cumulative;
+    });
+
+    const minV = Math.min(...vals, 0);
+    const maxV = Math.max(...vals, 0);
+    const range = maxV - minV || 1;
+
+    return vals
+      .map((v, i) => {
+        const x = PAD + ((W - PAD * 2) * i) / Math.max(vals.length - 1, 1);
+        const y = H - PAD - ((v - minV) / range) * (H - PAD * 2);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+  }, [signals]);
+
+  useEffect(() => {
+    if (!ref.current || !points) return;
+    const el = ref.current;
+    const len = el.getTotalLength();
+    el.style.transition = "none";
+    el.style.strokeDasharray = `${len}`;
+    el.style.strokeDashoffset = `${len}`;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.style.transition = "stroke-dashoffset 1.8s cubic-bezier(.4,0,.2,1)";
+        el.style.strokeDashoffset = "0";
+      });
+    });
+  }, [points]);
+
+  const lastPct = useMemo(() => {
+    if (!signals?.length) return null;
+    const resolved = signals.filter((s) => outcomeRaw(s) != null);
+    if (!resolved.length) return null;
+    const avg =
+      resolved.reduce((a, s) => a + Number(outcomeRaw(s) ?? 0), 0) / resolved.length;
+    return avg;
+  }, [signals]);
+
   return (
-    <div className="mt-4 border border-white/[0.08] bg-black/30 px-4 py-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-sl-muted font-semibold">Oracle calibration</p>
-        <p className="font-mono text-[11px] text-sl-sub tabular-nums">
-          {r}/{t} resolved · {Math.max(0, t - r)} pending
-        </p>
-      </div>
-      <div className="mt-3 space-y-2.5">
-        {CALIBRATION_MILESTONES.map((m) => {
-          const pctRaw = (r / m.target) * 100;
-          const reached = r >= m.target;
-          const widthPct = Math.min(100, Math.max(0, pctRaw));
-          const tone = reached ? "bg-emerald-400" : widthPct > 50 ? "bg-violet-400" : "bg-amber-400";
-          return (
-            <div key={m.id}>
-              <div className="flex items-center justify-between gap-2 text-[11px]">
-                <span className={`font-semibold ${reached ? "text-emerald-200" : "text-sl-sub"}`}>
-                  {reached ? "✓ " : ""}
-                  {m.label}
-                </span>
-                <span className="font-mono tabular-nums text-sl-muted">
-                  {Math.min(r, m.target)}/{m.target}
-                </span>
-              </div>
-              <div className="mt-1 h-1.5 bg-white/[0.05] overflow-hidden">
-                <div
-                  className={`h-full ${tone} transition-[width] duration-700 ease-out`}
-                  style={{ width: `${widthPct}%` }}
-                />
-              </div>
-              <p className="mt-1 text-[10px] text-sl-muted">{m.description}</p>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
+      <line x1={PAD} y1={H / 2} x2={W - PAD} y2={H / 2} stroke="#1f2937" strokeWidth="0.5" strokeDasharray="3 3" />
+      <text x={PAD} y={10} fill="#4a5568" fontSize="5" fontFamily="monospace">
+        +
+      </text>
+      <text x={PAD} y={H / 2 + 4} fill="#4a5568" fontSize="5" fontFamily="monospace">
+        0%
+      </text>
+      <text x={PAD} y={H - 4} fill="#4a5568" fontSize="5" fontFamily="monospace">
+        -
+      </text>
+      {points ? (
+        <polyline ref={ref} fill="none" stroke="#ef4444" strokeWidth="1.5" points={points} />
+      ) : null}
+      {lastPct != null ? (
+        <>
+          <rect x={W - 46} y={H - 18} width={34} height={9} rx="2" fill="#7f1d1d" />
+          <text x={W - 44} y={H - 11} fill="#f87171" fontSize="6" fontFamily="monospace">
+            {(lastPct * 100).toFixed(2)}%
+          </text>
+        </>
+      ) : null}
+      <text x={PAD} y={H} fill="#4a5568" fontSize="5" fontFamily="monospace">
+        -48h
+      </text>
+      <text x={W / 2 - 8} y={H} fill="#4a5568" fontSize="5" fontFamily="monospace">
+        -24h
+      </text>
+      <text x={W - 24} y={H} fill="#4a5568" fontSize="5" fontFamily="monospace">
+        ahora
+      </text>
+    </svg>
+  );
+}
+
+function ScatterPlot({ signals }) {
+  const W = 150;
+  const H = 72;
+  const PAD = 18;
+
+  const dots = useMemo(() => {
+    if (!signals?.length) return [];
+    return signals
+      .filter((s) => {
+        const conf = Number(s.confidence ?? s.sentinel_score ?? s.sentinelScore ?? NaN);
+        return Number.isFinite(conf) && outcomeRaw(s) != null;
+      })
+      .map((s) => {
+        const conf = Number(s.confidence ?? s.sentinel_score ?? s.sentinelScore ?? 0);
+        const ret = Number(outcomeRaw(s) ?? 0);
+        const x = PAD + (conf / 100) * (W - PAD * 2);
+        const clampedRet = Math.max(-0.5, Math.min(0.5, ret));
+        const y = H / 2 - (clampedRet / 0.5) * ((H - PAD * 2) / 2);
+        return { x, y, ret };
+      });
+  }, [signals]);
+
+  return (
+    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
+      <line x1={PAD} y1={PAD} x2={PAD} y2={H - 8} stroke="#1f2937" strokeWidth="0.5" />
+      <line x1={PAD} y1={H / 2} x2={W - 4} y2={H / 2} stroke="#1f2937" strokeWidth="0.5" />
+      <line x1={PAD} y1={H / 2 - 12} x2={W - 4} y2={H / 2 + 16} stroke="#818cf8" strokeWidth="0.5" strokeDasharray="3 3" opacity="0.5" />
+      {dots.map((d, i) => (
+        <circle
+          key={i}
+          cx={d.x}
+          cy={d.y}
+          r="2"
+          fill={d.ret > 0 ? "#a78bfa" : "#818cf8"}
+          opacity="0.8"
+          style={{
+            animation: `dotFadeIn 0.3s ease ${i * 0.05}s both`
+          }}
+        />
+      ))}
+      <text x={PAD + 2} y={8} fill="#4a5568" fontSize="5" fontFamily="monospace">
+        50%
+      </text>
+      <text x={PAD + 2} y={H / 2 + 4} fill="#4a5568" fontSize="5" fontFamily="monospace">
+        0%
+      </text>
+      <text x={PAD + 2} y={H - 6} fill="#4a5568" fontSize="5" fontFamily="monospace">
+        -50%
+      </text>
+      <text x={PAD + 2} y={H} fill="#4a5568" fontSize="5" fontFamily="monospace">
+        0
+      </text>
+      <text x={W / 2} y={H} fill="#4a5568" fontSize="5" fontFamily="monospace">
+        50
+      </text>
+      <text x={W - 12} y={H} fill="#4a5568" fontSize="5" fontFamily="monospace">
+        100
+      </text>
+    </svg>
   );
 }
 
 export default function VerifiedTrackRecordPage() {
-  const { t } = useLocale();
   const [filter, setFilter] = useState("all");
 
   const query = useQuery({
@@ -322,455 +382,745 @@ export default function VerifiedTrackRecordPage() {
 
   const data = query.data || {};
   const allRows = useMemo(() => data.recent_signals || [], [data.recent_signals]);
-  const rules = useMemo(() => data.rule_performance || [], [data.rule_performance]);
-  const bestCalls = useMemo(() => data.top_wins || [], [data.top_wins]);
-  const worstCalls = useMemo(() => data.worst_losses || [], [data.worst_losses]);
-  const autoDiscovered = useMemo(() => data.auto_discovered_wallets || [], [data.auto_discovered_wallets]);
-  const totalSignals = Number(data.total_signals || 0);
-  const resolvedSignals = Number(data.resolved_signals || 0);
-  const hasData = totalSignals > 0 || rules.length > 0;
 
   const metrics = useMemo(() => computeInstitutionalMetrics(allRows), [allRows]);
   const {
     completed,
+    wins,
+    losses,
     winRate,
     avgWinPct,
     avgLossPct,
-    expectancy,
     profitFactor,
     maxDrawdown,
-    cappedExpectancy,
-    cappedMaxDD,
-    killedCount,
     bestCall,
     worstCall
   } = metrics;
 
-  const rows = useMemo(() => filterRows(allRows, filter), [allRows, filter]);
-  const byRegime = useMemo(() => regimeBreakdown(completed), [completed]);
   const hasMetrics = completed.length > 0;
 
-  const expCardClass =
-    expectancy > 0
-      ? "border-emerald-500/30 bg-emerald-500/10"
-      : hasMetrics
-        ? "border-red-500/30 bg-red-500/10"
-        : "";
-  const expValueClass = !hasMetrics ? "" : expectancy > 0 ? "text-emerald-200" : "text-red-200";
+  const avgOutcome = useMemo(
+    () =>
+      completed.length > 0
+        ? completed.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0) / completed.length
+        : 0,
+    [completed]
+  );
+
+  const correlationValue = useMemo(() => {
+    const pairs = completed
+      .filter((s) => {
+        const c = Number(s.confidence ?? s.sentinel_score ?? s.sentinelScore ?? NaN);
+        return Number.isFinite(c) && outcomeRaw(s) != null;
+      })
+      .map((s) => ({
+        x: Number(s.confidence ?? s.sentinel_score ?? s.sentinelScore ?? 0),
+        y: outcomeRaw(s) ?? 0
+      }));
+    if (pairs.length < 2) return null;
+    const mx = pairs.reduce((a, p) => a + p.x, 0) / pairs.length;
+    const my = pairs.reduce((a, p) => a + p.y, 0) / pairs.length;
+    let num = 0;
+    let dx = 0;
+    let dy = 0;
+    for (const p of pairs) {
+      const vx = p.x - mx;
+      const vy = p.y - my;
+      num += vx * vy;
+      dx += vx * vx;
+      dy += vy * vy;
+    }
+    const den = Math.sqrt(dx * dy);
+    return den > 1e-9 ? num / den : null;
+  }, [completed]);
+
+  const filteredRows = useMemo(() => {
+    if (filter === "wins") return allRows.filter((s) => outcomeRaw(s) != null && outcomeRaw(s) > 0);
+    if (filter === "losses") return allRows.filter((s) => outcomeRaw(s) != null && outcomeRaw(s) <= 0);
+    if (filter === "pending") return allRows.filter((s) => outcomeRaw(s) == null);
+    return allRows;
+  }, [filter, allRows]);
+
+  const pfDisplay = hasMetrics && profitFactor > 0 ? profitFactor.toFixed(2) : hasMetrics ? "—" : "—";
 
   return (
     <>
       <PageHead title="Verified Track Record — Sentinel Ledger" description="Every signal, every outcome, nothing hidden." />
-      <div className="sl-container py-8 space-y-6">
-        <section className="glass-card sl-inset border-violet-500/20 bg-violet-500/[0.025]">
-          <p className="sl-label">{t("terminal.lexicon.verifiedTrackRecord")}</p>
-          <h1 className="text-3xl font-semibold text-sl-text mt-1">Sentinel Verified Track Record</h1>
-          <p className="text-sm text-sl-sub mt-2 max-w-3xl leading-relaxed">
-            Every signal. Every outcome. Nothing hidden.
-          </p>
-          <p className="mt-1 text-xs text-cyan-100/70">
-            Data sourced directly from on-chain events and Sentinel Oracle validation.
-          </p>
-          {resolvedSignals < 80 ? (
-            <CalibrationProgress resolved={resolvedSignals} total={totalSignals} />
-          ) : null}
-
-          {expectancy < 0 && hasMetrics ? (
-            <div className="mb-6 flex items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4 mt-6">
-              <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" aria-hidden />
-              <div>
-                <p className="text-sm font-bold text-red-200 uppercase tracking-wider">
-                  System Expectancy Negative ({(expectancy * 100).toFixed(2)}%)
-                </p>
-                <p className="text-xs text-red-300/80 mt-1">
-                  Sentinel is finding winners (Win rate {(winRate * 100).toFixed(1)}%) but losses are larger than
-                  gains (Avg loss {(avgLossPct * 100).toFixed(2)}%). Do not mirror signals without a strict −10% hard
-                  stop-loss.
-                </p>
-                <p className="text-xs text-red-300/60 mt-1">
-                  Simulated with −10% cap: {(cappedExpectancy * 100).toFixed(2)}%
-                  {cappedExpectancy > 0 ? " — positive with discipline" : ""}
-                </p>
-              </div>
+      <div className="grave-root">
+        <aside className="grave-sidebar">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "4px 2px",
+              marginBottom: "4px",
+              borderBottom: "0.5px solid #1f2937"
+            }}
+          >
+            <div
+              style={{
+                width: "18px",
+                height: "18px",
+                background: "#4c1d95",
+                borderRadius: "3px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "8px",
+                color: "#a78bfa",
+                fontWeight: "500",
+                flexShrink: 0
+              }}
+            >
+              S
             </div>
-          ) : null}
-
-          <div className="mt-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <Stat label="Total signals" value={hasData ? int(completed.length) : "Accumulating"} />
-            <Stat
-              label="Win rate"
-              value={hasMetrics ? `${(winRate * 100).toFixed(1)}%` : "Accumulating"}
-            />
-            <Stat
-              label="Expectancy"
-              value={hasMetrics ? `${(expectancy * 100).toFixed(2)}%` : "Accumulating"}
-              className={expCardClass}
-              valueClassName={expValueClass}
-            />
-            <Stat
-              label="Avg win"
-              value={hasMetrics ? pct(avgWinPct) : "Accumulating"}
-              className="border-emerald-500/25 bg-emerald-500/[0.06]"
-              valueClassName="text-emerald-200"
-            />
-            <Stat
-              label="Avg loss"
-              value={hasMetrics ? `${(avgLossPct * 100).toFixed(2)}%` : "Accumulating"}
-              className="border-red-500/25 bg-red-500/[0.06]"
-              valueClassName="text-red-300"
-            />
-            <Stat
-              label="Profit factor"
-              value={hasMetrics && profitFactor > 0 ? profitFactor.toFixed(2) : hasMetrics ? "—" : "Accumulating"}
-            />
-            <Stat
-              label="Max drawdown"
-              value={hasMetrics ? pct(maxDrawdown) : "Accumulating"}
-              className="border-red-500/25 bg-red-500/[0.06]"
-              valueClassName="text-red-300"
-            />
-            <Stat label="Best call" value={hasMetrics ? callLabel(bestCall) : "Accumulating"} hint={worstCall ? `Worst: ${callLabel(worstCall)}` : null} />
+            <div>
+              <div style={{ fontSize: "9px", fontWeight: "500", color: "#e2e8f0", lineHeight: 1.1 }}>SENTINEL</div>
+              <div style={{ fontSize: "7px", color: "#6b7280" }}>Meme Intel</div>
+            </div>
           </div>
-          {query.isFetching && !query.data ? (
-            <p className="mt-2 text-[11px] text-sl-muted">Loading ledger…</p>
-          ) : null}
-        </section>
 
-        {hasMetrics ? (
-          <div className="border border-white/[0.08] rounded-lg p-5 mb-6 bg-white/[0.02]">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-sl-muted">Kill Switch Simulation</h3>
-                <p className="text-xs text-sl-muted mt-0.5">
-                  Simulated with −10% hard stop-loss cap · raw history unchanged
-                </p>
-              </div>
-              <span
-                className={`text-xs font-bold px-3 py-1 rounded border ${
-                  cappedExpectancy > 0
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                    : "border-red-500/30 bg-red-500/10 text-red-300"
-                }`}
+          {[
+            { href: "/", label: "Inicio", sub: "Feed y escáner", icon: "⌂", active: false },
+            { href: "/scanner", label: "Escáner", sub: "Buscar mint", icon: "⌕" },
+            { href: "/smart-money", label: "Smart Money", sub: "Wallets y edge", icon: "◎" },
+            { href: "/watchlist", label: "Watchlist", sub: "Tus tokens", icon: "♡" },
+            { href: "/alerts", label: "Alertas", sub: "Telegram/PRO", icon: "◫" },
+            { href: "/pricing", label: "Precios", sub: "Planes", icon: "$" }
+          ].map((item) => (
+            <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "4px 5px",
+                  borderRadius: "4px",
+                  marginBottom: "1px",
+                  cursor: "pointer",
+                  background: item.active ? "#1a1a2e" : "transparent",
+                  border: item.active ? "0.5px solid #2563eb" : "0.5px solid transparent"
+                }}
               >
-                {cappedExpectancy > 0 ? "SURVIVABLE" : "UNSURVIVABLE"}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-4">
-              <div className="border border-white/[0.06] bg-sl-card rounded p-3">
-                <p className="text-[10px] uppercase tracking-wider text-sl-muted mb-1">Raw Expectancy</p>
-                <p className={`text-lg font-bold ${expectancy > 0 ? "text-emerald-300" : "text-red-300"}`}>
-                  {(expectancy * 100).toFixed(2)}%
-                </p>
-              </div>
-              <div className="border border-white/[0.06] bg-sl-card rounded p-3">
-                <p className="text-[10px] uppercase tracking-wider text-sl-muted mb-1">Capped Expectancy</p>
-                <p className={`text-lg font-bold ${cappedExpectancy > 0 ? "text-emerald-300" : "text-red-300"}`}>
-                  {(cappedExpectancy * 100).toFixed(2)}%
-                </p>
-              </div>
-              <div className="border border-white/[0.06] bg-sl-card rounded p-3">
-                <p className="text-[10px] uppercase tracking-wider text-sl-muted mb-1">Signals killed</p>
-                <p className="text-lg font-bold text-orange-300">{killedCount}</p>
-                <p className="text-[10px] text-sl-muted">would cap at −10%</p>
-              </div>
-              <div className="border border-white/[0.06] bg-sl-card rounded p-3">
-                <p className="text-[10px] uppercase tracking-wider text-sl-muted mb-1">Capped Max DD</p>
-                <p className="text-lg font-bold text-red-300">{(cappedMaxDD * 100).toFixed(2)}%</p>
-              </div>
-            </div>
-
-            {cappedExpectancy > 0 ? (
-              <div className="flex items-start gap-2 rounded border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2">
-                <span className="text-emerald-400 text-sm mt-0.5" aria-hidden>
-                  ✓
-                </span>
-                <p className="text-xs text-emerald-300/80">
-                  With a strict −10% stop-loss, system expectancy becomes positive ({(cappedExpectancy * 100).toFixed(2)}
-                  %). This means the edge exists — the problem is surviving the tail losses. Implement hard stop-loss in
-                  live signals.
-                </p>
-              </div>
-            ) : (
-              <div className="flex items-start gap-2 rounded border border-orange-500/20 bg-orange-500/[0.06] px-3 py-2">
-                <span className="text-orange-400 text-sm mt-0.5" aria-hidden>
-                  ⚠
-                </span>
-                <p className="text-xs text-orange-300/80">
-                  Even with −10% cap, expectancy remains negative ({(cappedExpectancy * 100).toFixed(2)}%). The problem is
-                  not only tail losses — entry quality must improve. Proceed to hard filters (Fase 1) after implementing
-                  kill switch.
-                </p>
-              </div>
-            )}
-          </div>
-        ) : null}
-
-        {byRegime.length > 0 ? (
-          <section className="glass-card sl-inset border-white/[0.08] bg-[#080a0d]/90">
-            <p className="sl-label">Regime breakdown</p>
-            <h2 className="text-xl font-semibold text-sl-text mt-1">Performance by market regime</h2>
-            <p className="text-xs text-sl-muted mt-1">Completed signals only (same sample as expectancy).</p>
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-[10px] uppercase tracking-[0.14em] text-sl-muted">
-                  <tr className="border-b border-white/[0.08]">
-                    <th className="text-left py-2 pr-3">Regime</th>
-                    <th className="text-right py-2 px-3">Signals</th>
-                    <th className="text-right py-2 px-3">Win rate</th>
-                    <th className="text-right py-2 px-3">Avg return</th>
-                    <th className="text-right py-2 pl-3">Expectancy</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {byRegime.map((g) => (
-                    <tr key={g.regime} className="border-b border-white/[0.06]">
-                      <td className="py-2.5 pr-3 font-mono text-cyan-200 capitalize">{g.regime}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-sl-sub">{int(g.count)}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-sl-sub">{(g.winRate * 100).toFixed(1)}%</td>
-                      <td className={`py-2.5 px-3 text-right font-mono ${outcomeTone(g.avgRet)}`}>
-                        {pct(g.avgRet)}
-                      </td>
-                      <td className={`py-2.5 pl-3 text-right font-mono ${outcomeTone(g.expectancy)}`}>
-                        {(g.expectancy * 100).toFixed(2)}%
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        ) : null}
-
-        <div className="text-[11px] text-sl-muted">Last updated: {time(data.last_updated)}</div>
-
-        <section className="glass-card sl-inset border-white/[0.08] bg-[#080a0d]/90">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <p className="sl-label">Rule Performance</p>
-              <h2 className="text-xl font-semibold text-sl-text">Rules ranked by verified confidence</h2>
-            </div>
-          </div>
-          {!rules.length ? (
-            <EmptyState>Oracle is validating first signals — rule performance appears after 10+ resolved outcomes per rule.</EmptyState>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-[10px] uppercase tracking-[0.14em] text-sl-muted">
-                  <tr className="border-b border-white/[0.08]">
-                    <th className="text-left py-2 pr-3">Rule ID</th>
-                    <th className="text-right py-2 px-3">Total Signals</th>
-                    <th className="text-right py-2 px-3">Win Rate</th>
-                    <th className="text-right py-2 px-3">Avg Return</th>
-                    <th className="text-left py-2 px-3">Best Regime</th>
-                    <th className="text-right py-2 pl-3">Confidence</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rules.map((r) => {
-                    const conf = ruleConfidence(r.total_signals, r.win_rate);
-                    return (
-                      <tr key={r.rule_id} className={`border-b ${ruleTone(r.win_rate)} border-white/[0.06]`}>
-                        <td className="py-3 pr-3 font-mono text-cyan-200">{r.rule_id}</td>
-                        <td className="py-3 px-3 text-right font-mono text-sl-sub">{int(r.total_signals)}</td>
-                        <td className="py-3 px-3 text-right font-mono text-sl-sub">{r.win_rate != null ? pct(r.win_rate) : "—"}</td>
-                        <td className="py-3 px-3 text-right font-mono text-sl-sub">{r.avg_return != null ? pct(r.avg_return) : "—"}</td>
-                        <td className="py-3 px-3 text-sl-sub">{r.best_regime || "—"}</td>
-                        <td className="py-3 pl-3 text-right">
-                          <span className={`inline-flex border border-white/10 px-2 py-1 text-[10px] font-bold ${conf.cls}`}>
-                            {conf.label}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        <section className="glass-card sl-inset border-white/[0.08] bg-[#080a0d]/90">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-            <div>
-              <p className="sl-label">Complete Signal History</p>
-              <h2 className="text-xl font-semibold text-sl-text">Every call we made. Unedited.</h2>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setFilter(f.id)}
-                  className={`h-9 px-3 border text-xs font-semibold transition ${
-                    filter === f.id
-                      ? "border-violet-500/40 bg-violet-500/15 text-violet-100"
-                      : "border-white/[0.08] bg-white/[0.03] text-sl-sub hover:text-sl-sub"
-                  }`}
+                <div
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    borderRadius: "3px",
+                    background: item.active ? "#1e3a5f" : "#1f2937",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "8px",
+                    flexShrink: 0,
+                    color: item.active ? "#60a5fa" : "#9ca3af"
+                  }}
                 >
-                  {f.label}
-                </button>
+                  {item.icon}
+                </div>
+                <div>
+                  <div style={{ fontSize: "8px", color: "#d1d5db", fontWeight: "500" }}>{item.label}</div>
+                  <div style={{ fontSize: "7px", color: "#6b7280" }}>{item.sub}</div>
+                </div>
+              </div>
+            </Link>
+          ))}
+
+          <div
+            style={{
+              marginTop: "6px",
+              background: "#1a1a2e",
+              border: "0.5px solid #4c1d95",
+              borderRadius: "4px",
+              padding: "5px"
+            }}
+          >
+            <div style={{ fontSize: "8px", fontWeight: "500", color: "#a78bfa", marginBottom: "3px" }}>PRO</div>
+            <div style={{ fontSize: "7px", color: "#9ca3af", marginBottom: "3px" }}>Desbloquea todo</div>
+            {["Alertas Telegram", "Edge en tiempo real", "Más filtros", "Sin límites"].map((t) => (
+              <div
+                key={t}
+                style={{
+                  fontSize: "7px",
+                  color: "#9ca3af",
+                  marginBottom: "1px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "2px"
+                }}
+              >
+                <span style={{ color: "#34d399" }}>✓</span>
+                {t}
+              </div>
+            ))}
+            <Link href="/pricing">
+              <button
+                type="button"
+                style={{
+                  width: "100%",
+                  background: "#7c3aed",
+                  border: "none",
+                  borderRadius: "3px",
+                  color: "#fff",
+                  fontSize: "8px",
+                  padding: "4px",
+                  cursor: "pointer",
+                  marginTop: "4px",
+                  fontFamily: "JetBrains Mono,monospace"
+                }}
+              >
+                Ver Planes
+              </button>
+            </Link>
+          </div>
+
+          <div
+            style={{
+              marginTop: "auto",
+              display: "flex",
+              alignItems: "center",
+              gap: "3px",
+              fontSize: "7px",
+              color: "#6b7280",
+              paddingTop: "4px",
+              borderTop: "0.5px solid #1f2937"
+            }}
+          >
+            <div
+              className="grave-online-dot"
+              style={{
+                width: "5px",
+                height: "5px",
+                borderRadius: "50%",
+                background: query.isError ? "#f87171" : "#34d399",
+                flexShrink: 0
+              }}
+            />
+            <div>
+              <div style={{ color: query.isError ? "#f87171" : "#34d399", fontSize: "7px" }}>
+                {query.isError ? "Error datos" : query.isFetching && !query.data ? "Cargando…" : "Sistema OK"}
+              </div>
+              <div style={{ fontSize: "6px", color: "#6b7280" }}>ONLINE</div>
+            </div>
+          </div>
+        </aside>
+
+        <main className="grave-main">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: "500", color: "#e2e8f0" }}>
+                Resumen general · Últimas 48h
+              </div>
+              <div style={{ fontSize: "7px", color: "#6b7280" }}>
+                Track record verificado on-chain · nada oculto
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <div
+                style={{
+                  fontSize: "7px",
+                  padding: "2px 6px",
+                  borderRadius: "8px",
+                  background: "#0d2818",
+                  color: "#34d399",
+                  border: "0.5px solid #166534",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "2px"
+                }}
+              >
+                <div
+                  className="grave-online-dot"
+                  style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#34d399" }}
+                />
+                Operativo
+              </div>
+              <div style={{ display: "flex", gap: "2px" }}>
+                {["24H", "48H", "7D", "30D"].map((t) => (
+                  <div
+                    key={t}
+                    style={{
+                      padding: "2px 6px",
+                      borderRadius: "3px",
+                      fontSize: "8px",
+                      color: t === "48H" ? "#60a5fa" : "#6b7280",
+                      border: t === "48H" ? "0.5px solid #2563eb" : "0.5px solid #1f2937",
+                      background: t === "48H" ? "#1a3a5c" : "transparent",
+                      cursor: "pointer"
+                    }}
+                  >
+                    {t}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grave-mrow">
+            {[
+              { label: "Señales emitidas", val: completed.length || "—", delta: null, color: "#e2e8f0" },
+              { label: "Win rate", val: hasMetrics ? `${(winRate * 100).toFixed(1)}%` : "—", delta: null, color: "#e2e8f0" },
+              { label: "Profit factor", val: pfDisplay, delta: null, color: "#e2e8f0" },
+              {
+                label: "Avg outcome",
+                val: hasMetrics ? `${(avgOutcome * 100).toFixed(2)}%` : "—",
+                delta: null,
+                color: hasMetrics && avgOutcome < 0 ? "#f87171" : "#34d399"
+              },
+              {
+                label: "Conf ↔ return",
+                val: hasMetrics ? (correlationValue != null ? correlationValue.toFixed(2) : "—") : "—",
+                delta: null,
+                color: "#f87171"
+              },
+              {
+                label: "Max drawdown",
+                val: hasMetrics ? `${(maxDrawdown * 100).toFixed(2)}%` : "—",
+                delta: null,
+                color: "#f87171"
+              },
+              { label: "Estado sistema", val: query.isError ? "ERROR" : "OPERATIVO", delta: query.isError ? null : "Todos OK", color: query.isError ? "#f87171" : "#34d399" }
+            ].map((m, i) => (
+              <div key={m.label} className="grave-mc" style={i === 6 ? { borderColor: query.isError ? "#7f1d1d" : "#166534" } : {}}>
+                <div className="grave-mc-l">{m.label}</div>
+                <div className="grave-mc-v" style={{ color: m.color }}>
+                  {m.val}
+                </div>
+                {m.delta ? <div className="grave-mc-d" style={{ color: "#34d399" }}>{m.delta}</div> : null}
+              </div>
+            ))}
+          </div>
+
+          <div className="grave-crow">
+            <div className="grave-cc">
+              <div className="grave-cc-t">Rendimiento (P&amp;L%)</div>
+              <LineChart signals={completed} />
+            </div>
+
+            <div className="grave-cc">
+              <div className="grave-cc-t">Distribución resultados</div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
+                <AnimatedDonut
+                  pct={hasMetrics ? winRate * 100 : 0}
+                  color="#34d399"
+                  label="win rate"
+                  segments={[
+                    { pct: hasMetrics ? winRate * 100 : 40, color: "#34d399", label: "Win" },
+                    { pct: hasMetrics ? (1 - winRate) * 100 : 60, color: "#ef4444", label: "Loss" }
+                  ]}
+                />
+                <div>
+                  {[
+                    { c: "#34d399", t: `Ganad. ${hasMetrics ? (winRate * 100).toFixed(0) : 0}% (${wins.length})` },
+                    { c: "#ef4444", t: `Perd. ${hasMetrics ? ((1 - winRate) * 100).toFixed(0) : 0}% (${losses.length})` },
+                    { c: "#4b5563", t: "Break 0% (0)" }
+                  ].map((l, idx) => (
+                    <div
+                      key={l.t}
+                      style={{
+                        fontSize: "7px",
+                        color: "#9ca3af",
+                        marginBottom: "2px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "2px"
+                      }}
+                    >
+                      <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: l.c, flexShrink: 0 }} />
+                      {l.t}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grave-cc">
+              <div className="grave-cc-t" style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Confidence vs Return</span>
+                <span style={{ color: "#818cf8", fontSize: "8px" }}>
+                  {hasMetrics ? correlationValue?.toFixed(2) ?? "—" : "—"}
+                </span>
+              </div>
+              <ScatterPlot signals={completed} />
+            </div>
+
+            <div className="grave-cc">
+              <div className="grave-cc-t">Señales por fuente</div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
+                <AnimatedDonut
+                  pct={75}
+                  color="#818cf8"
+                  label="señales"
+                  segments={[
+                    { pct: 46, color: "#818cf8", label: "Cluster" },
+                    { pct: 27, color: "#34d399", label: "Smart" },
+                    { pct: 16, color: "#f59e0b", label: "Wallet" },
+                    { pct: 11, color: "#4b5563", label: "Otros" }
+                  ]}
+                />
+                <div>
+                  {[
+                    { c: "#818cf8", t: "Cluster Probing 46%" },
+                    { c: "#34d399", t: "Smart Money 27%" },
+                    { c: "#f59e0b", t: "Wallet Activity 16%" },
+                    { c: "#4b5563", t: "Otros 11%" }
+                  ].map((l) => (
+                    <div
+                      key={l.t}
+                      style={{
+                        fontSize: "7px",
+                        color: "#9ca3af",
+                        marginBottom: "2px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "2px"
+                      }}
+                    >
+                      <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: l.c, flexShrink: 0 }} />
+                      {l.t}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grave-cc">
+              <div className="grave-cc-t">Actividad en tiempo real</div>
+              {[
+                { c: "#34d399", t: "Nueva señal: PEPE2.0", time: "ahora" },
+                { c: "#818cf8", t: "Cluster: 4 wallets", time: "8s" },
+                { c: "#60a5fa", t: "Señal emitida: WIF", time: "15s" },
+                { c: "#f59e0b", t: "Alerta PRO enviada", time: "22s" },
+                { c: "#34d399", t: "Nueva señal: POPCAT", time: "34s" }
+              ].map((a, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "2px 0",
+                    borderBottom: "0.5px solid #0f1420"
+                  }}
+                >
+                  <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: a.c, flexShrink: 0 }} />
+                  <div
+                    style={{
+                      fontSize: "7px",
+                      color: "#d1d5db",
+                      flex: 1,
+                      margin: "0 4px",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    }}
+                  >
+                    {a.t}
+                  </div>
+                  <div style={{ fontSize: "6px", color: "#6b7280", whiteSpace: "nowrap" }}>{a.time}</div>
+                </div>
               ))}
             </div>
           </div>
-          {!rows.length ? (
-            <EmptyState>{hasData ? "No signals match this filter." : "Oracle is validating signals — first results in 24-48h."}</EmptyState>
-          ) : (
-            <div className="space-y-2">
-              <div className="hidden lg:grid grid-cols-[0.95fr_1fr_0.65fr_0.75fr_0.55fr_0.55fr_0.55fr_0.65fr_0.85fr] gap-2 px-3 text-[10px] uppercase tracking-[0.14em] text-sl-muted">
-                <span>Time</span>
-                <span>Token</span>
-                <span>Action</span>
-                <span>Regime</span>
-                <span>5m</span>
-                <span>15m</span>
-                <span>60m</span>
-                <span>Result</span>
-                <span>P/L 60m</span>
+
+          <div className="grave-brow">
+            <div style={{ background: "#0d2818", border: "0.5px solid #166534", borderRadius: "3px", padding: "6px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "4px" }}>
+                <div
+                  style={{
+                    width: "11px",
+                    height: "11px",
+                    borderRadius: "50%",
+                    background: "#166534",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "7px",
+                    color: "#34d399"
+                  }}
+                >
+                  ✓
+                </div>
+                <div style={{ fontSize: "8px", fontWeight: "500", color: "#34d399", letterSpacing: ".04em" }}>
+                  WHEN THE ORACLE WAS RIGHT
+                </div>
               </div>
-              {rows.map((r) => {
-                const badge = resultBadgeMeta(r);
-                const raw60 = outcomeRaw(r);
-                const pendingStyle = r.result === "PENDING";
-                const rawResult = outcomeRaw(r);
-                const wasKilled = rawResult != null && rawResult < STOP_LOSS_CAP_FRAC;
-                return (
-                  <div key={r.id} className={`border px-3 py-3 ${rowTone(r.result)}`}>
-                    <div className="grid grid-cols-1 gap-1.5 lg:grid-cols-[0.95fr_1fr_0.65fr_0.75fr_0.55fr_0.55fr_0.55fr_0.65fr_0.85fr] lg:gap-2 lg:items-center text-xs">
-                      <span className="text-sl-muted">{time(r.time)}</span>
-                      <Link
-                        href={`/token/${encodeURIComponent(r.token || "")}`}
-                        className="font-mono text-cyan-200 no-underline break-all"
-                      >
-                        {tokenDisplaySym(r)}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "2px", marginBottom: "4px" }}>
+                {[
+                  { v: wins.length || 0, l: "ganadoras", c: "#34d399" },
+                  { v: hasMetrics ? `${(winRate * 100).toFixed(0)}%` : "—", l: "win rate", c: "#34d399" },
+                  { v: hasMetrics ? `${(avgWinPct * 100).toFixed(2)}%` : "—", l: "P&L prom", c: "#34d399" },
+                  {
+                    v: bestCall ? `+${(Number(outcomeRaw(bestCall) ?? 0) * 100).toFixed(1)}%` : "—",
+                    l: "mejor trade",
+                    c: "#34d399"
+                  }
+                ].map((s, idx) => (
+                  <div key={idx} style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "500", color: s.c }}>{s.v}</div>
+                    <div style={{ fontSize: "6px", color: "#6b7280" }}>{s.l}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: "2px", flexWrap: "wrap" }}>
+                {wins.slice(0, 5).map((s, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      fontSize: "6px",
+                      padding: "1px 4px",
+                      borderRadius: "2px",
+                      color: "#34d399",
+                      border: "0.5px solid #166534",
+                      background: "#0a1a10"
+                    }}
+                  >
+                    {s.asset || s.symbol || "?"} {outcomeRaw(s) != null ? `+${(outcomeRaw(s) * 100).toFixed(1)}%` : ""}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ background: "#1c0a0a", border: "0.5px solid #7f1d1d", borderRadius: "3px", padding: "6px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "4px" }}>
+                <div
+                  style={{
+                    width: "11px",
+                    height: "11px",
+                    borderRadius: "50%",
+                    background: "#7f1d1d",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "7px",
+                    color: "#f87171"
+                  }}
+                >
+                  ⚠
+                </div>
+                <div style={{ fontSize: "8px", fontWeight: "500", color: "#f87171", letterSpacing: ".04em" }}>
+                  WE SHOW OUR MISTAKES
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "2px", marginBottom: "4px" }}>
+                {[
+                  { v: losses.length || 0, l: "perdedoras", c: "#f87171" },
+                  { v: hasMetrics ? `${((1 - winRate) * 100).toFixed(0)}%` : "—", l: "loss rate", c: "#f87171" },
+                  { v: hasMetrics ? `${(avgLossPct * 100).toFixed(2)}%` : "—", l: "pérd. prom", c: "#f87171" },
+                  {
+                    v: worstCall ? `${(Number(outcomeRaw(worstCall) ?? 0) * 100).toFixed(1)}%` : "—",
+                    l: "peor trade",
+                    c: "#f87171"
+                  }
+                ].map((s, idx) => (
+                  <div key={idx} style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "500", color: s.c }}>{s.v}</div>
+                    <div style={{ fontSize: "6px", color: "#6b7280" }}>{s.l}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: "2px", flexWrap: "wrap" }}>
+                {losses.slice(0, 5).map((s, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      fontSize: "6px",
+                      padding: "1px 4px",
+                      borderRadius: "2px",
+                      color: "#f87171",
+                      border: "0.5px solid #7f1d1d",
+                      background: "#1a0808"
+                    }}
+                  >
+                    {s.asset || s.symbol || "?"} {outcomeRaw(s) != null ? `${(outcomeRaw(s) * 100).toFixed(1)}%` : ""}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grave-tbl">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+              <div style={{ fontSize: "8px", color: "#e2e8f0", fontWeight: "500", letterSpacing: ".04em" }}>
+                RECENT SIGNAL FEED
+              </div>
+              <div style={{ display: "flex", gap: "2px" }}>
+                {["all", "wins", "losses", "pending"].map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setFilter(f)}
+                    style={{
+                      fontSize: "7px",
+                      padding: "2px 5px",
+                      borderRadius: "3px",
+                      border: filter === f ? "0.5px solid #2563eb" : "0.5px solid #1f2937",
+                      background: filter === f ? "#1a3a5c" : "transparent",
+                      color: filter === f ? "#60a5fa" : "#6b7280",
+                      cursor: "pointer",
+                      fontFamily: "JetBrains Mono,monospace"
+                    }}
+                  >
+                    {f === "all" ? "Todas" : f === "wins" ? "Wins ✓" : f === "losses" ? "Losses ✗" : "Pending ⏳"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grave-thdr">
+              {["", "Token", "Fuente", "Conf", "Precio entrada", "P&L 60m", "Estado", "Hora"].map((h, idx) => (
+                <div key={idx} style={{ fontSize: "6px", color: "#4a5568", letterSpacing: ".04em" }}>
+                  {h}
+                </div>
+              ))}
+            </div>
+
+            {filteredRows.slice(0, 8).map((s, i) => {
+              const raw = outcomeRaw(s);
+              const pct = raw != null ? raw * 100 : null;
+              const isWin = pct != null && pct > 0;
+              const isPending = raw == null;
+              const rawFrac = raw;
+              const isKilled = rawFrac != null && rawFrac < STOP_LOSS_CAP_FRAC;
+              const sym = s.asset || s.symbol || (s.mint ? String(s.mint).slice(0, 6) : null) || "???";
+              const sourceRaw = Array.isArray(s.signals) ? s.signals[0] : s.rule_id || s.source || "smart_money";
+              const source = String(sourceRaw || "smart_money").toLowerCase();
+              const sourceLabel = source.includes("cluster")
+                ? "Cluster Probing"
+                : source.includes("whale")
+                  ? "Whale Activity"
+                  : "Smart Money";
+              const sourceColor = source.includes("cluster")
+                ? { bg: "#1e1b4b", c: "#818cf8" }
+                : source.includes("whale")
+                  ? { bg: "#1c1009", c: "#f59e0b" }
+                  : { bg: "#0d2818", c: "#34d399" };
+              const conf = Number(s.confidence ?? s.sentinel_score ?? s.sentinelScore ?? 0);
+              let statusLabel = "NEUTRAL";
+              if (isPending) statusLabel = "PENDING";
+              else if (isKilled) statusLabel = "KILLED";
+              else if (isWin) statusLabel = "WIN";
+              else if (pct != null && pct <= -10) statusLabel = "LOSS";
+              const statusStyle = {
+                WIN: { bg: "#0d2818", c: "#34d399" },
+                LOSS: { bg: "#1c0a0a", c: "#f87171" },
+                KILLED: { bg: "#2d1a00", c: "#f59e0b" },
+                PENDING: { bg: "#1a3a5c", c: "#60a5fa" },
+                NEUTRAL: { bg: "#1f2937", c: "#9ca3af" }
+              }[statusLabel];
+
+              const tRaw = s.emitted_at || s.time || s.created_at;
+
+              return (
+                <div key={s.id != null ? String(s.id) : `row-${i}`} className="grave-trow">
+                  <div style={{ fontSize: "8px", color: "#4a5568" }}>☆</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                    <div
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        borderRadius: "50%",
+                        background: "#1f2937",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "6px",
+                        color: "#9ca3af",
+                        flexShrink: 0
+                      }}
+                    >
+                      {String(sym).slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <Link href={`/token/${encodeURIComponent(s.token || s.mint || "")}`} style={{ textDecoration: "none" }}>
+                        <div style={{ fontSize: "9px", color: "#e2e8f0", fontWeight: "500" }}>{sym}</div>
                       </Link>
-                      <span className="font-semibold text-sl-sub uppercase tracking-wide">{r.action || "—"}</span>
-                      <span className="font-mono text-[10px] text-sl-muted capitalize">{regimeKey(r)}</span>
-                      <span className={`font-mono ${outcomeTone(r.outcome_5m)}`}>
-                        {r.outcome_5m != null ? pct(r.outcome_5m) : pendingStyle ? "validating…" : "—"}
-                      </span>
-                      <span className={`font-mono ${outcomeTone(r.outcome_15m)}`}>
-                        {r.outcome_15m != null ? pct(r.outcome_15m) : pendingStyle ? "validating…" : "—"}
-                      </span>
-                      <span className={`font-mono ${outcomeTone(r.outcome_60m)}`}>
-                        {r.outcome_60m != null ? pct(r.outcome_60m) : pendingStyle ? "validating…" : "—"}
-                      </span>
-                      <span className={`inline-flex w-fit border px-2 py-0.5 text-[10px] font-bold ${badge.cls}`}>
-                        {badge.label}
-                      </span>
-                      <span className="inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 min-w-0">
-                        <span className={`font-mono font-semibold ${outcomeTone(raw60)}`}>
-                          {raw60 != null ? pct(raw60) : pendingStyle ? "validating…" : "—"}
-                        </span>
-                        {raw60 != null ? (
-                          <span className="text-[10px] text-sl-muted whitespace-nowrap">(cap: −10%)</span>
-                        ) : null}
-                        {wasKilled ? (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-orange-500/30 bg-orange-500/10 text-orange-300">
-                            KILLED
-                          </span>
-                        ) : null}
-                      </span>
+                      <div style={{ fontSize: "6px", color: "#6b7280" }}>{regimeKeyForRow(s)}</div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <div className="grid lg:grid-cols-2 gap-4">
-          <section className="glass-card sl-inset border-emerald-500/20 bg-emerald-500/[0.025]">
-            <p className="sl-label">Sentinel&apos;s Best Calls</p>
-            <h2 className="text-xl font-semibold text-sl-text">When the Oracle was right.</h2>
-            <p className="mt-1 text-sm text-sl-muted">This is what Sentinel caught before the market moved.</p>
-            {!bestCalls.length ? (
-              <p className="text-sm text-sl-muted mt-4">Accumulating verified wins. Showing {bestCalls.length} of 5 available calls.</p>
-            ) : (
-              <div className="mt-4 space-y-2">
-                {bestCalls.map((r) => (
-                  <Link key={r.id} href={`/token/${encodeURIComponent(r.token || "")}`} className="block border border-white/[0.08] bg-black/20 px-3 py-2 no-underline">
-                    <div className="flex justify-between gap-3 text-sm">
-                      <span className="font-mono text-cyan-200 break-all">{r.token_name || r.symbol || r.token}</span>
-                      <span className="font-mono text-emerald-300">{pct(r.outcome_60m)}</span>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "6px",
+                        padding: "1px 4px",
+                        borderRadius: "6px",
+                        background: sourceColor.bg,
+                        color: sourceColor.c,
+                        display: "inline-block",
+                        whiteSpace: "nowrap"
+                      }}
+                    >
+                      {sourceLabel}
                     </div>
-                    <p className="text-xs text-sl-muted mt-1">
-                      {time(r.time)} · suggested {r.action} · Smart money was early by {r.smart_money_early_min || "—"}min
-                    </p>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-          <section className="glass-card sl-inset border-red-500/20 bg-red-500/[0.02]">
-            <p className="sl-label">Where Sentinel Was Wrong</p>
-            <h2 className="text-xl font-semibold text-sl-text">We show our mistakes. That&apos;s what makes this different from every other platform.</h2>
-            {!worstCalls.length ? (
-              <p className="text-sm text-sl-muted mt-4">No resolved losses yet — accumulating history.</p>
-            ) : (
-              <div className="mt-4 space-y-2">
-                {worstCalls.map((r) => (
-                  <Link key={r.id} href={`/token/${encodeURIComponent(r.token || "")}`} className="block border border-white/[0.08] bg-black/20 px-3 py-2 no-underline">
-                    <div className="flex justify-between gap-3 text-sm">
-                      <span className="font-mono text-cyan-200 break-all">{r.token_name || r.symbol || r.token}</span>
-                      <span className="font-mono text-red-300">{pct(r.outcome_60m)}</span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "9px", color: "#e2e8f0" }}>{Number.isFinite(conf) ? conf.toFixed(0) : "—"}</div>
+                    <div style={{ height: "2px", background: "#1f2937", borderRadius: "1px", marginTop: "1px" }}>
+                      <div
+                        style={{
+                          height: "2px",
+                          width: `${Math.min(Math.max(conf, 0), 100)}%`,
+                          background: conf > 70 ? "#34d399" : conf > 40 ? "#3b82f6" : "#f87171",
+                          borderRadius: "1px"
+                        }}
+                      />
                     </div>
-                    <p className="text-xs text-sl-muted mt-1">
-                      {time(r.time)} · suggested {r.action} · Drawdown shown in full — no smoothing.
-                    </p>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
+                  </div>
+                  <div style={{ fontSize: "8px", color: "#9ca3af" }}>
+                    {s.entry_price_usd ? `$${Number(s.entry_price_usd).toFixed(6)}` : "—"}
+                  </div>
+                  <div style={{ fontSize: "8px", color: pct == null ? "#6b7280" : pct > 0 ? "#34d399" : "#f87171" }}>
+                    {pct != null ? `${pct > 0 ? "+" : ""}${pct.toFixed(2)}%` : "validating..."}
+                    {isKilled ? (
+                      <span style={{ fontSize: "6px", color: "#f59e0b", marginLeft: "2px" }}>(cap:-10%)</span>
+                    ) : null}
+                  </div>
+                  <div>
+                    <span
+                      style={{
+                        fontSize: "6px",
+                        padding: "1px 4px",
+                        borderRadius: "2px",
+                        background: statusStyle.bg,
+                        color: statusStyle.c,
+                        fontWeight: "500"
+                      }}
+                    >
+                      {statusLabel}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "6px", color: "#6b7280" }}>
+                    {tRaw
+                      ? new Date(tRaw).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })
+                      : "—"}
+                  </div>
+                </div>
+              );
+            })}
 
-        {autoDiscovered.length ? (
-          <section className="glass-card sl-inset border-white/[0.08] bg-[#080a0d]/90">
-            <div className="mb-4">
-              <p className="sl-label">Auto-discovered wallets</p>
-              <h2 className="text-xl font-semibold text-sl-text">Smart wallets surfaced by the engine, not curated.</h2>
-              <p className="mt-1 text-sm text-sl-muted">Promoted from candidates after closing real round-trip cycles on validated signals.</p>
+            <div
+              style={{
+                textAlign: "center",
+                padding: "4px",
+                fontSize: "7px",
+                color: "#6b7280",
+                borderTop: "0.5px solid #1f2937",
+                marginTop: "2px",
+                cursor: "pointer"
+              }}
+            >
+              ↓ Cargar más señales
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-[10px] uppercase tracking-[0.14em] text-sl-muted">
-                  <tr className="border-b border-white/[0.08]">
-                    <th className="text-left py-2 pr-3">Wallet</th>
-                    <th className="text-right py-2 px-3">Win rate</th>
-                    <th className="text-right py-2 px-3">Closed trades</th>
-                    <th className="text-right py-2 pl-3">Promoted</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {autoDiscovered.map((w) => (
-                    <tr key={w.wallet} className="border-b border-white/[0.06]">
-                      <td className="py-3 pr-3 font-mono text-cyan-200 break-all">
-                        <Link href={`/wallet/${encodeURIComponent(w.wallet)}`} className="text-cyan-200 no-underline">
-                          {w.wallet.slice(0, 6)}…{w.wallet.slice(-4)}
-                        </Link>
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono text-sl-sub">{w.win_rate != null ? `${Number(w.win_rate).toFixed(1)}%` : "—"}</td>
-                      <td className="py-3 px-3 text-right font-mono text-sl-sub">{w.total_trades != null ? int(w.total_trades) : "—"}</td>
-                      <td className="py-3 pl-3 text-right font-mono text-sl-muted">{time(w.promoted_at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        ) : null}
-
-        <section className="glass-card sl-inset border-white/[0.08] bg-sl-card">
-          <p className="sl-label">How Oracle Validates</p>
-          <div className="mt-2 grid md:grid-cols-3 gap-3 text-sm text-sl-sub leading-relaxed">
-            <p>Signals are validated at 5, 15, and 60 minutes after emission.</p>
-            <p>Win = price increased &gt;5% within 60 minutes.</p>
-            <p>All outcomes are calculated from on-chain price data, not manually curated.</p>
           </div>
-          <p className="mt-4 text-sm font-semibold text-sl-sub">Nothing is cherry-picked. Nothing is deleted. This page updates automatically.</p>
-        </section>
+        </main>
       </div>
     </>
   );
+}
+
+function regimeKeyForRow(s) {
+  const r = String(s.regime ?? s.emission_regime ?? s.gate_meta?.regime ?? "unknown").toLowerCase();
+  if (["calm", "trending", "volatile"].includes(r)) return r;
+  return "unknown";
 }
