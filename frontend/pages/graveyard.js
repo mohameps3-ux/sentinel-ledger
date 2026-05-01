@@ -475,6 +475,99 @@ export default function GraveyardPage() {
   const safeAvgOutcome =
     Math.abs(avgOutcome) > 0.5 ? "—" : `${(avgOutcome * 100).toFixed(2)}%`;
 
+  const walletStats = useMemo(() => {
+    const map = {};
+
+    completed.forEach((s) => {
+      const w = s.wallet || s.source || "unknown";
+      const r = outcomeRaw(s);
+
+      if (!map[w]) {
+        map[w] = {
+          trades: 0,
+          wins: 0,
+          totalReturn: 0,
+          confidence: 0
+        };
+      }
+
+      if (r != null) {
+        map[w].trades++;
+        map[w].totalReturn += r;
+        if (r > 0) map[w].wins++;
+      }
+
+      map[w].confidence += Number(s.confidence || 0);
+    });
+
+    return Object.entries(map)
+      .map(([wallet, v]) => {
+        const winRateW = v.trades ? v.wins / v.trades : 0;
+        const avgReturn = v.trades ? v.totalReturn / v.trades : 0;
+        const avgConf = v.trades ? v.confidence / v.trades : 0;
+
+        const score = winRateW * 0.4 + avgReturn * 0.4 + (avgConf / 100) * 0.2;
+
+        return {
+          wallet,
+          ...v,
+          winRate: winRateW,
+          avgReturn,
+          avgConf,
+          score
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+  }, [completed]);
+
+  const SQI = useMemo(() => {
+    if (!completed.length) return 0;
+
+    const returns = completed.map((s) => outcomeRaw(s)).filter((v) => v != null);
+
+    if (!returns.length) return 0;
+
+    const avg = returns.reduce((a, b) => a + b, 0) / returns.length;
+    const variance = returns.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / returns.length;
+    const std = Math.sqrt(variance);
+
+    return std === 0 ? 0 : avg / std;
+  }, [completed]);
+
+  const edgeScore = useMemo(() => {
+    if (!completed.length) return 0;
+
+    const winsE = completed.filter((s) => outcomeRaw(s) > 0).length;
+    const lossesE = completed.filter((s) => outcomeRaw(s) <= 0).length;
+
+    if (winsE + lossesE === 0) return 0;
+
+    return (winsE - lossesE) / (winsE + lossesE);
+  }, [completed]);
+
+  const clusterDensity = useMemo(() => {
+    if (!completed.length) return 0;
+
+    const clusters = {};
+
+    completed.forEach((s) => {
+      const key = s.signals?.[0] || "unknown";
+      clusters[key] = (clusters[key] || 0) + 1;
+    });
+
+    const values = Object.values(clusters);
+    const max = Math.max(...values);
+
+    return max / completed.length;
+  }, [completed]);
+
+  const systemState = useMemo(() => {
+    if (SQI > 0.5 && edgeScore > 0.2) return "STRONG_EDGE";
+    if (SQI > 0 && edgeScore > 0) return "WEAK_EDGE";
+    if (edgeScore < 0) return "NEGATIVE";
+    return "NEUTRAL";
+  }, [SQI, edgeScore]);
+
   return (
     <>
       <PageHead title="Verified Track Record — Sentinel Ledger" description="Every signal, every outcome, nothing hidden." />
@@ -1005,6 +1098,52 @@ export default function GraveyardPage() {
             </div>
           </div>
 
+          <div className="grave-brow">
+            <div className="grave-cc grave-glow-blue">
+              <div className="grave-cc-t">SYSTEM INTELLIGENCE</div>
+
+              <div>SQI: {SQI.toFixed(2)}</div>
+              <div>Edge: {(edgeScore * 100).toFixed(1)}%</div>
+              <div>Cluster Density: {(clusterDensity * 100).toFixed(0)}%</div>
+
+              <div
+                style={{
+                  marginTop: "6px",
+                  fontSize: "8px",
+                  color:
+                    systemState === "STRONG_EDGE"
+                      ? "#34d399"
+                      : systemState === "WEAK_EDGE"
+                        ? "#60a5fa"
+                        : systemState === "NEGATIVE"
+                          ? "#f87171"
+                          : "#9ca3af"
+                }}
+              >
+                {systemState}
+              </div>
+            </div>
+
+            <div className="grave-cc">
+              <div className="grave-cc-t">TOP SIGNAL SOURCES</div>
+
+              {walletStats.slice(0, 5).map((w, i) => (
+                <div
+                  key={`${String(w.wallet)}-${i}`}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "7px",
+                    marginBottom: "3px"
+                  }}
+                >
+                  <span>{String(w.wallet).slice(0, 6)}</span>
+                  <span style={{ color: "#34d399" }}>{(w.score * 100).toFixed(1)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "5px" }}>
             <div className="grave-tbl">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
@@ -1081,8 +1220,20 @@ export default function GraveyardPage() {
 
               const tRaw = s.emitted_at || s.time || s.created_at;
 
+              const intensity = Math.min(Math.abs(raw || 0) * 5, 1);
+              const rowBg =
+                raw == null
+                  ? undefined
+                  : raw > 0
+                    ? `rgba(52,211,153,${0.05 + intensity * 0.2})`
+                    : `rgba(248,113,113,${0.05 + intensity * 0.2})`;
+
               return (
-                <div key={s.id != null ? String(s.id) : `row-${i}`} className="grave-trow-wrap">
+                <div
+                  key={s.id != null ? String(s.id) : `row-${i}`}
+                  className="grave-trow-wrap"
+                  style={rowBg ? { background: rowBg } : undefined}
+                >
                   <div
                     className="grave-tbar"
                     style={{
