@@ -244,8 +244,8 @@ function AnimatedDonut({ pct, color, label, size = 108, segments }) {
 function LineChart({ signals }) {
   const ref = useRef(null);
   const W = 520;
-  const H = 200;
-  const PAD = 16;
+  const H = 206;
+  const PAD = 15;
 
   const points = useMemo(() => {
     if (!signals?.length) return "";
@@ -354,7 +354,7 @@ function LineChart({ signals }) {
             ref={ref}
             fill="none"
             stroke="url(#graveLineGrad)"
-            strokeWidth="2.2"
+            strokeWidth="2.35"
             strokeLinecap="round"
             strokeLinejoin="round"
             filter="url(#graveLineGlow)"
@@ -388,9 +388,9 @@ function LineChart({ signals }) {
 }
 
 function ScatterPlot({ signals, correlation }) {
-  const W = 220;
-  const H = 120;
-  const PAD = 16;
+  const W = 232;
+  const H = 126;
+  const PAD = 14;
   const plotBottom = H - 14;
 
   const dots = useMemo(() => {
