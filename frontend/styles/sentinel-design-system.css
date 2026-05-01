@@ -2435,9 +2435,122 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   min-height: 100vh;
   overflow-x: hidden;
+}
+
+.grave-core {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 6px;
+  min-height: 260px;
+  height: 260px;
+}
+
+.grave-core-left {
+  background: #0b1220;
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.grave-core-right {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.grave-title {
+  font-size: 9px;
+  color: #94a3b8;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.grave-ml-panel {
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+.grave-ml-big {
+  font-size: 28px;
+  font-weight: 600;
+  color: #818cf8;
+  line-height: 1.1;
+}
+
+.grave-ml-sub {
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.grave-ml-weights {
+  font-size: 9px;
+  color: #475569;
+  margin-top: 6px;
+}
+
+.grave-ml-state {
+  margin-top: 6px;
+  font-size: 8px;
+}
+
+.grave-top-signals {
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 8px;
+  flex-shrink: 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.grave-signal-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  padding: 3px 0;
+  border-bottom: 1px solid #0f172a;
+}
+
+.grave-signal-row:last-child {
+  border-bottom: none;
+}
+
+.grave-secondary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.grave-box {
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 10px;
+  min-height: 0;
+}
+
+.grave-activity-feed {
+  min-height: 0;
+}
+
+.grave-table-region {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 5px;
+  margin-top: 6px;
 }
 
 .grave-mrow {
@@ -2504,6 +2617,9 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   border: 0.5px solid #1f2937;
   border-radius: 3px;
   padding: 5px;
+  margin-top: 0;
+  max-height: 260px;
+  overflow-y: auto;
 }
 
 .grave-th {
@@ -2514,10 +2630,10 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   display: grid;
   grid-template-columns: 20px 1fr 100px 55px 90px 90px 70px 44px;
   gap: 3px;
-  padding: 5px 0;
+  padding: 2px 0;
   border-bottom: 0.5px solid #0f1420;
   align-items: center;
-  font-size: 11px;
+  font-size: 9px;
   transition: all 0.2s ease;
 }
 

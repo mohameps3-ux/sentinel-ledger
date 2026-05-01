@@ -974,50 +974,199 @@ export default function GraveyardPage() {
             })}
           </div>
 
-          <div className="grave-brow">
-            <div className="grave-cc grave-glow-blue">
-              <div className="grave-cc-t">ML SIGNAL ENGINE</div>
+          <div className="grave-core">
+            <div className="grave-core-left">
+              <div className="grave-cc-t">Rendimiento (P&amp;L%)</div>
+              {!hasUsableData ? (
+                <div className="grave-data-stream-empty">
+                  DATA STREAM INITIALIZING...
+                  <span className="grave-cursor-blink">█</span>
+                </div>
+              ) : (
+                <LineChart signals={completed} />
+              )}
+            </div>
 
-              <div>Predicted Alpha: {(predictedAlpha * 100).toFixed(1)}%</div>
-              <div>Top Confidence: {(calibratedConfidence * 100).toFixed(1)}%</div>
-              <div>Signals Ranked: {rankedSignals.length}</div>
+            <div className="grave-core-right">
+              <div className="grave-ml-panel">
+                <div className="grave-title">ML SIGNAL ENGINE</div>
 
-              <div
-                style={{
-                  marginTop: "6px",
-                  fontSize: "8px",
-                  color:
-                    modelState === "HIGH_ALPHA"
-                      ? "#34d399"
-                      : modelState === "MODERATE_ALPHA"
-                        ? "#60a5fa"
-                        : modelState === "NEGATIVE_ALPHA"
-                          ? "#f87171"
-                          : "#9ca3af"
-                }}
-              >
-                {modelState}
+                <div className="grave-ml-big">{(predictedAlpha * 100).toFixed(1)}%</div>
+
+                <div className="grave-ml-sub">Model Confidence (R²)</div>
+                <div className="grave-ml-sub">
+                  Calibrated (top decile): {(calibratedConfidence * 100).toFixed(1)}% · ranked {rankedSignals.length}
+                </div>
+
+                <div className="grave-ml-weights">
+                  W_conf: 0.25 · W_cluster: 0.15 · W_whale: 0.15
+                </div>
+
+                <div
+                  className="grave-ml-state"
+                  style={{
+                    color:
+                      modelState === "HIGH_ALPHA"
+                        ? "#34d399"
+                        : modelState === "MODERATE_ALPHA"
+                          ? "#60a5fa"
+                          : modelState === "NEGATIVE_ALPHA"
+                            ? "#f87171"
+                            : "#9ca3af"
+                  }}
+                >
+                  {modelState}
+                </div>
+              </div>
+
+              <div className="grave-top-signals">
+                <div className="grave-cc-t" style={{ marginBottom: "4px" }}>
+                  TOP ML SIGNALS
+                </div>
+                {rankedSignals.slice(0, 5).map((sig, i) => {
+                  const cIdx = completed.findIndex((c, j) => {
+                    const k =
+                      c?.id != null ? String(c.id) : `ml-${j}-${String(c.emitted_at || c.time || c.mint || "")}`;
+                    return k === sig.signalKey;
+                  });
+                  const srcRow = cIdx >= 0 ? completed[cIdx] : null;
+                  const symLabel = String(srcRow?.asset || srcRow?.symbol || sig.source || "???").slice(0, 6);
+                  return (
+                    <div key={`${sig.signalKey}-${i}`} className="grave-signal-row">
+                      <span>{symLabel}</span>
+                      <span style={{ color: "#34d399" }}>{(sig.score * 100).toFixed(1)}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="grave-secondary">
+            <div className="grave-box">
+              <div className="grave-cc-t">Distribución resultados</div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
+                <AnimatedDonut
+                  pct={hasMetrics ? winRate * 100 : 0}
+                  color="#34d399"
+                  label="win rate"
+                  segments={[
+                    { pct: hasMetrics ? winRate * 100 : 40, color: "#34d399", label: "Win" },
+                    { pct: hasMetrics ? (1 - winRate) * 100 : 60, color: "#dc5757", label: "Loss" }
+                  ]}
+                />
+                <div>
+                  {[
+                    { c: "#34d399", t: `Ganad. ${hasMetrics ? (winRate * 100).toFixed(0) : 0}% (${wins.length})` },
+                    { c: "#dc5757", t: `Perd. ${hasMetrics ? ((1 - winRate) * 100).toFixed(0) : 0}% (${losses.length})` },
+                    { c: "#4b5563", t: "Break 0% (0)" }
+                  ].map((l, idx) => (
+                    <div
+                      key={l.t}
+                      style={{
+                        fontSize: "7px",
+                        color: "#9ca3af",
+                        marginBottom: "2px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "2px"
+                      }}
+                    >
+                      <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: l.c, flexShrink: 0 }} />
+                      {l.t}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="grave-cc">
-              <div className="grave-cc-t">TOP ML SIGNALS</div>
+            <div className="grave-box">
+              <div className="grave-cc-t" style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Confidence vs Return</span>
+                <span style={{ color: "#818cf8", fontSize: "8px" }}>
+                  {hasMetrics ? correlationValue?.toFixed(2) ?? "—" : "—"}
+                </span>
+              </div>
+              <ScatterPlot signals={completed} />
+            </div>
 
-              {rankedSignals.slice(0, 6).map((sig, i) => (
+            <div className="grave-box">
+              <div className="grave-cc-t">Señales por fuente</div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
+                <AnimatedDonut
+                  pct={75}
+                  color="#818cf8"
+                  label="señales"
+                  segments={[
+                    { pct: 46, color: "#818cf8", label: "Cluster" },
+                    { pct: 27, color: "#34d399", label: "Smart" },
+                    { pct: 16, color: "#f59e0b", label: "Wallet" },
+                    { pct: 11, color: "#4b5563", label: "Otros" }
+                  ]}
+                />
+                <div>
+                  {[
+                    { c: "#818cf8", t: "Cluster Probing 46%" },
+                    { c: "#34d399", t: "Smart Money 27%" },
+                    { c: "#f59e0b", t: "Wallet Activity 16%" },
+                    { c: "#4b5563", t: "Otros 11%" }
+                  ].map((l) => (
+                    <div
+                      key={l.t}
+                      style={{
+                        fontSize: "7px",
+                        color: "#9ca3af",
+                        marginBottom: "2px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "2px"
+                      }}
+                    >
+                      <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: l.c, flexShrink: 0 }} />
+                      {l.t}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grave-box grave-activity-feed">
+            <div className="grave-cc-t grave-terminal-text">Actividad en tiempo real</div>
+              {[
+                { c: "#34d399", t: "Nueva señal: PEPE2.0", time: "ahora" },
+                { c: "#818cf8", t: "Cluster: 4 wallets", time: "8s" },
+                { c: "#60a5fa", t: "Señal emitida: WIF", time: "15s" },
+                { c: "#f59e0b", t: "Alerta PRO enviada", time: "22s" },
+                { c: "#34d399", t: "Nueva señal: POPCAT", time: "34s" }
+              ].map((a, idx) => (
                 <div
-                  key={`${sig.signalKey}-${i}`}
+                  key={idx}
                   style={{
                     display: "flex",
+                    alignItems: "center",
                     justifyContent: "space-between",
-                    fontSize: "7px",
-                    marginBottom: "3px"
+                    padding: "2px 0",
+                    borderBottom: "0.5px solid #0f1420"
                   }}
                 >
-                  <span>{String(sig.source).slice(0, 8)}</span>
-                  <span style={{ color: "#34d399" }}>{(sig.score * 100).toFixed(1)}</span>
-                </div>
-              ))}
-            </div>
+                  <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: a.c, flexShrink: 0 }} />
+                  <div
+                    style={{
+                      fontSize: "7px",
+                      color: "#d1d5db",
+                      flex: 1,
+                      margin: "0 4px",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    }}
+                  >
+                    {a.t}
+                  </div>
+                  <div style={{ fontSize: "6px", color: "#6b7280", whiteSpace: "nowrap" }}>{a.time}</div>
+              </div>
+            ))}
           </div>
 
           <div className="grave-brow">
@@ -1063,145 +1212,6 @@ export default function GraveyardPage() {
                 >
                   <span>{String(w.wallet).slice(0, 6)}</span>
                   <span style={{ color: "#34d399" }}>{(w.score * 100).toFixed(1)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="grave-crow">
-            <div className="grave-cc">
-              <div className="grave-cc-t">Rendimiento (P&amp;L%)</div>
-              {!hasUsableData ? (
-                <div className="grave-data-stream-empty">
-                  DATA STREAM INITIALIZING...
-                  <span className="grave-cursor-blink">█</span>
-                </div>
-              ) : (
-                <LineChart signals={completed} />
-              )}
-            </div>
-
-            <div className="grave-cc">
-              <div className="grave-cc-t">Distribución resultados</div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
-                <AnimatedDonut
-                  pct={hasMetrics ? winRate * 100 : 0}
-                  color="#34d399"
-                  label="win rate"
-                  segments={[
-                    { pct: hasMetrics ? winRate * 100 : 40, color: "#34d399", label: "Win" },
-                    { pct: hasMetrics ? (1 - winRate) * 100 : 60, color: "#dc5757", label: "Loss" }
-                  ]}
-                />
-                <div>
-                  {[
-                    { c: "#34d399", t: `Ganad. ${hasMetrics ? (winRate * 100).toFixed(0) : 0}% (${wins.length})` },
-                    { c: "#dc5757", t: `Perd. ${hasMetrics ? ((1 - winRate) * 100).toFixed(0) : 0}% (${losses.length})` },
-                    { c: "#4b5563", t: "Break 0% (0)" }
-                  ].map((l, idx) => (
-                    <div
-                      key={l.t}
-                      style={{
-                        fontSize: "7px",
-                        color: "#9ca3af",
-                        marginBottom: "2px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "2px"
-                      }}
-                    >
-                      <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: l.c, flexShrink: 0 }} />
-                      {l.t}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grave-cc">
-              <div className="grave-cc-t" style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Confidence vs Return</span>
-                <span style={{ color: "#818cf8", fontSize: "8px" }}>
-                  {hasMetrics ? correlationValue?.toFixed(2) ?? "—" : "—"}
-                </span>
-              </div>
-              <ScatterPlot signals={completed} />
-            </div>
-
-            <div className="grave-cc">
-              <div className="grave-cc-t">Señales por fuente</div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
-                <AnimatedDonut
-                  pct={75}
-                  color="#818cf8"
-                  label="señales"
-                  segments={[
-                    { pct: 46, color: "#818cf8", label: "Cluster" },
-                    { pct: 27, color: "#34d399", label: "Smart" },
-                    { pct: 16, color: "#f59e0b", label: "Wallet" },
-                    { pct: 11, color: "#4b5563", label: "Otros" }
-                  ]}
-                />
-                <div>
-                  {[
-                    { c: "#818cf8", t: "Cluster Probing 46%" },
-                    { c: "#34d399", t: "Smart Money 27%" },
-                    { c: "#f59e0b", t: "Wallet Activity 16%" },
-                    { c: "#4b5563", t: "Otros 11%" }
-                  ].map((l) => (
-                    <div
-                      key={l.t}
-                      style={{
-                        fontSize: "7px",
-                        color: "#9ca3af",
-                        marginBottom: "2px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "2px"
-                      }}
-                    >
-                      <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: l.c, flexShrink: 0 }} />
-                      {l.t}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grave-cc">
-              <div className="grave-cc-t grave-terminal-text">Actividad en tiempo real</div>
-              {[
-                { c: "#34d399", t: "Nueva señal: PEPE2.0", time: "ahora" },
-                { c: "#818cf8", t: "Cluster: 4 wallets", time: "8s" },
-                { c: "#60a5fa", t: "Señal emitida: WIF", time: "15s" },
-                { c: "#f59e0b", t: "Alerta PRO enviada", time: "22s" },
-                { c: "#34d399", t: "Nueva señal: POPCAT", time: "34s" }
-              ].map((a, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "2px 0",
-                    borderBottom: "0.5px solid #0f1420"
-                  }}
-                >
-                  <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: a.c, flexShrink: 0 }} />
-                  <div
-                    style={{
-                      fontSize: "7px",
-                      color: "#d1d5db",
-                      flex: 1,
-                      margin: "0 4px",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis"
-                    }}
-                  >
-                    {a.t}
-                  </div>
-                  <div style={{ fontSize: "6px", color: "#6b7280", whiteSpace: "nowrap" }}>{a.time}</div>
                 </div>
               ))}
             </div>
@@ -1323,7 +1333,7 @@ export default function GraveyardPage() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "5px" }}>
+          <div className="grave-table-region">
             <div className="grave-tbl">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
                 <div style={{ fontSize: "8px", color: "#e2e8f0", fontWeight: "500", letterSpacing: ".04em" }}>
