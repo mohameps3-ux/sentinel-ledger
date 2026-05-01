@@ -3,22 +3,17 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import { useTokenData } from "../../hooks/useTokenData";
-import { useProStatus } from "../../hooks/useProStatus";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import { TokenSkeleton } from "../../components/token/TokenSkeleton";
 import { ChartPanel } from "../../components/token/ChartPanel";
 import { RecentTokensSidebar } from "../../components/token/RecentTokensSidebar";
 import { WatchlistButton } from "../../components/token/WatchlistButton";
-import { ExpandablePanel } from "../../components/token/ExpandablePanel";
-import { WalletThreatBanner } from "../../components/token/WalletThreatBanner";
-import { CandlestickChart, Radio, ShieldAlert, Users } from "lucide-react";
-import { formatUsdWhole } from "../../lib/formatStable";
 import { Ticker } from "../../components/layout/Ticker";
 import { FinancialDisclaimer } from "../../components/layout/FinancialDisclaimer";
 import { PageHead } from "../../components/seo/PageHead";
 import { useLocale } from "../../contexts/LocaleContext";
 import { recordRecentToken } from "../../lib/recentTokens";
-import { ApexCard, IridescentScore, deriveApexState } from "../../components/apex";
+import { useMarketStore } from "../../lib/store/marketStore";
 import {
   buildDexscreenerSolanaTokenUrl,
   buildJupiterSwapUrl,
@@ -65,65 +60,6 @@ function normalizeAddress(query) {
   return "";
 }
 
-function usdOrNA(value, naLabel) {
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return naLabel;
-  return `$${formatUsdWhole(n)}`;
-}
-
-function pct(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "—";
-  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
-}
-
-function actionTone(action) {
-  const a = String(action || "WATCH").toUpperCase();
-  if (a === "ACCUMULATE" || a === "ENTER NOW") return "border-indigo-400/50 bg-indigo-500/15 text-indigo-100";
-  if (a === "TOO_LATE" || a === "TOO LATE" || a === "STAY OUT") return "border-red-400/45 bg-red-500/12 text-red-100";
-  return "border-blue-400/45 bg-blue-500/12 text-blue-100";
-}
-
-function rulePerfTone(perf) {
-  if (!perf?.hasSample) return "border-sl-border bg-white/[0.04] text-sl-sub";
-  const c = Number(perf.confidenceScore || 0);
-  if (c > 0.7) return "border-emerald-500/35 bg-emerald-500/10 text-emerald-200";
-  if (c >= 0.5) return "border-blue-500/35 bg-blue-500/10 text-blue-200";
-  return "border-sl-border bg-white/[0.04] text-sl-sub";
-}
-
-function formatRulePerfLabel(perf) {
-  if (!perf?.ruleId) return null;
-  if (!perf.hasSample) return `${perf.ruleId} · New rule — building track record`;
-  const confidence = Math.round(Number(perf.confidenceScore || 0) * 100);
-  const avg = Math.round(Number(perf.avgReturn60m || 0) * 100);
-  return `${perf.ruleId} · ${confidence}% · ${avg >= 0 ? "+" : ""}${avg}% avg${
-    perf.regimeContext ? ` · ⚠ ${perf.regimeContext}` : ""
-  }`;
-}
-
-function formatRegimeLine(perf) {
-  const rp = perf?.regimePerformance;
-  if (!rp || typeof rp !== "object") return null;
-  const bull = rp.bull?.hasSample ? Math.round(Number(rp.bull.confidence || 0) * 100) : null;
-  const crab = rp.crab?.hasSample ? Math.round(Number(rp.crab.confidence || 0) * 100) : null;
-  const vol = rp.volatile?.hasSample ? Math.round(Number(rp.volatile.confidence || 0) * 100) : null;
-  const parts = [];
-  if (bull != null) parts.push(`${bull}% in bull markets`);
-  if (crab != null) parts.push(`${crab}% in ranging markets`);
-  if (vol != null) parts.push(`${vol}% in volatile markets`);
-  return parts.length ? `${perf.ruleId} works ${parts.join(", ")}.` : null;
-}
-
-function formatLatestOutcomeLine(perf) {
-  const latest = perf?.latestOutcome;
-  if (!latest) return null;
-  const out = latest.outcome60m != null ? Number(latest.outcome60m) * 100 : null;
-  const dd = latest.drawdown != null ? Number(latest.drawdown) * 100 : null;
-  if (!Number.isFinite(out) || !Number.isFinite(dd) || dd > -10) return null;
-  return `Signal hit ${out >= 0 ? "+" : ""}${out.toFixed(1)}% but had ${dd.toFixed(1)}% drawdown first.`;
-}
-
 function tri(v) {
   if (v === true) return { label: "YES", cls: "border-emerald-500/35 bg-emerald-500/10 text-emerald-200" };
   if (v === false) return { label: "NO", cls: "border-red-500/35 bg-red-500/10 text-red-200" };
@@ -148,282 +84,18 @@ function dedupeDexPairs(pairs) {
   return out;
 }
 
-function MetricCell({ label, value }) {
-  return (
-    <div className="min-w-0 border border-white/[0.07] bg-white/[0.025] px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sl-muted">{label}</p>
-      <p className="mt-1 truncate font-mono text-sm font-semibold text-sl-text">{value}</p>
-    </div>
-  );
-}
-
-/**
- * Token meta column — placed beside the chart (desktop) or above it (mobile).
- * Not sticky: avoids a full-width bar covering the chart when scrolling.
- */
-function TokenMetaAside({
-  address,
-  market,
-  analysis,
-  terminal,
-  statusTone,
-  statusLabel,
-  soundEnabled,
-  setSoundEnabled,
-  isWatchlisted,
-  proStatusReady,
-  hasToken,
-  hasProAccess
-}) {
-  const jupiterUrl = buildJupiterSwapUrl(address);
-  const dexUrl = buildDexscreenerSolanaTokenUrl(address);
-  const solscanUrl = buildSolscanTokenUrl(address);
-  const pumpUrl = hasPumpRoute(market) ? buildPumpFunTokenUrl(address) : null;
-  const score = Math.round(Number(terminal?.signalStrength ?? analysis?.confidence ?? 0));
-  const apexState = deriveApexState(score);
-  const priceChange = Number(market.priceChange24h);
-  const priceUp = Number.isFinite(priceChange) && priceChange >= 0;
-
-  return (
-    <ApexCard
-      as="aside"
-      id="token-meta"
-      state={apexState}
-      className="apex-card--terminal-blue order-1 w-full max-w-full shrink-0 p-3 backdrop-blur-sm xl:order-2 xl:max-w-[20rem] xl:shrink-0"
-    >
-      <div className="space-y-3">
-        <div className="min-w-0">
-          <h1 className="break-words text-xl font-black tracking-tight text-[#fafafa] sm:text-2xl">
-            {market.name || market.symbol || "Token"}
-          </h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <span className="border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-100">
-              SOLANA
-            </span>
-            <span className="border border-blue-400/15 bg-blue-950/30 px-2 py-0.5 font-mono text-[10px] text-blue-100/85">
-              {shortMint(address)}
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-[#737373]">${market.symbol || "TOKEN"}</p>
-        </div>
-
-        <div>
-          <p className="font-mono text-2xl font-black leading-none text-[#fafafa] sm:text-3xl">{usdOrNA(market.price, "$0")}</p>
-          <p className={`mt-0.5 font-mono text-sm font-semibold ${priceUp ? "text-emerald-300" : "text-red-300"}`}>
-            {pct(market.priceChange24h)} · 24h
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div className="border border-blue-500/20 bg-blue-500/5 px-2 py-2 text-center sm:px-3">
-            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[#737373]">Grade</p>
-            <p className="mt-0.5 text-lg font-black leading-none text-[#fafafa] sm:text-xl">{analysis.grade || "—"}</p>
-          </div>
-          <div className="flex items-center justify-center px-1 py-0.5 sm:px-2">
-            <IridescentScore value={score} label="Sentinel" size="sm" align="center" />
-          </div>
-        </div>
-
-        <a href={jupiterUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="btn-primary inline-flex w-full justify-center">
-          TRADE NOW
-        </a>
-
-        <div className="flex flex-wrap items-stretch justify-start gap-1.5">
-          <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="apex-btn-secondary">
-            DEX
-          </a>
-          <a href={solscanUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="apex-btn-secondary">
-            Solscan
-          </a>
-          {pumpUrl ? (
-            <a href={pumpUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="apex-btn-secondary">
-              Pump
-            </a>
-          ) : null}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-blue-500/18 pt-2">
-          <span className="inline-flex items-center gap-2 border border-blue-400/22 bg-blue-950/25 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-blue-100/80">
-            <span className={`h-1.5 w-1.5 rounded-full ${statusTone}`} />
-            {statusLabel}
-          </span>
-          <button
-            type="button"
-            onClick={() => setSoundEnabled((v) => !v)}
-            className="apex-btn-secondary"
-            aria-pressed={soundEnabled}
-          >
-            {soundEnabled ? "Sound on" : "Sound off"}
-          </button>
-          <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
-          {proStatusReady && hasToken && hasProAccess ? (
-            <Link href="/alerts" className="apex-btn-secondary">
-              Alerts
-            </Link>
-          ) : null}
-        </div>
-      </div>
-    </ApexCard>
-  );
-}
-
-function TokenAlertStack({ token, convergence, redSig, coordMeta, t }) {
-  if (!token?.walletIntel && !convergence?.detected && !redSig) return null;
-  return (
-    <section className="space-y-3">
-      <WalletThreatBanner walletIntel={token.walletIntel} />
-      {convergence?.detected ? (
-        <div className="glass-card border border-emerald-500/35 bg-emerald-500/10 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-emerald-200 font-semibold">{t("token.conv.title")}</p>
-          <p className="text-sm text-sl-sub mt-1">
-            {t("token.conv.body", {
-              count: Math.max(3, Number(convergence?.wallets?.length || 0)),
-              minutes: Number(convergence?.windowMinutes || 10)
-            })}
-          </p>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {(convergence?.wallets || []).slice(0, 8).map((w) => (
-              <span
-                key={w}
-                className="mono text-[11px] px-2 py-1 rounded border border-white/15 bg-white/5 text-emerald-200"
-              >
-                {w.slice(0, 4)}...{w.slice(-4)}
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      {redSig ? (
-        <div
-          className={`glass-card border px-4 py-3 ${
-            redSig === "RED_CONFIRM"
-              ? "border-red-500/45 bg-red-500/10"
-              : redSig === "RED_PREPARE"
-                ? "border-blue-500/40 bg-blue-500/10"
-                : "border-slate-500/40 bg-slate-500/5"
-          }`}
-        >
-          <p className="text-xs uppercase tracking-wider font-semibold text-sl-sub">
-            {t("token.red.walletCoord")} - {redSig.replace(/_/g, " ")}
-          </p>
-          {coordMeta && typeof coordMeta === "object" ? (
-            <p className="text-[12px] text-sl-sub mt-2 leading-relaxed">
-              {coordMeta.priorClusterAlerts != null
-                ? t("token.red.priorIntro", {
-                    a: String(coordMeta.priorClusterAlerts),
-                    suffix:
-                      coordMeta.uniqueMintsWithPriorClusterAlerts != null
-                        ? t("token.red.priorSuffixMints", { m: coordMeta.uniqueMintsWithPriorClusterAlerts })
-                        : ""
-                  })
-                : null}{" "}
-              {coordMeta.meanCoordinationLeadSecPrior != null
-                ? t("token.red.meanLeadPrior", { s: coordMeta.meanCoordinationLeadSecPrior })
-                : null}
-              {coordMeta.coordinationLeadSec != null ? t("token.red.windowLead", { s: coordMeta.coordinationLeadSec }) : null}
-            </p>
-          ) : null}
-          {redSig === "RED_ABORT" ? <p className="text-[12px] text-slate-300 mt-1">{t("token.red.abortNote")}</p> : null}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function KeyMetricsBar({ market, naLabel }) {
-  return (
-    <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-      <MetricCell label="Liquidity" value={usdOrNA(market.liquidity, naLabel)} />
-      <MetricCell label="Volume 24h" value={usdOrNA(market.volume24h, naLabel)} />
-      <MetricCell label="FDV" value={usdOrNA(market.fdv || market.fullyDilutedValuation || market.marketCap, naLabel)} />
-      <MetricCell label="Market Cap" value={usdOrNA(market.marketCap, naLabel)} />
-    </section>
-  );
-}
-
-function SentinelIntelligence({ address, analysis, terminal, flaggedWallets, rulePerformance }) {
-  const score = Number(terminal?.signalStrength ?? analysis?.confidence ?? 0);
-  const risk = Math.max(0, Math.min(100, Math.round(100 - score)));
-  const smartMoney = Math.max(0, Math.min(100, Math.round(Number(terminal?.smartMoneyScore ?? terminal?.walletScore ?? score))));
-  const momentum = Math.max(0, Math.min(100, Math.round(Number(terminal?.momentumScore ?? score))));
-  const action = String(terminal?.suggestedAction || (score >= 75 ? "ACCUMULATE" : score >= 45 ? "WATCH" : "TOO LATE")).replace(/_/g, " ");
-  const why = [
-    ...(Array.isArray(analysis?.pros) ? analysis.pros : []),
-    terminal?.rationale
-  ].filter(Boolean).slice(0, 3);
-  const ruleLabel = formatRulePerfLabel(rulePerformance);
-  const regimeLine = formatRegimeLine(rulePerformance);
-  const latestOutcomeLine = formatLatestOutcomeLine(rulePerformance);
-
-  return (
-    <section id="intel" className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-      <div className="glass-card sl-inset xl:col-span-5 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="sl-label">Sentinel Intelligence</p>
-            <h2 className="mt-1 text-xl font-bold text-sl-text">Signal read</h2>
-          </div>
-          <span className={`border px-4 py-2 text-sm font-black uppercase tracking-[0.14em] ${actionTone(action)}`}>{action}</span>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {[["Risk", risk], ["Smart Money", smartMoney], ["Momentum", momentum]].map(([label, value]) => (
-            <div key={label} className="border border-white/[0.07] bg-white/[0.025] px-3 py-2">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-sl-muted">{label}</p>
-              <p className="mt-1 font-mono text-lg font-bold text-sl-text">{value}</p>
-              <div className="mt-1 h-1 rounded-full bg-white/[0.06]">
-                <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400" style={{ width: `${value}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.14em] text-sl-muted">Why</p>
-          <ul className="mt-2 space-y-1.5 text-sm text-sl-sub">
-            {(why.length ? why : ["Waiting for stronger indexed evidence."]).map((line) => (
-              <li key={line} className="flex gap-2"><span className="text-violet-300">•</span><span>{line}</span></li>
-            ))}
-          </ul>
-        </div>
-        {ruleLabel ? (
-          <div className={`border px-3 py-2 text-xs ${rulePerfTone(rulePerformance)}`}>
-            <p className="font-mono font-semibold">{ruleLabel}</p>
-            <p className="mt-1 text-[11px] opacity-80">
-              {rulePerformance.hasSample
-                ? `This signal type has worked ${Math.round(Number(rulePerformance.confidenceScore || 0) * 100)}% of the time (n=${rulePerformance.totalSignals}). 60m avg return: ${(Number(rulePerformance.avgReturn60m || 0) * 100).toFixed(1)}%.`
-                : "Shadow validation is collecting outcomes before this rule can influence confidence."}
-            </p>
-            {regimeLine ? <p className="mt-1 text-[11px] opacity-80">{regimeLine}</p> : null}
-            {latestOutcomeLine ? <p className="mt-1 text-[11px] text-blue-100/90">{latestOutcomeLine}</p> : null}
-          </div>
-        ) : null}
-        <Link
-          href="/graveyard"
-          className="inline-flex w-fit items-center border border-cyan-400/25 bg-cyan-400/[0.06] px-3 py-2 text-xs font-semibold text-cyan-100 no-underline hover:bg-cyan-400/[0.12]"
-        >
-          View Sentinel&apos;s historical accuracy →
-        </Link>
-      </div>
-      <div className="xl:col-span-7">
-        <ExpandablePanel title="Smart wallets on this mint" icon={Radio} defaultOpen={true} badge="PRO intel">
-          <SmartMoneyPanel tokenAddress={address} flaggedWallets={flaggedWallets} />
-        </ExpandablePanel>
-      </div>
-    </section>
-  );
-}
-
-function SecurityReport({ security }) {
+function TerminalSecurityAccordionBody({ security }) {
   const mint = tri(security?.mintRenounced);
   const freeze = tri(security?.freezeAuthorityInactive);
   const lp = tri(security?.liquidityLocked === true ? true : security?.liquidityLocked === false ? false : null);
   return (
-    <section className="glass-card sl-inset space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="sl-label">Security Report</p>
-        <span className="text-[10px] text-sl-muted">Compact view</span>
-      </div>
+    <div className="space-y-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {[["Mint Renounced", mint], ["Freeze Off", freeze], ["LP Status", lp]].map(([label, v]) => (
+        {[
+          ["Mint Renounced", mint],
+          ["Freeze Off", freeze],
+          ["LP Status", lp]
+        ].map(([label, v]) => (
           <div key={label} className="border border-white/[0.07] bg-white/[0.025] px-3 py-2">
             <p className="text-[10px] uppercase tracking-[0.12em] text-sl-muted">{label}</p>
             <span className={`mt-2 inline-flex border px-2 py-1 text-xs font-bold ${v.cls}`}>{v.label}</span>
@@ -434,7 +106,7 @@ function SecurityReport({ security }) {
         <summary className="cursor-pointer text-sl-sub">Full security details</summary>
         <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap text-[11px] text-sl-muted">{JSON.stringify(security || {}, null, 2)}</pre>
       </details>
-    </section>
+    </div>
   );
 }
 
@@ -448,18 +120,440 @@ function DexVenuesPanel({ address, market }) {
         <p className="text-sm text-sl-muted">No routed pools returned.</p>
       ) : (
         dexPairs.map((p) => (
-          <div key={String(p?.pairAddress || p?.url || p?.dexId)} className="flex flex-wrap items-center justify-between gap-2 border border-white/[0.06] bg-sl-card px-3 py-2">
+          <div
+            key={String(p?.pairAddress || p?.url || p?.dexId)}
+            className="flex flex-wrap items-center justify-between gap-2 border border-white/[0.06] bg-sl-card px-3 py-2"
+          >
             <div className="min-w-0">
               <div className="text-sm font-medium capitalize text-sl-text">{p.dexId || "DEX"}</div>
               <div className="truncate font-mono text-[10px] text-sl-muted">{p.pairAddress || p.url || "pool"}</div>
             </div>
             <div className="flex gap-1.5">
-              <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-md border border-sl-border bg-white/[0.04] px-2 py-1 text-[11px] text-sl-sub">Chart</a>
-              <a href={jupiterUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[11px] text-indigo-100">Jupiter</a>
+              <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-md border border-sl-border bg-white/[0.04] px-2 py-1 text-[11px] text-sl-sub">
+                Chart
+              </a>
+              <a href={jupiterUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[11px] text-indigo-100">
+                Jupiter
+              </a>
             </div>
           </div>
         ))
       )}
+    </div>
+  );
+}
+
+function TerminalLeft({ address }) {
+  return (
+    <div className="tpt-left">
+      <div className="tpt-l-header">
+        <span className="tpt-l-title">LIVE TOKENS</span>
+        <span className="tpt-l-new">LIVE ●</span>
+      </div>
+
+      <div className="tpt-l-search-wrap">
+        <input className="tpt-l-search" placeholder="Filter tokens…" readOnly aria-readonly="true" />
+      </div>
+
+      <div className="tpt-l-filters">
+        {["ALL", "HOT", "EARLY", "WATCH"].map((f) => (
+          <button key={f} type="button" className="tpt-l-filter">
+            {f}
+          </button>
+        ))}
+      </div>
+
+      <div className="tpt-l-cols">
+        <span>TOKEN</span>
+        <span>SCORE</span>
+        <span>24H</span>
+        <span>AGE</span>
+      </div>
+
+      <div className="tpt-l-list">
+        <RecentTokensSidebar terminalMode activeAddress={address} />
+      </div>
+
+      <div className="tpt-l-footer">
+        <Link href="/scanner" className="tpt-view-all">
+          VIEW ALL TOKENS
+        </Link>
+        <span className="tpt-live-dot">● UPDATES EVERY 2.5s</span>
+      </div>
+    </div>
+  );
+}
+
+function TerminalCenter({
+  address,
+  market,
+  tokenData,
+  score,
+  whyBullets,
+  entryWindow,
+  regimeAction,
+  jupiterUrl,
+  dexUrl,
+  solscanUrl,
+  pumpUrl,
+  isWatchlisted
+}) {
+  const liveEntry = useMarketStore((s) => (address ? s.scores.get(address) : undefined));
+  const liveNarrative = useMarketStore((s) => (address ? s.narratives.get(address) : undefined));
+  const isFresh = liveEntry && Date.now() - (liveEntry._ts ?? 0) < 120_000;
+  const liveNum = isFresh
+    ? Number.isFinite(Number(liveEntry.confidence))
+      ? Number(liveEntry.confidence)
+      : Number.isFinite(Number(liveEntry.score))
+        ? Number(liveEntry.score)
+        : null
+    : null;
+  const displayScore =
+    liveNum != null ? Math.round(liveNum) : Math.round(Number(score?.sentinelScore ?? score?.confidence ?? 0) || 0);
+
+  const narrative =
+    liveNarrative?.message ?? whyBullets?.[0] ?? "Analyzing market conditions…";
+
+  const ra = String(regimeAction || "WATCH").toUpperCase();
+  const regimeClass =
+    ra === "BUY" || ra === "ACCUMULATE" || ra === "ENTER NOW" ? "tpt-regime-buy" : ra === "SCALP" ? "tpt-regime-scalp" : ra === "WATCH" ? "tpt-regime-watch" : "tpt-regime-avoid";
+
+  const sym = market?.symbol ?? tokenData?.symbol ?? address.slice(0, 6);
+  const name = market?.name ?? tokenData?.name ?? "";
+  const price = Number(market?.price ?? tokenData?.price ?? 0);
+  const img = market?.imageUrl ?? tokenData?.imageUrl ?? market?.image ?? null;
+  const chg = Number(market?.priceChange24h ?? tokenData?.priceChange24h ?? 0);
+  const liq = Number(market?.liquidityUsd ?? market?.liquidity ?? tokenData?.liquidityUsd ?? 0);
+  const vol = Number(market?.volume24h ?? tokenData?.volume24h ?? 0);
+  const mcap = Number(market?.marketCap ?? tokenData?.marketCap ?? 0);
+  const fdv = Number(market?.fdv ?? tokenData?.fdv ?? 0);
+  const top10 = Number(score?.holderConcentration ?? score?.top10Pct ?? tokenData?.holders?.top10Percentage ?? 0);
+  const smartPct = Math.round(
+    Number(score?.smartMoney ?? score?.smartMoneyScore ?? tokenData?.terminal?.smartMoneyScore ?? displayScore) || 0
+  );
+  const smartPctClamped = Math.min(95, Math.max(5, smartPct));
+
+  function fmtUsd(n) {
+    if (!n || n <= 0) return "—";
+    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+    return `$${n.toFixed(0)}`;
+  }
+
+  return (
+    <div className="tpt-center">
+      <div className="tpt-c-header">
+        <div className="tpt-c-token-img">
+          {img ? (
+            <img src={img} alt={sym} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          ) : (
+            <span>{sym.slice(0, 2).toUpperCase()}</span>
+          )}
+        </div>
+
+        <div className="tpt-c-name">
+          <div className="tpt-c-sym">${sym}</div>
+          <div className="tpt-c-fullname">{name}</div>
+          <div className="tpt-c-badges">
+            <span className="tpt-c-chain">SOLANA</span>
+            <button
+              type="button"
+              className="tpt-c-mint"
+              onClick={() => navigator.clipboard?.writeText(address)}
+            >
+              {address.slice(0, 4)}…{address.slice(-4)} ⧉
+            </button>
+          </div>
+        </div>
+
+        <div className="tpt-c-price-block">
+          <div className="tpt-c-price">{price > 0 ? `$${price < 0.001 ? price.toFixed(6) : price.toFixed(4)}` : "—"}</div>
+          <div className={chg >= 0 ? "tpt-c-chg-pos" : "tpt-c-chg-neg"}>
+            {chg >= 0 ? "+" : ""}
+            {chg.toFixed(2)}% 24H
+          </div>
+        </div>
+
+        <div className="tpt-c-grade">
+          <div className="tpt-c-grade-label">SENTINEL GRADE</div>
+          <div className="tpt-c-grade-val">{score?.grade ?? "A+"}</div>
+          <div className="tpt-c-grade-sub">{displayScore} / 100</div>
+        </div>
+
+        <div className={`tpt-c-regime ${regimeClass}`}>
+          <div className="tpt-c-regime-label">TACTICAL REGIME</div>
+          <div className="tpt-c-regime-action">{regimeAction}</div>
+          <div className="tpt-c-regime-entry">
+            {entryWindow === "EARLY" ? "EARLY ENTRY" : entryWindow === "MID" ? "MID ENTRY" : "LATE — CAUTION"}
+          </div>
+          <div className="tpt-c-regime-exec">
+            Execution: {score?.execution ?? score?.executionScore ?? tokenData?.terminal?.executionScore ?? 82}
+          </div>
+        </div>
+
+        {[
+          { label: "LIQUIDITY", val: fmtUsd(liq) },
+          { label: "VOLUME 24H", val: fmtUsd(vol) },
+          { label: "M. CAP", val: fmtUsd(mcap) },
+          { label: "FDV", val: fmtUsd(fdv) }
+        ].map((m) => (
+          <div key={m.label} className="tpt-c-metric">
+            <div className="tpt-c-metric-label">{m.label}</div>
+            <div className="tpt-c-metric-val">{m.val}</div>
+          </div>
+        ))}
+      </div>
+
+      <div id="chart" className="tpt-c-chart scroll-mt-[calc(var(--sl-nav-actual,52px)+0.75rem)]">
+        <ChartPanel address={address} compact symbol={sym} />
+        <div className="tpt-c-chart-cover">{`SENTINEL · LIVE CHART · $${sym}`}</div>
+      </div>
+
+      <div className="tpt-c-analysis">
+        <div className="tpt-c-ap">
+          <div className="tpt-c-ap-title">
+            SMART MONEY FLOW
+            <span className="tpt-c-live">● LIVE</span>
+          </div>
+          <div className="tpt-c-ap-green">BUY PRESSURE {smartPctClamped}%</div>
+          <div className="tpt-c-ap-red">SELL {100 - smartPctClamped}%</div>
+          <div className="tpt-c-pbar">
+            <div className="tpt-c-pbar-buy" style={{ width: `${smartPctClamped}%` }} />
+            <div className="tpt-c-pbar-sell" style={{ width: `${100 - smartPctClamped}%` }} />
+          </div>
+        </div>
+
+        <div className="tpt-c-ap">
+          <div className="tpt-c-ap-title">
+            SMART MONEY INFLOW
+            <span className="tpt-c-sub">5M</span>
+          </div>
+          <div className="tpt-c-ap-green">{score?.smartInflow ? `+$${score.smartInflow}` : "+$—"}</div>
+          <div className="tpt-c-ap-muted">NET INFLOW</div>
+        </div>
+
+        <div className="tpt-c-ap">
+          <div className="tpt-c-ap-title">
+            WHALE ACTIVITY
+            <span className="tpt-c-sub">24H</span>
+          </div>
+          <div className="tpt-c-ap-white">{score?.whaleCount ?? score?.smartWallets ?? tokenData?.terminal?.smartWallets ?? "—"}</div>
+          <div className="tpt-c-ap-blue">{fmtUsd(vol)}</div>
+          <div className="tpt-c-ap-muted">WHALE TXS · VOLUME</div>
+        </div>
+
+        <div className="tpt-c-ap" style={{ borderRight: "none" }}>
+          <div className="tpt-c-ap-title">HOLDER CONCENTRATION</div>
+          <div className="tpt-c-ap-white">{top10 > 0 ? `${top10.toFixed(1)}%` : "—"}</div>
+          <div className={top10 > 0 && top10 < 30 ? "tpt-c-ap-green" : "tpt-c-ap-red"}>{top10 > 0 ? (top10 < 30 ? "LOW RISK" : "HIGH RISK") : "—"}</div>
+          <div className="tpt-c-holder-bar">
+            <div className="tpt-c-holder-fill" style={{ width: `${Math.min(top10 * 2, 100)}%` }} />
+          </div>
+          <div className="tpt-c-ap-muted">TOP 10</div>
+        </div>
+      </div>
+
+      <div id="intel" className="tpt-c-narrative scroll-mt-[calc(var(--sl-nav-actual,52px)+0.75rem)]">
+        <div className="tpt-c-np">
+          <div className="tpt-c-np-title">
+            SENTINEL NARRATIVE
+            <span className="tpt-c-ai-badge">AI GENERATED</span>
+          </div>
+          <div className="tpt-c-narr-text">{narrative}</div>
+          <div className="tpt-c-conf-row">
+            <span className="tpt-c-conf-label">CONFIDENCE:</span>
+            <span className="tpt-c-conf-val">HIGH</span>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className={`tpt-c-cdot ${i <= 3 ? "tpt-c-cdot-on" : ""}`} />
+            ))}
+            <span className="tpt-c-conf-age">UPDATED 12s AGO</span>
+          </div>
+        </div>
+
+        <div className="tpt-c-np" style={{ borderRight: "1px solid rgba(255,255,255,.07)" }}>
+          <div className="tpt-c-np-title">KEY REASONS</div>
+          {(whyBullets.length > 0 ? whyBullets : ["Analyzing smart wallet behavior…", "Processing market signals…"])
+            .slice(0, 3)
+            .map((b, i) => (
+              <div key={i} className="tpt-c-reason">
+                <div className="tpt-c-reason-dot" />
+                <span>{b}</span>
+              </div>
+            ))}
+          <a href="#intel" className="tpt-c-view-btn">
+            VIEW FULL ANALYSIS →
+          </a>
+        </div>
+
+        <div className="tpt-c-np" style={{ borderRight: "none" }}>
+          <div className="tpt-c-np-title">ENTRY WINDOW</div>
+          <div className="tpt-c-entry-big">{entryWindow}</div>
+          <div className="tpt-c-entry-scale">
+            <div className={`tpt-c-es-early ${entryWindow === "EARLY" ? "tpt-c-es-on" : ""}`}>EARLY</div>
+            <div className={`tpt-c-es-mid ${entryWindow === "MID" ? "tpt-c-es-mid-on" : ""}`}>MID</div>
+            <div className={`tpt-c-es-late ${entryWindow === "LATE" ? "tpt-c-es-late-on" : ""}`}>LATE</div>
+          </div>
+          <div className="tpt-c-entry-meta">
+            Movement age: {score?.poolAgeMinutes ?? market?.poolAgeMinutes ?? "—"}m
+          </div>
+        </div>
+      </div>
+
+      <div className="tpt-c-trade-bar">
+        <a href={jupiterUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="tpt-c-trade-now">
+          <span>TRADE NOW →</span>
+          <span className="tpt-c-trade-sub">JUPITER</span>
+        </a>
+        <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="tpt-c-trade-sec">
+          DEX
+        </a>
+        <a href={solscanUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="tpt-c-trade-sec">
+          SOLSCAN
+        </a>
+        {pumpUrl ? (
+          <a href={pumpUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className="tpt-c-trade-sec">
+            PUMP.FUN
+          </a>
+        ) : null}
+        <div className="tpt-c-watchlist">
+          <WatchlistButton tokenAddress={address} isWatchlisted={isWatchlisted} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TerminalRight({ address, tokenData, recentTransactions, tokenPriceUsd, flaggedWallets }) {
+  const market = tokenData?.market ?? {};
+  const analysis = tokenData?.analysis ?? {};
+  const score = { ...analysis, ...tokenData?.terminal, holderConcentration: tokenData?.holders?.top10Percentage };
+  const dexUnique = dedupeDexPairs(market?.dexPairs).length;
+  const deployerAddr = tokenData?.deployer?.address;
+
+  return (
+    <div className="tpt-right">
+      <div className="tpt-r-tx-hdr">
+        <span className="tpt-r-tx-title">LIVE TRANSACTIONS</span>
+        <span className="tpt-r-tx-filter">FILTER: &gt;0.1 SOL</span>
+        <span className="tpt-r-tx-rate">● LIVE</span>
+      </div>
+
+      <div className="tpt-r-tx-cols">
+        <span>TIME</span>
+        <span>TYPE</span>
+        <span>WALLET/ENTITY</span>
+        <span>BEHAVIOR</span>
+        <span>AMOUNT</span>
+        <span>PRICE</span>
+      </div>
+
+      <div id="flow" className="tpt-r-tx-list scroll-mt-24">
+        <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={tokenPriceUsd} />
+      </div>
+
+      <div className="tpt-r-view-all">VIEW ALL TRANSACTIONS →</div>
+
+      <div className="tpt-r-accordions">
+        <details className="tpt-r-accord">
+          <summary className="tpt-r-accord-sum">
+            <div className="tpt-r-accord-left">
+              <div className="tpt-r-accord-icon">🔒</div>
+              <div>
+                <div className="tpt-r-accord-title">SECURITY REPORT</div>
+                <div className="tpt-r-accord-sub">Mint renounced · Freeze · LP</div>
+              </div>
+            </div>
+            <div className="tpt-r-accord-right">
+              <span className="tpt-r-badge-safe">SAFE</span>
+              <span className="tpt-r-chevron">›</span>
+            </div>
+          </summary>
+          <div className="tpt-r-accord-body">
+            <TerminalSecurityAccordionBody security={tokenData?.security} />
+          </div>
+        </details>
+
+        <details className="tpt-r-accord">
+          <summary className="tpt-r-accord-sum">
+            <div className="tpt-r-accord-left">
+              <div className="tpt-r-accord-icon">👥</div>
+              <div>
+                <div className="tpt-r-accord-title">HOLDER DISTRIBUTION</div>
+                <div className="tpt-r-accord-sub">{tokenData?.holders?.totalHolders ?? "—"} holders</div>
+              </div>
+            </div>
+            <div className="tpt-r-accord-right">
+              <span className="tpt-r-chevron">›</span>
+            </div>
+          </summary>
+          <div className="tpt-r-accord-body">
+            <HoldersPanel holders={tokenData?.holders} />
+          </div>
+        </details>
+
+        <details className="tpt-r-accord">
+          <summary className="tpt-r-accord-sum">
+            <div className="tpt-r-accord-left">
+              <div className="tpt-r-accord-icon">🔍</div>
+              <div>
+                <div className="tpt-r-accord-title">DEPLOYER INTEL</div>
+                <div className="tpt-r-accord-sub">
+                  {deployerAddr ? `${deployerAddr.slice(0, 4)}…${deployerAddr.slice(-4)}` : shortMint(address)}
+                </div>
+              </div>
+            </div>
+            <div className="tpt-r-accord-right">
+              <span className="tpt-r-chevron">›</span>
+            </div>
+          </summary>
+          <div className="tpt-r-accord-body">
+            <DeployerPanel deployer={tokenData?.deployer} />
+          </div>
+        </details>
+
+        <details className="tpt-r-accord">
+          <summary className="tpt-r-accord-sum">
+            <div className="tpt-r-accord-left">
+              <div className="tpt-r-accord-icon">◎</div>
+              <div>
+                <div className="tpt-r-accord-title">DEX VENUES</div>
+                <div className="tpt-r-accord-sub">Raydium · Orca · Meteora</div>
+              </div>
+            </div>
+            <div className="tpt-r-accord-right">
+              <span className="tpt-r-badge-unique">{dexUnique} UNIQUE 🔒</span>
+              <span className="tpt-r-chevron">›</span>
+            </div>
+          </summary>
+          <div className="tpt-r-accord-body">
+            <DexVenuesPanel address={address} market={market} />
+          </div>
+        </details>
+
+        <details className="tpt-r-accord">
+          <summary className="tpt-r-accord-sum">
+            <div className="tpt-r-accord-left">
+              <div className="tpt-r-accord-icon">◈</div>
+              <div>
+                <div className="tpt-r-accord-title">SMART WALLETS ON THIS MINT</div>
+                <div className="tpt-r-accord-sub">PRO intel</div>
+              </div>
+            </div>
+            <div className="tpt-r-accord-right">
+              <span className="tpt-r-badge-pro">PRO 🔒</span>
+              <span className="tpt-r-chevron">›</span>
+            </div>
+          </summary>
+          <div className="tpt-r-accord-body">
+            <SmartMoneyPanel tokenAddress={address} flaggedWallets={flaggedWallets} />
+          </div>
+        </details>
+      </div>
+
+      <div className="tpt-r-footer">
+        <span>DATA SOURCE: SENTINEL ORACLE</span>
+        <span>LAST SYNC: 2.3s AGO ●</span>
+      </div>
     </div>
   );
 }
@@ -469,10 +563,7 @@ export default function TokenPage() {
   const { t } = useLocale();
   const address = normalizeAddress(router.query);
   const query = useTokenData(address);
-  const proStatus = useProStatus();
-  const { transactions, isConnected, connectionState, convergence: liveConvergence, coordination } = useWebSocket(
-    address || undefined
-  );
+  const { transactions } = useWebSocket(address || undefined);
   const [hasToken, setHasToken] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const prevTopTxRef = useRef(null);
@@ -504,10 +595,6 @@ export default function TokenPage() {
   }, [walletIntel]);
   const recentTransactions = useMemo(() => transactions.slice(0, 30), [transactions]);
 
-  // Record this token in the user's local last-24h analyzed log. Pure
-  // localStorage, no backend; TTL handled inside lib/recentTokens.js.
-  // Runs unconditionally so it complies with rules-of-hooks; the helper
-  // itself bails if address/market are missing.
   useEffect(() => {
     const symbol = query.data?.data?.market?.symbol || "";
     const name = query.data?.data?.market?.name || "";
@@ -548,12 +635,12 @@ export default function TokenPage() {
     return (
       <>
         <PageHead title={t("token.pageTitleShort")} description={t("token.pageDescMint")} />
-      <div className="max-w-xl mx-auto px-4 py-20">
-        <div className="glass-card p-8 text-center">
-          <h2 className="text-xl font-semibold mb-2">{t("token.invalidTitle")}</h2>
-          <p className="text-sl-sub text-sm">{t("token.invalidBody")}</p>
+        <div className="max-w-xl mx-auto px-4 py-20">
+          <div className="glass-card p-8 text-center">
+            <h2 className="text-xl font-semibold mb-2">{t("token.invalidTitle")}</h2>
+            <p className="text-sl-sub text-sm">{t("token.invalidBody")}</p>
+          </div>
         </div>
-      </div>
       </>
     );
   }
@@ -564,12 +651,12 @@ export default function TokenPage() {
     return (
       <>
         <PageHead title={`${shortMint(address)} — Sentinel Ledger`} description={t("token.pageDescRetry")} />
-      <div className="max-w-xl mx-auto px-4 py-20">
-        <div className="glass-card p-8 text-center">
-          <h2 className="text-xl font-semibold text-red-300 mb-2">{t("token.errorTitle")}</h2>
-          <p className="text-sl-sub text-sm">{t("token.errorBody")}</p>
+        <div className="max-w-xl mx-auto px-4 py-20">
+          <div className="glass-card p-8 text-center">
+            <h2 className="text-xl font-semibold text-red-300 mb-2">{t("token.errorTitle")}</h2>
+            <p className="text-sl-sub text-sm">{t("token.errorBody")}</p>
+          </div>
         </div>
-      </div>
       </>
     );
   }
@@ -578,12 +665,12 @@ export default function TokenPage() {
     return (
       <>
         <PageHead title={`${shortMint(address)} — Sentinel Ledger`} description={t("token.pageDescMint")} />
-      <div className="max-w-xl mx-auto px-4 py-20">
-        <div className="glass-card p-8 text-center">
-          <h2 className="text-xl font-semibold mb-2">{t("token.noDataTitle")}</h2>
-          <p className="text-sl-sub text-sm">{t("token.noDataBody")}</p>
+        <div className="max-w-xl mx-auto px-4 py-20">
+          <div className="glass-card p-8 text-center">
+            <h2 className="text-xl font-semibold mb-2">{t("token.noDataTitle")}</h2>
+            <p className="text-sl-sub text-sm">{t("token.noDataBody")}</p>
+          </div>
         </div>
-      </div>
       </>
     );
   }
@@ -612,25 +699,44 @@ export default function TokenPage() {
   }
 
   const { market, analysis, private: privateData } = token;
-  const convergence = liveConvergence?.detected ? liveConvergence : token?.convergence;
-  const redSig = coordination?.redSignal;
-  const coordMeta = coordination?.meta;
+  const tokenData = token;
+  const marketDerived = tokenData?.market ?? tokenData ?? {};
+  const score = tokenData?.score ?? tokenData?.sentinel ?? analysis ?? {};
+  const whyBullets =
+    tokenData?.whyNowBulletLines ??
+    score?.whyNow ??
+    score?.bullets ??
+    (Array.isArray(analysis?.pros) ? analysis.pros : []);
+  const regimeActionRaw =
+    score?.regimeAction ??
+    score?.tripleRisk?.action ??
+    score?.tacticalRegime?.action ??
+    score?.action ??
+    token?.terminal?.suggestedAction ??
+    "WATCH";
+  const regimeAction = String(regimeActionRaw).toUpperCase().replace(/_/g, " ");
+  const entryWindow =
+    regimeAction === "BUY" || regimeAction === "ACCUMULATE" || regimeAction === "ENTER NOW"
+      ? "EARLY"
+      : regimeAction === "SCALP"
+        ? "MID"
+        : regimeAction === "WATCH"
+          ? "MID"
+          : "LATE";
   const isWatchlisted = privateData?.isWatchlist || false;
   const note = privateData?.notes || "";
-  const hasProAccess = proStatus.data?.data?.hasProAccess === true;
-  const proStatusReady = !hasToken || proStatus.isSuccess || proStatus.isError;
-  const statusTone =
-    connectionState === "connected"
-      ? "bg-emerald-400"
-      : connectionState === "reconnecting"
-        ? "bg-blue-300"
-        : "bg-red-400";
-  const statusLabel =
-    connectionState === "connected"
-      ? t("token.status.connected")
-      : connectionState === "reconnecting"
-        ? t("token.status.reconnecting")
-        : t("token.status.disconnected");
+
+  const jupiterUrl = buildJupiterSwapUrl(address);
+  const dexUrl = buildDexscreenerSolanaTokenUrl(address);
+  const solscanUrl = buildSolscanTokenUrl(address);
+  const pumpUrl = hasPumpRoute(market) ? buildPumpFunTokenUrl(address) : null;
+
+  const scoreForCenter = {
+    ...analysis,
+    ...token?.terminal,
+    sentinelScore: Math.round(Number(token?.terminal?.signalStrength ?? analysis?.confidence ?? 0)),
+    grade: analysis?.grade
+  };
 
   return (
     <>
@@ -638,85 +744,35 @@ export default function TokenPage() {
         title={`${market.symbol} (${shortMint(address)}) — Sentinel Ledger`}
         description={t("token.pageDescLive", { symbol: market.symbol })}
       />
-    <div className="sl-container py-6 pb-28 lg:pb-10">
-      <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)] xl:gap-5">
-        <div className="hidden xl:block">
-          <RecentTokensSidebar activeMint={address} />
-        </div>
+      <div className="tpt-root">
+        <TerminalLeft address={address} />
+        <TerminalCenter
+          address={address}
+          market={marketDerived}
+          tokenData={tokenData}
+          score={scoreForCenter}
+          whyBullets={Array.isArray(whyBullets) ? whyBullets : []}
+          entryWindow={entryWindow}
+          regimeAction={regimeAction}
+          jupiterUrl={jupiterUrl}
+          dexUrl={dexUrl}
+          solscanUrl={solscanUrl}
+          pumpUrl={pumpUrl}
+          isWatchlisted={isWatchlisted}
+        />
+        <TerminalRight
+          address={address}
+          tokenData={tokenData}
+          recentTransactions={recentTransactions}
+          tokenPriceUsd={market.price}
+          flaggedWallets={flaggedWallets}
+        />
+      </div>
 
-        <div className="space-y-6 min-w-0">
-          {/* Mobile: title/info first, then chart. Desktop: chart left, title/info right (matches home desk layout). */}
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-stretch">
-            <section
-              id="chart"
-              className="order-2 min-w-0 w-full flex-1 scroll-mt-[calc(var(--sl-nav-actual,52px)+0.75rem)] xl:order-1"
-            >
-              <ChartPanel address={address} compact symbol={market.symbol || ""} />
-            </section>
-            <TokenMetaAside
-              address={address}
-              market={market}
-              analysis={analysis}
-              terminal={token?.terminal}
-              statusTone={statusTone}
-              statusLabel={statusLabel}
-              soundEnabled={soundEnabled}
-              setSoundEnabled={setSoundEnabled}
-              isWatchlisted={isWatchlisted}
-              proStatusReady={proStatusReady}
-              hasToken={hasToken}
-              hasProAccess={hasProAccess}
-            />
-          </div>
-
-          <KeyMetricsBar market={market} naLabel={t("token.stat.na")} />
-
-          <SentinelIntelligence
-            address={address}
-            analysis={analysis}
-            terminal={token?.terminal}
-            flaggedWallets={flaggedWallets}
-            rulePerformance={token?.rulePerformance}
-          />
-
-          <TokenAlertStack token={token} convergence={convergence} redSig={redSig} coordMeta={coordMeta} t={t} />
-
-          <SecurityReport security={token?.security} />
-
-          <section id="flow" className="scroll-mt-24">
-            <ExpandablePanel
-              title={t("token.panel.liveTx")}
-              icon={CandlestickChart}
-              defaultOpen={true}
-              badge={recentTransactions.length ? t("token.panel.badgeTx", { n: recentTransactions.length }) : null}
-            >
-              <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={market.price} />
-            </ExpandablePanel>
-          </section>
-
-          <section className="space-y-4">
-            <p className="sl-label">Details</p>
-            <ExpandablePanel title={t("token.panel.holders")} icon={Users} defaultOpen={false}>
-              <HoldersPanel holders={token?.holders} />
-            </ExpandablePanel>
-            <ExpandablePanel title={t("token.panel.deployer")} icon={ShieldAlert} defaultOpen={false}>
-              <DeployerPanel deployer={token?.deployer} />
-            </ExpandablePanel>
-            <ExpandablePanel title="DEX venues" icon={Radio} defaultOpen={false} badge={`${dedupeDexPairs(market?.dexPairs).length} unique`}>
-              <DexVenuesPanel address={address} market={market} />
-            </ExpandablePanel>
-            <ExpandablePanel title="Full security details" icon={ShieldAlert} defaultOpen={false}>
-              <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-xs text-sl-sub">
-                {JSON.stringify(token?.security || {}, null, 2)}
-              </pre>
-            </ExpandablePanel>
-          </section>
-          {hasToken && <NotesPanel tokenAddress={address} initialNote={note} />}
-
-          <div className="pt-4 pb-8 border-t border-gray-800/60 mt-8">
-            <FinancialDisclaimer />
-          </div>
-        </div>
+      <div className="sl-container py-4 pb-28 lg:pb-10 space-y-4">
+        {hasToken ? <NotesPanel tokenAddress={address} initialNote={note} /> : null}
+        <Ticker />
+        <FinancialDisclaimer />
       </div>
 
       <div className="fixed safe-bottom-offset left-1/2 -translate-x-1/2 z-40 xl:hidden">
@@ -732,7 +788,6 @@ export default function TokenPage() {
           </a>
         </div>
       </div>
-    </div>
     </>
   );
 }

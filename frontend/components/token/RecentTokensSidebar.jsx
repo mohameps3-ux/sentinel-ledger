@@ -15,13 +15,16 @@ import { readRecentTokens, formatRelativeTime, RECENT_TOKEN_TTL_HOURS } from "..
  *
  * Visual: institutional dark surface, mono font, blue accent for the
  * currently-active mint, pulse for entries < 5 min old.
+ *
+ * terminalMode: minimal list rows for /token terminal layout (tpt-l-row).
  */
 function shortMint(addr) {
   if (!addr || typeof addr !== "string" || addr.length < 12) return addr || "";
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
-export function RecentTokensSidebar({ activeMint }) {
+export function RecentTokensSidebar({ activeMint, activeAddress, terminalMode = false }) {
+  const mintKey = activeMint ?? activeAddress ?? "";
   const [items, setItems] = useState([]);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -41,6 +44,55 @@ export function RecentTokensSidebar({ activeMint }) {
     const id = setInterval(() => setItems(readRecentTokens()), 60000);
     return () => clearInterval(id);
   }, [mounted]);
+
+  if (terminalMode) {
+    if (!mounted) {
+      return (
+        <div className="px-3 py-4">
+          <p className="text-[10px] font-mono text-[#525252]">Loading…</p>
+        </div>
+      );
+    }
+    if (!items.length) {
+      return (
+        <div className="px-3 py-6">
+          <p className="text-[10px] font-mono text-[#525252] leading-relaxed">
+            No tokens analyzed yet.
+            <br />
+            Open a token to start tracking your last {RECENT_TOKEN_TTL_HOURS} hours.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <ul className="list-none p-0 m-0">
+        {items.map((row) => {
+          const isActive = mintKey && row.mint === mintKey;
+          const sym = row.symbol || shortMint(row.mint);
+          const initials = (sym || "?").slice(0, 2).toUpperCase();
+          return (
+            <li key={row.mint}>
+              <Link
+                href={`/token/${row.mint}`}
+                className={`tpt-l-row ${isActive ? "tpt-l-row-active" : ""}`}
+              >
+                <div className="tpt-l-row-left min-w-0">
+                  <span className="tpt-tok-img tpt-tok-initials">{initials}</span>
+                  <div className="min-w-0">
+                    <div className="tpt-tok-sym">${sym}</div>
+                    <div className="tpt-tok-name">{row.name && row.name !== row.symbol ? row.name : shortMint(row.mint)}</div>
+                  </div>
+                </div>
+                <span className="tpt-score-na">—</span>
+                <span className="tpt-score-na">—</span>
+                <span className="tpt-age">{formatRelativeTime(row.viewedAt)}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
 
   return (
     <aside className="sl-recent-sidebar">
@@ -72,7 +124,7 @@ export function RecentTokensSidebar({ activeMint }) {
       ) : (
         <ul className="sl-recent-list">
           {items.map((row) => {
-            const isActive = activeMint && row.mint === activeMint;
+            const isActive = mintKey && row.mint === mintKey;
             const ageMin = Math.floor((Date.now() - row.viewedAt) / 60000);
             const isFresh = ageMin < 5;
             return (
