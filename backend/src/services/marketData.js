@@ -216,10 +216,14 @@ function buildMarketDataFromDex(address, data) {
   const bestPairFdv = toPositiveNumber(bestPair?.fdv);
   const pairCreatedRaw = bestPair?.pairCreatedAt ?? bestPair?.pairCreated ?? null;
   const pairCreatedAt = pairCreatedRawToUnixMs(pairCreatedRaw);
+  const pc = bestPair.priceChange;
+  const m5Raw = pc && pc.m5 != null && pc.m5 !== "" ? Number(pc.m5) : null;
+  const priceChange5m = Number.isFinite(m5Raw) ? m5Raw : null;
   return {
     marketData: {
       price: Number(bestPair.priceUsd) || 0,
       priceChange24h: bestPair.priceChange?.h24 || 0,
+      priceChange5m,
       volume24h: Number(bestPair.volume?.h24) || 0,
       marketCap: pair0Fdv || bestPairFdv || null,
       liquidity: Number(bestPair.liquidity?.usd) || 0,
@@ -248,6 +252,13 @@ function buildMarketDataFromDex(address, data) {
 }
 
 function buildMarketDataFromBirdeye(address, row) {
+  const firstFinite = (...vals) => {
+    for (const v of vals) {
+      const n = Number(v);
+      if (Number.isFinite(n)) return n;
+    }
+    return null;
+  };
   const symbol = String(row?.symbol || "").trim() || "?";
   const name = String(row?.name || "").trim() || symbol;
   const websites = [];
@@ -259,6 +270,20 @@ function buildMarketDataFromBirdeye(address, row) {
   const marketData = {
     price: Number(row?.price || 0),
     priceChange24h: Number(row?.priceChange24h || row?.priceChange24hPercent || 0),
+    priceChange5m: firstFinite(
+      row?.price_change_5m_percent,
+      row?.priceChange5m,
+      row?.price_change_5m,
+      row?.change5m,
+      row?.price5m
+    ),
+    holderTop10Pct: firstFinite(
+      row?.top10_holder_percent,
+      row?.top10HolderPercent,
+      row?.holder_concentration,
+      row?.holder?.top10_percentage,
+      row?.holder?.top10
+    ),
     volume24h: Number(row?.volume24h || row?.v24hUSD || 0),
     marketCap: Number(row?.marketCap || row?.mc || 0) || null,
     liquidity: Number(row?.liquidity || row?.liquidityUSD || 0),

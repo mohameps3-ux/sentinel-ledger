@@ -202,7 +202,27 @@ function buildScoringContext(market, tokenAmount) {
       : null;
   const volume24h =
     market && Number.isFinite(Number(market.volume24h)) ? Number(market.volume24h) : null;
-  return { priceUsd, liquidityUsd, amountUsd, priceChange24h, volume24h };
+  const priceChange5m =
+    market && Number.isFinite(Number(market.priceChange5m))
+      ? Number(market.priceChange5m)
+      : null;
+  const created = market && Number(market.pairCreatedAt);
+  const poolAgeMinutes =
+    Number.isFinite(created) && created > 0 ? (Date.now() - created) / 60000 : null;
+  const holderTop10Pct =
+    market && Number.isFinite(Number(market.holderTop10Pct))
+      ? Number(market.holderTop10Pct)
+      : null;
+  return {
+    priceUsd,
+    liquidityUsd,
+    amountUsd,
+    priceChange24h,
+    volume24h,
+    priceChange5m,
+    poolAgeMinutes,
+    holderTop10Pct
+  };
 }
 
 async function emitScore(tx, sentinelEvent) {
@@ -215,7 +235,10 @@ async function emitScore(tx, sentinelEvent) {
   const gate = evaluateSignalEmission(score, {
     liquidityUsd: ctx?.liquidityUsd,
     priceChange24h: ctx?.priceChange24h,
-    volume24h: ctx?.volume24h
+    volume24h: ctx?.volume24h,
+    priceChange5m: ctx?.priceChange5m,
+    poolAgeMinutes: ctx?.poolAgeMinutes,
+    holderTop10Pct: ctx?.holderTop10Pct
   });
   if (!gate.allow) return;
   score.meta = {

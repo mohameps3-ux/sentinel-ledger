@@ -39,7 +39,9 @@ const BASE_CONFIG = {
     0,
     1
   ),
-  minLiquidityUsd: Math.max(0, Number(process.env.SIGNAL_GATE_MIN_LIQUIDITY_USD || 20_000)),
+  minLiquidityUsd: Math.max(0, Number(process.env.SIGNAL_GATE_MIN_LIQUIDITY_USD || 25_000)),
+  maxPriceChange5m: Math.max(0, Number(process.env.SIGNAL_GATE_MAX_PRICE_CHANGE_5M || 60)),
+  maxHolderTop10Pct: clamp(Number(process.env.SIGNAL_GATE_MAX_HOLDER_TOP10_PCT || 40), 0, 100),
   maxRiskScore: clamp(Number(process.env.SIGNAL_GATE_MAX_RISK_SCORE || 85), 0, 100),
   minSignalsFired: Math.max(0, firstEnvNumber(["GATE_MIN_SIGNALS", "SIGNAL_GATE_MIN_SIGNALS_FIRED"], 1)),
   historyMax: Math.max(20, Number(process.env.SIGNAL_GATE_HISTORY_MAX || 300))
@@ -56,6 +58,10 @@ const BLOCK_META_LABEL_SKIP =
   String(process.env.SIGNAL_GATE_META_BLOCK_SKIP || "false").toLowerCase() === "true";
 const BLOCK_META_LABEL_CAUTION =
   String(process.env.SIGNAL_GATE_META_BLOCK_CAUTION || "false").toLowerCase() === "true";
+
+/** "New pair" cutoff for no-chasing (24h move vs pool age). Not env-tunable per product spec. */
+const NEW_TOKEN_POOL_AGE_MAX_MIN = 60;
+const NEW_TOKEN_MAX_ABS_CHANGE_24H_PCT = 80;
 
 function regimeClassifierParams() {
   return {
@@ -242,6 +248,12 @@ function applySignalGateOverrides(overrides = {}, meta = {}) {
   if (overrides.minLiquidityUsd != null) {
     next.minLiquidityUsd = Math.max(0, Number(overrides.minLiquidityUsd));
   }
+  if (overrides.maxPriceChange5m != null) {
+    next.maxPriceChange5m = Math.max(0, Number(overrides.maxPriceChange5m));
+  }
+  if (overrides.maxHolderTop10Pct != null) {
+    next.maxHolderTop10Pct = clamp(Number(overrides.maxHolderTop10Pct), 0, 100);
+  }
   if (overrides.maxRiskScore != null) {
     next.maxRiskScore = clamp(Number(overrides.maxRiskScore), 0, 100);
   }
@@ -327,9 +339,49 @@ function evaluateSignalEmission(score, ctx = {}) {
     if (signals < cfg.minSignalsFired) reasons.push("insufficient_signals");
     if (confGate < cfg.minConfidence) reasons.push("low_confidence");
     if (risk > cfg.maxRiskScore) reasons.push("risk_too_high");
-    if (cfg.minLiquidityUsd > 0 && (!Number.isFinite(liqUsd) || liqUsd < cfg.minLiquidityUsd)) {
+    if (cfg.minLiquidityUsd > 0 && (!Number.isFinite(liqUsd) || liqUsd <= 0 || liqUsd < cfg.minLiquidityUsd)) {
       reasons.push("low_liquidity");
     }
+
+    const ch24Raw = ctx?.priceChange24h ?? score?.priceChange24h ?? score?.change24h ?? null;
+    const ch24 = Number(ch24Raw);
+    const priceChangePct = Number.isFinite(ch24) ? Math.abs(ch24) : 0;
+    const poolAgeRaw = ctx?.poolAgeMinutes ?? score?.poolAgeMinutes ?? score?.poolAge ?? null;
+    const poolAgeNum = poolAgeRaw != null ? Number(poolAgeRaw) : null;
+    const isNewToken =
+      poolAgeNum != null &&
+      Number.isFinite(poolAgeNum) &&
+      poolAgeNum >= 0 &&
+      poolAgeNum < NEW_TOKEN_POOL_AGE_MAX_MIN;
+    let tooExtended = false;
+    if (isNewToken && priceChangePct > NEW_TOKEN_MAX_ABS_CHANGE_24H_PCT) {
+      tooExtended = true;
+    }
+
+    const change5mRaw =
+      ctx?.priceChange5m ?? ctx?.change5m ?? score?.priceChange5m ?? score?.change5m ?? null;
+    const change5m = change5mRaw != null && Number.isFinite(Number(change5mRaw)) ? Number(change5mRaw) : null;
+    const max5m = Number(cfg.maxPriceChange5m);
+    if (change5m !== null && Number.isFinite(max5m) && max5m > 0 && change5m > max5m) {
+      tooExtended = true;
+    }
+    if (tooExtended) reasons.push("too_extended");
+
+    const top10Raw =
+      score?.holderConcentration ??
+      score?.top10Pct ??
+      score?.top10HoldersPct ??
+      ctx?.holderConcentration ??
+      ctx?.top10Pct ??
+      ctx?.top10HoldersPct ??
+      ctx?.holderTop10Pct ??
+      null;
+    const top10 = top10Raw != null && Number.isFinite(Number(top10Raw)) ? Number(top10Raw) : null;
+    const maxTop = Number(cfg.maxHolderTop10Pct);
+    if (top10 !== null && Number.isFinite(maxTop) && maxTop > 0 && top10 > maxTop) {
+      reasons.push("concentrated_supply");
+    }
+
     if (us.unified < cfg.minUnifiedScore) reasons.push("low_unified_score");
     appendAlphaLayerGateReasons(score, reasons);
   }
@@ -379,6 +431,8 @@ function evaluateSignalEmission(score, ctx = {}) {
       minUnifiedScore: cfg.minUnifiedScore,
       maxRiskScore: cfg.maxRiskScore,
       minLiquidityUsd: cfg.minLiquidityUsd,
+      maxPriceChange5m: cfg.maxPriceChange5m,
+      maxHolderTop10Pct: cfg.maxHolderTop10Pct,
       minSignalsFired: cfg.minSignalsFired
     }
   };
