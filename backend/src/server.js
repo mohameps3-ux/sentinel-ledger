@@ -65,6 +65,11 @@ const {
   getWalletBehaviorCronStatus
 } = require("./jobs/walletBehaviorCron");
 const {
+  runClusterBackfillCron,
+  getClusterBackfillStats,
+  INTERVAL_MS: CLUSTER_BACKFILL_INTERVAL_MS
+} = require("./jobs/clusterBackfillCron");
+const {
   startWalletCoordinationCron,
   getWalletCoordinationCronStatus
 } = require("./jobs/walletCoordinationCron");
@@ -262,6 +267,11 @@ app.get("/health", async (_, res) => {
     dataFreshnessHistory: getDataFreshnessHistoryCronStatus(),
     walletBehavior: getWalletBehaviorCronStatus(),
     walletCoordination: getWalletCoordinationCronStatus(),
+    clusterBackfill: {
+      cronEnabled: true,
+      tickIntervalMs: CLUSTER_BACKFILL_INTERVAL_MS,
+      lastStats: getClusterBackfillStats()
+    },
     signalGate: getSignalGateOpsSnapshot(),
     signalGateTuner: getSignalGateTunerCronStatus()
   };
@@ -425,6 +435,10 @@ async function bootstrap() {
   startWalletBehaviorCron();
   startWalletCoordinationCron();
   startFlipsideSyncCron();
+  setInterval(runClusterBackfillCron, CLUSTER_BACKFILL_INTERVAL_MS);
+  setTimeout(() => {
+    runClusterBackfillCron();
+  }, 30_000);
   startSignalGateTunerCron({ skipInitialTick: tunerWarmed });
   startSubscriptionExpiryCron();
   sentinelOrchestrator.start(io);
