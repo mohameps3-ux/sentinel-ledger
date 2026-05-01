@@ -2354,13 +2354,6 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   color: #e2e8f0;
   font-family: JetBrains Mono, monospace;
   font-size: 11px;
-  width: 100%;
-  position: relative;
-  isolation: isolate;
-}
-
-.grave-root::after {
-  display: none;
 }
 
 .grave-root > * {
@@ -2380,49 +2373,11 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   box-shadow: 0 0 6px rgba(96, 165, 250, 0.28);
 }
 
-.grave-data-stream-empty {
-  font-size: 10px;
-  color: #9ca3af;
-  text-align: center;
-  padding: 20px;
-  letter-spacing: 0.06em;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.grave-trow-wrap {
-  display: flex;
-  align-items: stretch;
-  transition: background 0.15s ease;
-  border-bottom: 1px solid #0f172a;
-}
-
-.grave-trow-wrap:hover {
-  background: #0f172a;
-}
-
-.grave-trow-wrap .grave-tbar {
-  width: 2px;
-  flex-shrink: 0;
-  align-self: stretch;
-  min-height: 100%;
-}
-
-.grave-trow-wrap .grave-trow {
-  flex: 1;
-  min-width: 0;
-  border-bottom: none;
-  margin-bottom: 0;
-}
-
 .grave-sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
   width: 250px;
-  box-sizing: border-box;
   background: #0a0f1f;
   border-right: 1px solid #1f2937;
   padding: 10px;
@@ -2499,7 +2454,6 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   border-radius: 8px;
   padding: 10px;
   min-height: 124px;
-  flex: 0 0 auto;
 }
 
 .grave-ml-big {
@@ -2532,7 +2486,6 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   border-radius: 8px;
   padding: 10px;
   min-height: 124px;
-  flex: 1;
 }
 
 .grave-signal-row {
@@ -2559,23 +2512,6 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   border-radius: 8px;
   padding: 10px;
   min-height: 190px;
-}
-
-.grave-box-chart {
-  display: flex;
-  flex-direction: column;
-}
-
-.grave-box-chart-inner {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
-}
-
-.grave-activity-feed {
-  min-height: 0;
 }
 
 .grave-insight-row {
@@ -2630,13 +2566,6 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   border-color: #334155;
 }
 
-.grave-table-region {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 5px;
-  margin-top: 6px;
-}
-
 .grave-mrow {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -2649,12 +2578,11 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   border-radius: 8px;
   padding: 10px 12px;
   min-height: 72px;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.15s ease;
 }
 
 .grave-mc:hover {
   border-color: #334155;
-  background: #0c1528;
 }
 
 .grave-mc-l {
@@ -2709,11 +2637,6 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   border-radius: 8px;
   padding: 10px;
   width: 100%;
-  box-sizing: border-box;
-}
-
-.grave-th {
-  font-size: 7px;
 }
 
 .grave-trow {
