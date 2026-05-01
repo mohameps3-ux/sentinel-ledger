@@ -2814,12 +2814,29 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 }
 
 .grave-core-left .grave-cc-t--chart {
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .grave-core-left svg {
   flex: 1;
   min-height: 0;
+}
+
+.grave-chart-sub {
+  font-size: 7px;
+  color: var(--g-label);
+  letter-spacing: 0.05em;
+  line-height: 1.45;
+  margin-bottom: 6px;
+}
+
+.grave-mini-lead {
+  font-size: 7px;
+  color: var(--g-label);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  margin-bottom: 6px;
+  margin-top: -1px;
 }
 
 .grave-cc-t--chart {
