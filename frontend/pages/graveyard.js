@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { PageHead } from "../components/seo/PageHead";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useLocale } from "../contexts/LocaleContext";
@@ -12,13 +13,49 @@ const FILTERS = [
   { id: "pending", label: "Pending ⏳" }
 ];
 
-async function fetchTrackRecord(filter) {
+/** Cap pages to avoid flooding the API on very large ledgers. */
+const METRICS_MAX_PAGES = 40;
+
+async function fetchTrackRecordPage(page, limit = 50) {
   const qs = new URLSearchParams();
-  qs.set("filter", filter || "all");
-  qs.set("limit", "25");
+  qs.set("filter", "all");
+  qs.set("limit", String(limit));
+  qs.set("page", String(page));
   const res = await fetch(`${getPublicApiUrl()}/api/v1/signals/track-record?${qs.toString()}`);
   if (!res.ok) throw new Error("track_record_fetch_failed");
   return res.json();
+}
+
+async function fetchTrackRecordFull() {
+  const limit = 50;
+  const first = await fetchTrackRecordPage(1, limit);
+  const totalPagesRaw = Number(first.pagination?.total_pages || 1);
+  const totalPages = Math.min(Math.max(1, totalPagesRaw), METRICS_MAX_PAGES);
+  const merged = [...(first.recent_signals || [])];
+  if (totalPages > 1) {
+    const rest = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, i) => fetchTrackRecordPage(i + 2, limit))
+    );
+    for (const body of rest) {
+      merged.push(...(body.recent_signals || []));
+    }
+  }
+  const byId = new Map();
+  merged.forEach((s, idx) => {
+    const k = s?.id != null ? s.id : `row-${idx}-${String(s?.time || s?.token || "")}`;
+    if (!byId.has(k)) byId.set(k, s);
+  });
+  return {
+    ...first,
+    recent_signals: [...byId.values()],
+    _pagesFetched: totalPages
+  };
+}
+
+function outcomeRaw(s) {
+  if (s?.result_pct != null && Number.isFinite(Number(s.result_pct))) return Number(s.result_pct);
+  if (s?.outcome_60m != null && Number.isFinite(Number(s.outcome_60m))) return Number(s.outcome_60m);
+  return null;
 }
 
 function pct(v, unit = true) {
@@ -55,20 +92,14 @@ function ruleTone(winRate) {
   return "border-red-500/25 bg-red-500/[0.04]";
 }
 
-function Stat({ label, value, hint }) {
+function Stat({ label, value, hint, className = "", valueClassName = "" }) {
   return (
-    <div className="border border-white/[0.08] bg-black/25 px-3 py-2">
+    <div className={`border border-white/[0.08] bg-black/25 px-3 py-2 ${className}`}>
       <p className="text-[10px] uppercase tracking-[0.14em] text-sl-muted font-semibold">{label}</p>
-      <p className="mt-1 font-mono text-lg font-semibold text-sl-text">{value}</p>
+      <p className={`mt-1 font-mono text-lg font-semibold text-sl-text ${valueClassName}`}>{value}</p>
       {hint ? <p className="mt-0.5 text-[11px] text-sl-muted">{hint}</p> : null}
     </div>
   );
-}
-
-function confidenceTone(label) {
-  if (label === "HIGH") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-200";
-  if (label === "BUILDING") return "border-amber-500/30 bg-amber-500/10 text-amber-200";
-  return "border-slate-500/25 bg-slate-500/10 text-slate-300";
 }
 
 function outcomeTone(value) {
@@ -79,12 +110,129 @@ function outcomeTone(value) {
   return "text-slate-300";
 }
 
-function resultLabel(row) {
-  if (row.result === "WIN") return "✓ WIN";
-  if (row.result === "LOSS") return "✗ LOSS";
-  if (row.result === "NEUTRAL") return "NEUTRAL";
-  if (row.result === "MISSING") return "Data missing";
-  return "Validating...";
+function ruleConfidence(count, wr) {
+  const c = Math.max(0, Number(count) || 0);
+  const w = Number(wr);
+  if (c < 10) return { label: "Gathering data", cls: "text-sl-muted" };
+  if (c < 30) return { label: "Low confidence", cls: "text-orange-400" };
+  if (c < 50) return { label: "Moderate", cls: "text-blue-400" };
+  if (c >= 50 && Number.isFinite(w) && w > 0.45) return { label: "High confidence", cls: "text-emerald-400" };
+  if (c >= 50 && Number.isFinite(w) && w > 0 && w <= 0.45) return { label: "Low edge", cls: "text-orange-400" };
+  return { label: "Low confidence", cls: "text-orange-400" };
+}
+
+function computeInstitutionalMetrics(signals) {
+  const completed = (signals ?? []).filter((s) => outcomeRaw(s) != null);
+  const wins = completed.filter((s) => (outcomeRaw(s) ?? 0) > 0);
+  const losses = completed.filter((s) => (outcomeRaw(s) ?? 0) <= 0);
+  const winRate = completed.length > 0 ? wins.length / completed.length : 0;
+  const lossRate = 1 - winRate;
+  const avgWinPct =
+    wins.length > 0 ? wins.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0) / wins.length : 0;
+  const avgLossPct =
+    losses.length > 0 ? losses.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0) / losses.length : 0;
+  const expectancy = winRate * avgWinPct + lossRate * avgLossPct;
+  const profitFactor =
+    losses.length > 0 && wins.length > 0
+      ? Math.abs(wins.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0)) /
+        Math.abs(losses.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0))
+      : 0;
+  const maxDrawdown = completed.length > 0 ? Math.min(...completed.map((s) => outcomeRaw(s) ?? 0)) : 0;
+  const cappedCompleted = completed.map((s) => ({
+    ...s,
+    _r: Math.max(outcomeRaw(s) ?? 0, -0.1)
+  }));
+  const cappedWins = cappedCompleted.filter((s) => s._r > 0);
+  const cappedLosses = cappedCompleted.filter((s) => s._r <= 0);
+  const cappedWinRate = cappedCompleted.length > 0 ? cappedWins.length / cappedCompleted.length : 0;
+  const cappedAvgWin =
+    cappedWins.length > 0 ? cappedWins.reduce((a, s) => a + s._r, 0) / cappedWins.length : 0;
+  const cappedAvgLoss =
+    cappedLosses.length > 0 ? cappedLosses.reduce((a, s) => a + s._r, 0) / cappedLosses.length : 0;
+  const cappedExpectancy = cappedWinRate * cappedAvgWin + (1 - cappedWinRate) * cappedAvgLoss;
+  const sorted = [...completed].sort((a, b) => (outcomeRaw(b) ?? 0) - (outcomeRaw(a) ?? 0));
+  const bestCall = sorted[0] ?? null;
+  const worstCall = sorted[sorted.length - 1] ?? null;
+  return {
+    completed,
+    wins,
+    losses,
+    winRate,
+    avgWinPct,
+    avgLossPct,
+    expectancy,
+    profitFactor,
+    maxDrawdown,
+    cappedExpectancy,
+    bestCall,
+    worstCall
+  };
+}
+
+function callLabel(s) {
+  if (!s) return "—";
+  const raw = outcomeRaw(s);
+  const sym = s.symbol ?? s.asset?.slice(0, 8) ?? (s.mint ? String(s.mint).slice(0, 6) : null) ?? "???";
+  if (raw == null || !Number.isFinite(raw)) return `${sym} —`;
+  const nPct = raw * 100;
+  const sign = nPct > 0 ? "+" : "";
+  return `${sym} ${sign}${nPct.toFixed(1)}%`;
+}
+
+function regimeKey(s) {
+  const r = String(s.regime ?? s.emission_regime ?? s.gate_meta?.regime ?? "unknown").toLowerCase();
+  if (["calm", "trending", "volatile"].includes(r)) return r;
+  return "unknown";
+}
+
+function regimeBreakdown(completed) {
+  const regimes = ["calm", "trending", "volatile", "unknown"];
+  return regimes
+    .map((r) => {
+      const group = completed.filter((s) => regimeKey(s) === r);
+      if (group.length === 0) return null;
+      const gWins = group.filter((s) => (outcomeRaw(s) ?? 0) > 0);
+      const gLosses = group.filter((s) => (outcomeRaw(s) ?? 0) <= 0);
+      const gWinRate = gWins.length / group.length;
+      const gAvgRet = group.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0) / group.length;
+      const avgGw = gWins.length > 0 ? gWins.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0) / gWins.length : 0;
+      const avgGl =
+        gLosses.length > 0 ? gLosses.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0) / gLosses.length : 0;
+      const gExp = gWinRate * avgGw + (1 - gWinRate) * avgGl;
+      return { regime: r, count: group.length, winRate: gWinRate, avgRet: gAvgRet, expectancy: gExp };
+    })
+    .filter(Boolean);
+}
+
+function resultBadgeMeta(row) {
+  const res = row.result;
+  if (res === "WIN")
+    return { label: "WIN", cls: "border-emerald-500/40 bg-emerald-500/15 text-emerald-200" };
+  if (res === "LOSS") return { label: "LOSS", cls: "border-red-500/40 bg-red-500/15 text-red-200" };
+  if (res === "PENDING")
+    return { label: "PENDING", cls: "border-white/15 bg-white/[0.06] text-slate-400" };
+  if (res === "MISSING") return { label: "FAILED", cls: "border-orange-500/40 bg-orange-500/15 text-orange-200" };
+  if (res === "NEUTRAL")
+    return { label: "NEUTRAL", cls: "border-slate-500/40 bg-slate-500/10 text-slate-300" };
+  return { label: "PENDING", cls: "border-white/15 bg-white/[0.06] text-slate-400" };
+}
+
+function tokenDisplaySym(row) {
+  const sym = row.symbol?.replace(/^\$/, "") || "";
+  if (sym) return sym;
+  if (row.token || row.mint) {
+    const m = String(row.token || row.mint);
+    return `${m.slice(0, 4)}…${m.slice(-4)}`;
+  }
+  return "—";
+}
+
+function filterRows(rows, filterId) {
+  if (filterId === "all") return rows;
+  if (filterId === "wins") return rows.filter((r) => r.result === "WIN");
+  if (filterId === "losses") return rows.filter((r) => r.result === "LOSS");
+  if (filterId === "pending") return rows.filter((r) => r.result === "PENDING" || r.result === "MISSING");
+  return rows;
 }
 
 function EmptyState({ children }) {
@@ -107,9 +255,7 @@ function CalibrationProgress({ resolved, total }) {
   return (
     <div className="mt-4 border border-white/[0.08] bg-black/30 px-4 py-3">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-sl-muted font-semibold">
-          Oracle calibration
-        </p>
+        <p className="text-[10px] uppercase tracking-[0.18em] text-sl-muted font-semibold">Oracle calibration</p>
         <p className="font-mono text-[11px] text-sl-sub tabular-nums">
           {r}/{t} resolved · {Math.max(0, t - r)} pending
         </p>
@@ -119,11 +265,7 @@ function CalibrationProgress({ resolved, total }) {
           const pctRaw = (r / m.target) * 100;
           const reached = r >= m.target;
           const widthPct = Math.min(100, Math.max(0, pctRaw));
-          const tone = reached
-            ? "bg-emerald-400"
-            : widthPct > 50
-              ? "bg-violet-400"
-              : "bg-amber-400";
+          const tone = reached ? "bg-emerald-400" : widthPct > 50 ? "bg-violet-400" : "bg-amber-400";
           return (
             <div key={m.id}>
               <div className="flex items-center justify-between gap-2 text-[11px]">
@@ -155,21 +297,46 @@ export default function VerifiedTrackRecordPage() {
   const [filter, setFilter] = useState("all");
 
   const query = useQuery({
-    queryKey: ["verified-track-record", filter],
-    queryFn: () => fetchTrackRecord(filter),
+    queryKey: ["verified-track-record-full"],
+    queryFn: fetchTrackRecordFull,
     refetchInterval: 60000
   });
 
   const data = query.data || {};
-  const rows = useMemo(() => data.recent_signals || [], [data.recent_signals]);
+  const allRows = useMemo(() => data.recent_signals || [], [data.recent_signals]);
   const rules = useMemo(() => data.rule_performance || [], [data.rule_performance]);
   const bestCalls = useMemo(() => data.top_wins || [], [data.top_wins]);
   const worstCalls = useMemo(() => data.worst_losses || [], [data.worst_losses]);
   const autoDiscovered = useMemo(() => data.auto_discovered_wallets || [], [data.auto_discovered_wallets]);
   const totalSignals = Number(data.total_signals || 0);
   const resolvedSignals = Number(data.resolved_signals || 0);
-  const hasMetrics = resolvedSignals >= 10;
   const hasData = totalSignals > 0 || rules.length > 0;
+
+  const metrics = useMemo(() => computeInstitutionalMetrics(allRows), [allRows]);
+  const {
+    completed,
+    winRate,
+    avgWinPct,
+    avgLossPct,
+    expectancy,
+    profitFactor,
+    maxDrawdown,
+    cappedExpectancy,
+    bestCall,
+    worstCall
+  } = metrics;
+
+  const rows = useMemo(() => filterRows(allRows, filter), [allRows, filter]);
+  const byRegime = useMemo(() => regimeBreakdown(completed), [completed]);
+  const hasMetrics = completed.length > 0;
+
+  const expCardClass =
+    expectancy > 0
+      ? "border-emerald-500/30 bg-emerald-500/10"
+      : hasMetrics
+        ? "border-red-500/30 bg-red-500/10"
+        : "";
+  const expValueClass = !hasMetrics ? "" : expectancy > 0 ? "text-emerald-200" : "text-red-200";
 
   return (
     <>
@@ -187,29 +354,105 @@ export default function VerifiedTrackRecordPage() {
           {resolvedSignals < 80 ? (
             <CalibrationProgress resolved={resolvedSignals} total={totalSignals} />
           ) : null}
-          <div className="mt-5 grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            <Stat label="Total signals" value={hasData ? int(totalSignals) : "Accumulating"} />
-            <Stat label="Win rate 60m" value={hasMetrics && data.win_rate_60m != null ? pct(data.win_rate_60m) : "Accumulating"} />
-            <Stat label="Avg return" value={hasMetrics && data.avg_return != null ? pct(data.avg_return) : "Accumulating"} />
-            <Stat label="Best call" value={data.best_call ? pct(data.best_call.outcome_60m) : "Accumulating"} hint={data.best_call?.symbol || data.best_call?.token} />
-            <Stat label="Worst call" value={data.worst_call ? pct(data.worst_call.outcome_60m) : "Accumulating"} hint={data.worst_call?.symbol || data.worst_call?.token} />
+
+          {expectancy < 0 && hasMetrics ? (
+            <div className="mb-6 flex items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4 mt-6">
+              <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" aria-hidden />
+              <div>
+                <p className="text-sm font-bold text-red-200 uppercase tracking-wider">
+                  System Expectancy Negative ({(expectancy * 100).toFixed(2)}%)
+                </p>
+                <p className="text-xs text-red-300/80 mt-1">
+                  Sentinel is finding winners (Win rate {(winRate * 100).toFixed(1)}%) but losses are larger than
+                  gains (Avg loss {(avgLossPct * 100).toFixed(2)}%). Do not mirror signals without a strict −10% hard
+                  stop-loss.
+                </p>
+                <p className="text-xs text-red-300/60 mt-1">
+                  Simulated with −10% cap: {(cappedExpectancy * 100).toFixed(2)}%
+                  {cappedExpectancy > 0 ? " — positive with discipline" : ""}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Stat label="Total signals" value={hasData ? int(completed.length) : "Accumulating"} />
+            <Stat
+              label="Win rate"
+              value={hasMetrics ? `${(winRate * 100).toFixed(1)}%` : "Accumulating"}
+            />
+            <Stat
+              label="Expectancy"
+              value={hasMetrics ? `${(expectancy * 100).toFixed(2)}%` : "Accumulating"}
+              className={expCardClass}
+              valueClassName={expValueClass}
+            />
+            <Stat
+              label="Avg win"
+              value={hasMetrics ? pct(avgWinPct) : "Accumulating"}
+              className="border-emerald-500/25 bg-emerald-500/[0.06]"
+              valueClassName="text-emerald-200"
+            />
+            <Stat
+              label="Avg loss"
+              value={hasMetrics ? `${(avgLossPct * 100).toFixed(2)}%` : "Accumulating"}
+              className="border-red-500/25 bg-red-500/[0.06]"
+              valueClassName="text-red-300"
+            />
+            <Stat
+              label="Profit factor"
+              value={hasMetrics && profitFactor > 0 ? profitFactor.toFixed(2) : hasMetrics ? "—" : "Accumulating"}
+            />
+            <Stat
+              label="Max drawdown"
+              value={hasMetrics ? pct(maxDrawdown) : "Accumulating"}
+              className="border-red-500/25 bg-red-500/[0.06]"
+              valueClassName="text-red-300"
+            />
+            <Stat label="Best call" value={hasMetrics ? callLabel(bestCall) : "Accumulating"} hint={worstCall ? `Worst: ${callLabel(worstCall)}` : null} />
           </div>
+          {query.isFetching && !query.data ? (
+            <p className="mt-2 text-[11px] text-sl-muted">Loading ledger…</p>
+          ) : null}
         </section>
 
-        <section className="grid lg:grid-cols-3 gap-4">
-          {hasMetrics ? (
-            <>
-              <Stat label="Win rate 60m" value={data.win_rate_60m != null ? pct(data.win_rate_60m) : "—"} hint={`n=${int(resolvedSignals)}`} />
-              <Stat label="Avg return on wins" value={data.avg_return_wins != null ? pct(data.avg_return_wins) : "—"} />
-              <Stat label="Max drawdown" value={data.max_drawdown != null ? pct(data.max_drawdown) : "—"} />
-            </>
-          ) : (
-            <div className="lg:col-span-3">
-              <EmptyState>Building track record — metrics appear after 10 validated signals.</EmptyState>
+        {byRegime.length > 0 ? (
+          <section className="glass-card sl-inset border-white/[0.08] bg-[#080a0d]/90">
+            <p className="sl-label">Regime breakdown</p>
+            <h2 className="text-xl font-semibold text-sl-text mt-1">Performance by market regime</h2>
+            <p className="text-xs text-sl-muted mt-1">Completed signals only (same sample as expectancy).</p>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-[10px] uppercase tracking-[0.14em] text-sl-muted">
+                  <tr className="border-b border-white/[0.08]">
+                    <th className="text-left py-2 pr-3">Regime</th>
+                    <th className="text-right py-2 px-3">Signals</th>
+                    <th className="text-right py-2 px-3">Win rate</th>
+                    <th className="text-right py-2 px-3">Avg return</th>
+                    <th className="text-right py-2 pl-3">Expectancy</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {byRegime.map((g) => (
+                    <tr key={g.regime} className="border-b border-white/[0.06]">
+                      <td className="py-2.5 pr-3 font-mono text-cyan-200 capitalize">{g.regime}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-sl-sub">{int(g.count)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-sl-sub">{(g.winRate * 100).toFixed(1)}%</td>
+                      <td className={`py-2.5 px-3 text-right font-mono ${outcomeTone(g.avgRet)}`}>
+                        {pct(g.avgRet)}
+                      </td>
+                      <td className={`py-2.5 pl-3 text-right font-mono ${outcomeTone(g.expectancy)}`}>
+                        {(g.expectancy * 100).toFixed(2)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
-          <div className="lg:col-span-3 text-[11px] text-sl-muted">Last updated: {time(data.last_updated)}</div>
-        </section>
+          </section>
+        ) : null}
+
+        <div className="text-[11px] text-sl-muted">Last updated: {time(data.last_updated)}</div>
 
         <section className="glass-card sl-inset border-white/[0.08] bg-[#080a0d]/90">
           <div className="flex items-center justify-between gap-3 mb-4">
@@ -230,24 +473,27 @@ export default function VerifiedTrackRecordPage() {
                     <th className="text-right py-2 px-3">Win Rate</th>
                     <th className="text-right py-2 px-3">Avg Return</th>
                     <th className="text-left py-2 px-3">Best Regime</th>
-                    <th className="text-right py-2 pl-3">Confidence Score</th>
+                    <th className="text-right py-2 pl-3">Confidence</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rules.map((r) => (
-                    <tr key={r.rule_id} className={`border-b ${ruleTone(r.win_rate)} border-white/[0.06]`}>
-                      <td className="py-3 pr-3 font-mono text-cyan-200">{r.rule_id}</td>
-                      <td className="py-3 px-3 text-right font-mono text-sl-sub">{int(r.total_signals)}</td>
-                      <td className="py-3 px-3 text-right font-mono text-sl-sub">{r.win_rate != null ? pct(r.win_rate) : "—"}</td>
-                      <td className="py-3 px-3 text-right font-mono text-sl-sub">{r.avg_return != null ? pct(r.avg_return) : "—"}</td>
-                      <td className="py-3 px-3 text-sl-sub">{r.best_regime || "—"}</td>
-                      <td className="py-3 pl-3 text-right">
-                        <span className={`inline-flex border px-2 py-1 text-[10px] font-bold ${confidenceTone(r.confidence_badge)}`}>
-                          {r.confidence_badge}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {rules.map((r) => {
+                    const conf = ruleConfidence(r.total_signals, r.win_rate);
+                    return (
+                      <tr key={r.rule_id} className={`border-b ${ruleTone(r.win_rate)} border-white/[0.06]`}>
+                        <td className="py-3 pr-3 font-mono text-cyan-200">{r.rule_id}</td>
+                        <td className="py-3 px-3 text-right font-mono text-sl-sub">{int(r.total_signals)}</td>
+                        <td className="py-3 px-3 text-right font-mono text-sl-sub">{r.win_rate != null ? pct(r.win_rate) : "—"}</td>
+                        <td className="py-3 px-3 text-right font-mono text-sl-sub">{r.avg_return != null ? pct(r.avg_return) : "—"}</td>
+                        <td className="py-3 px-3 text-sl-sub">{r.best_regime || "—"}</td>
+                        <td className="py-3 pl-3 text-right">
+                          <span className={`inline-flex border border-white/10 px-2 py-1 text-[10px] font-bold ${conf.cls}`}>
+                            {conf.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -281,26 +527,52 @@ export default function VerifiedTrackRecordPage() {
             <EmptyState>{hasData ? "No signals match this filter." : "Oracle is validating signals — first results in 24-48h."}</EmptyState>
           ) : (
             <div className="space-y-2">
-              <div className="hidden lg:grid grid-cols-[1.1fr_1.1fr_0.9fr_0.75fr_0.8fr_0.7fr_0.7fr_0.7fr_0.9fr] gap-2 px-3 text-[10px] uppercase tracking-[0.14em] text-sl-muted">
-                <span>Time</span><span>Token</span><span>Symbol</span><span>Strength</span><span>Action</span><span>5m</span><span>15m</span><span>60m</span><span>Result</span>
+              <div className="hidden lg:grid grid-cols-[0.95fr_1fr_0.65fr_0.75fr_0.55fr_0.55fr_0.55fr_0.65fr_0.85fr] gap-2 px-3 text-[10px] uppercase tracking-[0.14em] text-sl-muted">
+                <span>Time</span>
+                <span>Token</span>
+                <span>Action</span>
+                <span>Regime</span>
+                <span>5m</span>
+                <span>15m</span>
+                <span>60m</span>
+                <span>Result</span>
+                <span>P/L 60m</span>
               </div>
-              {rows.map((r) => (
-                <div key={r.id} className={`border px-3 py-3 ${rowTone(r.result)}`}>
-                  <div className="grid lg:grid-cols-[1.1fr_1.1fr_0.9fr_0.75fr_0.8fr_0.7fr_0.7fr_0.7fr_0.9fr] gap-2 items-center text-xs">
-                    <span className="text-sl-muted">{time(r.time)}</span>
-                    <Link href={`/token/${encodeURIComponent(r.token || "")}`} className="font-mono text-cyan-200 no-underline break-all">
-                      {r.token_name || r.token || "—"}
-                    </Link>
-                    <span className="font-mono text-sl-sub">{r.symbol || "—"}</span>
-                    <span className="font-mono text-sl-sub">{Number(r.strength || 0).toFixed(2)}</span>
-                    <span className="text-sl-sub">{r.action || "—"}</span>
-                    <span className={`font-mono ${outcomeTone(r.outcome_5m)}`}>{r.outcome_5m != null ? pct(r.outcome_5m) : "Validating..."}</span>
-                    <span className={`font-mono ${outcomeTone(r.outcome_15m)}`}>{r.outcome_15m != null ? pct(r.outcome_15m) : "Validating..."}</span>
-                    <span className={`font-mono ${outcomeTone(r.outcome_60m)}`}>{r.outcome_60m != null ? pct(r.outcome_60m) : "Validating..."}</span>
-                    <span className="font-semibold text-sl-sub">{resultLabel(r)}</span>
+              {rows.map((r) => {
+                const badge = resultBadgeMeta(r);
+                const raw60 = outcomeRaw(r);
+                const pendingStyle = r.result === "PENDING";
+                return (
+                  <div key={r.id} className={`border px-3 py-3 ${rowTone(r.result)}`}>
+                    <div className="grid grid-cols-1 gap-1.5 lg:grid-cols-[0.95fr_1fr_0.65fr_0.75fr_0.55fr_0.55fr_0.55fr_0.65fr_0.85fr] lg:gap-2 lg:items-center text-xs">
+                      <span className="text-sl-muted">{time(r.time)}</span>
+                      <Link
+                        href={`/token/${encodeURIComponent(r.token || "")}`}
+                        className="font-mono text-cyan-200 no-underline break-all"
+                      >
+                        {tokenDisplaySym(r)}
+                      </Link>
+                      <span className="font-semibold text-sl-sub uppercase tracking-wide">{r.action || "—"}</span>
+                      <span className="font-mono text-[10px] text-sl-muted capitalize">{regimeKey(r)}</span>
+                      <span className={`font-mono ${outcomeTone(r.outcome_5m)}`}>
+                        {r.outcome_5m != null ? pct(r.outcome_5m) : pendingStyle ? "validating…" : "—"}
+                      </span>
+                      <span className={`font-mono ${outcomeTone(r.outcome_15m)}`}>
+                        {r.outcome_15m != null ? pct(r.outcome_15m) : pendingStyle ? "validating…" : "—"}
+                      </span>
+                      <span className={`font-mono ${outcomeTone(r.outcome_60m)}`}>
+                        {r.outcome_60m != null ? pct(r.outcome_60m) : pendingStyle ? "validating…" : "—"}
+                      </span>
+                      <span className={`inline-flex w-fit border px-2 py-0.5 text-[10px] font-bold ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                      <span className={`font-mono font-semibold ${outcomeTone(raw60)}`}>
+                        {raw60 != null ? pct(raw60) : pendingStyle ? "validating…" : "—"}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
@@ -320,7 +592,9 @@ export default function VerifiedTrackRecordPage() {
                       <span className="font-mono text-cyan-200 break-all">{r.token_name || r.symbol || r.token}</span>
                       <span className="font-mono text-emerald-300">{pct(r.outcome_60m)}</span>
                     </div>
-                    <p className="text-xs text-sl-muted mt-1">{time(r.time)} · suggested {r.action} · Smart money was early by {r.smart_money_early_min || "—"}min</p>
+                    <p className="text-xs text-sl-muted mt-1">
+                      {time(r.time)} · suggested {r.action} · Smart money was early by {r.smart_money_early_min || "—"}min
+                    </p>
                   </Link>
                 ))}
               </div>
@@ -339,7 +613,9 @@ export default function VerifiedTrackRecordPage() {
                       <span className="font-mono text-cyan-200 break-all">{r.token_name || r.symbol || r.token}</span>
                       <span className="font-mono text-red-300">{pct(r.outcome_60m)}</span>
                     </div>
-                    <p className="text-xs text-sl-muted mt-1">{time(r.time)} · suggested {r.action} · Why this happens: regime mismatch / thin liquidity / low sample rule.</p>
+                    <p className="text-xs text-sl-muted mt-1">
+                      {time(r.time)} · suggested {r.action} · Drawdown shown in full — no smoothing.
+                    </p>
                   </Link>
                 ))}
               </div>
