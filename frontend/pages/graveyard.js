@@ -393,6 +393,10 @@ export default function GraveyardPage() {
     avgLossPct,
     profitFactor,
     maxDrawdown,
+    expectancy,
+    cappedExpectancy,
+    killedCount,
+    cappedMaxDD,
     bestCall,
     worstCall
   } = metrics;
@@ -467,7 +471,7 @@ export default function GraveyardPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "8px",
+                fontSize: "11px",
                 color: "#a78bfa",
                 fontWeight: "500",
                 flexShrink: 0
@@ -476,8 +480,8 @@ export default function GraveyardPage() {
               S
             </div>
             <div>
-              <div style={{ fontSize: "9px", fontWeight: "500", color: "#e2e8f0", lineHeight: 1.1 }}>SENTINEL</div>
-              <div style={{ fontSize: "7px", color: "#6b7280" }}>Meme Intel</div>
+              <div style={{ fontSize: "12px", fontWeight: "500", color: "#e2e8f0", lineHeight: 1.1 }}>SENTINEL</div>
+              <div style={{ fontSize: "10px", color: "#6b7280" }}>Meme Intel</div>
             </div>
           </div>
 
@@ -512,7 +516,7 @@ export default function GraveyardPage() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "8px",
+                    fontSize: "11px",
                     flexShrink: 0,
                     color: item.active ? "#60a5fa" : "#9ca3af"
                   }}
@@ -520,8 +524,8 @@ export default function GraveyardPage() {
                   {item.icon}
                 </div>
                 <div>
-                  <div style={{ fontSize: "8px", color: "#d1d5db", fontWeight: "500" }}>{item.label}</div>
-                  <div style={{ fontSize: "7px", color: "#6b7280" }}>{item.sub}</div>
+                  <div style={{ fontSize: "11px", color: "#d1d5db", fontWeight: "500" }}>{item.label}</div>
+                  <div style={{ fontSize: "10px", color: "#6b7280" }}>{item.sub}</div>
                 </div>
               </div>
             </Link>
@@ -536,13 +540,13 @@ export default function GraveyardPage() {
               padding: "5px"
             }}
           >
-            <div style={{ fontSize: "8px", fontWeight: "500", color: "#a78bfa", marginBottom: "3px" }}>PRO</div>
-            <div style={{ fontSize: "7px", color: "#9ca3af", marginBottom: "3px" }}>Desbloquea todo</div>
+            <div style={{ fontSize: "11px", fontWeight: "500", color: "#a78bfa", marginBottom: "3px" }}>PRO</div>
+            <div style={{ fontSize: "10px", color: "#9ca3af", marginBottom: "3px" }}>Desbloquea todo</div>
             {["Alertas Telegram", "Edge en tiempo real", "Más filtros", "Sin límites"].map((t) => (
               <div
                 key={t}
                 style={{
-                  fontSize: "7px",
+                  fontSize: "10px",
                   color: "#9ca3af",
                   marginBottom: "1px",
                   display: "flex",
@@ -563,7 +567,7 @@ export default function GraveyardPage() {
                   border: "none",
                   borderRadius: "3px",
                   color: "#fff",
-                  fontSize: "8px",
+                  fontSize: "11px",
                   padding: "4px",
                   cursor: "pointer",
                   marginTop: "4px",
@@ -581,7 +585,7 @@ export default function GraveyardPage() {
               display: "flex",
               alignItems: "center",
               gap: "3px",
-              fontSize: "7px",
+              fontSize: "10px",
               color: "#6b7280",
               paddingTop: "4px",
               borderTop: "0.5px solid #1f2937"
@@ -598,10 +602,10 @@ export default function GraveyardPage() {
               }}
             />
             <div>
-              <div style={{ color: query.isError ? "#f87171" : "#34d399", fontSize: "7px" }}>
+              <div style={{ color: query.isError ? "#f87171" : "#34d399", fontSize: "10px" }}>
                 {query.isError ? "Error datos" : query.isFetching && !query.data ? "Cargando…" : "Sistema OK"}
               </div>
-              <div style={{ fontSize: "6px", color: "#6b7280" }}>ONLINE</div>
+              <div style={{ fontSize: "9px", color: "#6b7280" }}>ONLINE</div>
             </div>
           </div>
         </aside>
@@ -940,43 +944,44 @@ export default function GraveyardPage() {
             </div>
           </div>
 
-          <div className="grave-tbl">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-              <div style={{ fontSize: "8px", color: "#e2e8f0", fontWeight: "500", letterSpacing: ".04em" }}>
-                RECENT SIGNAL FEED
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "5px" }}>
+            <div className="grave-tbl">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                <div style={{ fontSize: "8px", color: "#e2e8f0", fontWeight: "500", letterSpacing: ".04em" }}>
+                  RECENT SIGNAL FEED
+                </div>
+                <div style={{ display: "flex", gap: "2px" }}>
+                  {["all", "wins", "losses", "pending"].map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setFilter(f)}
+                      style={{
+                        fontSize: "7px",
+                        padding: "2px 5px",
+                        borderRadius: "3px",
+                        border: filter === f ? "0.5px solid #2563eb" : "0.5px solid #1f2937",
+                        background: filter === f ? "#1a3a5c" : "transparent",
+                        color: filter === f ? "#60a5fa" : "#6b7280",
+                        cursor: "pointer",
+                        fontFamily: "JetBrains Mono,monospace"
+                      }}
+                    >
+                      {f === "all" ? "Todas" : f === "wins" ? "Wins ✓" : f === "losses" ? "Losses ✗" : "Pending ⏳"}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div style={{ display: "flex", gap: "2px" }}>
-                {["all", "wins", "losses", "pending"].map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    onClick={() => setFilter(f)}
-                    style={{
-                      fontSize: "7px",
-                      padding: "2px 5px",
-                      borderRadius: "3px",
-                      border: filter === f ? "0.5px solid #2563eb" : "0.5px solid #1f2937",
-                      background: filter === f ? "#1a3a5c" : "transparent",
-                      color: filter === f ? "#60a5fa" : "#6b7280",
-                      cursor: "pointer",
-                      fontFamily: "JetBrains Mono,monospace"
-                    }}
-                  >
-                    {f === "all" ? "Todas" : f === "wins" ? "Wins ✓" : f === "losses" ? "Losses ✗" : "Pending ⏳"}
-                  </button>
+
+              <div className="grave-thdr">
+                {["", "Token", "Fuente", "Conf", "Precio entrada", "P&L 60m", "Estado", "Hora"].map((h, idx) => (
+                  <div key={idx} className="grave-th" style={{ color: "#4a5568", letterSpacing: ".04em" }}>
+                    {h}
+                  </div>
                 ))}
               </div>
-            </div>
 
-            <div className="grave-thdr">
-              {["", "Token", "Fuente", "Conf", "Precio entrada", "P&L 60m", "Estado", "Hora"].map((h, idx) => (
-                <div key={idx} style={{ fontSize: "6px", color: "#4a5568", letterSpacing: ".04em" }}>
-                  {h}
-                </div>
-              ))}
-            </div>
-
-            {filteredRows.slice(0, 8).map((s, i) => {
+              {filteredRows.slice(0, 8).map((s, i) => {
               const raw = outcomeRaw(s);
               const pct = raw != null ? raw * 100 : null;
               const isWin = pct != null && pct > 0;
@@ -1097,20 +1102,144 @@ export default function GraveyardPage() {
                   </div>
                 </div>
               );
-            })}
+              })}
 
-            <div
-              style={{
-                textAlign: "center",
-                padding: "4px",
-                fontSize: "7px",
-                color: "#6b7280",
-                borderTop: "0.5px solid #1f2937",
-                marginTop: "2px",
-                cursor: "pointer"
-              }}
-            >
-              ↓ Cargar más señales
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "4px",
+                  fontSize: "7px",
+                  color: "#6b7280",
+                  borderTop: "0.5px solid #1f2937",
+                  marginTop: "2px",
+                  cursor: "pointer"
+                }}
+              >
+                ↓ Cargar más señales
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+              <div className="grave-cc" style={{ padding: "10px" }}>
+                <div
+                  className="grave-cc-t"
+                  style={{ fontSize: "10px", marginBottom: "8px", color: "#e2e8f0", fontWeight: "500" }}
+                >
+                  Estado actual (48h)
+                </div>
+                {[
+                  { label: "Resolved rows", val: completed.length },
+                  { label: "Pending rows", val: 0 },
+                  { label: "Failed rows", val: 0 },
+                  { label: "Win rate", val: hasMetrics ? `${(winRate * 100).toFixed(1)}%` : "—" },
+                  { label: "Profit factor", val: hasMetrics ? profitFactor.toFixed(4) : "—" },
+                  { label: "Avg outcome", val: hasMetrics ? `${(avgOutcome * 100).toFixed(4)}%` : "—" },
+                  { label: "Conf ↔ return", val: correlationValue != null ? correlationValue.toFixed(4) : "—" },
+                  { label: "Max drawdown", val: hasMetrics ? `${(maxDrawdown * 100).toFixed(3)}%` : "—" }
+                ].map((row, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "4px 0",
+                      borderBottom: "0.5px solid #1f2937",
+                      fontSize: "11px"
+                    }}
+                  >
+                    <span style={{ color: "#6b7280" }}>{row.label}</span>
+                    <span style={{ color: "#e2e8f0", fontWeight: "500" }}>{row.val}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grave-cc" style={{ padding: "10px" }}>
+                <div
+                  className="grave-cc-t"
+                  style={{ fontSize: "10px", marginBottom: "8px", color: "#e2e8f0", fontWeight: "500" }}
+                >
+                  Kill Switch Simulation
+                </div>
+                {[
+                  {
+                    label: "Raw expectancy",
+                    val: hasMetrics ? `${(expectancy * 100).toFixed(2)}%` : "—",
+                    color: hasMetrics && expectancy < 0 ? "#f87171" : "#34d399"
+                  },
+                  {
+                    label: "Capped expectancy",
+                    val: hasMetrics ? `${(cappedExpectancy * 100).toFixed(2)}%` : "—",
+                    color: hasMetrics && cappedExpectancy < 0 ? "#f87171" : "#34d399"
+                  },
+                  { label: "Signals killed", val: killedCount ?? 0, color: "#f59e0b" },
+                  {
+                    label: "Capped max DD",
+                    val: hasMetrics ? `${(cappedMaxDD * 100).toFixed(2)}%` : "—",
+                    color: "#f87171"
+                  }
+                ].map((row, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "4px 0",
+                      borderBottom: "0.5px solid #1f2937",
+                      fontSize: "11px"
+                    }}
+                  >
+                    <span style={{ color: "#6b7280" }}>{row.label}</span>
+                    <span style={{ color: row.color, fontWeight: "500" }}>{row.val}</span>
+                  </div>
+                ))}
+                <div
+                  style={{
+                    marginTop: "8px",
+                    padding: "6px",
+                    borderRadius: "4px",
+                    fontSize: "10px",
+                    background: cappedExpectancy > 0 ? "#0d2818" : "#1c0a0a",
+                    border: `0.5px solid ${cappedExpectancy > 0 ? "#166534" : "#7f1d1d"}`,
+                    color: cappedExpectancy > 0 ? "#34d399" : "#f87171"
+                  }}
+                >
+                  {cappedExpectancy > 0
+                    ? "✓ SURVIVABLE with -10% stop-loss"
+                    : "⚠ UNSURVIVABLE — improve entry quality"}
+                </div>
+              </div>
+
+              <div className="grave-cc" style={{ padding: "10px" }}>
+                <div
+                  className="grave-cc-t"
+                  style={{ fontSize: "10px", marginBottom: "8px", color: "#e2e8f0", fontWeight: "500" }}
+                >
+                  Pipeline hints
+                </div>
+                {[
+                  { label: "Sample cap hit", val: "No" },
+                  { label: "Pending w/o entry", val: 0 },
+                  { label: "Resolved w/o outcome", val: 0 },
+                  { label: "Horizonte por defecto", val: "10 min" }
+                ].map((row, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "4px 0",
+                      borderBottom: "0.5px solid #1f2937",
+                      fontSize: "11px"
+                    }}
+                  >
+                    <span style={{ color: "#6b7280" }}>{row.label}</span>
+                    <span style={{ color: "#e2e8f0" }}>{row.val}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </main>
