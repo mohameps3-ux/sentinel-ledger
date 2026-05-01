@@ -144,6 +144,8 @@ function DexVenuesPanel({ address, market }) {
 }
 
 function TerminalLeft({ address }) {
+  const [filter, setFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
   return (
     <div className="tpt-left">
       <div className="tpt-l-header">
@@ -152,12 +154,22 @@ function TerminalLeft({ address }) {
       </div>
 
       <div className="tpt-l-search-wrap">
-        <input className="tpt-l-search" placeholder="Filter tokens…" readOnly aria-readonly="true" />
+        <input
+          className="tpt-l-search"
+          placeholder="Filter tokens…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       <div className="tpt-l-filters">
         {["ALL", "HOT", "EARLY", "WATCH"].map((f) => (
-          <button key={f} type="button" className="tpt-l-filter">
+          <button
+            key={f}
+            type="button"
+            className={`tpt-l-filter ${filter === f ? "tpt-l-filter-active" : ""}`}
+            onClick={() => setFilter(f)}
+          >
             {f}
           </button>
         ))}
@@ -171,7 +183,12 @@ function TerminalLeft({ address }) {
       </div>
 
       <div className="tpt-l-list">
-        <RecentTokensSidebar terminalMode activeAddress={address} />
+        <RecentTokensSidebar
+          terminalMode
+          activeAddress={address}
+          filterMode={filter}
+          searchQuery={search}
+        />
       </div>
 
       <div className="tpt-l-footer">

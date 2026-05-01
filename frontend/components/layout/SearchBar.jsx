@@ -168,7 +168,11 @@ export function SearchBar({ compact = false, withRecents = false, headerMicro = 
         </div>
         <button
           type="submit"
-          className={`shrink-0 ${compact ? "btn-primary" : "btn-pro btn-pro-sm h-11 px-4"}`}
+          className={`shrink-0 ${
+            compact
+              ? "btn-primary !h-auto !min-h-0 !py-1.5 !px-3 !text-[11px] !font-bold leading-none"
+              : "btn-pro btn-pro-sm h-11 px-4"
+          }`}
         >
           {withRecents ? "Ir" : "ANALYZE"}
         </button>

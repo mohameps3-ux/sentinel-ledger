@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { Clock } from "lucide-react";
 import { readRecentTokens, formatRelativeTime, RECENT_TOKEN_TTL_HOURS } from "../../lib/recentTokens";
+import { useMarketStore } from "../../lib/store/marketStore";
 
 /**
  * Left sidebar shown alongside the token chart.
@@ -23,11 +24,19 @@ function shortMint(addr) {
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
-export function RecentTokensSidebar({ activeMint, activeAddress, terminalMode = false }) {
+export function RecentTokensSidebar({
+  activeMint,
+  activeAddress,
+  terminalMode = false,
+  filterMode = "ALL",
+  searchQuery = "",
+  ..._rest
+}) {
   const mintKey = activeMint ?? activeAddress ?? "";
   const [items, setItems] = useState([]);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const scores = useMarketStore((s) => s.scores);
 
   useEffect(() => {
     setMounted(true);
@@ -44,6 +53,37 @@ export function RecentTokensSidebar({ activeMint, activeAddress, terminalMode = 
     const id = setInterval(() => setItems(readRecentTokens()), 60000);
     return () => clearInterval(id);
   }, [mounted]);
+
+  const filteredTerminal = useMemo(() => {
+    const getDisplayScore = useMarketStore.getState().getDisplayScore;
+    return (items ?? []).filter((tok) => {
+      const sym = (tok.symbol ?? tok.name ?? "").toLowerCase();
+      const mint = tok.mint ?? tok.address ?? "";
+
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        if (!sym.includes(q) && !mint.toLowerCase().includes(q)) return false;
+      }
+
+      if (filterMode === "ALL") return true;
+
+      const live = scores.get(tok.mint);
+      const now = Date.now();
+      const sc =
+        getDisplayScore(tok.mint, now) ??
+        (Number.isFinite(Number(tok._currentScore)) ? Number(tok._currentScore) : null) ??
+        (Number.isFinite(Number(tok.sentinelScore)) ? Number(tok.sentinelScore) : 0);
+
+      const rawAge =
+        live?.poolAgeMinutes ?? live?.ageMin ?? live?.pool_age_minutes ?? tok.poolAgeMinutes ?? tok.ageMin;
+      const age = Number.isFinite(Number(rawAge)) ? Number(rawAge) : 9999;
+
+      if (filterMode === "HOT") return sc >= 75;
+      if (filterMode === "EARLY") return age < 60;
+      if (filterMode === "WATCH") return sc >= 50 && sc < 75;
+      return true;
+    });
+  }, [items, scores, filterMode, searchQuery]);
 
   if (terminalMode) {
     if (!mounted) {
@@ -64,9 +104,16 @@ export function RecentTokensSidebar({ activeMint, activeAddress, terminalMode = 
         </div>
       );
     }
+    if (!filteredTerminal.length) {
+      return (
+        <div className="px-3 py-6">
+          <p className="text-[10px] font-mono text-[#525252] leading-relaxed">No tokens match this filter.</p>
+        </div>
+      );
+    }
     return (
       <ul className="list-none p-0 m-0">
-        {items.map((row) => {
+        {filteredTerminal.map((row) => {
           const isActive = mintKey && row.mint === mintKey;
           const sym = row.symbol || shortMint(row.mint);
           const initials = (sym || "?").slice(0, 2).toUpperCase();
