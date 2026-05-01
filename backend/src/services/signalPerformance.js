@@ -3,16 +3,22 @@
 const { getSupabase } = require("../lib/supabase");
 const { getMarketData } = require("./marketData");
 const { isSystemMint } = require("../lib/systemMints");
+const { shouldKillSignal } = require("./signalEmissionGate");
 
 const DEFAULT_HORIZON_MIN = Number(process.env.SIGNAL_PERF_HORIZON_MIN || 10);
 const SUCCESS_MIN_PCT = Number(process.env.SIGNAL_PERF_SUCCESS_MIN_PCT || 1.0);
 const RESOLVE_MAX_ATTEMPTS = Number(process.env.SIGNAL_PERF_MAX_ATTEMPTS || 12);
+const KILL_SWITCH_MAX_LOSS = Number(process.env.KILL_SWITCH_MAX_LOSS_PCT || 0.1);
+const KILL_OUTCOME_PCT = Number(process.env.KILL_SWITCH_OUTCOME_PCT || -10);
+const KILL_SWEEP_LOOKBACK_HOURS = Number(process.env.KILL_SWITCH_SWEEP_LOOKBACK_HOURS || 72);
 
 function clampInt(n, min, max, fallback) {
   const v = Number(n);
   if (!Number.isFinite(v)) return fallback;
   return Math.min(max, Math.max(min, Math.floor(v)));
 }
+
+const KILL_SWEEP_BATCH = clampInt(process.env.KILL_SWITCH_SWEEP_BATCH || 80, 1, 300, 80);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -105,7 +111,16 @@ async function recordSignalEmission(score, extra = {}) {
     entryPriceUsd = null;
   }
 
-  const { emission_regime, emission_gate } = emissionArchiveFromScore(score);
+  const { emission_regime, emission_gate: gateBase } = emissionArchiveFromScore(score);
+  const riskKillSwitch = {
+    stop_loss_pct: 0.1,
+    max_lifetime_min: 60,
+    kill_switch_enabled: true
+  };
+  const emission_gate =
+    gateBase && typeof gateBase === "object"
+      ? { ...gateBase, killSwitch: riskKillSwitch }
+      : { killSwitch: riskKillSwitch };
   const row = {
     asset: payload.asset,
     event_id: payload.eventId,
@@ -147,10 +162,54 @@ async function runSignalOutcomeResolutionOnce(options = {}) {
   try {
     supabase = getSupabase();
   } catch (_) {
-    return { examined: 0, resolved: 0, deferred: 0, failed: 0, error: "supabase_unconfigured" };
+    return { examined: 0, resolved: 0, deferred: 0, failed: 0, killed: 0, error: "supabase_unconfigured" };
   }
   const batch = clampInt(options.batch || process.env.SIGNAL_PERF_RESOLVE_BATCH || 60, 1, 300, 60);
-  const nowIso = toIso(Date.now());
+  const nowMs = Date.now();
+  const nowIso = toIso(nowMs);
+  let killed = 0;
+
+  const lookbackIso = toIso(nowMs - Math.max(1, KILL_SWEEP_LOOKBACK_HOURS) * 3600_000);
+  const { data: earlyRows, error: earlyErr } = await supabase
+    .from("signal_performance")
+    .select("id,asset,entry_price_usd,attempts,resolve_after,emitted_at,status")
+    .eq("status", "pending")
+    .gt("resolve_after", nowIso)
+    .gte("emitted_at", lookbackIso)
+    .order("emitted_at", { ascending: true })
+    .limit(KILL_SWEEP_BATCH);
+  if (!earlyErr && Array.isArray(earlyRows) && earlyRows.length > 0) {
+    for (const row of earlyRows) {
+      const entry = Number(row.entry_price_usd);
+      if (!Number.isFinite(entry) || entry <= 0) continue;
+      let px = null;
+      try {
+        const market = await getMarketData(String(row.asset || ""));
+        const p = Number(market?.price);
+        if (Number.isFinite(p) && p > 0) px = p;
+      } catch (_) {
+        px = null;
+      }
+      if (px == null) continue;
+      if (!shouldKillSignal({ entryPrice: entry, currentPrice: px, maxLossPct: KILL_SWITCH_MAX_LOSS })) continue;
+      const attempts = clampInt(row.attempts, 0, 1000, 0) + 1;
+      const { error: killErr } = await supabase
+        .from("signal_performance")
+        .update({
+          attempts,
+          status: "killed",
+          outcome_price_usd: px,
+          outcome_pct: KILL_OUTCOME_PCT,
+          success: false,
+          resolved_at: nowIso,
+          updated_at: nowIso,
+          failure_reason: "stop_loss_hit"
+        })
+        .eq("id", row.id)
+        .eq("status", "pending");
+      if (!killErr) killed += 1;
+    }
+  }
 
   const { data: rows, error } = await supabase
     .from("signal_performance")
@@ -162,7 +221,7 @@ async function runSignalOutcomeResolutionOnce(options = {}) {
     .order("resolve_after", { ascending: true })
     .limit(batch);
   if (error) {
-    return { examined: 0, resolved: 0, deferred: 0, failed: 0, error: error.message || "query_failed" };
+    return { examined: 0, resolved: 0, deferred: 0, failed: 0, killed, error: error.message || "query_failed" };
   }
 
   let resolved = 0;
@@ -241,7 +300,7 @@ async function runSignalOutcomeResolutionOnce(options = {}) {
     resolved += 1;
   }
 
-  return { examined: (rows || []).length, resolved, deferred, failed, error: null };
+  return { examined: (rows || []).length, resolved, deferred, failed, killed, error: null };
 }
 
 function computeRegimeOutcomeBlock(regimeRows) {

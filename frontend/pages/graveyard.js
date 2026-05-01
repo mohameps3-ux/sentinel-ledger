@@ -16,6 +16,9 @@ const FILTERS = [
 /** Cap pages to avoid flooding the API on very large ledgers. */
 const METRICS_MAX_PAGES = 40;
 
+/** −10% hard stop in fractional units (same as outcome_60m / result_pct). */
+const STOP_LOSS_CAP_FRAC = -0.1;
+
 async function fetchTrackRecordPage(page, limit = 50) {
   const qs = new URLSearchParams();
   qs.set("filter", "all");
@@ -138,18 +141,30 @@ function computeInstitutionalMetrics(signals) {
         Math.abs(losses.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0))
       : 0;
   const maxDrawdown = completed.length > 0 ? Math.min(...completed.map((s) => outcomeRaw(s) ?? 0)) : 0;
-  const cappedCompleted = completed.map((s) => ({
+
+  const CAP = STOP_LOSS_CAP_FRAC;
+  const cappedSignals = completed.map((s) => ({
     ...s,
-    _r: Math.max(outcomeRaw(s) ?? 0, -0.1)
+    _capped: Math.max(outcomeRaw(s) ?? 0, CAP)
   }));
-  const cappedWins = cappedCompleted.filter((s) => s._r > 0);
-  const cappedLosses = cappedCompleted.filter((s) => s._r <= 0);
-  const cappedWinRate = cappedCompleted.length > 0 ? cappedWins.length / cappedCompleted.length : 0;
+  const cappedWins = cappedSignals.filter((s) => s._capped > 0);
+  const cappedLosses = cappedSignals.filter((s) => s._capped <= 0);
+  const cappedWinRate = cappedSignals.length > 0 ? cappedWins.length / cappedSignals.length : 0;
   const cappedAvgWin =
-    cappedWins.length > 0 ? cappedWins.reduce((a, s) => a + s._r, 0) / cappedWins.length : 0;
+    cappedWins.length > 0 ? cappedWins.reduce((a, s) => a + s._capped, 0) / cappedWins.length : 0;
   const cappedAvgLoss =
-    cappedLosses.length > 0 ? cappedLosses.reduce((a, s) => a + s._r, 0) / cappedLosses.length : 0;
-  const cappedExpectancy = cappedWinRate * cappedAvgWin + (1 - cappedWinRate) * cappedAvgLoss;
+    cappedLosses.length > 0 ? cappedLosses.reduce((a, s) => a + s._capped, 0) / cappedLosses.length : 0;
+  const cappedExpectancy =
+    cappedWinRate * cappedAvgWin + (1 - cappedWinRate) * cappedAvgLoss;
+  const cappedMaxDD =
+    cappedSignals.length > 0 ? Math.min(...cappedSignals.map((s) => s._capped)) : 0;
+  const cappedPF =
+    cappedLosses.length > 0 && cappedWins.length > 0
+      ? Math.abs(cappedWins.reduce((a, s) => a + s._capped, 0)) /
+        Math.abs(cappedLosses.reduce((a, s) => a + s._capped, 0))
+      : 0;
+  const killedCount = completed.filter((s) => (outcomeRaw(s) ?? 0) < CAP).length;
+
   const sorted = [...completed].sort((a, b) => (outcomeRaw(b) ?? 0) - (outcomeRaw(a) ?? 0));
   const bestCall = sorted[0] ?? null;
   const worstCall = sorted[sorted.length - 1] ?? null;
@@ -164,6 +179,9 @@ function computeInstitutionalMetrics(signals) {
     profitFactor,
     maxDrawdown,
     cappedExpectancy,
+    cappedMaxDD,
+    cappedPF,
+    killedCount,
     bestCall,
     worstCall
   };
@@ -322,6 +340,8 @@ export default function VerifiedTrackRecordPage() {
     profitFactor,
     maxDrawdown,
     cappedExpectancy,
+    cappedMaxDD,
+    killedCount,
     bestCall,
     worstCall
   } = metrics;
@@ -415,6 +435,76 @@ export default function VerifiedTrackRecordPage() {
             <p className="mt-2 text-[11px] text-sl-muted">Loading ledger…</p>
           ) : null}
         </section>
+
+        {hasMetrics ? (
+          <div className="border border-white/[0.08] rounded-lg p-5 mb-6 bg-white/[0.02]">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-sl-muted">Kill Switch Simulation</h3>
+                <p className="text-xs text-sl-muted mt-0.5">
+                  Simulated with −10% hard stop-loss cap · raw history unchanged
+                </p>
+              </div>
+              <span
+                className={`text-xs font-bold px-3 py-1 rounded border ${
+                  cappedExpectancy > 0
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                    : "border-red-500/30 bg-red-500/10 text-red-300"
+                }`}
+              >
+                {cappedExpectancy > 0 ? "SURVIVABLE" : "UNSURVIVABLE"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-4">
+              <div className="border border-white/[0.06] bg-sl-card rounded p-3">
+                <p className="text-[10px] uppercase tracking-wider text-sl-muted mb-1">Raw Expectancy</p>
+                <p className={`text-lg font-bold ${expectancy > 0 ? "text-emerald-300" : "text-red-300"}`}>
+                  {(expectancy * 100).toFixed(2)}%
+                </p>
+              </div>
+              <div className="border border-white/[0.06] bg-sl-card rounded p-3">
+                <p className="text-[10px] uppercase tracking-wider text-sl-muted mb-1">Capped Expectancy</p>
+                <p className={`text-lg font-bold ${cappedExpectancy > 0 ? "text-emerald-300" : "text-red-300"}`}>
+                  {(cappedExpectancy * 100).toFixed(2)}%
+                </p>
+              </div>
+              <div className="border border-white/[0.06] bg-sl-card rounded p-3">
+                <p className="text-[10px] uppercase tracking-wider text-sl-muted mb-1">Signals killed</p>
+                <p className="text-lg font-bold text-orange-300">{killedCount}</p>
+                <p className="text-[10px] text-sl-muted">would cap at −10%</p>
+              </div>
+              <div className="border border-white/[0.06] bg-sl-card rounded p-3">
+                <p className="text-[10px] uppercase tracking-wider text-sl-muted mb-1">Capped Max DD</p>
+                <p className="text-lg font-bold text-red-300">{(cappedMaxDD * 100).toFixed(2)}%</p>
+              </div>
+            </div>
+
+            {cappedExpectancy > 0 ? (
+              <div className="flex items-start gap-2 rounded border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2">
+                <span className="text-emerald-400 text-sm mt-0.5" aria-hidden>
+                  ✓
+                </span>
+                <p className="text-xs text-emerald-300/80">
+                  With a strict −10% stop-loss, system expectancy becomes positive ({(cappedExpectancy * 100).toFixed(2)}
+                  %). This means the edge exists — the problem is surviving the tail losses. Implement hard stop-loss in
+                  live signals.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 rounded border border-orange-500/20 bg-orange-500/[0.06] px-3 py-2">
+                <span className="text-orange-400 text-sm mt-0.5" aria-hidden>
+                  ⚠
+                </span>
+                <p className="text-xs text-orange-300/80">
+                  Even with −10% cap, expectancy remains negative ({(cappedExpectancy * 100).toFixed(2)}%). The problem is
+                  not only tail losses — entry quality must improve. Proceed to hard filters (Fase 1) after implementing
+                  kill switch.
+                </p>
+              </div>
+            )}
+          </div>
+        ) : null}
 
         {byRegime.length > 0 ? (
           <section className="glass-card sl-inset border-white/[0.08] bg-[#080a0d]/90">
@@ -542,6 +632,8 @@ export default function VerifiedTrackRecordPage() {
                 const badge = resultBadgeMeta(r);
                 const raw60 = outcomeRaw(r);
                 const pendingStyle = r.result === "PENDING";
+                const rawResult = outcomeRaw(r);
+                const wasKilled = rawResult != null && rawResult < STOP_LOSS_CAP_FRAC;
                 return (
                   <div key={r.id} className={`border px-3 py-3 ${rowTone(r.result)}`}>
                     <div className="grid grid-cols-1 gap-1.5 lg:grid-cols-[0.95fr_1fr_0.65fr_0.75fr_0.55fr_0.55fr_0.55fr_0.65fr_0.85fr] lg:gap-2 lg:items-center text-xs">
@@ -566,8 +658,18 @@ export default function VerifiedTrackRecordPage() {
                       <span className={`inline-flex w-fit border px-2 py-0.5 text-[10px] font-bold ${badge.cls}`}>
                         {badge.label}
                       </span>
-                      <span className={`font-mono font-semibold ${outcomeTone(raw60)}`}>
-                        {raw60 != null ? pct(raw60) : pendingStyle ? "validating…" : "—"}
+                      <span className="inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 min-w-0">
+                        <span className={`font-mono font-semibold ${outcomeTone(raw60)}`}>
+                          {raw60 != null ? pct(raw60) : pendingStyle ? "validating…" : "—"}
+                        </span>
+                        {raw60 != null ? (
+                          <span className="text-[10px] text-sl-muted whitespace-nowrap">(cap: −10%)</span>
+                        ) : null}
+                        {wasKilled ? (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-orange-500/30 bg-orange-500/10 text-orange-300">
+                            KILLED
+                          </span>
+                        ) : null}
                       </span>
                     </div>
                   </div>

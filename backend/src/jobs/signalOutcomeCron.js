@@ -8,7 +8,7 @@ const TICK_MS = Number.isFinite(TICK_MS_RAW) && TICK_MS_RAW >= 30_000 ? TICK_MS_
 let intervalRef = null;
 let lastTickStartedAt = null;
 let lastTickFinishedAt = null;
-let lastStats = { examined: 0, resolved: 0, deferred: 0, failed: 0, error: null };
+let lastStats = { examined: 0, resolved: 0, deferred: 0, failed: 0, killed: 0, error: null };
 
 function isEnabled() {
   return String(process.env.SIGNAL_PERF_CRON_ENABLED || "true").toLowerCase() !== "false";

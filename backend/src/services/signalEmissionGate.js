@@ -297,6 +297,18 @@ function alphaGateConfigSnapshot() {
   };
 }
 
+/**
+ * Kill switch guard (fractional units, e.g. maxLossPct 0.10 = −10%).
+ * Returns true if the position should be force-closed vs entry.
+ */
+function shouldKillSignal({ entryPrice, currentPrice, maxLossPct = 0.1 } = {}) {
+  const entry = Number(entryPrice);
+  const cur = Number(currentPrice);
+  if (!entry || !cur || entry <= 0) return false;
+  const dropFrac = (entry - cur) / entry;
+  return dropFrac >= maxLossPct;
+}
+
 function evaluateSignalEmission(score, ctx = {}) {
   const baseMerged = activeConfig();
   const regime = classifyMarketRegime(ctx);
@@ -424,5 +436,6 @@ function getSignalGateOpsSnapshot() {
 module.exports = {
   evaluateSignalEmission,
   getSignalGateOpsSnapshot,
-  applySignalGateOverrides
+  applySignalGateOverrides,
+  shouldKillSignal
 };

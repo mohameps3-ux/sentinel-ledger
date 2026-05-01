@@ -134,7 +134,7 @@ create table if not exists signal_performance (
   outcome_price_usd numeric(18,8),
   outcome_pct numeric(10,4),
   success boolean,
-  status varchar(20) not null default 'pending' check (status in ('pending', 'resolved', 'failed')),
+  status varchar(20) not null default 'pending' check (status in ('pending', 'resolved', 'failed', 'killed')),
   attempts int not null default 0,
   failure_reason text,
   resolved_at timestamptz,
