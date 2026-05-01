@@ -135,9 +135,14 @@ function AnimatedDonut({ pct, color, label, size = 62, segments }) {
   }, [pct]);
 
   if (segments) {
-    const colors = segments.map((s) => s.color);
+    const total = segments.reduce((a, s) => a + (s.pct || 0), 0) || 1;
+    const normalizedSegments = segments.map((s) => ({
+      ...s,
+      pct: (s.pct / total) * 100
+    }));
+    const colors = normalizedSegments.map((s) => s.color);
     let offset = 0;
-    const arcs = segments.map((s, i) => {
+    const arcs = normalizedSegments.map((s, i) => {
       const fill = (s.pct / 100) * circ;
       const dash = `${fill} ${circ - fill}`;
       const rotate = -90 + (offset / 100) * 360;
@@ -236,8 +241,12 @@ function LineChart({ signals }) {
       return cumulative;
     });
 
-    const minV = Math.min(...vals, 0);
-    const maxV = Math.max(...vals, 0);
+    const rawMin = Math.min(...vals, 0);
+    const rawMax = Math.max(...vals, 0);
+
+    const minV = Math.max(rawMin, -0.5);
+    const maxV = Math.min(rawMax, 0.5);
+
     const range = maxV - minV || 1;
 
     return vals
@@ -325,7 +334,7 @@ function ScatterPlot({ signals }) {
         const conf = Number(s.confidence ?? s.sentinel_score ?? s.sentinelScore ?? 0);
         const ret = Number(outcomeRaw(s) ?? 0);
         const x = PAD + (conf / 100) * (W - PAD * 2);
-        const clampedRet = Math.max(-0.5, Math.min(0.5, ret));
+        const clampedRet = Math.max(-0.2, Math.min(0.2, ret));
         const y = H / 2 - (clampedRet / 0.5) * ((H - PAD * 2) / 2);
         return { x, y, ret };
       });
@@ -445,7 +454,17 @@ export default function GraveyardPage() {
     return allRows;
   }, [filter, allRows]);
 
-  const pfDisplay = hasMetrics && profitFactor > 0 ? profitFactor.toFixed(2) : hasMetrics ? "—" : "—";
+  const hasUsableData = completed?.some((s) => outcomeRaw(s) != null);
+
+  const isSystemBad = avgOutcome < -0.1 || winRate < 0.4;
+
+  const safeProfitFactor = profitFactor && profitFactor > 0.05 ? profitFactor.toFixed(2) : "—";
+
+  const safeDrawdown =
+    maxDrawdown && maxDrawdown > -0.99 ? `${(maxDrawdown * 100).toFixed(2)}%` : "—";
+
+  const safeAvgOutcome =
+    Math.abs(avgOutcome) > 0.5 ? "—" : `${(avgOutcome * 100).toFixed(2)}%`;
 
   return (
     <>
@@ -665,10 +684,10 @@ export default function GraveyardPage() {
             {[
               { label: "Señales emitidas", val: completed.length || "—", delta: null, color: "#e2e8f0" },
               { label: "Win rate", val: hasMetrics ? `${(winRate * 100).toFixed(1)}%` : "—", delta: null, color: "#e2e8f0" },
-              { label: "Profit factor", val: pfDisplay, delta: null, color: "#e2e8f0" },
+              { label: "Profit factor", val: safeProfitFactor, delta: null, color: "#e2e8f0" },
               {
                 label: "Avg outcome",
-                val: hasMetrics ? `${(avgOutcome * 100).toFixed(2)}%` : "—",
+                val: hasMetrics ? safeAvgOutcome : "—",
                 delta: null,
                 color: hasMetrics && avgOutcome < 0 ? "#f87171" : "#34d399"
               },
@@ -680,11 +699,16 @@ export default function GraveyardPage() {
               },
               {
                 label: "Max drawdown",
-                val: hasMetrics ? `${(maxDrawdown * 100).toFixed(2)}%` : "—",
+                val: hasMetrics ? safeDrawdown : "—",
                 delta: null,
                 color: "#f87171"
               },
-              { label: "Estado sistema", val: query.isError ? "ERROR" : "OPERATIVO", delta: query.isError ? null : "Todos OK", color: query.isError ? "#f87171" : "#34d399" }
+              {
+                label: "Estado sistema",
+                val: query.isError ? "ERROR" : isSystemBad ? "DEGRADADO" : "OPERATIVO",
+                delta: query.isError ? null : "Todos OK",
+                color: query.isError ? "#f87171" : isSystemBad ? "#f87171" : "#34d399"
+              }
             ].map((m, i) => (
               <div key={m.label} className="grave-mc" style={i === 6 ? { borderColor: query.isError ? "#7f1d1d" : "#166534" } : {}}>
                 <div className="grave-mc-l">{m.label}</div>
@@ -699,7 +723,20 @@ export default function GraveyardPage() {
           <div className="grave-crow">
             <div className="grave-cc">
               <div className="grave-cc-t">Rendimiento (P&amp;L%)</div>
-              <LineChart signals={completed} />
+              {!hasUsableData ? (
+                <div
+                  style={{
+                    fontSize: "10px",
+                    color: "#6b7280",
+                    textAlign: "center",
+                    padding: "20px"
+                  }}
+                >
+                  Dataset insuficiente — esperando más señales
+                </div>
+              ) : (
+                <LineChart signals={completed} />
+              )}
             </div>
 
             <div className="grave-cc">
@@ -982,12 +1019,15 @@ export default function GraveyardPage() {
               </div>
 
               {filteredRows.slice(0, 8).map((s, i) => {
-              const raw = outcomeRaw(s);
+              const rawOriginal = outcomeRaw(s);
+
+              const raw =
+                rawOriginal == null ? null : Math.max(-0.1, Math.min(0.2, rawOriginal));
+
               const pct = raw != null ? raw * 100 : null;
               const isWin = pct != null && pct > 0;
-              const isPending = raw == null;
-              const rawFrac = raw;
-              const isKilled = rawFrac != null && rawFrac < STOP_LOSS_CAP_FRAC;
+              const isPending = rawOriginal == null;
+              const isKilled = rawOriginal != null && rawOriginal < STOP_LOSS_CAP_FRAC;
               const sym = s.asset || s.symbol || (s.mint ? String(s.mint).slice(0, 6) : null) || "???";
               const sourceRaw = Array.isArray(s.signals) ? s.signals[0] : s.rule_id || s.source || "smart_money";
               const source = String(sourceRaw || "smart_money").toLowerCase();
