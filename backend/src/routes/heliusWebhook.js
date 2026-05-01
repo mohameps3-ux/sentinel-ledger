@@ -304,6 +304,78 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
         }
 
         global.io.to(tx.tokenAddress).emit("transaction", tx);
+        if (tx.type === "buy" || tx.type === "BUY") {
+          (async () => {
+            try {
+              const clusterProbing = require("../services/clusterProbing");
+              const { evaluateSignalEmission } = require("../services/signalEmissionGate");
+              const { recordSignalEmission } = require("../services/signalPerformance");
+              const market = await getMarketDataMemoized(tx.tokenAddress);
+              const price =
+                market && Number(market.price) > 0 ? Number(market.price) : null;
+              const probingResult = await clusterProbing.evaluateIntent(
+                tx.tokenAddress,
+                tx.wallet,
+                price
+              );
+              if (probingResult?.action === "CLUSTER_ACTIVATION") {
+                console.log("[probing] CLUSTER ACTIVATION detected:", {
+                  mint: probingResult.mint,
+                  confidence: probingResult.confidence,
+                  wallets: probingResult.wallets.length,
+                  priceSkew: probingResult.priceSkew
+                });
+                const probingScore = {
+                  asset: probingResult.mint,
+                  confidence: probingResult.confidence,
+                  signals: ["cluster_probing"],
+                  scores: { risk: 45, smart: 55, momentum: 50 },
+                  insights: [],
+                  timestamp: new Date().toISOString(),
+                  meta: {
+                    source: "cluster_probing",
+                    priority: "HIGH",
+                    clusterSig: probingResult.clusterSig,
+                    wallets: probingResult.wallets,
+                    priceSkew: probingResult.priceSkew,
+                    reason: probingResult.reason
+                  }
+                };
+                const ctx = buildScoringContext(market, tx.amount);
+                ctx.wallets = Array.isArray(probingResult.wallets) ? probingResult.wallets : [];
+                const gate = await evaluateSignalEmission(probingScore, ctx);
+                if (!gate.allow) return;
+                probingScore.meta = {
+                  ...(probingScore.meta || {}),
+                  emissionGate: {
+                    passed: true,
+                    unifiedScore: gate.unifiedScore,
+                    components: gate.components,
+                    regime: {
+                      key: "cluster_activation",
+                      classifierEnabled: false,
+                      inputs: {},
+                      patchKeys: []
+                    },
+                    effectiveGate: gate.effectiveGate,
+                    alphaLayer: null
+                  }
+                };
+                if (global.io) {
+                  global.io.to(probingResult.mint).emit("sentinel:score", probingScore);
+                }
+                await recordSignalEmission(probingScore, {
+                  source: "cluster_probing",
+                  emission_regime: "cluster_activation",
+                  priority: "HIGH"
+                });
+                console.log(`[probing] signal emitted for ${tx.tokenAddress}`);
+              }
+            } catch (_) {
+              /* non-fatal — never block transaction processing */
+            }
+          })();
+        }
         if (sentinelEvent) {
           global.io.to(tx.tokenAddress).emit("sentinel:event", sentinelEvent);
           recordEventEmitted(sentinelEvent, Date.now() - startedAt);
@@ -311,23 +383,26 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
           // 1) fetch market (memoized 60s per asset); 2) compute USD ctx;
           // 3) evaluate; 4) structured log on high-signal events.
           getMarketDataMemoized(tx.tokenAddress)
-            .then((market) => {
+            .then(async (market) => {
               const ctx = buildScoringContext(market, tx.amount);
-              return evaluateScore(sentinelEvent, ctx).then((score) => ({ score, ctx }));
+              ctx.wallets = [String(tx.wallet || "").trim()].filter(Boolean);
+              const score = await evaluateScore(sentinelEvent, ctx);
+              return { score, ctx };
             })
-            .then(({ score, ctx }) => {
+            .then(async ({ score, ctx }) => {
               if (!score || !global.io) return;
               const alphaLayer = buildAlphaLayer(score, ctx);
               if (alphaLayer) {
                 score.meta = { ...(score.meta || {}), alphaLayer };
               }
-              const gate = evaluateSignalEmission(score, {
+              const gate = await evaluateSignalEmission(score, {
                 liquidityUsd: ctx?.liquidityUsd,
                 priceChange24h: ctx?.priceChange24h,
                 volume24h: ctx?.volume24h,
                 priceChange5m: ctx?.priceChange5m,
                 poolAgeMinutes: ctx?.poolAgeMinutes,
-                holderTop10Pct: ctx?.holderTop10Pct
+                holderTop10Pct: ctx?.holderTop10Pct,
+                wallets: ctx.wallets
               });
               if (!gate.allow) {
                 return;

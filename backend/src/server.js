@@ -70,6 +70,12 @@ const {
   INTERVAL_MS: CLUSTER_BACKFILL_INTERVAL_MS
 } = require("./jobs/clusterBackfillCron");
 const {
+  runClusterRankingCron,
+  getClusterRankingStats,
+  INTERVAL_MS: CLUSTER_RANKING_INTERVAL_MS
+} = require("./jobs/clusterRankingCron");
+const { getActiveProbes } = require("./services/clusterProbing");
+const {
   startWalletCoordinationCron,
   getWalletCoordinationCronStatus
 } = require("./jobs/walletCoordinationCron");
@@ -272,6 +278,12 @@ app.get("/health", async (_, res) => {
       tickIntervalMs: CLUSTER_BACKFILL_INTERVAL_MS,
       lastStats: getClusterBackfillStats()
     },
+    clusterRanking: {
+      cronEnabled: true,
+      tickIntervalMs: CLUSTER_RANKING_INTERVAL_MS,
+      activeProbes: getActiveProbes(),
+      lastStats: getClusterRankingStats()
+    },
     signalGate: getSignalGateOpsSnapshot(),
     signalGateTuner: getSignalGateTunerCronStatus()
   };
@@ -439,6 +451,10 @@ async function bootstrap() {
   setTimeout(() => {
     runClusterBackfillCron();
   }, 30_000);
+  setInterval(runClusterRankingCron, CLUSTER_RANKING_INTERVAL_MS);
+  setTimeout(() => {
+    runClusterRankingCron();
+  }, 45_000);
   startSignalGateTunerCron({ skipInitialTick: tunerWarmed });
   startSubscriptionExpiryCron();
   sentinelOrchestrator.start(io);

@@ -228,17 +228,21 @@ function buildScoringContext(market, tokenAmount) {
 async function emitScore(tx, sentinelEvent) {
   const market = await getMarketDataMemoized(tx.tokenAddress);
   const ctx = buildScoringContext(market, tx.amount);
+  ctx.wallets = [
+    String(sentinelEvent?.data?.actor || tx.wallet || "").trim()
+  ].filter(Boolean);
   const score = await evaluateScore(sentinelEvent, ctx);
   if (!score || !global.io) return;
   const alphaLayer = buildAlphaLayer(score, ctx);
   if (alphaLayer) score.meta = { ...(score.meta || {}), alphaLayer };
-  const gate = evaluateSignalEmission(score, {
+  const gate = await evaluateSignalEmission(score, {
     liquidityUsd: ctx?.liquidityUsd,
     priceChange24h: ctx?.priceChange24h,
     volume24h: ctx?.volume24h,
     priceChange5m: ctx?.priceChange5m,
     poolAgeMinutes: ctx?.poolAgeMinutes,
-    holderTop10Pct: ctx?.holderTop10Pct
+    holderTop10Pct: ctx?.holderTop10Pct,
+    wallets: ctx.wallets
   });
   if (!gate.allow) return;
   score.meta = {

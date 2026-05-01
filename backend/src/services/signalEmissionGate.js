@@ -321,7 +321,79 @@ function shouldKillSignal({ entryPrice, currentPrice, maxLossPct = 0.1 } = {}) {
   return dropFrac >= maxLossPct;
 }
 
-function evaluateSignalEmission(score, ctx = {}) {
+async function evaluateSignalEmission(score, ctx = {}) {
+  const asset = String(score?.asset || "");
+
+  try {
+    const { getSupabase } = require("../lib/supabase");
+    let supabase;
+    try {
+      supabase = getSupabase();
+    } catch (_) {
+      supabase = null;
+    }
+    if (supabase && asset) {
+      const signalWallets = ctx?.wallets ?? ctx?.smartWallets ?? [];
+      if (signalWallets.length > 0) {
+        const { data: identityRows } = await supabase
+          .from("wallet_clusters")
+          .select("cluster_name, wallet_address")
+          .in("wallet_address", signalWallets.slice(0, 20))
+          .limit(20);
+
+        if (identityRows?.length > 0) {
+          const nameCounts = {};
+          for (const row of identityRows) {
+            const n = row.cluster_name;
+            if (n == null || n === "") continue;
+            nameCounts[n] = (nameCounts[n] ?? 0) + 1;
+          }
+          const ranked = Object.entries(nameCounts).sort((a, b) => b[1] - a[1]);
+          if (ranked.length > 0) {
+            const bestClusterName = ranked[0][0];
+
+            const { data: intelRows } = await supabase
+              .from("cluster_intel")
+              .select("cluster_id, cluster_sig, rank_score, hit_rate, avg_performance, tags, wallet_addresses")
+              .eq("cluster_sig", bestClusterName)
+              .limit(1);
+
+            const intel = intelRows?.[0];
+
+            if (intel) {
+              if (intel.tags?.includes("blacklisted")) {
+                console.log(`[gate] cluster ${intel.cluster_sig} blacklisted — no boost`);
+              } else {
+                const rankScore = Number(intel.rank_score ?? 0);
+                let boost = 0;
+                if (rankScore >= 80) boost = 10;
+                else if (rankScore >= 60) boost = 7;
+                else if (rankScore >= 40) boost = 4;
+
+                if (boost > 0) {
+                  const hitRate = Number(intel.hit_rate ?? 0);
+                  score.confidence = Math.min(100, Number(score.confidence ?? 0) + boost);
+                  score.meta = {
+                    ...(score.meta ?? {}),
+                    clusterBoost: true,
+                    clusterSig: intel.cluster_sig,
+                    clusterRankScore: rankScore,
+                    clusterHitRate: hitRate,
+                    boostApplied: boost,
+                    clusterFullWallets: Array.isArray(intel.wallet_addresses) ? intel.wallet_addresses : []
+                  };
+                  console.log(`[gate] cluster boost +${boost} (rank:${rankScore}) on ${asset}`);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[gate] cluster boost error (non-fatal):", e?.message);
+  }
+
   const baseMerged = activeConfig();
   const regime = classifyMarketRegime(ctx);
   const regimePatch = computeRegimePatch(regime.key, baseMerged);
@@ -419,6 +491,18 @@ function evaluateSignalEmission(score, ctx = {}) {
     for (const r of reasons) bumpBlocked(r);
   }
   pushRecent(entry);
+
+  if (
+    allow &&
+    score.meta?.clusterBoost &&
+    Array.isArray(score.meta.clusterFullWallets) &&
+    score.meta.clusterFullWallets.length > 0
+  ) {
+    try {
+      const { registerClusterSignal } = require("./clusterFatigue");
+      registerClusterSignal(asset, score.meta.clusterFullWallets);
+    } catch (_) {}
+  }
 
   return {
     allow,
