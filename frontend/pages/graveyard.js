@@ -135,7 +135,7 @@ function AnimatedDonut({ pct, color, label, size = 62, segments }) {
   }, [pct]);
 
   if (segments) {
-    const total = segments.reduce((a, s) => a + (s.pct || 0), 0) || 1;
+    const total = segments.reduce((a, s) => a + s.pct, 0) || 1;
     const normalizedSegments = segments.map((s) => ({
       ...s,
       pct: (s.pct / total) * 100
@@ -244,8 +244,8 @@ function LineChart({ signals }) {
     const rawMin = Math.min(...vals, 0);
     const rawMax = Math.max(...vals, 0);
 
-    const minV = Math.max(rawMin, -0.5);
-    const maxV = Math.min(rawMax, 0.5);
+    const minV = Math.max(rawMin, -0.4);
+    const maxV = Math.min(rawMax, 0.4);
 
     const range = maxV - minV || 1;
 
@@ -284,34 +284,40 @@ function LineChart({ signals }) {
 
   return (
     <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
+      <defs>
+        <linearGradient id="graveLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#34d399" />
+          <stop offset="100%" stopColor="#f87171" />
+        </linearGradient>
+      </defs>
       <line x1={PAD} y1={H / 2} x2={W - PAD} y2={H / 2} stroke="#1f2937" strokeWidth="0.5" strokeDasharray="3 3" />
-      <text x={PAD} y={10} fill="#4a5568" fontSize="5" fontFamily="monospace">
+      <text x={PAD} y={10} fill="#64748b" fontSize="5" fontFamily="monospace">
         +
       </text>
-      <text x={PAD} y={H / 2 + 4} fill="#4a5568" fontSize="5" fontFamily="monospace">
+      <text x={PAD} y={H / 2 + 4} fill="#64748b" fontSize="5" fontFamily="monospace">
         0%
       </text>
-      <text x={PAD} y={H - 4} fill="#4a5568" fontSize="5" fontFamily="monospace">
+      <text x={PAD} y={H - 4} fill="#64748b" fontSize="5" fontFamily="monospace">
         -
       </text>
       {points ? (
-        <polyline ref={ref} fill="none" stroke="#ef4444" strokeWidth="1.5" points={points} />
+        <polyline ref={ref} fill="none" stroke="url(#graveLineGrad)" strokeWidth="1.5" points={points} />
       ) : null}
       {lastPct != null ? (
         <>
-          <rect x={W - 46} y={H - 18} width={34} height={9} rx="2" fill="#7f1d1d" />
-          <text x={W - 44} y={H - 11} fill="#f87171" fontSize="6" fontFamily="monospace">
+          <rect x={W - 46} y={H - 18} width={34} height={9} rx="2" fill="rgba(92, 38, 38, 0.85)" />
+          <text x={W - 44} y={H - 11} fill="#e89191" fontSize="6" fontFamily="monospace">
             {(lastPct * 100).toFixed(2)}%
           </text>
         </>
       ) : null}
-      <text x={PAD} y={H} fill="#4a5568" fontSize="5" fontFamily="monospace">
+      <text x={PAD} y={H} fill="#64748b" fontSize="5" fontFamily="monospace">
         -48h
       </text>
-      <text x={W / 2 - 8} y={H} fill="#4a5568" fontSize="5" fontFamily="monospace">
+      <text x={W / 2 - 8} y={H} fill="#64748b" fontSize="5" fontFamily="monospace">
         -24h
       </text>
-      <text x={W - 24} y={H} fill="#4a5568" fontSize="5" fontFamily="monospace">
+      <text x={W - 24} y={H} fill="#64748b" fontSize="5" fontFamily="monospace">
         ahora
       </text>
     </svg>
@@ -456,7 +462,10 @@ export default function GraveyardPage() {
 
   const hasUsableData = completed?.some((s) => outcomeRaw(s) != null);
 
-  const isSystemBad = avgOutcome < -0.1 || winRate < 0.4;
+  const isBad = avgOutcome < -0.08 || winRate < 0.4;
+
+  const systemColor = isBad ? "#f87171" : "#34d399";
+  const systemGlow = isBad ? "grave-glow-red" : "grave-glow-green";
 
   const safeProfitFactor = profitFactor && profitFactor > 0.05 ? profitFactor.toFixed(2) : "—";
 
@@ -632,7 +641,7 @@ export default function GraveyardPage() {
         <main className="grave-main">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
-              <div style={{ fontSize: "11px", fontWeight: "500", color: "#e2e8f0" }}>
+              <div className="grave-terminal-text" style={{ fontSize: "11px", fontWeight: "500", color: "#f1f5f9" }}>
                 Resumen general · Últimas 48h
               </div>
               <div style={{ fontSize: "7px", color: "#6b7280" }}>
@@ -645,9 +654,9 @@ export default function GraveyardPage() {
                   fontSize: "7px",
                   padding: "2px 6px",
                   borderRadius: "8px",
-                  background: "#0d2818",
-                  color: "#34d399",
-                  border: "0.5px solid #166534",
+                  background: isBad ? "rgba(92, 38, 38, 0.35)" : "#0d2818",
+                  color: systemColor,
+                  border: isBad ? "0.5px solid rgba(185, 80, 80, 0.55)" : "0.5px solid #166534",
                   display: "flex",
                   alignItems: "center",
                   gap: "2px"
@@ -655,9 +664,9 @@ export default function GraveyardPage() {
               >
                 <div
                   className="grave-online-dot"
-                  style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#34d399" }}
+                  style={{ width: "4px", height: "4px", borderRadius: "50%", background: systemColor }}
                 />
-                Operativo
+                {isBad ? "Degradado" : "Operativo"}
               </div>
               <div style={{ display: "flex", gap: "2px" }}>
                 {["24H", "48H", "7D", "30D"].map((t) => (
@@ -705,34 +714,49 @@ export default function GraveyardPage() {
               },
               {
                 label: "Estado sistema",
-                val: query.isError ? "ERROR" : isSystemBad ? "DEGRADADO" : "OPERATIVO",
+                val: query.isError ? "ERROR" : isBad ? "DEGRADADO" : "OPERATIVO",
                 delta: query.isError ? null : "Todos OK",
-                color: query.isError ? "#f87171" : isSystemBad ? "#f87171" : "#34d399"
+                color: query.isError ? "#f87171" : systemColor
               }
-            ].map((m, i) => (
-              <div key={m.label} className="grave-mc" style={i === 6 ? { borderColor: query.isError ? "#7f1d1d" : "#166534" } : {}}>
+            ].map((m, i) => {
+              const importantGlow =
+                query.isError && i === 6
+                  ? "grave-glow-red"
+                  : !query.isError && [1, 2, 3, 5, 6].includes(i)
+                    ? systemGlow
+                    : "";
+              const mcClass = `grave-mc${importantGlow ? ` ${importantGlow}` : ""}`;
+              return (
+              <div
+                key={m.label}
+                className={mcClass}
+                style={{
+                  backdropFilter: "blur(6px)",
+                  boxShadow: "inset 0 0 0.5px #1f2937",
+                  ...(i === 6
+                    ? {
+                        borderColor: query.isError ? "#7f1d1d" : isBad ? "rgba(185, 80, 80, 0.55)" : "#166534"
+                      }
+                    : {})
+                }}
+              >
                 <div className="grave-mc-l">{m.label}</div>
                 <div className="grave-mc-v" style={{ color: m.color }}>
                   {m.val}
                 </div>
                 {m.delta ? <div className="grave-mc-d" style={{ color: "#34d399" }}>{m.delta}</div> : null}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="grave-crow">
             <div className="grave-cc">
               <div className="grave-cc-t">Rendimiento (P&amp;L%)</div>
               {!hasUsableData ? (
-                <div
-                  style={{
-                    fontSize: "10px",
-                    color: "#6b7280",
-                    textAlign: "center",
-                    padding: "20px"
-                  }}
-                >
-                  Dataset insuficiente — esperando más señales
+                <div className="grave-data-stream-empty">
+                  DATA STREAM INITIALIZING...
+                  <span className="grave-cursor-blink">█</span>
                 </div>
               ) : (
                 <LineChart signals={completed} />
@@ -748,13 +772,13 @@ export default function GraveyardPage() {
                   label="win rate"
                   segments={[
                     { pct: hasMetrics ? winRate * 100 : 40, color: "#34d399", label: "Win" },
-                    { pct: hasMetrics ? (1 - winRate) * 100 : 60, color: "#ef4444", label: "Loss" }
+                    { pct: hasMetrics ? (1 - winRate) * 100 : 60, color: "#dc5757", label: "Loss" }
                   ]}
                 />
                 <div>
                   {[
                     { c: "#34d399", t: `Ganad. ${hasMetrics ? (winRate * 100).toFixed(0) : 0}% (${wins.length})` },
-                    { c: "#ef4444", t: `Perd. ${hasMetrics ? ((1 - winRate) * 100).toFixed(0) : 0}% (${losses.length})` },
+                    { c: "#dc5757", t: `Perd. ${hasMetrics ? ((1 - winRate) * 100).toFixed(0) : 0}% (${losses.length})` },
                     { c: "#4b5563", t: "Break 0% (0)" }
                   ].map((l, idx) => (
                     <div
@@ -827,7 +851,7 @@ export default function GraveyardPage() {
             </div>
 
             <div className="grave-cc">
-              <div className="grave-cc-t">Actividad en tiempo real</div>
+              <div className="grave-cc-t grave-terminal-text">Actividad en tiempo real</div>
               {[
                 { c: "#34d399", t: "Nueva señal: PEPE2.0", time: "ahora" },
                 { c: "#818cf8", t: "Cluster: 4 wallets", time: "8s" },
@@ -1049,7 +1073,7 @@ export default function GraveyardPage() {
               else if (pct != null && pct <= -10) statusLabel = "LOSS";
               const statusStyle = {
                 WIN: { bg: "#0d2818", c: "#34d399" },
-                LOSS: { bg: "#1c0a0a", c: "#f87171" },
+                LOSS: { bg: "#1c0a0a", c: "#e89191" },
                 KILLED: { bg: "#2d1a00", c: "#f59e0b" },
                 PENDING: { bg: "#1a3a5c", c: "#60a5fa" },
                 NEUTRAL: { bg: "#1f2937", c: "#9ca3af" }
@@ -1058,8 +1082,16 @@ export default function GraveyardPage() {
               const tRaw = s.emitted_at || s.time || s.created_at;
 
               return (
-                <div key={s.id != null ? String(s.id) : `row-${i}`} className="grave-trow">
-                  <div style={{ fontSize: "8px", color: "#4a5568" }}>☆</div>
+                <div key={s.id != null ? String(s.id) : `row-${i}`} className="grave-trow-wrap">
+                  <div
+                    className="grave-tbar"
+                    style={{
+                      background: pct == null ? "#475569" : pct > 0 ? "#34d399" : "#e89191",
+                      opacity: 0.6
+                    }}
+                  />
+                  <div className="grave-trow">
+                  <div style={{ fontSize: "8px", color: "#64748b" }}>☆</div>
                   <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
                     <div
                       style={{
@@ -1106,7 +1138,12 @@ export default function GraveyardPage() {
                         style={{
                           height: "2px",
                           width: `${Math.min(Math.max(conf, 0), 100)}%`,
-                          background: conf > 70 ? "#34d399" : conf > 40 ? "#3b82f6" : "#f87171",
+                          background:
+                            conf > 70
+                              ? "linear-gradient(90deg,#34d399,#22c55e)"
+                              : conf > 40
+                                ? "linear-gradient(90deg,#3b82f6,#60a5fa)"
+                                : "linear-gradient(90deg,#e89191,#dc5757)",
                           borderRadius: "1px"
                         }}
                       />
@@ -1115,7 +1152,7 @@ export default function GraveyardPage() {
                   <div style={{ fontSize: "8px", color: "#9ca3af" }}>
                     {s.entry_price_usd ? `$${Number(s.entry_price_usd).toFixed(6)}` : "—"}
                   </div>
-                  <div style={{ fontSize: "8px", color: pct == null ? "#6b7280" : pct > 0 ? "#34d399" : "#f87171" }}>
+                  <div style={{ fontSize: "8px", color: pct == null ? "#6b7280" : pct > 0 ? "#34d399" : "#e89191" }}>
                     {pct != null ? `${pct > 0 ? "+" : ""}${pct.toFixed(2)}%` : "validating..."}
                     {isKilled ? (
                       <span style={{ fontSize: "6px", color: "#f59e0b", marginLeft: "2px" }}>(cap:-10%)</span>
@@ -1135,11 +1172,12 @@ export default function GraveyardPage() {
                       {statusLabel}
                     </span>
                   </div>
-                  <div style={{ fontSize: "6px", color: "#6b7280" }}>
+                  <div style={{ fontSize: "6px", color: "#64748b" }}>
                     {tRaw
                       ? new Date(tRaw).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })
                       : "—"}
                   </div>
+                </div>
                 </div>
               );
               })}
