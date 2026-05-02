@@ -3089,11 +3089,10 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   background: #0b1b12;
   border: 1px solid #14532d;
   border-radius: 8px;
-  padding: 8px 10px;
-  min-height: 174px;
+  padding: 12px 14px;
   height: 100%;
   box-sizing: border-box;
-  overflow: auto;
+  overflow: hidden;
   transition: border-color var(--g-fast) var(--g-out), background var(--g-fast) var(--g-out);
 }
 
@@ -3101,20 +3100,29 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   border-color: rgba(22, 101, 52, 0.5);
 }
 
+.grave-oracle-panel li,
+.grave-oracle-panel .token-item {
+  padding: 2px 0;
+}
+
 .grave-mistakes-panel {
   background: #1a0b0b;
   border: 1px solid #7f1d1d;
   border-radius: 8px;
-  padding: 8px 10px;
-  min-height: 174px;
+  padding: 12px 14px;
   height: 100%;
   box-sizing: border-box;
-  overflow: auto;
+  overflow: hidden;
   transition: border-color var(--g-fast) var(--g-out), background var(--g-fast) var(--g-out);
 }
 
 .grave-mistakes-panel:hover {
   border-color: rgba(127, 29, 29, 0.5);
+}
+
+.grave-mistakes-panel li,
+.grave-mistakes-panel .token-item {
+  padding: 2px 0;
 }
 
 .grave-status-stack {
