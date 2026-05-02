@@ -18,6 +18,7 @@ function scoreOutlier(row) {
 export default function TacticalFeed({
   tacticalTab,
   onTabChange,
+  panelVelocity,
   historyRows,
   liveExpanded,
   onToggleLiveExpanded,
@@ -74,6 +75,7 @@ export default function TacticalFeed({
     <TacticalTabs
       activeTab={tacticalTab}
       onTabChange={onTabChange}
+      panelVelocity={panelVelocity}
       panelTrack={
         <section className="sl-section">
           <div className="glass-card p-3 sm:p-4">

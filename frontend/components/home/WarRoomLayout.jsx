@@ -430,41 +430,17 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
     )
   ];
   const sorted = useSortedTokens(allTokens);
-  const [rotationIndex, setRotationIndex] = useState(0);
-  const [newMint, setNewMint] = useState(null);
 
-  useEffect(() => {
-    if (sorted.length < 2) return;
-    if (activeMint) return;
-    const timer = setInterval(() => {
-      setRotationIndex((prev) => (prev + 1) % sorted.length);
-    }, 10_000);
-    return () => clearInterval(timer);
-  }, [sorted.length, activeMint]);
-
-  const visible = useMemo(() => {
-    const base =
-      sorted.length >= 2
-        ? [...sorted.slice(rotationIndex), ...sorted.slice(0, rotationIndex)].slice(0, 4)
-        : sorted.slice(0, 4);
-    return base.filter((tok) => tok.mint ?? tok.address);
-  }, [rotationIndex, sorted.length]);
-
-  const topSlotMint = visible[0]?.mint ?? visible[0]?.address ?? null;
-
-  useEffect(() => {
-    if (!topSlotMint) {
-      setNewMint(null);
-      return;
-    }
-    setNewMint(topSlotMint);
-    const t = setTimeout(() => setNewMint(null), 2500);
-    return () => clearTimeout(t);
-  }, [rotationIndex, topSlotMint]);
+  const displayTokens = useMemo(
+    () => sorted.filter((tok) => tok.mint ?? tok.address),
+    [sorted]
+  );
 
   const activeTok = activeMint
-    ? visible.find((t) => (t.mint ?? t.address) === activeMint) ?? visible[0] ?? null
-    : visible[0] ?? null;
+    ? displayTokens.find((t) => (t.mint ?? t.address) === activeMint) ??
+      displayTokens[0] ??
+      null
+    : displayTokens[0] ?? null;
 
   const focusScore = activeTok
     ? Math.round(activeTok._currentScore ?? activeTok.sentinelScore ?? 0)
@@ -474,8 +450,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
     <div className="war-room-container">
       <div className="war-room-header">
         <div className="war-room-title-row">
-          <span className="war-room-icon">⊕</span>
-          <h1 className="war-room-title">FAST MODE</h1>
+          <h1 className="war-room-title">VELOCITY</h1>
         </div>
         <p className="war-room-subtitle">
           Real-time smart money intelligence. Act before it moves.
@@ -516,8 +491,11 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
             <span className="war-room-section-sub">Sorted by Smart Money Intent</span>
           </div>
 
-          <div className="war-opportunities-list">
-            {visible.map((tok, i) => {
+          <div
+            className="war-opportunities-list"
+            style={{ maxHeight: "calc(100vh - 200px)", overflowY: "auto" }}
+          >
+            {displayTokens.map((tok, i) => {
               const mint = tok.mint ?? tok.address;
               return (
                 <OpportunityRow
@@ -526,7 +504,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
                   rank={i + 1}
                   onSelect={handleSelectToken}
                   isActive={Boolean(mint && activeMint === mint)}
-                  isNew={Boolean(mint && newMint === mint)}
+                  isNew={false}
                   activeMint={activeMint}
                 />
               );
@@ -539,7 +517,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
             <div className="war-aside-title">
               ⬤ RECENT SIGNALS <span style={{ color: "#22c55e", marginLeft: 4 }}>Live</span>
             </div>
-            {visible.map((tok) => {
+            {displayTokens.map((tok) => {
               const sc = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
               const intent = getIntentLevel(sc);
               const mint = tok.mint ?? tok.address;

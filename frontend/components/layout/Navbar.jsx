@@ -63,7 +63,7 @@ const ALL_PAGES_SECTIONS = [
 
 export function Navbar() {
   const { t } = useLocale();
-  const { isWarMode, toggleWarMode } = useWarMode();
+  const { isWarMode } = useWarMode();
   const router = useRouter();
   const isControlRoom = ["/ops", "/pricing", "/legal", "/privacy", "/terms", "/contact"].includes(router.pathname);
   const showTradingChrome = !isControlRoom;
@@ -236,33 +236,6 @@ export function Navbar() {
             <span className="mr-2 inline-flex h-7 items-center rounded-full border border-indigo-400/30 bg-indigo-500/15 px-2.5 font-mono text-[10px] font-bold tracking-[0.12em] text-indigo-100">
               FREE
             </span>
-            <div className="mr-3">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={isWarMode}
-                aria-label={isWarMode ? "Turn off FAST mode" : "Turn on FAST mode"}
-                title={isWarMode ? "FAST mode on" : "FAST mode off"}
-                onClick={toggleWarMode}
-                className={
-                  isWarMode
-                    ? "btn-ghost-sm border-sl-blue text-sl-blue"
-                    : "btn-ghost-sm"
-                }
-              >
-                {isWarMode ? (
-                  <>
-                    <span
-                      className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-sl-blue animate-pulse"
-                      aria-hidden
-                    />
-                    FAST
-                  </>
-                ) : (
-                  "SPEED"
-                )}
-              </button>
-            </div>
             <div className="ml-2">
               <WalletButton navCompact />
             </div>

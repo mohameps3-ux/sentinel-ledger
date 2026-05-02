@@ -104,7 +104,7 @@ export function HotTab({
             <div>
               <p className="sl-label text-[9px] !text-sl-muted tracking-[0.14em]">{t("war.hot.label")}</p>
               <div className="mt-0.5 flex flex-wrap items-center gap-2.5">
-                <h2 className="text-base sm:text-lg font-semibold text-sl-text tracking-tight leading-tight">Heat</h2>
+                <h2 className="text-base sm:text-lg font-semibold text-sl-text tracking-tight leading-tight">HOT TRACKED</h2>
                 <button
                   type="button"
                   onClick={onToggleHeatExpanded}
@@ -263,7 +263,7 @@ export function HotTab({
                             ${token?.symbol || "Loading"}
                           </p>
                           <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-orange-500/45 bg-orange-500/15 text-orange-100/95 war-badge shrink-0">
-                            HEAT
+                            HOT TRACKED
                           </span>
                         </div>
                         <span className={`war-action-badge ${warAc}`}>{safeAction}</span>

@@ -123,7 +123,8 @@ export const FLAT_STRINGS = {
 
   "war.tactical.aria": S("Tactical feed", { es: "Feed táctico", fr: "Flux tactique", de: "Taktisches Feed", it: "Feed tattico", ru: "Тактическая лента", zh: "战术信息流", ko: "전술 피드", ja: "戦術フィード", ar: "التدفق التكتيكي", pt: "Feed tático" }),
   "war.tactical.tabLive": S("LIVE"),
-  "war.tactical.tabHot": S("HOT"),
+  "war.tactical.tabHot": S("HOT TRACKED"),
+  "war.tactical.tabVelocity": S("VELOCITY"),
   "war.tactical.tabOutlier": S("OUTLIER", { es: "OUTLIER", pt: "OUTLIER" }),
   "war.tactical.tabTrack": S("TRACK", { es: "TRACK", pt: "TRACK" }),
   "war.tactical.outlierSub": S("Target-lock candidates pulled from LIVE/HOT. Open one, then decide in Desk.", {

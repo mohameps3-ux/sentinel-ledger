@@ -580,7 +580,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     if (typeof window === "undefined") return;
     try {
       const tab = localStorage.getItem(TACTICAL_TAB_LS_KEY);
-      if (tab === "live" || tab === "hot" || tab === "outlier" || tab === "track") setTacticalTab(tab);
+      if (tab === "live" || tab === "hot" || tab === "velocity" || tab === "outlier" || tab === "track") setTacticalTab(tab);
       if (tab === "history") setTacticalTab("track");
     } catch (_) {
     }
@@ -813,58 +813,55 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                 onToggleSound={() => setSoundEnabled((v) => !v)}
               />
             </div>
-            {isWarMode ? (
-              <WarRoomLayout
-                signals={warRoomSignals}
-                hotTokens={warRoomHotTokens}
-                kpis={warRoomKpis}
-                onSelectMint={pushDeskMint}
-              />
-            ) : (
-              <>
-                <HomeMetricStrip
-                  signalsToday={homeMetrics.signalsToday}
-                  activeWallets={homeMetrics.activeWallets}
-                  avgConfidence={homeMetrics.avgConfidence}
-                  bestSignal={homeMetrics.bestSignal}
-                />
-                <TacticalFeed
-                  tacticalTab={tacticalTab}
-                  onTabChange={setTacticalTab}
-                  historyRows={historyRows}
-                  liveExpanded={liveExpanded}
-                  onToggleLiveExpanded={() => setLiveExpanded((v) => !v)}
-                  liveSignalsForGrid={liveSignalsForGrid}
-                  liveSignalPool={sortedSignalPool}
-                  signalsFeedIsError={signalsFeedQuery.isError}
-                  signalsFeedIsDegraded={signalsFeedIsDegraded}
-                  signalsFeedIsLoading={signalsFeedQuery.isLoading}
-                  signalsAgeSec={signalsAgeSec}
-                  isWarMode={isWarMode}
-                  liveUseVirtualizedLayout={useLiveVirtualized}
-                  liveVirtuosoRows={liveVirtuosoRows}
-                  entryCountdownByMint={entryCountdownByMint}
-                  strategyMode={strategyMode}
-                  signalCursor={signalCursor}
-                  signalsRankDeltas={signalsRankDeltas}
-                  tickerByMint={tickerByMint}
-                  quotesPricesFetching={quotesQuery.isFetching}
-                  selectedMint={selectedMint}
-                  deskCoordination={deskCoordination}
+            <HomeMetricStrip
+              signalsToday={homeMetrics.signalsToday}
+              activeWallets={homeMetrics.activeWallets}
+              avgConfidence={homeMetrics.avgConfidence}
+              bestSignal={homeMetrics.bestSignal}
+            />
+            <TacticalFeed
+              tacticalTab={tacticalTab}
+              onTabChange={setTacticalTab}
+              panelVelocity={
+                <WarRoomLayout
+                  signals={warRoomSignals}
+                  hotTokens={warRoomHotTokens}
+                  kpis={warRoomKpis}
                   onSelectMint={pushDeskMint}
-                  heatExpanded={heatExpanded}
-                  onToggleHeatExpanded={() => setHeatExpanded((v) => !v)}
-                  heatTokensForGrid={heatTokensForGrid}
-                  heatTokenPool={heatTokenPool}
-                  feedStatus={feedStatus}
-                  feedIsLive={feedIsLive}
-                  feedLabel={feedLabel}
-                  feedAgeSec={feedAgeSec}
-                  trendingMinLiquidityUsd={trendingMeta.minLiquidityUsd}
-                  trendingRankDeltas={trendingRankDeltas}
                 />
-              </>
-            )}
+              }
+              historyRows={historyRows}
+              liveExpanded={liveExpanded}
+              onToggleLiveExpanded={() => setLiveExpanded((v) => !v)}
+              liveSignalsForGrid={liveSignalsForGrid}
+              liveSignalPool={sortedSignalPool}
+              signalsFeedIsError={signalsFeedQuery.isError}
+              signalsFeedIsDegraded={signalsFeedIsDegraded}
+              signalsFeedIsLoading={signalsFeedQuery.isLoading}
+              signalsAgeSec={signalsAgeSec}
+              isWarMode={isWarMode}
+              liveUseVirtualizedLayout={useLiveVirtualized}
+              liveVirtuosoRows={liveVirtuosoRows}
+              entryCountdownByMint={entryCountdownByMint}
+              strategyMode={strategyMode}
+              signalCursor={signalCursor}
+              signalsRankDeltas={signalsRankDeltas}
+              tickerByMint={tickerByMint}
+              quotesPricesFetching={quotesQuery.isFetching}
+              selectedMint={selectedMint}
+              deskCoordination={deskCoordination}
+              onSelectMint={pushDeskMint}
+              heatExpanded={heatExpanded}
+              onToggleHeatExpanded={() => setHeatExpanded((v) => !v)}
+              heatTokensForGrid={heatTokensForGrid}
+              heatTokenPool={heatTokenPool}
+              feedStatus={feedStatus}
+              feedIsLive={feedIsLive}
+              feedLabel={feedLabel}
+              feedAgeSec={feedAgeSec}
+              trendingMinLiquidityUsd={trendingMeta.minLiquidityUsd}
+              trendingRankDeltas={trendingRankDeltas}
+            />
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               <SmartWalletsPreview wallets={rankedWallets} labelFor={topWalletLabel} titleFor={topWalletTitle} />
               <RecentAlertsPreview alerts={alerts} />
