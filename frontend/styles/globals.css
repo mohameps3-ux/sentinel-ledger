@@ -68,7 +68,7 @@
   /* Fallback when JS has not measured the real <nav> height yet (see Navbar.jsx --sl-nav-actual). */
   --sl-nav-h: 48px;
   --sl-bar-h: 0px;
-  --sl-safe-gap: 8px;
+  --sl-safe-gap: 2px;
 }
 
 @media (max-width: 640px) {
@@ -83,7 +83,7 @@
 @media (min-width: 640px) {
   :root {
     --sl-nav-h: 48px;
-    --sl-safe-gap: 12px;
+    --sl-safe-gap: 2px;
   }
 }
 
