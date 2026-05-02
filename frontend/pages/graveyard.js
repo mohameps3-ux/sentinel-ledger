@@ -858,9 +858,12 @@ export default function GraveyardPage() {
             </div>
           </div>
 
-          <div className="grave-insight-row">
-            <div className="grave-oracle-panel">
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+          <div className="grave-insight-row" style={{ alignItems: "start" }}>
+            <div
+              className="grave-oracle-panel"
+              style={{ minHeight: 0, height: "auto", padding: "12px", boxSizing: "border-box" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
                 <div
                   style={{
                     width: "14px",
@@ -880,7 +883,7 @@ export default function GraveyardPage() {
                   CASOS VERIFICADOS
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px", marginBottom: "6px" }}>
                 {[
                   { v: wins.length || 0, l: "aciertos", c: "#34d399" },
                   { v: hasMetrics ? `${(winRate * 100).toFixed(0)}%` : "—", l: "tasa de acierto", c: "#34d399" },
@@ -898,18 +901,18 @@ export default function GraveyardPage() {
                   }
                 ].map((x, idx) => (
                   <div key={idx} style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: "16px", fontWeight: "700", color: x.c, lineHeight: 1.1 }}>{x.v}</div>
+                    <div style={{ fontSize: "14px", fontWeight: "700", color: x.c, lineHeight: 1.1 }}>{x.v}</div>
                     <div style={{ fontSize: "7px", color: "#6b7280" }}>{x.l}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", rowGap: "4px" }}>
                 {wins.slice(0, 5).map((s, idx) => (
                   <div
                     key={idx}
+                    className="text-xs leading-none"
                     style={{
-                      fontSize: "7px",
-                      padding: "3px 6px",
+                      padding: "2px 6px",
                       borderRadius: "999px",
                       color: "#34d399",
                       border: "1px solid #166534",
@@ -923,8 +926,11 @@ export default function GraveyardPage() {
               </div>
             </div>
 
-            <div className="grave-mistakes-panel">
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+            <div
+              className="grave-mistakes-panel"
+              style={{ minHeight: 0, height: "auto", padding: "12px", boxSizing: "border-box" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
                 <div
                   style={{
                     width: "14px",
@@ -944,7 +950,7 @@ export default function GraveyardPage() {
                   CASOS NO FAVORABLES
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px", marginBottom: "6px" }}>
                 {[
                   { v: losses.length || 0, l: "fallos", c: "#f87171" },
                   { v: hasMetrics ? `${((1 - winRate) * 100).toFixed(0)}%` : "—", l: "tasa de fallo", c: "#f87171" },
@@ -962,18 +968,18 @@ export default function GraveyardPage() {
                   }
                 ].map((x, idx) => (
                   <div key={idx} style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: "16px", fontWeight: "700", color: x.c, lineHeight: 1.1 }}>{x.v}</div>
+                    <div style={{ fontSize: "14px", fontWeight: "700", color: x.c, lineHeight: 1.1 }}>{x.v}</div>
                     <div style={{ fontSize: "7px", color: "#6b7280" }}>{x.l}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", rowGap: "4px" }}>
                 {losses.slice(0, 5).map((s, idx) => (
                   <div
                     key={idx}
+                    className="text-xs leading-none"
                     style={{
-                      fontSize: "7px",
-                      padding: "3px 6px",
+                      padding: "2px 6px",
                       borderRadius: "999px",
                       color: "#f87171",
                       border: "1px solid #7f1d1d",
