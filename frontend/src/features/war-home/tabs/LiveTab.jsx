@@ -113,9 +113,7 @@ export function LiveTab({
 
   const displaySignals = useMemo(() => {
     if (!isWarMode) return warGrid;
-    return [...warGrid].sort((a, b) => {
-      return (getScore(b) >= 35 ? 1 : 0) - (getScore(a) >= 35 ? 1 : 0);
-    });
+    return [...warGrid].sort((a, b) => getScore(b) - getScore(a));
   }, [warGrid, isWarMode]);
 
   const displayVirtuosoRows = useMemo(() => {
@@ -160,14 +158,6 @@ export function LiveTab({
     const accentColor = accentColorForDecision(decision, sig.signalStrength);
     const timeLeft = sig._api?.entryWindowMinutesLeft != null ? Math.max(0, Math.round(Number(sig._api.entryWindowMinutesLeft) || 0)) : Math.max(0, Math.ceil(sec / 60));
     const hot = idx === signalCursor % Math.max(1, displaySignals.length);
-    const warScore = Number.isFinite(Number(sig._currentScore)) ? Number(sig._currentScore) : getScore(sig);
-    const warIntensityClass = isWarMode
-      ? warScore >= 90
-        ? "war-target-critical"
-        : warScore >= 70
-          ? "war-target-high"
-          : "war-target-low"
-      : "";
     const coordOnCard =
       selectedMint && sig.mint === selectedMint && deskCoordination?.redSignal ? deskCoordination.redSignal : null;
     const whyLines = whyNowBulletLines(sig);
@@ -207,7 +197,7 @@ export function LiveTab({
           });
         }}
         hideExecutionBar={isWarMode}
-        baseClassName={`apex-card terminal-card-interactive relative group mb-2 ${warIntensityClass} ${
+        baseClassName={`apex-card terminal-card-interactive group mb-2 relative ${isWarMode ? "feed-card-enter" : ""} ${
           isHeatFill
             ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat bg-gradient-to-b from-amber-950/25 to-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(250,204,21,0.18)]"
             : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live bg-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(250,204,21,0.14)]"

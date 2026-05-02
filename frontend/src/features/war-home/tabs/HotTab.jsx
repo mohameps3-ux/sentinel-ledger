@@ -73,9 +73,7 @@ export function HotTab({
   const getScore = (item) => item?.score ?? item?.sentinelScore ?? item?.unified_score ?? 0;
 
   const displaySignals = useMemo(() => {
-    let list = !isWarMode ? heatTokensForGrid : [...heatTokensForGrid].sort((a, b) => {
-      return (getScore(b) >= 35 ? 1 : 0) - (getScore(a) >= 35 ? 1 : 0);
-    });
+    let list = !isWarMode ? heatTokensForGrid : [...heatTokensForGrid].sort((a, b) => getScore(b) - getScore(a));
     if (isWarMode) list = list.slice(0, 6);
     return list;
   }, [heatTokensForGrid, isWarMode]);
@@ -179,14 +177,6 @@ export function HotTab({
             const changeNum = Number(token?.change || 0);
             const redFlags = Array.isArray(token?.redFlags) ? token.redFlags : redFlagsForSignal({ signalStrength, token: token || {} });
             const trendingRank = trendingRankDeltas.get(token?.mint) || { rank: idx + 1, delta: 0, isNew: false };
-            const warScore = Number.isFinite(Number(token?._currentScore)) ? Number(token._currentScore) : getScore(token);
-            const warIntensityClass = isWarMode
-              ? warScore >= 90
-                ? "war-target-critical"
-                : warScore >= 70
-                  ? "war-target-high"
-                  : "war-target-low"
-              : "";
 
             const apexState = deriveApexState(signalStrength);
             return (
@@ -210,7 +200,7 @@ export function HotTab({
                   });
                 }}
                 hideExecutionBar={isWarMode}
-                baseClassName={`apex-card terminal-card-interactive relative group mb-2 ${warIntensityClass} sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat p-1.5 sm:p-2 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
+                baseClassName={`apex-card terminal-card-interactive group mb-2 relative ${isWarMode ? "feed-card-enter" : ""} sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat p-1.5 sm:p-2 flex flex-col gap-1 touch-manipulation transition-all duration-200 hover:max-h-none ${
                   token?.mint
                     ? "hover:-translate-y-[1px] hover:shadow-[0_0_16px_rgba(250,204,21,0.18)]"
                     : "opacity-75"

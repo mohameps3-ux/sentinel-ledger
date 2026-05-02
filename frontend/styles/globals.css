@@ -71,38 +71,6 @@
   --sl-safe-gap: 8px;
 }
 
-body.war-mode-active {
-  --current-accent: #FF3B30;
-  --war-glow: 0 0 15px rgba(255, 59, 48, 0.2);
-}
-
-body.war-mode-active .telemetry-strip {
-  background-color: rgba(220, 38, 38, 0.04);
-  border-color: rgba(220, 38, 38, 0.15);
-}
-
-body.war-mode-active .btn-war-active {
-  border-color: #FF3B30;
-  color: #FF3B30;
-  background-color: rgba(255, 59, 48, 0.08);
-}
-
-body.war-mode-active .sl-logo-radar {
-  stroke: #FF3B30;
-}
-
-body.war-mode-active .sl-logo-center {
-  fill: #FF3B30;
-}
-
-body.war-mode-active .live-dot {
-  animation: war-blink 0.8s ease-in-out infinite;
-}
-
-body.war-mode-active .feed-row:hover {
-  background-color: rgba(220, 38, 38, 0.04);
-}
-
 @media (max-width: 640px) {
   :root {
     --sl-card-pad: 14px;
@@ -1377,38 +1345,6 @@ body.war-mode *::after {
   to { transform: rotate(360deg); }
 }
 
-/* ── WAR MODE ── */
-.war-mode .telemetry-strip {
-  background-color: rgba(220,38,38,0.04);
-  border-color: rgba(220,38,38,0.15);
-}
-
-.war-mode .sl-logo-radar {
-  stroke: #FF3B30;
-}
-
-.war-mode .sl-logo-center {
-  fill: #FF3B30;
-}
-
-.war-mode .sentinel-icon {
-  animation: sentinel-war 1.5s ease-in-out infinite;
-}
-
-.war-mode .live-dot {
-  animation: war-blink 0.8s ease-in-out infinite !important;
-}
-
-@keyframes war-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.15; }
-}
-
-@keyframes sentinel-war {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
-}
-
 @media (max-width: 768px) {
   .kpi-strip {
     display: grid;
@@ -1430,69 +1366,47 @@ body.war-mode *::after {
   }
 }
 
-/* ── WAR MODE SYSTEM ── */
-body.war-mode-active {
-  --accent: #FF3B30;
-  --accent-glow: rgba(255,59,48,0.40);
-  background-color: #010102 !important;
+/* ── FAST MODE (class `war-mode-active` on body = refresh cadence / UI hook) ── */
+body.war-mode-active .navbar-top {
+  border-top: 2px solid #2563eb;
+  animation: fastPulse 2s ease-in-out infinite;
 }
 
-body.war-mode-active::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at center, transparent 45%, rgba(0,0,0,0.65) 100%),
-    linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.10) 50%),
-    linear-gradient(90deg, rgba(255,0,0,0.03), rgba(0,255,0,0.01), rgba(0,255,255,0.03));
-  background-size: 100% 100%, 100% 4px, 3px 100%;
-  z-index: 30;
+@keyframes fastPulse {
+  0%,
+  100% {
+    border-top-color: #2563eb;
+  }
+  50% {
+    border-top-color: #60a5fa;
+  }
 }
 
-.terminal-card-interactive {
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-  will-change: transform, box-shadow;
+body.war-mode-active .fast-badge {
+  animation: fastBlink 1.5s ease-in-out infinite;
 }
 
-body.war-mode-active .terminal-card-interactive:not(.war-target) {
-  border-color: rgba(255,59,48,0.12);
+@keyframes fastBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
-body.war-mode-active .war-target {
-  border-color: #FF3B30 !important;
-  background: rgba(255,59,48,0.03) !important;
-  box-shadow: 0 0 0 1px #FF3B30, 0 0 20px rgba(255,59,48,0.40) !important;
-  transform: translateY(-2px) !important;
-  animation: warPulse 2.4s ease-in-out infinite !important;
+body.war-mode-active .feed-card-enter {
+  animation: cardSlideIn 150ms ease-out;
 }
 
-@keyframes warPulse {
-  0%, 100% { box-shadow: 0 0 12px rgba(255,59,48,0.35); }
-  50%       { box-shadow: 0 0 25px rgba(255,59,48,0.50); }
+@keyframes cardSlideIn {
+  from {
+    transform: translateY(-8px);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
-
-body.war-mode-active .telemetry-strip {
-  background-color: rgba(255,59,48,0.04);
-  border-color: rgba(255,59,48,0.20);
-}
-
-body.war-mode-active .btn-war-active {
-  border-color: #FF3B30 !important;
-  color: #FF3B30 !important;
-  background-color: rgba(255,59,48,0.08) !important;
-}
-
-body.war-mode-active .sl-logo-radar     { stroke: #FF3B30; }
-body.war-mode-active .sl-logo-center    { fill: #FF3B30; }
-body.war-mode-active .sl-logo-hex-outer { stroke: rgba(255,59,48,0.35); }
-
-body.war-mode-active .live-dot {
-  animation: war-blink 0.8s ease-in-out infinite;
-}
-
-@keyframes war-blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.15; }
-}
-

@@ -8,7 +8,7 @@ import { useLocale } from "../../contexts/LocaleContext";
 import { useLayoutEffect, useRef, useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { SentinelLogo } from "./SentinelLogo";
-import { WarModeToggle } from "../cockpit/WarModeToggle";
+import { useWarMode } from "../../contexts/WarModeContext";
 
 const PRIMARY_NAV = [
   { href: "/", label: "Home", match: "/" },
@@ -63,6 +63,7 @@ const ALL_PAGES_SECTIONS = [
 
 export function Navbar() {
   const { t } = useLocale();
+  const { isWarMode, toggleWarMode } = useWarMode();
   const router = useRouter();
   const isControlRoom = ["/ops", "/pricing", "/legal", "/privacy", "/terms", "/contact"].includes(router.pathname);
   const showTradingChrome = !isControlRoom;
@@ -133,12 +134,22 @@ export function Navbar() {
       data-sl-nav="slim"
       data-sl-ui="home-compact-v2"
       data-sentinel-build={process.env.NEXT_PUBLIC_GIT_SHA}
-      className="fixed top-0 left-0 right-0 w-full z-50 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(8,9,15,0.95)] backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
+      className="navbar-top fixed top-0 left-0 right-0 w-full z-50 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(8,9,15,0.95)] backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
     >
       <div ref={menuRef} className="relative w-full">
         <div className="hidden sm:flex items-center justify-between w-full h-12 px-8">
           <div className="flex shrink-0 items-center gap-3 min-w-0">
             <SentinelLogo />
+            <span
+              className="telemetry-strip hidden xl:inline-flex items-center rounded border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-sl-muted shrink-0"
+              title="Home signal feed refresh cadence"
+            >
+              {isWarMode ? (
+                <span className="fast-badge font-semibold text-sl-blue">FAST · 2s</span>
+              ) : (
+                <span>every 15s</span>
+              )}
+            </span>
             <div ref={allPagesRef} className="relative">
               <button
                 type="button"
@@ -226,7 +237,31 @@ export function Navbar() {
               FREE
             </span>
             <div className="mr-3">
-              <WarModeToggle />
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isWarMode}
+                aria-label={isWarMode ? "Turn off FAST mode" : "Turn on FAST mode"}
+                title={isWarMode ? "FAST mode on" : "FAST mode off"}
+                onClick={toggleWarMode}
+                className={
+                  isWarMode
+                    ? "btn-ghost-sm border-sl-blue text-sl-blue"
+                    : "btn-ghost-sm"
+                }
+              >
+                {isWarMode ? (
+                  <>
+                    <span
+                      className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-sl-blue animate-pulse"
+                      aria-hidden
+                    />
+                    FAST
+                  </>
+                ) : (
+                  "SPEED"
+                )}
+              </button>
             </div>
             <div className="ml-2">
               <WalletButton navCompact />
