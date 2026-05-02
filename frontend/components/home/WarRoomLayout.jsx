@@ -475,7 +475,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
       <div className="war-room-header">
         <div className="war-room-title-row">
           <span className="war-room-icon">⊕</span>
-          <h1 className="war-room-title">WAR ROOM</h1>
+          <h1 className="war-room-title">FAST MODE</h1>
         </div>
         <p className="war-room-subtitle">
           Real-time smart money intelligence. Act before it moves.
