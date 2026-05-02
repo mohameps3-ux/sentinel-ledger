@@ -203,6 +203,58 @@ async function buildContextPack() {
   }
 }
 
+async function callClaudeAPI(question, intent, contextPack, language) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+
+  const systemPrompt = `You are Sentinel Assistant, the AI for Sentinel Ledger — a Solana on-chain intelligence terminal.
+
+RULES:
+- Answer in ${language === "en" ? "English" : "Spanish"}
+- Be concise and technical
+- Never give financial advice
+- Add "This is not financial advice" at the end
+- Use context data if available
+
+SENTINEL CONTEXT:
+${JSON.stringify(contextPack, null, 2)}
+
+SENTINEL FEATURES:
+- Live signal feed with Sentinel Score (0-100)
+- Smart Money leaderboard (66+ verified wallets)
+- Validation Oracle (validates signals at 5/15/60 min)
+- Auto-Discovery (finds new smart wallets)
+- Telegram: @sentinelledger_intel_bot
+- Track Record: /graveyard`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 300,
+        system: systemPrompt,
+        messages: [{ role: "user", content: String(question) }]
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) {
+      console.error("[bot] Claude error:", data.error);
+      return null;
+    }
+    return data.content?.[0]?.text || null;
+  } catch (err) {
+    console.error("[bot] Claude fetch error:", err.message);
+    return null;
+  }
+}
+
 // ── TEMPLATE FILLER ──────────────────────────────────────────
 function fillTemplate(template, ctx) {
   return String(template || "")
@@ -339,8 +391,40 @@ async function handleBotMessage(message, language = "es", _sessionId) {
     };
   }
 
-  // ── LOW: structured fallback, never empty ─────────────────
+  // ── LOW: Claude API, then structured fallback ─────────────
   const ctx = await buildContextPack();
+  const claudeAnswer = await callClaudeAPI(message, "GENERAL", ctx, language);
+
+  if (claudeAnswer) {
+    if (supabase) {
+      try {
+        await supabase.from("bot_memory").upsert(
+          {
+            question_hash: hash,
+            question_sample: String(message).substring(0, 200),
+            intent: "GENERAL",
+            answer_type: "llm",
+            best_answer: claudeAnswer,
+            source: "claude",
+            confidence: 0.5,
+            language: String(language).slice(0, 5),
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: "question_hash" }
+        );
+      } catch (_) {}
+    }
+
+    return {
+      answer: claudeAnswer,
+      intent: "GENERAL",
+      source: "llm",
+      cached: false,
+      confidence_level: "LOW",
+      thumbsId: null
+    };
+  }
+
   const topics =
     language === "en"
       ? "› Signals  › Score  › Wallets  › Telegram  › PRO plans  › Track Record"
