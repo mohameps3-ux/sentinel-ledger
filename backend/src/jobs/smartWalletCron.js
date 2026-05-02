@@ -74,7 +74,7 @@ async function enqueueActiveWallets() {
       "analyze-wallet",
       { walletAddress },
       {
-        jobId: `smart-wallet:${walletAddress}`,
+        jobId: `smart-wallet_${walletAddress.replace(/:/g, "_")}`,
         removeOnComplete: 500,
         removeOnFail: 500
       }
