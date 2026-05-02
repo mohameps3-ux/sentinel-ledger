@@ -797,9 +797,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   return (
     <>
       <PageHead title={t("home.pageTitle")} description={t("home.pageDesc")} />
-      <div className="flex gap-4 px-4 pb-4 pt-[76px]">
+      <div className="flex gap-4 px-4 pb-4 pt-[52px]">
         <div className="flex-1 flex flex-col gap-3 min-w-0">
-            <div className="mt-1">
+            <div className="mb-2">
               <HomeSettings
                 strategyMode={strategyMode}
                 onStrategyModeChange={setStrategyMode}
