@@ -276,7 +276,7 @@ export const FLAT_STRINGS = {
   "war.live.confidence.build": S("BUILD POSITION", { es: "CONSTRUIR POSICIÓN", fr: "CONSTRUIRE LA POSITION", de: "POSITION AUFBAUEN", it: "COSTRUIRE POSIZIONE", ru: "НАБИРАТЬ ПОЗИЦИЮ", zh: "建仓", ko: "포지션 구축", ja: "ポジション構築", ar: "بناء مركز", pt: "MONTAR POSIÇÃO" }),
   "war.live.confidence.low": S("LOW EDGE", { es: "POCO EDGE", fr: "FAIBLE AVANTAGE", de: "GERINGE EDGE", it: "SCARSO VANTAGGIO", ru: "СЛАБОЕ ПРЕИМУЩЕСТВО", zh: "优势偏低", ko: "낮은 엣지", ja: "エッジ低め", ar: "أفضلية ضعيفة", pt: "POUCA VANTAGEM" }),
 
-  "war.hot.label": S("Hot Tokens"),
+  "war.hot.label": S("HOT TRACKED"),
   "war.hot.sub": S("Live ranking by API score: best token on top. Real metrics, swap and terminal in one click.", {
     es: "Ranking en vivo por score del API: mejor token arriba. Métricas reales, swap y ficha en un clic.",
     fr: "Classement live par score API : meilleur jeton en haut. Métriques réelles, swap et fiche en un clic.",
