@@ -28,9 +28,6 @@ export function TacticalTabs({
         role="tablist"
         aria-label={t("war.tactical.aria")}
       >
-        <span className="font-mono text-xs text-sl-muted uppercase tracking-wider shrink-0 pb-2 pt-1">
-          VELOCITY
-        </span>
         <div className="flex min-w-0 flex-1 flex-nowrap items-end gap-4">
           {tabs.map((tab) => (
             <button
