@@ -3,20 +3,10 @@ import { WalletButton } from "./WalletButton";
 import { useRouter } from "next/router";
 import { SearchBar } from "./SearchBar";
 import { APP_NAV_LINKS } from "./appNavConfig";
-import { LanguageMenu } from "./LanguageMenu";
 import { useLocale } from "../../contexts/LocaleContext";
 import { useLayoutEffect, useRef, useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { SentinelLogo } from "./SentinelLogo";
-import { useWarMode } from "../../contexts/WarModeContext";
-
-const PRIMARY_NAV = [
-  { href: "/", label: "Home", match: "/" },
-  { href: "/alerts", label: "Alerts", match: "/alerts" },
-  { href: "/graveyard", label: "Track Record", match: "/graveyard" },
-  { href: "/smart-money", label: "Smart Money", match: "/smart-money" },
-  { href: "/scanner", label: "Scanner", match: "/scanner" }
-];
 
 const ALL_PAGES_SECTIONS = [
   {
@@ -63,7 +53,6 @@ const ALL_PAGES_SECTIONS = [
 
 export function Navbar() {
   const { t } = useLocale();
-  const { isWarMode } = useWarMode();
   const router = useRouter();
   const isControlRoom = ["/ops", "/pricing", "/legal", "/privacy", "/terms", "/contact"].includes(router.pathname);
   const showTradingChrome = !isControlRoom;
@@ -140,16 +129,6 @@ export function Navbar() {
         <div className="hidden sm:flex items-center justify-between w-full h-12 px-8">
           <div className="flex shrink-0 items-center gap-3 min-w-0">
             <SentinelLogo />
-            <span
-              className="telemetry-strip hidden xl:inline-flex items-center rounded border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-sl-muted shrink-0"
-              title="Home signal feed refresh cadence"
-            >
-              {isWarMode ? (
-                <span className="fast-badge font-semibold text-sl-blue">FAST · 2s</span>
-              ) : (
-                <span>every 15s</span>
-              )}
-            </span>
             <div ref={allPagesRef} className="relative">
               <button
                 type="button"
@@ -188,77 +167,23 @@ export function Navbar() {
             </div>
           </div>
 
-          <div className="flex flex-1 min-w-0 justify-center items-center gap-5">
-            <div className="flex items-center gap-1 min-w-0 overflow-x-auto">
-              {PRIMARY_NAV.map((item) => {
-                const active = router.pathname === item.match;
-                const navLinkClass = `px-3 py-1 font-mono text-xs uppercase tracking-wider no-underline border-b-2 transition-colors whitespace-nowrap ${
-                  active
-                    ? "text-sl-text border-sl-blue"
-                    : "text-sl-muted border-transparent hover:text-sl-sub"
-                }`;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={navLinkClass}
-                    aria-current={active ? "page" : undefined}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-            <span className="sl-badge shrink-0 border-white/10 bg-white/[0.03] text-gray-500">v1.0 BETA</span>
-          </div>
-
           <div className="flex shrink-0 items-center min-w-0">
-            <div className="mr-2">
-              <LanguageMenu compact />
-            </div>
-            {showTradingChrome ? (
-              <div className="hidden lg:block shrink-0 min-w-[280px] max-w-[380px] mr-2">
-                <SearchBar compact />
-              </div>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  window.dispatchEvent(new CustomEvent("open-support-chat"));
-                }
-              }}
-              className="mr-2 inline-flex h-7 items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 font-mono text-[10px] tracking-wider text-gray-400 transition-colors duration-150 hover:bg-white/[0.08] hover:text-white"
-              title="Support"
-            >
-              HELP
-            </button>
-            <span className="mr-2 inline-flex h-7 items-center rounded-full border border-indigo-400/30 bg-indigo-500/15 px-2.5 font-mono text-[10px] font-bold tracking-[0.12em] text-indigo-100">
-              FREE
-            </span>
-            <div className="ml-2">
-              <WalletButton navCompact />
-            </div>
+            <WalletButton navCompact />
           </div>
         </div>
 
-        <div className="sm:hidden flex h-12 items-center justify-between gap-1.5 px-6 sm:px-8">
-            <div className="flex items-center gap-1 shrink-0 min-w-0">
-              <SentinelLogo />
-            </div>
-            <div className="flex items-center gap-1 shrink-0 min-w-0">
-              <button
-                type="button"
-                onClick={() => setMenuOpen((v) => !v)}
-                className="h-7 px-1.5 rounded-md border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] text-gray-200 inline-flex items-center gap-1"
-                aria-expanded={menuOpen}
-                aria-haspopup="true"
-                aria-label={t("layout.menu")}
-                title={t("layout.menu")}
-              >
-                {menuOpen ? <X size={12} /> : <Menu size={12} />}
-              </button>
-            </div>
+        <div className="sm:hidden flex h-12 items-center justify-end px-6 sm:px-8">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="h-7 px-1.5 rounded-md border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] text-gray-200 inline-flex items-center gap-1"
+            aria-expanded={menuOpen}
+            aria-haspopup="true"
+            aria-label={t("layout.menu")}
+            title={t("layout.menu")}
+          >
+            {menuOpen ? <X size={12} /> : <Menu size={12} />}
+          </button>
         </div>
 
         {menuOpen ? (

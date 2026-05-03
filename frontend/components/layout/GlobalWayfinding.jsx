@@ -74,6 +74,9 @@ export function GlobalWayfinding() {
     []
   );
 
+  const pathNorm = pathname.replace(/\/$/, "") || "/";
+  if (pathNorm === "/scanner" || pathNorm === "/smart-money") return null;
+
   return (
     <div
       className="border-b border-white/[0.08] bg-[#0c0c10]/95 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"

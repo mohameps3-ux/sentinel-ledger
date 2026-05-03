@@ -131,7 +131,11 @@ export default function App({ Component, pageProps }) {
                   }}
                   className="pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0"
                 >
-                  {router.pathname !== "/" && router.pathname !== "/smart-money" ? <GlobalWayfinding /> : null}
+                  {router.pathname !== "/" &&
+                  router.pathname !== "/smart-money" &&
+                  router.pathname !== "/scanner" ? (
+                    <GlobalWayfinding />
+                  ) : null}
                   <AppErrorBoundary>
                     <Component {...pageProps} />
                   </AppErrorBoundary>
