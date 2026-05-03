@@ -16,8 +16,7 @@ import { walletNarrativeApiLang } from "../lib/walletNarrativeLang";
 function actionUpperFromWinRate(winRate) {
   const wr = Number(winRate || 0);
   if (wr >= 88) return "FOLLOW";
-  if (wr >= 74) return "MONITOR";
-  return "IGNORE";
+  return "MONITOR";
 }
 
 function parseLimitFromQuery(raw) {
@@ -245,9 +244,9 @@ function LiveSignalFeed({ rows, timeframe, refetch, isLoading, isError, error, t
   );
   return (
     <aside className="flex flex-col min-h-0 border-l border-[#1F2937] bg-[#0B0F14] min-w-0">
-      <div className="flex items-center justify-between gap-2 border-b border-[#1F2937] px-2 py-1 text-[10px] font-mono uppercase text-gray-300">
-        <span>RECENT MARKET SIGNALS</span>
-        <button type="button" onClick={() => refetch()} className="text-[10px] font-mono text-gray-400 uppercase">
+      <div className="flex items-center gap-2 border-b border-[#1F2937] px-2 py-1 text-[10px] font-mono text-gray-300">
+        <span className="uppercase">RECENT MARKET SIGNALS</span>
+        <button type="button" onClick={() => refetch()} className="text-[10px] font-mono text-gray-400 uppercase hover:text-gray-300">
           [SYNC]
         </button>
       </div>
