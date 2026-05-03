@@ -942,11 +942,12 @@ export default function GraveyardPage() {
             </div>
           </div>
 
-          <div className="grave-insight-row" style={{ alignItems: "start" }}>
-            <div
-              className="grave-oracle-panel"
-              style={{ minHeight: 0, height: "auto", padding: "12px", boxSizing: "border-box" }}
-            >
+          <div className="grave-insight-row">
+            <div className="grave-insight-below-charts">
+              <div
+                className="grave-oracle-panel grave-insight-color-card"
+                style={{ padding: "12px", boxSizing: "border-box" }}
+              >
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
                 <div
                   style={{
@@ -1011,8 +1012,8 @@ export default function GraveyardPage() {
             </div>
 
             <div
-              className="grave-mistakes-panel"
-              style={{ minHeight: 0, height: "auto", padding: "12px", boxSizing: "border-box" }}
+              className="grave-mistakes-panel grave-insight-color-card"
+              style={{ padding: "12px", boxSizing: "border-box" }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
                 <div
@@ -1077,11 +1078,65 @@ export default function GraveyardPage() {
               </div>
             </div>
 
-            <div className="grave-status-stack">
-              <div className="grave-mini-panel">
+              <div className="grave-mini-panel grave-insight-subpanel">
+                <div className="grave-cc-t">Simulación de control de riesgo</div>
+                <div className="grave-mini-lead">Cap de pérdida aplicado (−10%)</div>
+                <div style={{ display: "grid", gap: "6px", fontSize: "8px", lineHeight: 1.4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Esperanza bruta</span>
+                    <b style={{ color: "#f87171" }}>
+                      {expectancy != null ? `${(expectancy * 100).toFixed(2)}%` : "—"}
+                    </b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Esperanza capada</span>
+                    <b style={{ color: "#f87171" }}>
+                      {cappedExpectancy != null ? `${(cappedExpectancy * 100).toFixed(2)}%` : "—"}
+                    </b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Señales cortadas</span>
+                    <b className="grave-kill-stat">{killedCount ?? 0}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>DD máx. (cap)</span>
+                    <b style={{ color: "#f87171" }}>−10.00%</b>
+                  </div>
+                </div>
+                <div className="grave-kill-banner">
+                  Escenario no viable bajo cap actual — revisar calidad de entrada
+                </div>
+              </div>
+
+              <div className="grave-mini-panel grave-insight-subpanel">
+                <div className="grave-cc-t">Indicadores del pipeline</div>
+                <div className="grave-mini-lead">Señales de calidad operativa</div>
+                <div style={{ display: "grid", gap: "6px", fontSize: "8px", lineHeight: 1.4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Tope de muestra</span>
+                    <b>{metrics?.sampleCapHit ? "Sí" : "No"}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Pendientes sin entrada</span>
+                    <b>{metrics?.pendingWithoutEntry ?? 0}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Resueltas sin resultado</span>
+                    <b>{metrics?.resolvedWithoutOutcome ?? 0}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Horizonte por defecto</span>
+                    <b>{metrics?.defaultHorizon ?? "10 min"}</b>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grave-insight-status-col">
+              <div className="grave-mini-panel grave-mini-panel--insight-tall">
                 <div className="grave-cc-t">Estado actual (48h)</div>
                 <div className="grave-mini-lead">Ventana de observación: 48h</div>
-                <div style={{ display: "grid", gap: "6px", fontSize: "8px", lineHeight: 1.4 }}>
+                <div style={{ display: "grid", gap: "6px", fontSize: "8px", lineHeight: 1.4, flex: "1 1 auto", minHeight: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Resueltas</span>
                     <b>{metrics?.resolvedRows ?? 0}</b>
@@ -1113,59 +1168,6 @@ export default function GraveyardPage() {
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Máx. drawdown</span>
                     <b>{hasMetrics ? safeDrawdown : "—"}</b>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grave-mini-panel">
-                <div className="grave-cc-t">Simulación de control de riesgo</div>
-                <div className="grave-mini-lead">Cap de pérdida aplicado (−10%)</div>
-                <div style={{ display: "grid", gap: "6px", fontSize: "8px", lineHeight: 1.4 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Esperanza bruta</span>
-                    <b style={{ color: "#f87171" }}>
-                      {expectancy != null ? `${(expectancy * 100).toFixed(2)}%` : "—"}
-                    </b>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Esperanza capada</span>
-                    <b style={{ color: "#f87171" }}>
-                      {cappedExpectancy != null ? `${(cappedExpectancy * 100).toFixed(2)}%` : "—"}
-                    </b>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Señales cortadas</span>
-                    <b className="grave-kill-stat">{killedCount ?? 0}</b>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>DD máx. (cap)</span>
-                    <b style={{ color: "#f87171" }}>−10.00%</b>
-                  </div>
-                </div>
-                <div className="grave-kill-banner">
-                  Escenario no viable bajo cap actual — revisar calidad de entrada
-                </div>
-              </div>
-
-              <div className="grave-mini-panel">
-                <div className="grave-cc-t">Indicadores del pipeline</div>
-                <div className="grave-mini-lead">Señales de calidad operativa</div>
-                <div style={{ display: "grid", gap: "6px", fontSize: "8px", lineHeight: 1.4 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Tope de muestra</span>
-                    <b>{metrics?.sampleCapHit ? "Sí" : "No"}</b>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Pendientes sin entrada</span>
-                    <b>{metrics?.pendingWithoutEntry ?? 0}</b>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Resueltas sin resultado</span>
-                    <b>{metrics?.resolvedWithoutOutcome ?? 0}</b>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Horizonte por defecto</span>
-                    <b>{metrics?.defaultHorizon ?? "10 min"}</b>
                   </div>
                 </div>
               </div>

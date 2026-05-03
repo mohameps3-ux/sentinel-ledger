@@ -3079,20 +3079,54 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 
 .grave-insight-row {
   display: flex;
-  align-items: stretch !important;
+  align-items: stretch;
   gap: 8px;
   min-width: 0;
 }
 
-.grave-insight-row > *:nth-child(1),
-.grave-insight-row > *:nth-child(2) {
+.grave-insight-row > .grave-insight-below-charts {
   flex: 1.15 1 0;
   min-width: 0;
 }
 
-.grave-insight-row > *:nth-child(3) {
+.grave-insight-row > .grave-insight-status-col {
   flex: 0.85 1 0;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.grave-insight-below-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 8px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.grave-insight-below-charts .grave-oracle-panel,
+.grave-insight-below-charts .grave-mistakes-panel {
+  height: auto;
+}
+
+.grave-insight-color-card {
+  min-height: 110px;
+  align-self: stretch;
+}
+
+.grave-insight-subpanel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.grave-mini-panel--insight-tall {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .grave-oracle-panel {
@@ -3133,13 +3167,6 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 .grave-mistakes-panel li,
 .grave-mistakes-panel .token-item {
   padding: 2px 0;
-}
-
-.grave-status-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
 }
 
 .grave-mini-panel {
