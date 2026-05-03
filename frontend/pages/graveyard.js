@@ -474,6 +474,14 @@ function ScatterPlot({ signals, correlation }) {
 
 export default function GraveyardPage() {
   const [filter, setFilter] = useState("all");
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = () => setMenuOpen(false);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
 
   const query = useQuery({
     queryKey: ["verified-track-record-full"],
@@ -652,62 +660,80 @@ export default function GraveyardPage() {
         description="Historial de señales y resultados. Auditoría continua on-chain."
       />
       <div className="grave-root">
-        <aside className="grave-sidebar">
-          <div className="grave-side-brand">
-            <div className="grave-side-brand-mark">S</div>
-            <div>
-              <div className="grave-side-brand-title">SENTINEL</div>
-              <div className="grave-side-brand-sub">Intel de mercado</div>
-            </div>
-          </div>
-
-          {[
-            { href: "/", label: "Inicio", sub: "Feed y supervisión", icon: "⌂", active: false },
-            { href: "/scanner", label: "Escáner", sub: "Buscar activo", icon: "⌕", active: false },
-            { href: "/smart-money", label: "Smart Money", sub: "Carteras y edge", icon: "◎", active: false },
-            { href: "/watchlist", label: "Watchlist", sub: "Posiciones", icon: "♡", active: false },
-            { href: "/alerts", label: "Alertas", sub: "Telegram · Pro", icon: "◫", active: false },
-            { href: "/pricing", label: "Precios", sub: "Acceso", icon: "$", active: false }
-          ].map((item) => (
-            <Link key={item.href} href={item.href} className="grave-nav-link">
-              <div className={item.active ? "grave-nav-item grave-nav-item--active" : "grave-nav-item"}>
-                <div className="grave-nav-ic">{item.icon}</div>
-                <div className="grave-nav-text">
-                  <div className="grave-nav-label">{item.label}</div>
-                  <div className="grave-nav-sub">{item.sub}</div>
-                </div>
-              </div>
-            </Link>
-          ))}
-
-          <div className="grave-side-pro">
-            <div className="grave-side-pro-title">PRO</div>
-            <div className="grave-side-pro-lead">Acceso completo</div>
-            {["Alertas Telegram", "Señalización en tiempo real", "Filtros avanzados", "Uso ampliado"].map((t) => (
-              <div key={t} className="grave-side-pro-line">
-                <span className="grave-side-pro-check">✓</span>
-                {t}
-              </div>
-            ))}
-            <Link href="/pricing">
-              <button type="button" className="grave-side-pro-btn">
-                Ver acceso
-              </button>
-            </Link>
-          </div>
-
-          <div className="grave-side-foot">
-            <div className="grave-online-dot grave-online-dot--lg" />
-            <div>
-              <div className="grave-side-foot-ok">Operativo</div>
-              <div className="grave-side-foot-sub">En línea</div>
-            </div>
-          </div>
-        </aside>
-
         <main className="grave-main">
           <div className="grave-header">
-            <div>
+            <div
+              style={{ position: "relative" }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setMenuOpen((o) => !o)}
+                style={{
+                  background: "none",
+                  border: "0.5px solid #1f2937",
+                  borderRadius: "4px",
+                  color: "#9ca3af",
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                  fontSize: "14px",
+                  fontFamily: "monospace",
+                  lineHeight: 1
+                }}
+              >
+                ☰
+              </button>
+
+              {menuOpen ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    zIndex: 9999,
+                    background: "#0d0f1a",
+                    border: "0.5px solid #1f2937",
+                    borderRadius: "6px",
+                    padding: "8px",
+                    minWidth: "180px",
+                    marginTop: "4px",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.6)"
+                  }}
+                >
+                  {[
+                    { href: "/", label: "Inicio", sub: "Feed y escáner" },
+                    { href: "/scanner", label: "Escáner", sub: "Buscar mint" },
+                    { href: "/smart-money", label: "Smart Money", sub: "Wallets y edge" },
+                    { href: "/watchlist", label: "Watchlist", sub: "Tus tokens" },
+                    { href: "/alerts", label: "Alertas", sub: "Telegram / PRO" },
+                    { href: "/pricing", label: "Precios", sub: "Acceso" },
+                    { href: "/graveyard", label: "Track Record", sub: "Historial verificado" }
+                  ].map((item) => (
+                    <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} style={{ textDecoration: "none", display: "block" }}>
+                      <div
+                        style={{
+                          padding: "6px 8px",
+                          borderRadius: "4px",
+                          marginBottom: "1px",
+                          cursor: "pointer"
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "#1f2937";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "transparent";
+                        }}
+                      >
+                        <div style={{ fontSize: "11px", color: "#e2e8f0", fontWeight: "500" }}>{item.label}</div>
+                        <div style={{ fontSize: "9px", color: "#6b7280" }}>{item.sub}</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div className="grave-hd-title">Resumen operativo · Últimas 48h</div>
               <div className="grave-hd-sub">Registro verificado on-chain · auditoría continua</div>
             </div>
