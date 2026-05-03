@@ -2792,7 +2792,7 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 /* ─── Core chart + ML ─── */
 .grave-core {
   display: grid;
-  grid-template-columns: 2.15fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   align-items: stretch;
   min-height: 0;
@@ -2805,9 +2805,16 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  min-height: 252px;
+  min-height: 160px;
+  height: 100%;
   box-sizing: border-box;
   overflow: hidden;
+}
+
+.grave-core > .grave-ml-panel,
+.grave-core > .grave-top-signals {
+  min-height: 160px;
+  height: 100%;
 }
 
 .grave-core-left .grave-cc-t {
@@ -2830,8 +2837,8 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 .grave-linechart-host svg {
   width: 100%;
   height: 100%;
-  min-height: 198px;
-  max-height: 214px;
+  min-height: 0;
+  max-height: 100%;
   display: block;
 }
 
@@ -2860,13 +2867,6 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   letter-spacing: 0.055em;
   text-transform: uppercase;
   margin-bottom: 0;
-}
-
-.grave-core-right {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 0;
 }
 
 .grave-ml-panel {

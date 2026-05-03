@@ -847,56 +847,54 @@ export default function GraveyardPage() {
               </div>
             </div>
 
-            <div className="grave-core-right">
-              <div className="grave-ml-panel">
-                <div className="grave-cc-t grave-cc-t--ml">Motor de señales</div>
-                <div className="grave-ml-hero">{(modelScore * 100).toFixed(1)}%</div>
-                <div className="grave-ml-caption">Confianza del modelo (R²)</div>
-                <div className="grave-ml-meta">
-                  Calibración (decil superior): {(calibratedConfidence * 100).toFixed(1)}% · n={rankedML.length} · pesos{" "}
-                  {weights[0].toFixed(2)}/{weights[1].toFixed(2)}/{weights[2].toFixed(2)}
-                </div>
-                <div
-                  className={
-                    modelState === "HIGH_ALPHA"
-                      ? "grave-ml-state grave-ml-state--high"
-                      : modelState === "MODERATE_ALPHA"
-                        ? "grave-ml-state grave-ml-state--mod"
-                        : modelState === "NEGATIVE_ALPHA"
-                          ? "grave-ml-state grave-ml-state--neg"
-                          : "grave-ml-state grave-ml-state--neutral"
-                  }
-                >
-                  {modelState === "HIGH_ALPHA"
-                    ? "Alfa · elevado"
+            <div className="grave-ml-panel">
+              <div className="grave-cc-t grave-cc-t--ml">Motor de señales</div>
+              <div className="grave-ml-hero">{(modelScore * 100).toFixed(1)}%</div>
+              <div className="grave-ml-caption">Confianza del modelo (R²)</div>
+              <div className="grave-ml-meta">
+                Calibración (decil superior): {(calibratedConfidence * 100).toFixed(1)}% · n={rankedML.length} · pesos{" "}
+                {weights[0].toFixed(2)}/{weights[1].toFixed(2)}/{weights[2].toFixed(2)}
+              </div>
+              <div
+                className={
+                  modelState === "HIGH_ALPHA"
+                    ? "grave-ml-state grave-ml-state--high"
                     : modelState === "MODERATE_ALPHA"
-                      ? "Alfa · moderado"
+                      ? "grave-ml-state grave-ml-state--mod"
                       : modelState === "NEGATIVE_ALPHA"
-                        ? "Alfa · negativo"
-                        : "Neutro"}
-                </div>
+                        ? "grave-ml-state grave-ml-state--neg"
+                        : "grave-ml-state grave-ml-state--neutral"
+                }
+              >
+                {modelState === "HIGH_ALPHA"
+                  ? "Alfa · elevado"
+                  : modelState === "MODERATE_ALPHA"
+                    ? "Alfa · moderado"
+                    : modelState === "NEGATIVE_ALPHA"
+                      ? "Alfa · negativo"
+                      : "Neutro"}
               </div>
+            </div>
 
-              <div className="grave-top-signals">
-                <div className="grave-cc-t grave-cc-t--signals">Señales alfa</div>
-                {rankedML.slice(0, 5).map((sig, i) => {
-                  const cIdx = completed.findIndex((c, j) => {
-                    const k =
-                      c?.id != null ? String(c.id) : `ml-${j}-${String(c.emitted_at || c.time || c.mint || "")}`;
-                    return k === sig.signalKey;
-                  });
-                  const srcRow = cIdx >= 0 ? completed[cIdx] : null;
-                  const pred = sig.score;
-                  return (
-                    <div key={`${sig.signalKey}-${i}`} className="grave-top-signal-row">
-                      <span className="grave-top-signal-sym">
-                        {(srcRow?.asset || srcRow?.symbol || sig.source || "???").slice(0, 8)}
-                      </span>
-                      <span className="grave-top-signal-pct">{(pred * 100).toFixed(1)}%</span>
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="grave-top-signals">
+              <div className="grave-cc-t grave-cc-t--signals">Señales alfa</div>
+              {rankedML.slice(0, 5).map((sig, i) => {
+                const cIdx = completed.findIndex((c, j) => {
+                  const k =
+                    c?.id != null ? String(c.id) : `ml-${j}-${String(c.emitted_at || c.time || c.mint || "")}`;
+                  return k === sig.signalKey;
+                });
+                const srcRow = cIdx >= 0 ? completed[cIdx] : null;
+                const pred = sig.score;
+                return (
+                  <div key={`${sig.signalKey}-${i}`} className="grave-top-signal-row">
+                    <span className="grave-top-signal-sym">
+                      {(srcRow?.asset || srcRow?.symbol || sig.source || "???").slice(0, 8)}
+                    </span>
+                    <span className="grave-top-signal-pct">{(pred * 100).toFixed(1)}%</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
