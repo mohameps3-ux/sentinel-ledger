@@ -24,6 +24,13 @@ function safeSupabase() {
   }
 }
 
+/** Redis + Cache-Control for GET /track-record. Default 15s; set TRACK_RECORD_CACHE_SECONDS (5–120). */
+function trackRecordCacheSeconds() {
+  const n = Number(process.env.TRACK_RECORD_CACHE_SECONDS);
+  if (!Number.isFinite(n)) return 15;
+  return Math.min(120, Math.max(5, Math.floor(n)));
+}
+
 function statusFromPct(pct) {
   if (pct == null || Number.isNaN(pct)) return "PENDING";
   if (pct > 0) return "WIN";
@@ -469,7 +476,7 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     meta: {
       source: "supabase:validation_oracle",
       filter,
-      cache_ttl_sec: 60
+      cache_ttl_sec: trackRecordCacheSeconds()
     }
   };
 }
@@ -580,7 +587,7 @@ router.get("/desk-proof-of-edge", async (req, res) => {
 
 /**
  * GET /api/v1/signals/track-record
- * Validation Oracle trust ledger. Cached for 60s; never fabricates metrics.
+ * Validation Oracle trust ledger. Redis TTL configurable (see trackRecordCacheSeconds).
  */
 router.get("/track-record", async (req, res) => {
   const supabase = safeSupabase();
@@ -591,10 +598,11 @@ router.get("/track-record", async (req, res) => {
   const page = Math.max(1, Number(req.query.page || 1));
   const pageSize = Math.max(1, Math.min(50, Number(req.query.limit || 25)));
   const cacheKey = `signals:track-record:v3:${filter}:${page}:${pageSize}`;
+  const cacheSec = trackRecordCacheSeconds();
   try {
     const cached = await redis.get(cacheKey);
     if (cached) {
-      res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=60");
+      res.set("Cache-Control", `public, max-age=${cacheSec}, stale-while-revalidate=${cacheSec}`);
       return res.json({ ...cached, cached: true });
     }
   } catch (error) {
@@ -603,11 +611,11 @@ router.get("/track-record", async (req, res) => {
   try {
     const body = await buildTrackRecordPayload(supabase, { filter, page, pageSize });
     try {
-      await redis.set(cacheKey, body, { ex: 60 });
+      await redis.set(cacheKey, body, { ex: cacheSec });
     } catch (error) {
       console.warn("[track-record] cache write failed:", error?.message || error);
     }
-    res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=60");
+    res.set("Cache-Control", `public, max-age=${cacheSec}, stale-while-revalidate=${cacheSec}`);
     console.log("[track-record] verified signal history live");
     return res.json(body);
   } catch (error) {

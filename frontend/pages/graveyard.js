@@ -4,6 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { PageHead } from "../components/seo/PageHead";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 
+/** Client poll interval for Track Record (ms). Env NEXT_PUBLIC_TRACK_RECORD_POLL_MS; default 10s, clamp 3s–120s. */
+const TRACK_RECORD_POLL_MS = (() => {
+  const n = Number(process.env.NEXT_PUBLIC_TRACK_RECORD_POLL_MS);
+  if (Number.isFinite(n) && n >= 3000) return Math.min(n, 120000);
+  return 10000;
+})();
+
 /** Cap pages to avoid flooding the API on very large ledgers. */
 const METRICS_MAX_PAGES = 40;
 
@@ -503,7 +510,10 @@ export default function GraveyardPage() {
   const query = useQuery({
     queryKey: ["verified-track-record-full"],
     queryFn: fetchTrackRecordFull,
-    refetchInterval: 60000
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: TRACK_RECORD_POLL_MS
   });
 
   const data = query.data || {};
