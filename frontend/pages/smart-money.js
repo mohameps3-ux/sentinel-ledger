@@ -9,17 +9,15 @@ import { useWalletFavorites } from "../hooks/useWalletFavorites";
 import { formatUsdWhole, formatDateTime } from "../lib/formatStable";
 import { PageHead } from "../components/seo/PageHead";
 import { SmartWalletDetailPanel } from "../components/smart-money/SmartWalletDetailPanel";
-import { Loader2, Radio, SlidersHorizontal, Star } from "lucide-react";
 import { WalletNarrativeCard } from "../components/WalletNarrativeCard";
 import { useLocale } from "../contexts/LocaleContext";
 import { walletNarrativeApiLang } from "../lib/walletNarrativeLang";
-import { TerminalActionIcons } from "../components/terminal/TerminalActionIcons";
 
 function walletDecision(winRate, t) {
   const wr = Number(winRate || 0);
-  if (wr >= 88) return { label: t("smart.decision.follow"), tone: "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" };
-  if (wr >= 74) return { label: t("smart.decision.monitor"), tone: "text-amber-300 border-amber-500/30 bg-amber-500/10" };
-  return { label: t("smart.decision.ignore"), tone: "text-red-300 border-red-500/30 bg-red-500/10" };
+  if (wr >= 88) return { label: t("smart.decision.follow"), tone: "text-emerald-400" };
+  if (wr >= 74) return { label: t("smart.decision.monitor"), tone: "text-amber-400" };
+  return { label: t("smart.decision.ignore"), tone: "text-rose-500" };
 }
 
 const MIN_HORIZON_SAMPLE = 5;
@@ -41,12 +39,54 @@ function parseLimitFromQuery(raw) {
   return Math.min(100, Math.max(1, Math.round(n)));
 }
 
-/** e.target a veces es nodo de texto; #text no tiene .closest (rompía el expand). */
 function eventTargetInInteractive(t) {
   if (!t) return false;
   const el = t.nodeType === 1 ? t : t.parentElement;
   if (!el || typeof el.closest !== "function") return false;
-  return Boolean(el.closest("a, button, [data-no-row-expand]"));
+  return Boolean(el.closest("a, button, [data-no-row-expand], summary, details"));
+}
+
+function median(nums) {
+  const a = nums.filter((n) => Number.isFinite(n)).sort((x, y) => x - y);
+  if (!a.length) return null;
+  const m = Math.floor(a.length / 2);
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+
+function truncateAddr(addr) {
+  if (!addr || addr.length < 12) return addr || "—";
+  return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+}
+
+function wlFromWinRate(totalTrades, winRate) {
+  const tt = Number(totalTrades || 0);
+  const wr = Number(winRate || 0);
+  if (!tt) return { w: 0, l: 0 };
+  const w = Math.round(tt * (wr / 100));
+  const l = Math.max(0, tt - w);
+  return { w, l };
+}
+
+function profitFactorApprox(totalTrades, winRate) {
+  const { w, l } = wlFromWinRate(totalTrades, winRate);
+  if (!w && !l) return null;
+  if (l === 0) return "—";
+  return (w / l).toFixed(2);
+}
+
+function activityInTimeframe(createdAt, tf) {
+  if (!createdAt) return true;
+  const t = new Date(createdAt).getTime();
+  if (!Number.isFinite(t)) return true;
+  const now = Date.now();
+  const ms = tf === "24h" ? 86400000 : tf === "7d" ? 86400000 * 7 : 86400000 * 30;
+  return now - t <= ms;
+}
+
+function signalTypeLabel(side) {
+  const s = String(side || "").toLowerCase();
+  if (s.includes("pool") || s.includes("lp") || s.includes("liquidity")) return "LP";
+  return "SWAP";
 }
 
 function ExpandedWalletNarrativeSection({ wallet, narrativeLang }) {
@@ -54,35 +94,429 @@ function ExpandedWalletNarrativeSection({ wallet, narrativeLang }) {
     <section
       data-testid="smart-money-expanded-wallet-narrative"
       data-wallet={wallet}
-      className="terminal-panel p-3 shadow-[0_0_22px_rgba(250,204,21,0.14)]"
+      className="border border-[#1F2937] bg-[#0D1117] p-2"
     >
       <WalletNarrativeCard walletAddress={wallet} lang={narrativeLang} />
     </section>
   );
 }
 
-function SmartMoneyKpiStrip({ rows, activityRows }) {
-  const total = rows.length;
-  const avgWin = total ? rows.reduce((sum, w) => sum + Number(w.winRate || 0), 0) / total : null;
-  const activeToday = activityRows.length;
-  const best = rows.reduce((acc, w) => (Number(w.winRate || 0) > Number(acc?.winRate || 0) ? w : acc), null);
+function TerminalHeader({
+  trending,
+  timeframe,
+  setTimeframe,
+  soloFavorites,
+  pushQuery,
+  routerReady,
+  limit,
+  chain,
+  setChain,
+  minWinRate,
+  setMinWinRate,
+  minTrades,
+  setMinTrades,
+  narrativeLang,
+  derivedNarrative,
+  setNarrativeOverride,
+  refetchLb,
+  t
+}) {
   return (
-    <section className="kpi-strip w-full mb-4">
-      <div className="kpi-block"><span className="kpi-label">TOTAL WALLETS</span><span className="kpi-number">{total || "—"}</span></div>
-      <div className="kpi-block"><span className="kpi-label">AVG WIN RATE</span><span className="kpi-number">{avgWin != null ? `${avgWin.toFixed(1)}%` : "—"}</span></div>
-      <div className="kpi-block"><span className="kpi-label">ACTIVE TODAY</span><span className="kpi-number">{activeToday || "—"}</span></div>
-      <div className="kpi-block"><span className="kpi-label">BEST PERFORMER</span><span className="kpi-number">{best?.winRate != null ? `${Number(best.winRate).toFixed(1)}%` : "—"}</span></div>
-    </section>
+    <header className="border border-[#1F2937] bg-[#0D1117] px-2 py-1.5 flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-[11px] font-semibold tracking-widest uppercase text-gray-300">
+          SENTINEL SMX // SMART MONEY LEADERBOARD
+        </h1>
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[9px] font-mono text-gray-500">
+            TREND:{trending.isError ? "[-]" : "[+]"}
+          </span>
+          <span className="flex items-center gap-1 text-[9px] font-mono text-emerald-400 uppercase">
+            <span className="h-1.5 w-1.5 rounded-none bg-emerald-400 animate-pulse" aria-hidden />
+            ENGINE LIVE
+          </span>
+          {(["24h", "7d", "30d"]).map((tf) => (
+            <button
+              key={tf}
+              type="button"
+              onClick={() => setTimeframe(tf)}
+              className={`px-2 py-0.5 border border-[#1F2937] text-[10px] font-mono uppercase transition-colors ${
+                timeframe === tf ? "bg-[#111722] text-gray-100" : "text-gray-500 hover:bg-[#1a2233]"
+              }`}
+            >
+              {tf}
+            </button>
+          ))}
+          <details className="relative group" data-no-row-expand>
+            <summary className="list-none cursor-pointer px-2 py-0.5 border border-[#1F2937] text-[10px] font-mono text-gray-400 hover:bg-[#1a2233] [&::-webkit-details-marker]:hidden">
+              [ ≡ ]
+            </summary>
+            <div className="absolute right-0 mt-0.5 z-20 min-w-[160px] border border-[#1F2937] bg-[#0B0F14] py-0.5 text-[9px] font-mono divide-y divide-[#1F2937]">
+              <Link href="/" className="block px-2 py-1 text-indigo-400 hover:bg-[#111722] hover:text-indigo-300">
+                [ / ] HOME
+              </Link>
+              <Link href="/scanner" className="block px-2 py-1 text-indigo-400 hover:bg-[#111722] hover:text-indigo-300">
+                [ &gt; ] SCANNER
+              </Link>
+              <Link href="/graveyard" className="block px-2 py-1 text-indigo-400 hover:bg-[#111722] hover:text-indigo-300">
+                [ G ] GRAVEYARD
+              </Link>
+              <Link href="/wallet-stalker" className="block px-2 py-1 text-indigo-400 hover:bg-[#111722] hover:text-indigo-300">
+                [ W ] WALLET STALKER
+              </Link>
+              <Link href="/pricing" className="block px-2 py-1 text-indigo-400 hover:bg-[#111722] hover:text-indigo-300">
+                [ $ ] PRICING
+              </Link>
+            </div>
+          </details>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-end gap-1 text-[10px] text-gray-500">
+        <label className="flex flex-col gap-0.5">
+          <span className="text-[9px] uppercase tracking-widest">LIMIT</span>
+          <select
+            className="border border-[#1F2937] bg-[#0B0F14] px-2 py-0.5 font-mono text-[10px] text-gray-100"
+            value={String(limit)}
+            onChange={(e) => {
+              const v = parseLimitFromQuery(e.target.value);
+              pushQuery({ limit: v === 50 ? undefined : String(v) });
+            }}
+            disabled={!routerReady}
+          >
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="75">75</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-0.5">
+          <span className="text-[9px] uppercase tracking-widest">CHAIN</span>
+          <select
+            className="border border-[#1F2937] bg-[#0B0F14] px-2 py-0.5 font-mono text-[10px] text-gray-100"
+            value={chain}
+            onChange={(e) => setChain(e.target.value)}
+          >
+            <option value="solana">{t("smart.filters.opt.solana")}</option>
+            <option value="all">{t("smart.filters.opt.all")}</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-0.5">
+          <span className="text-[9px] uppercase tracking-widest">MIN WR</span>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            className="border border-[#1F2937] bg-[#0B0F14] w-14 px-1 py-0.5 font-mono text-[10px] text-gray-100"
+            value={minWinRate || ""}
+            placeholder="0"
+            onChange={(e) => setMinWinRate(Number(e.target.value || 0))}
+          />
+        </label>
+        <label className="flex flex-col gap-0.5">
+          <span className="text-[9px] uppercase tracking-widest">MIN TR</span>
+          <input
+            type="number"
+            min={0}
+            className="border border-[#1F2937] bg-[#0B0F14] w-14 px-1 py-0.5 font-mono text-[10px] text-gray-100"
+            value={minTrades || ""}
+            placeholder="0"
+            onChange={(e) => setMinTrades(Number(e.target.value || 0))}
+          />
+        </label>
+        <label className="flex flex-col gap-0.5">
+          <span className="text-[9px] uppercase tracking-widest">NAR</span>
+          <select
+            className="border border-[#1F2937] bg-[#0B0F14] px-2 py-0.5 font-mono text-[10px] text-gray-100"
+            value={narrativeLang}
+            onChange={(e) => {
+              const v = e.target.value;
+              setNarrativeOverride(v === derivedNarrative ? null : v);
+            }}
+          >
+            <option value="es">ES</option>
+            <option value="en">EN</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-1 px-1 pb-0.5 cursor-pointer">
+          <input
+            type="checkbox"
+            className="rounded-sm border-[#1F2937] h-3 w-3"
+            checked={soloFavorites}
+            onChange={(e) => {
+              if (e.target.checked) pushQuery({ favorites: "1" });
+              else pushQuery({ favorites: undefined });
+            }}
+            disabled={!routerReady}
+          />
+          <span className="text-[9px] uppercase tracking-widest text-gray-500">FAV ONLY</span>
+        </label>
+        <button
+          type="button"
+          onClick={() => refetchLb()}
+          className="ml-auto px-2 py-0.5 border border-[#1F2937] font-mono text-[9px] text-gray-400 hover:bg-[#1a2233]"
+        >
+          [ REFRESH LB ]
+        </button>
+      </div>
+    </header>
   );
 }
 
-function WinRateBar({ value }) {
-  const pct = Math.max(0, Math.min(100, Number(value || 0)));
+function MetricsRow({ totalTracked, medianWinRate, avgPnl30, avgUnifiedScore, activeProbes24h }) {
+  const cells = [
+    { label: "TOTAL TRACKED WALLETS", value: totalTracked != null ? String(totalTracked) : "—" },
+    { label: "MEDIAN WIN RATE", value: medianWinRate != null ? `${medianWinRate.toFixed(1)}%` : "—" },
+    { label: "AVG 30D PnL", value: avgPnl30 != null ? `+$${formatUsdWhole(avgPnl30)}` : "—" },
+    { label: "AVG UNIFIED SCORE", value: avgUnifiedScore != null ? avgUnifiedScore.toFixed(2) : "—" },
+    { label: "ACTIVE PROBES (24H)", value: activeProbes24h != null ? String(activeProbes24h) : "—" }
+  ];
   return (
-    <div className="flex items-center gap-2">
-      <span className="data-pos">{pct.toFixed(1)}%</span>
-      <div className="score-track w-16">
-        <div className="score-fill-high" style={{ width: `${pct}%` }} />
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1">
+      {cells.map((c) => (
+        <div key={c.label} className="flex flex-col p-2 border border-[#1F2937] bg-[#0D1117]">
+          <span className="text-[9px] text-gray-500 uppercase tracking-wide">{c.label}</span>
+          <span className="text-base font-mono text-gray-100 tabular-nums mt-0.5">{c.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LiveSignalFeed({ rows, timeframe, refetch, isLoading, isError, error, t }) {
+  const filtered = useMemo(
+    () => rows.filter((r) => activityInTimeframe(r.createdAt, timeframe)),
+    [rows, timeframe]
+  );
+  return (
+    <aside className="border border-[#1F2937] bg-[#0D1117] flex flex-col min-h-0 lg:sticky lg:top-1 lg:max-h-[calc(100vh-72px)]">
+      <div className="text-[10px] border-b border-[#1F2937] p-2 font-semibold tracking-widest uppercase text-gray-300 flex items-center justify-between gap-1">
+        <span>RECENT MARKET SIGNALS</span>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="font-mono text-[9px] text-indigo-400 hover:text-indigo-300 px-1"
+        >
+          [ SYNC ]
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto divide-y divide-[#1F2937] min-h-[120px]">
+        {isLoading ? (
+          <div className="p-4 text-[10px] font-mono text-gray-500 animate-pulse">
+            &gt; CONNECTING TO DATA STREAM...
+          </div>
+        ) : null}
+        {isError ? (
+          <div className="p-2 text-[10px] font-mono text-rose-500">{error?.message || t("smart.activity.error")}</div>
+        ) : null}
+        {!isLoading && !isError && filtered.length === 0 ? (
+          <div className="p-2 text-[10px] font-mono text-gray-500">{t("smart.activity.empty")}</div>
+        ) : null}
+        {!isLoading &&
+          !isError &&
+          filtered.map((r) => {
+            const tick = r.token ? truncateAddr(r.token) : "—";
+            const typ = signalTypeLabel(r.side);
+            const conf = Number.isFinite(r.confidence) ? Math.round(r.confidence) : "—";
+            const ts = r.createdAt ? formatDateTime(r.createdAt) : "—";
+            const buySell = String(r.side || "").toLowerCase().includes("sell") ? "[-]" : "[+]";
+            return (
+              <div key={`${r.wallet}-${r.token}-${r.createdAt}`} className="p-2 hover:bg-[#111722] transition-colors">
+                <div className="text-[10px] font-mono text-gray-100">
+                  {buySell} {tick}{" "}
+                  <span className="text-amber-400">{typ}</span>{" "}
+                  <span className="text-gray-500">CONF</span>{" "}
+                  <span className={Number(conf) >= 60 ? "text-emerald-400" : "text-gray-400"}>{conf}%</span>
+                </div>
+                <div className="text-[9px] font-mono text-gray-500 mt-0.5">{ts}</div>
+              </div>
+            );
+          })}
+      </div>
+    </aside>
+  );
+}
+
+function WalletTable({
+  displayedRanked,
+  soloFavorites,
+  expandedWallet,
+  onToggleExpand,
+  isFavorite,
+  toggleFavorite,
+  labelFor,
+  titleFor,
+  narrativeLang,
+  t,
+  onCopyWallet
+}) {
+  return (
+    <div className="border border-[#1F2937] bg-[#0D1117] min-w-0 flex flex-col min-h-0 flex-1">
+      <div className="text-[10px] border-b border-[#1F2937] p-2 font-semibold tracking-widest uppercase text-gray-300">
+        WALLET UNIVERSE // {displayedRanked.length} ROWS
+      </div>
+      <div className="overflow-auto flex-1 min-h-[200px]">
+        <table className="w-full min-w-[920px] border-collapse text-left">
+          <thead className="sticky top-0 z-[1] bg-[#0B0F14]">
+            <tr className="border-b border-[#1F2937]">
+              {["", "RANK", "WALLET", "SCORE", "WIN RATE", "30D PnL", "TRADES (W/L)", "PROFIT FACTOR", "LAST ACTIVE", "ACTION"].map(
+                (h) => (
+                  <th
+                    key={h || "fav"}
+                    className="text-[11px] font-semibold tracking-widest uppercase text-gray-500 px-1 py-1.5 font-sans"
+                  >
+                    {h}
+                  </th>
+                )
+              )}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#1F2937]">
+            {displayedRanked.map((w, idx) => {
+              const raw = Number(w.winRate || 0);
+              const { w: wc, l: lc } = wlFromWinRate(w.totalTrades, w.winRate);
+              const pf = profitFactorApprox(w.totalTrades, w.winRate);
+              const pnl = Number(w.pnl30d || 0);
+              const pnlCls = pnl >= 0 ? "text-emerald-400" : "text-rose-500";
+              const wrCls = raw >= 50 ? "text-emerald-400" : "text-rose-500";
+              const rowBg = idx % 2 === 0 ? "bg-[#0D1117]" : "bg-[#111722]";
+              const uScore = w.score != null && Number.isFinite(Number(w.score)) ? Number(w.score) : null;
+              const dec = walletDecision(w.winRate, t);
+              return (
+                <Fragment key={w.wallet}>
+                  <tr
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={expandedWallet === w.wallet}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onToggleExpand(w.wallet);
+                      }
+                    }}
+                    onClick={(e) => {
+                      if (eventTargetInInteractive(e.target)) return;
+                      onToggleExpand(w.wallet);
+                    }}
+                    className={`${rowBg} hover:bg-[#1a2233] transition-colors border-b border-[#1F2937] cursor-pointer`}
+                  >
+                    <td className="p-1 align-middle">
+                      <button
+                        type="button"
+                        data-no-row-expand
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(w.wallet);
+                        }}
+                        className="font-mono text-[9px] text-amber-400 hover:text-amber-300 px-0.5"
+                      >
+                        {isFavorite(w.wallet) ? "[★]" : "[ ]"}
+                      </button>
+                    </td>
+                    <td className="p-1 align-middle font-mono text-[10px] text-gray-100">
+                      {soloFavorites ? (
+                        <>
+                          #{w.rank}
+                          <span className="block text-[9px] text-gray-500">
+                            GLB {w.globalRank}
+                          </span>
+                        </>
+                      ) : (
+                        w.rank
+                      )}
+                    </td>
+                    <td className="p-1 align-middle min-w-[120px]">
+                      <div className="text-[10px] text-gray-100 font-medium truncate" title={titleFor(w.wallet)}>
+                        {labelFor(w.wallet)}
+                      </div>
+                      <div className="font-mono text-[10px] text-gray-500 truncate" title={w.wallet}>
+                        {truncateAddr(w.wallet)}
+                      </div>
+                      {hasLowHorizonSample(w.profile) ? (
+                        <span className="text-[9px] font-mono text-amber-400">[!] LOW N</span>
+                      ) : null}
+                    </td>
+                    <td className="p-1 align-middle font-mono text-[10px] text-gray-100 tabular-nums">
+                      {uScore != null ? uScore.toFixed(2) : "—"}
+                    </td>
+                    <td className={`p-1 align-middle font-mono text-[10px] tabular-nums ${wrCls}`}>
+                      {Number(w.winRate || 0).toFixed(1)}%
+                    </td>
+                    <td className={`p-1 align-middle font-mono text-[10px] tabular-nums ${pnlCls}`}>
+                      {pnl >= 0 ? "+" : "-"}${formatUsdWhole(Math.abs(pnl))}
+                    </td>
+                    <td className="p-1 align-middle font-mono text-[10px] text-gray-100 tabular-nums">
+                      {w.totalTrades ?? "—"}{" "}
+                      <span className="text-gray-500">
+                        ({wc}/{lc})
+                      </span>
+                    </td>
+                    <td className="p-1 align-middle font-mono text-[10px] text-gray-100 tabular-nums">
+                      {pf ?? "—"}
+                    </td>
+                    <td className="p-1 align-middle font-mono text-[10px] text-gray-400 whitespace-nowrap">
+                      {w.lastSeen ? formatDateTime(w.lastSeen) : "—"}
+                    </td>
+                    <td className="p-1 align-middle" onClick={(e) => e.stopPropagation()}>
+                      <details className="relative" data-no-row-expand>
+                        <summary className="list-none cursor-pointer font-mono text-[9px] text-indigo-400 hover:text-indigo-300 px-0.5 [&::-webkit-details-marker]:hidden">
+                          [ ··· ]
+                        </summary>
+                        <div className="absolute right-0 mt-0.5 z-10 min-w-[140px] border border-[#1F2937] bg-[#0B0F14] py-0.5 text-[9px] font-mono">
+                          <button
+                            type="button"
+                            className="block w-full text-left px-2 py-1 text-indigo-400 hover:bg-[#111722]"
+                            onClick={() => onCopyWallet(w.wallet)}
+                          >
+                            [ COPY ]
+                          </button>
+                          <Link
+                            href={`/wallet/${w.wallet}?lang=${narrativeLang}`}
+                            className="block px-2 py-1 text-indigo-400 hover:bg-[#111722]"
+                          >
+                            [ ANALYZE ]
+                          </Link>
+                          <Link
+                            href={`/wallet/${w.wallet}?lang=${narrativeLang}#behavior-memory`}
+                            className="block px-2 py-1 text-indigo-400 hover:bg-[#111722]"
+                          >
+                            [ BEHAVIOR ]
+                          </Link>
+                          {w.bestTradeMint ? (
+                            <Link
+                              href={`/token/${w.bestTradeMint}`}
+                              className="block px-2 py-1 text-indigo-400 hover:bg-[#111722]"
+                            >
+                              [ TOKEN ]
+                            </Link>
+                          ) : null}
+                        </div>
+                      </details>
+                      <div className={`text-[9px] font-mono mt-0.5 ${dec.tone}`}>{dec.label}</div>
+                    </td>
+                  </tr>
+                  {expandedWallet === w.wallet ? (
+                    <tr className="bg-[#0B0F14] border-b border-[#1F2937]">
+                      <td colSpan={10} className="p-2">
+                        <p className="text-[10px] font-semibold tracking-wide text-gray-500 mb-1">{t("smart.detail.title")}</p>
+                        <ExpandedWalletNarrativeSection wallet={w.wallet} narrativeLang={narrativeLang} />
+                        <div className="mt-2">
+                          <SmartWalletDetailPanel
+                            row={w}
+                            labelFor={labelFor}
+                            titleFor={titleFor}
+                            narrativeLang={narrativeLang}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -99,8 +533,9 @@ export default function SmartMoneyPage() {
   const [minWinRate, setMinWinRate] = useState(0);
   const [minTrades, setMinTrades] = useState(0);
   const [expandedWallet, setExpandedWallet] = useState("");
-  /** Evita error de hidratación: SSG/SSR y la primera capa de cliente usan el mismo límite/filtro; la query real se aplica al montar. */
   const [urlHydrated, setUrlHydrated] = useState(false);
+  const [timeframe, setTimeframe] = useState("24h");
+
   useEffect(() => {
     setUrlHydrated(true);
   }, []);
@@ -185,571 +620,151 @@ export default function SmartMoneyPage() {
     setExpandedWallet((v) => (v === wallet ? "" : wallet));
   }, []);
 
+  const onCopyWallet = useCallback(async (addr) => {
+    if (!addr) return;
+    try {
+      await navigator.clipboard.writeText(addr);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const medianWinRate = useMemo(() => {
+    if (!displayedRanked.length) return null;
+    return median(displayedRanked.map((w) => Number(w.winRate || 0)));
+  }, [displayedRanked]);
+
+  const avgPnl30 = useMemo(() => {
+    if (!displayedRanked.length) return null;
+    const sum = displayedRanked.reduce((a, w) => a + Number(w.pnl30d || 0), 0);
+    return sum / displayedRanked.length;
+  }, [displayedRanked]);
+
+  const avgUnifiedScore = useMemo(() => {
+    if (!displayedRanked.length) return null;
+    const nums = displayedRanked.map((w) => Number(w.score)).filter(Number.isFinite);
+    if (!nums.length) return null;
+    return nums.reduce((a, b) => a + b, 0) / nums.length;
+  }, [displayedRanked]);
+
+  const activeProbes24h = useMemo(
+    () => actRows.filter((r) => activityInTimeframe(r.createdAt, "24h")).length,
+    [actRows]
+  );
+
   return (
     <>
       <PageHead title={t("smart.pageTitle")} description={t("smart.pageDesc")} />
-      <div className="sl-container py-10 space-y-6 pb-24">
-        <section className="sl-home-hero sl-inset sm:p-7 ring-1 ring-white/[0.06]">
-          <p className="sl-label text-emerald-400/90">{t("smart.label")}</p>
-          <h1 className="sl-h1 text-sl-text mt-2 tracking-tight">
-            {soloFavorites
-              ? t("smart.hero.h1.favorites", {
-                  limit,
-                  suffix: displayedRanked.length > 0 ? ` · ${displayedRanked.length}` : ""
-                })
-              : t("smart.hero.h1.top", { limit })}
-          </h1>
-          <p className="sl-body sl-muted mt-2">
-            {soloFavorites ? (
-              <span>{t("smart.hero.body.favorites", { limit })}</span>
-            ) : (
-              <span>
-                {t("smart.hero.body.default", {
-                  source: meta.source || "—",
-                  rows: heroRowsSuffix
-                })}
-              </span>
-            )}{" "}
-            <span>{t("smart.hero.body.tail")}</span>
-          </p>
-          <p className="text-xs text-sl-muted mt-3">
-            {t("smart.hero.trending", {
-              state: trending.isError ? t("smart.hero.trending.degraded") : t("smart.hero.trending.connected"),
-              fav: favCount > 0 ? String(favCount) : "0"
-            })}{" "}
-            <button type="button" onClick={() => refetch()} className="btn-ghost-sm">
-              {t("smart.hero.refreshLb")}
-            </button>
-          </p>
-        </section>
+      <div className="min-h-screen bg-[#0B0F14] text-gray-100 p-1 pb-4 font-sans overflow-x-hidden">
+        <div className="max-w-[1600px] mx-auto flex flex-col gap-1 min-h-[calc(100vh-8px)]">
+          <TerminalHeader
+            trending={trending}
+            timeframe={timeframe}
+            setTimeframe={setTimeframe}
+            soloFavorites={soloFavorites}
+            pushQuery={pushQuery}
+            routerReady={router.isReady}
+            limit={limit}
+            chain={chain}
+            setChain={setChain}
+            minWinRate={minWinRate}
+            setMinWinRate={setMinWinRate}
+            minTrades={minTrades}
+            setMinTrades={setMinTrades}
+            narrativeLang={narrativeLang}
+            derivedNarrative={derivedNarrative}
+            setNarrativeOverride={setNarrativeOverride}
+            refetchLb={refetch}
+            t={t}
+          />
 
-        <SmartMoneyKpiStrip rows={displayedRanked} activityRows={actRows} />
-
-        <section className="glass-card sl-inset space-y-4">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-sl-sub">
-            <SlidersHorizontal size={16} className="text-sl-muted" />
-            <span className="sl-label text-sl-sub">{t("smart.filters.label")}</span>
+          <div className="text-[9px] font-mono text-gray-500 px-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+            <span>
+              [ META ] {soloFavorites ? `FAV · ${displayedRanked.length}` : `TOP ${limit}`} · SRC {meta.source || "—"}{" "}
+              {heroRowsSuffix}
+            </span>
+            {favCount > 0 ? <span>[ FAV STORAGE ] {favCount}</span> : null}
+            <span>{t("smart.filters.roiNote")}</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            <label className="space-y-1.5 text-xs text-sl-sub">
-              <span className="uppercase tracking-wide">{t("smart.filters.apiLimit")}</span>
-              <select
-                className="sl-input w-full h-10 px-3"
-                value={String(limit)}
-                onChange={(e) => {
-                  const v = parseLimitFromQuery(e.target.value);
-                  pushQuery({ limit: v === 50 ? undefined : String(v) });
-                }}
-                disabled={!router.isReady}
-              >
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="30">30</option>
-                <option value="50">{t("smart.select.default50")}</option>
-                <option value="75">75</option>
-                <option value="100">100</option>
-              </select>
-            </label>
-            <label className="space-y-1.5 text-xs text-sl-sub">
-              <span className="uppercase tracking-wide">{t("smart.filters.chain")}</span>
-              <select
-                className="sl-input w-full h-10 px-3"
-                value={chain}
-                onChange={(e) => setChain(e.target.value)}
-              >
-                <option value="solana">{t("smart.filters.opt.solana")}</option>
-                <option value="all">{t("smart.filters.opt.all")}</option>
-              </select>
-            </label>
-            <label className="space-y-1.5 text-xs text-sl-sub">
-              <span className="uppercase tracking-wide">{t("smart.filters.minWr")}</span>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                className="sl-input w-full h-10 px-3 mono"
-                value={minWinRate || ""}
-                placeholder="0"
-                onChange={(e) => setMinWinRate(Number(e.target.value || 0))}
-              />
-            </label>
-            <label className="space-y-1.5 text-xs text-sl-sub">
-              <span className="uppercase tracking-wide">{t("smart.filters.minTrades")}</span>
-              <input
-                type="number"
-                min={0}
-                className="sl-input w-full h-10 px-3 mono"
-                value={minTrades || ""}
-                placeholder="0"
-                onChange={(e) => setMinTrades(Number(e.target.value || 0))}
-              />
-            </label>
-            <label className="space-y-1.5 text-xs text-sl-sub">
-              <span className="uppercase tracking-wide">{t("smart.filters.narrativeLang")}</span>
-              <select
-                className="sl-input w-full h-10 px-3"
-                value={narrativeLang}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setNarrativeOverride(v === derivedNarrative ? null : v);
-                }}
-              >
-                <option value="es">Español</option>
-                <option value="en">English</option>
-              </select>
-            </label>
-            <label className="flex items-end gap-2 pb-1.5 h-full cursor-pointer text-xs text-sl-sub">
-              <input
-                type="checkbox"
-                className="rounded border-white/20 h-4 w-4"
-                checked={soloFavorites}
-                onChange={(e) => {
-                  if (e.target.checked) pushQuery({ favorites: "1" });
-                  else pushQuery({ favorites: undefined });
-                }}
-                disabled={!router.isReady}
-              />
-              <span className="select-none">{t("smart.filters.favoritesOnly")}</span>
-            </label>
-          </div>
-          <p className="text-[11px] text-sl-muted">{t("smart.filters.roiNote")}</p>
-        </section>
 
-        {isLoading ? (
-          <div className="glass-card sl-inset flex items-center justify-center gap-3 py-16 text-sl-sub">
-            <Loader2 className="animate-spin" size={22} />
-            {t("smart.loading")}
-          </div>
-        ) : null}
+          <MetricsRow
+            totalTracked={displayedRanked.length}
+            medianWinRate={medianWinRate}
+            avgPnl30={avgPnl30}
+            avgUnifiedScore={avgUnifiedScore}
+            activeProbes24h={activeProbes24h}
+          />
 
-        {isError ? (
-          <div className="glass-card sl-inset border border-red-500/30 text-red-200 text-sm py-6 px-4">
-            {error?.message || t("smart.errorFallback")}
-          </div>
-        ) : null}
-
-        {!isLoading && !isError && ranked.length === 0 ? (
-          <section className="glass-card sl-inset text-center py-12 space-y-3">
-            <p className="text-sl-sub">{t("smart.empty.title")}</p>
-            <p className="text-sm text-sl-muted max-w-lg mx-auto">
-              {t("smart.empty.hint")}
-            </p>
-            <Link href="/pricing" className="btn-pro inline-flex no-underline mt-2">
-              {t("smart.empty.upgrade")}
-            </Link>
-          </section>
-        ) : null}
-
-        {!isLoading && !isError && ranked.length > 0 && displayedRanked.length === 0 && soloFavorites ? (
-          <section className="glass-card sl-inset text-center py-12 space-y-3 border border-amber-500/20">
-            <p className="text-sl-sub">{t("smart.favEmpty.title", { limit })}</p>
-            <p className="text-sm text-sl-muted max-w-lg mx-auto">{t("smart.favEmpty.hint")}</p>
-            <button
-              type="button"
-              className="btn-ghost-sm"
-              onClick={() => pushQuery({ favorites: undefined })}
-            >
-              {t("smart.favEmpty.clear")}
-            </button>
-          </section>
-        ) : null}
-
-        {!isLoading && !isError && displayedRanked.length > 0 ? (
-          <>
-            <section className="terminal-panel overflow-x-auto hidden xl:block">
-              <div className="panel-header">
-                <span className="section-title">SMART WALLET LEADERBOARD</span>
-                <span className="font-mono text-2xs text-sl-muted">{displayedRanked.length} wallets</span>
-              </div>
-              <table className="data-table min-w-[1200px]">
-                <thead>
-                  <tr>
-                    <th className="data-th w-8 text-center" title={t("smart.th.fav")}>
-                      FAV
-                    </th>
-                    <th className="data-th w-10">{t("smart.th.rank")}</th>
-                    <th className="data-th">{t("smart.th.wallet")}</th>
-                    <th className="data-th">{t("smart.th.winRate")}</th>
-                    <th className="data-th">{t("smart.th.wrReal")}</th>
-                    <th className="data-th">{t("smart.th.roi")}</th>
-                    <th className="data-th">{t("smart.th.pnl")}</th>
-                    <th className="data-th">{t("smart.th.trades")}</th>
-                    <th className="data-th">{t("smart.th.best")}</th>
-                    <th className="data-th">{t("smart.th.lastSeen")}</th>
-                    <th className="data-th min-w-[160px]">{t("smart.th.call")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedRanked.map((w) => (
-                    <Fragment key={w.wallet}>
-                      <tr
-                        role="button"
-                        tabIndex={0}
-                        aria-expanded={expandedWallet === w.wallet}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            onToggleExpand(w.wallet);
-                          }
-                        }}
-                        onClick={(e) => {
-                          if (eventTargetInInteractive(e.target)) return;
-                          onToggleExpand(w.wallet);
-                        }}
-                        className="feed-row group"
-                      >
-                        <td className="data-td text-center align-top">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(w.wallet);
-                            }}
-                            className="btn-ghost-sm"
-                            title={isFavorite(w.wallet) ? t("smart.fav.removeTitle") : t("smart.fav.addTitle")}
-                            aria-pressed={isFavorite(w.wallet)}
-                            aria-label={t("smart.fav.aria")}
-                          >
-                            <Star
-                              size={16}
-                              className={
-                                isFavorite(w.wallet) ? "fill-amber-400/90 text-amber-200" : "text-sl-muted"
-                              }
-                              strokeWidth={isFavorite(w.wallet) ? 0 : 2}
-                            />
-                          </button>
-                        </td>
-                        <td className="data-td mono text-xs align-top">
-                          {soloFavorites ? (
-                            <div>
-                              <span className="text-sl-sub">#{w.rank}</span>
-                              <div
-                                className="text-[10px] text-sl-muted"
-                                title={t("smart.globalRankTitle", { limit })}
-                              >
-                                {t("smart.global")} {w.globalRank}
-                              </div>
-                            </div>
-                          ) : (
-                            w.rank
-                          )}
-                        </td>
-                        <td className="data-td">
-                          <div className="min-w-0">
-                            <div className="text-sl-sub font-medium truncate" title={titleFor(w.wallet)}>
-                              <Link
-                                className="hover:text-cyan-300"
-                                href={`/wallet/${w.wallet}?lang=${narrativeLang}`}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {labelFor(w.wallet)}
-                              </Link>
-                            </div>
-                            <div className="font-mono text-[11px] text-sl-muted truncate">{w.wallet}</div>
-                          </div>
-                        </td>
-                        <td className="data-td"><WinRateBar value={w.winRate} /></td>
-                        <td className="data-td text-[11px] leading-tight">
-                          {w.profile ? (
-                            <div className="space-y-0.5">
-                              <div className="font-mono">
-                                5m {Number(w.profile.winRateReal5m || 0).toFixed(1)}% · 30m{" "}
-                                {Number(w.profile.winRateReal30m || 0).toFixed(1)}% · 2h{" "}
-                                {Number(w.profile.winRateReal2h || 0).toFixed(1)}%
-                              </div>
-                              <div className="text-sl-muted">
-                                n {w.profile.resolvedSignals5m || 0}/{w.profile.resolvedSignals30m || 0}/
-                                {w.profile.resolvedSignals2h || 0}
-                              </div>
-                              {hasLowHorizonSample(w.profile) ? (
-                                <div className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border border-amber-500/35 bg-amber-500/10 text-amber-200">
-                                  {t("smart.lowSample")}
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <span className="text-sl-muted">{t("smart.pending")}</span>
-                          )}
-                        </td>
-                        <td className="data-td text-cyan-200/90 tabular-nums">
-                          <div className="flex items-center gap-3">
-                            <span>{Number(w.roi30dVsAvgSize || 0).toFixed(2)}×</span>
-                          </div>
-                        </td>
-                        <td className="data-td text-emerald-200/90 tabular-nums">+${formatUsdWhole(w.pnl30d)}</td>
-                        <td className="data-td tabular-nums">{w.totalTrades ?? "—"}</td>
-                        <td className="data-td text-xs">
-                          {w.bestTradePct != null ? (
-                            <span className="text-emerald-300 font-mono">+{w.bestTradePct.toFixed(1)}%</span>
-                          ) : (
-                            <span className="text-sl-muted">—</span>
-                          )}
-                          {w.bestTradeMint ? (
-                            <div className="flex items-center gap-2 mt-1">
-                              <Link
-                                className="hover:text-cyan-300 text-[10px] text-sl-muted mono truncate max-w-[120px]"
-                                href={`/token/${w.bestTradeMint}`}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                mint…{w.bestTradeMint.slice(-4)}
-                              </Link>
-                              <TerminalActionIcons mint={w.bestTradeMint} className="scale-90 origin-left" />
-                            </div>
-                          ) : null}
-                        </td>
-                        <td className="data-td text-xs whitespace-nowrap">
-                          {w.lastSeen ? formatDateTime(w.lastSeen) : "—"}
-                        </td>
-                        <td className="data-td">
-                          <div className="flex items-center gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                            <span className={`text-xs px-2 py-1 border ${w.decision.tone}`}>{w.decision.label}</span>
-                            <Link
-                              href={`/wallet/${w.wallet}?lang=${narrativeLang}#behavior-memory`}
-                              className="btn-ghost-sm"
-                            >
-                              {t("smart.behavior")}
-                            </Link>
-                            <button
-                              type="button"
-                              onClick={() => onToggleExpand(w.wallet)}
-                              className="btn-ghost-sm"
-                            >
-                              {expandedWallet === w.wallet ? t("smart.panel.close") : t("smart.panel.open")}
-                            </button>
-                          </div>
-                          {w.profile ? (
-                            <p className="text-[10px] text-sl-muted mt-1 max-w-[260px]">
-                              pre-pump ${formatUsdWhole(w.profile.avgSizePrePumpUsd || 0)} · latency{" "}
-                              {w.profile.avgLatencyPostDeployMin != null
-                                ? `${Number(w.profile.avgLatencyPostDeployMin).toFixed(1)}m`
-                                : "—"}{" "}
-                              · solo/grp {Math.round(Number(w.profile.soloBuyRatio || 0) * 100)}%/
-                              {Math.round(Number(w.profile.groupBuyRatio || 0) * 100)}% · anti/brk{" "}
-                              {Math.round(Number(w.profile.anticipatoryBuyRatio || 0) * 100)}%/
-                              {Math.round(Number(w.profile.breakoutBuyRatio || 0) * 100)}%
-                            </p>
-                          ) : null}
-                        </td>
-                      </tr>
-                      {expandedWallet === w.wallet ? (
-                        <tr className="border-b border-white/5 bg-sl-card">
-                          <td colSpan={11} className="px-3 py-4">
-                            <p className="text-xs text-violet-200/80 font-semibold mb-3">{t("smart.detail.title")}</p>
-                            <ExpandedWalletNarrativeSection wallet={w.wallet} narrativeLang={narrativeLang} />
-                            <SmartWalletDetailPanel
-                              row={w}
-                              labelFor={labelFor}
-                              titleFor={titleFor}
-                              narrativeLang={narrativeLang}
-                            />
-                          </td>
-                        </tr>
-                      ) : null}
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-
-            <section className="grid grid-cols-1 gap-3 xl:hidden">
-              {displayedRanked.map((w) => (
-                <article
-                  key={w.wallet}
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={expandedWallet === w.wallet}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onToggleExpand(w.wallet);
-                    }
-                  }}
-                  onClick={(e) => {
-                    if (eventTargetInInteractive(e.target)) return;
-                    onToggleExpand(w.wallet);
-                  }}
-                  className="terminal-card-interactive p-4 space-y-2 hover:border-emerald-500/25 transition cursor-pointer"
-                >
-                  <div className="flex justify-between gap-2 items-start">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sl-text font-semibold truncate" title={titleFor(w.wallet)}>
-                        #{w.rank}
-                        {soloFavorites ? (
-                          <span className="text-sl-muted font-normal text-xs ml-1">
-                            ({t("smart.global")} {w.globalRank})
-                          </span>
-                        ) : null}{" "}
-                        ·{" "}
-                        <Link
-                          className="hover:text-cyan-300"
-                          href={`/wallet/${w.wallet}?lang=${narrativeLang}`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {labelFor(w.wallet)}
-                        </Link>
-                      </p>
-                      <p className="font-mono text-[11px] text-sl-muted truncate">{w.wallet}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleFavorite(w.wallet);
-                        }}
-                        className="btn-ghost-sm"
-                        title={isFavorite(w.wallet) ? t("smart.fav.removeTitle") : t("smart.fav.mobileTitle")}
-                        aria-pressed={isFavorite(w.wallet)}
-                        aria-label={t("smart.fav.aria")}
-                      >
-                        <Star
-                          size={18}
-                          className={isFavorite(w.wallet) ? "fill-amber-400/90 text-amber-200" : "text-sl-muted"}
-                          strokeWidth={isFavorite(w.wallet) ? 0 : 2}
-                        />
-                      </button>
-                      <span className={`text-xs px-2 py-1 border ${w.decision.tone}`}>{w.decision.label}</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs text-sl-sub">
-                    <span>
-                      {t("smart.mobile.win")} {w.winRate.toFixed(1)}%
-                    </span>
-                    <span>
-                      {t("smart.mobile.roi")} {Number(w.roi30dVsAvgSize || 0).toFixed(2)}×
-                    </span>
-                    <span>
-                      {t("smart.mobile.trades")} {w.totalTrades ?? "—"}
-                    </span>
-                    <span className="text-sl-muted">{w.lastSeen ? formatDateTime(w.lastSeen) : "—"}</span>
-                  </div>
-                  {w.profile ? (
-                    <div className="space-y-1">
-                      <p className="text-[11px] text-sl-sub">
-                        WR real: 5m {Number(w.profile.winRateReal5m || 0).toFixed(1)}% · 30m{" "}
-                        {Number(w.profile.winRateReal30m || 0).toFixed(1)}% · 2h {Number(w.profile.winRateReal2h || 0).toFixed(1)}%
-                      </p>
-                      {hasLowHorizonSample(w.profile) ? (
-                        <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 border border-amber-500/35 bg-amber-500/10 text-amber-200">
-                          {t("smart.lowSampleMobile", { n: MIN_HORIZON_SAMPLE })}
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  <p className="text-emerald-300 text-sm font-mono">
-                    +${formatUsdWhole(w.pnl30d)} {t("smart.mobile.pnl30")}
-                  </p>
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link
-                        href={`/wallet/${w.wallet}?lang=${narrativeLang}#behavior-memory`}
-                        className="btn-ghost-sm"
-                      >
-                        {t("smart.behavior")}
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => onToggleExpand(w.wallet)}
-                        className="btn-ghost-sm"
-                      >
-                        {expandedWallet === w.wallet ? t("smart.panel.close") : t("smart.panel.openFull")}
-                      </button>
-                    </div>
-                  </div>
-                  {w.bestTradePct != null ? (
-                    <div className="text-[11px] text-sl-sub">
-                      {t("smart.mobile.bestSignal")}{" "}
-                      <span className="text-emerald-300">+{w.bestTradePct.toFixed(1)}%</span>
-                      {w.bestTradeMint ? (
-                        <>
-                          {" "}
-                          {t("smart.mobile.on")}{" "}
-                          <Link
-                            href={`/token/${w.bestTradeMint}`}
-                            className="text-cyan-300 hover:underline mono"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            …{w.bestTradeMint.slice(-4)}
-                          </Link>
-                          <div className="inline-flex align-middle ml-1">
-                            <TerminalActionIcons mint={w.bestTradeMint} className="scale-90 origin-left" />
-                          </div>
-                        </>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  {expandedWallet === w.wallet ? (
-                    <div className="pt-2 space-y-3 border-t border-sl-border" onClick={(e) => e.stopPropagation()}>
-                      <p className="text-xs text-violet-200/80 font-semibold">{t("smart.detail.title")}</p>
-                      <ExpandedWalletNarrativeSection wallet={w.wallet} narrativeLang={narrativeLang} />
-                      <SmartWalletDetailPanel
-                        row={w}
-                        labelFor={labelFor}
-                        titleFor={titleFor}
-                        narrativeLang={narrativeLang}
-                      />
-                    </div>
-                  ) : null}
-                </article>
-              ))}
-            </section>
-          </>
-        ) : null}
-
-        <section className="glass-card sl-inset space-y-4">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="sl-label inline-flex items-center gap-2 text-sl-sub">
-              <Radio size={14} className="text-purple-300" />
-              {t("smart.activity.label")}
-            </p>
-            <button
-              type="button"
-              onClick={() => activity.refetch()}
-              className="text-xs text-cyan-400 hover:underline"
-            >
-              {t("smart.activity.refresh")}
-            </button>
-          </div>
-          {activity.isLoading ? (
-            <div className="flex items-center gap-2 text-sl-muted text-sm py-6">
-              <Loader2 className="animate-spin" size={18} />
-              {t("smart.activity.loading")}
+          {isLoading ? (
+            <div className="border border-[#1F2937] bg-[#0D1117] p-6">
+              <div className="text-[10px] font-mono text-gray-500 animate-pulse">&gt; CONNECTING TO DATA STREAM...</div>
             </div>
           ) : null}
-          {activity.isError ? (
-            <p className="text-sm text-red-300">{activity.error?.message || t("smart.activity.error")}</p>
+
+          {isError ? (
+            <div className="border border-[#1F2937] bg-[#0D1117] p-4 text-[10px] font-mono text-rose-500">
+              {error?.message || t("smart.errorFallback")}
+            </div>
           ) : null}
-          {!activity.isLoading && !activity.isError && actRows.length === 0 ? (
-            <p className="text-sm text-sl-muted">{t("smart.activity.empty")}</p>
+
+          {!isLoading && !isError && ranked.length === 0 ? (
+            <div className="border border-[#1F2937] bg-[#0D1117] p-6 text-center space-y-2">
+              <p className="text-[10px] font-mono text-gray-500 uppercase">{t("smart.empty.title")}</p>
+              <p className="text-[10px] font-mono text-gray-500 max-w-lg mx-auto">{t("smart.empty.hint")}</p>
+              <Link
+                href="/pricing"
+                className="inline-block text-[10px] font-mono text-indigo-400 hover:text-indigo-300 border border-[#1F2937] px-2 py-1"
+              >
+                [ UPGRADE ]
+              </Link>
+            </div>
           ) : null}
-          {!activity.isLoading && !activity.isError && actRows.length > 0 ? (
-            <ul className="divide-y divide-white/[0.06] border border-white/[0.06] overflow-hidden">
-              {actRows.map((r) => (
-                <li key={`${r.wallet}-${r.token}-${r.createdAt}`} className="px-3 py-2.5 flex flex-wrap gap-2 text-sm bg-white/[0.015]">
-                  <span className="mono text-sl-sub text-xs">{r.wallet?.slice(0, 4)}…{r.wallet?.slice(-4)}</span>
-                  <span
-                    className={`text-[11px] font-semibold uppercase px-2 py-0.5 border ${
-                      String(r.side).toLowerCase().includes("sell")
-                        ? "border-red-500/30 text-red-200 bg-red-500/10"
-                        : "border-emerald-500/30 text-emerald-200 bg-emerald-500/10"
-                    }`}
-                  >
-                    {r.side}
-                  </span>
-                  <div className="inline-flex items-center gap-2">
-                    <Link href={`/token/${r.token}`} className="text-cyan-300 hover:underline mono text-xs truncate max-w-[160px]">
-                      {r.token?.slice(0, 4)}…{r.token?.slice(-4)}
-                    </Link>
-                    <TerminalActionIcons mint={r.token} className="scale-90 origin-left" />
-                  </div>
-                  <span className="text-sl-muted text-xs ml-auto tabular-nums">
-                    {r.createdAt ? formatDateTime(r.createdAt) : "—"}
-                  </span>
-                </li>
-              ))}
-            </ul>
+
+          {!isLoading && !isError && ranked.length > 0 && displayedRanked.length === 0 && soloFavorites ? (
+            <div className="border border-amber-900/50 bg-[#0D1117] p-6 text-center space-y-2">
+              <p className="text-[10px] font-mono text-amber-400 uppercase">{t("smart.favEmpty.title", { limit })}</p>
+              <p className="text-[10px] font-mono text-gray-500">{t("smart.favEmpty.hint")}</p>
+              <button
+                type="button"
+                className="text-[10px] font-mono text-indigo-400 border border-[#1F2937] px-2 py-1 hover:bg-[#111722]"
+                onClick={() => pushQuery({ favorites: undefined })}
+              >
+                [ CLEAR FAV FILTER ]
+              </button>
+            </div>
           ) : null}
-        </section>
+
+          {!isLoading && !isError && displayedRanked.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-1 flex-1 min-h-0">
+              <div className="lg:col-span-9 flex flex-col min-h-[280px] min-w-0">
+                <WalletTable
+                  displayedRanked={displayedRanked}
+                  soloFavorites={soloFavorites}
+                  expandedWallet={expandedWallet}
+                  onToggleExpand={onToggleExpand}
+                  isFavorite={isFavorite}
+                  toggleFavorite={toggleFavorite}
+                  labelFor={labelFor}
+                  titleFor={titleFor}
+                  narrativeLang={narrativeLang}
+                  t={t}
+                  onCopyWallet={onCopyWallet}
+                />
+              </div>
+              <div className="lg:col-span-3 flex flex-col min-h-[200px] min-w-0">
+                <LiveSignalFeed
+                  rows={actRows}
+                  timeframe={timeframe}
+                  refetch={activity.refetch}
+                  isLoading={activity.isLoading}
+                  isError={activity.isError}
+                  error={activity.error}
+                  t={t}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
     </>
   );
