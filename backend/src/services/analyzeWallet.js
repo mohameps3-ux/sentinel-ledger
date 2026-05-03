@@ -7,6 +7,7 @@ const {
   computeConsistencyScore,
   detectCluster
 } = require("./smartWalletScoring");
+const { isRealTrade } = require("./transactionClassifier");
 
 function pickTokenTransfers(tx) {
   const meta = tx?.meta;
@@ -45,6 +46,7 @@ function pickTokenTransfers(tx) {
 }
 
 function inferBuyEvents(walletAddress, tx) {
+  if (!isRealTrade(tx)) return [];
   const tokenTransfers = pickTokenTransfers(tx);
   const slotTime = tx?.blockTime ? new Date(tx.blockTime * 1000).toISOString() : new Date().toISOString();
   return tokenTransfers
@@ -59,6 +61,7 @@ function inferBuyEvents(walletAddress, tx) {
 
 /** Token balance decreases for this owner → treat as sell / exit leg (best-effort). */
 function inferSellEvents(walletAddress, tx) {
+  if (!isRealTrade(tx)) return [];
   const meta = tx?.meta;
   const post = meta?.postTokenBalances || [];
   const pre = meta?.preTokenBalances || [];

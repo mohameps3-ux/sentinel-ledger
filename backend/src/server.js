@@ -108,6 +108,7 @@ const { getMarketDataCircuitStatus, getMarketDataProviderStats } = require("./se
 const { getDataFreshnessSnapshot } = require("./services/homeTerminalApi");
 const { isVapidKeyMaterialPresent } = require("./services/tacticalRegimeWebPush");
 const { getSignalGateOpsSnapshot } = require("./services/signalEmissionGate");
+const { getClassifierStats } = require("./services/transactionClassifier");
 const sentinelOrchestrator = require("./orchestrator/sentinelOrchestrator");
 const {
   startSignalGateTunerCron,
@@ -285,7 +286,10 @@ app.get("/health", async (_, res) => {
       lastStats: getClusterRankingStats()
     },
     signalGate: getSignalGateOpsSnapshot(),
-    signalGateTuner: getSignalGateTunerCronStatus()
+    signalGateTuner: getSignalGateTunerCronStatus(),
+    transactionClassifier: {
+      stats: getClassifierStats()
+    }
   };
   if (missingCritical.length) {
     return res.status(503).json(body);

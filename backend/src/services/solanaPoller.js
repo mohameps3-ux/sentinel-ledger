@@ -17,6 +17,7 @@ const { getMarketData } = require("./marketData");
 const { evaluateSignalEmission } = require("./signalEmissionGate");
 const { buildAlphaLayer } = require("./signalAlphaLayer");
 const { trackSmartBuyAndDetect } = require("./convergenceService");
+const { classifyTransaction } = require("./transactionClassifier");
 
 const SOURCE = "solana_rpc_poller";
 const DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com";
@@ -137,6 +138,7 @@ function parseTokenBalanceDeltas(tx, wallet, signature) {
   if (!tx || typeof tx !== "object") return [];
   const meta = tx.meta || {};
   if (meta.err) return [];
+  const txType = classifyTransaction(tx);
   const pre = new Map();
   for (const b of Array.isArray(meta.preTokenBalances) ? meta.preTokenBalances : []) {
     if (b?.owner === wallet && b?.mint) pre.set(balanceKey(b), uiAmount(b));
@@ -163,6 +165,7 @@ function parseTokenBalanceDeltas(tx, wallet, signature) {
       signature,
       timestamp,
       type: delta > 0 ? "buy" : "sell",
+      tx_type: txType,
       slot: Number(tx.slot) || 0,
       blockHash: tx.transaction?.message?.recentBlockhash || ""
     });
@@ -377,7 +380,12 @@ async function processWallet(wallet) {
   for (const signature of candidates.reverse()) {
     const parsed = await getParsedTransaction(signature);
     const txs = parseTokenBalanceDeltas(parsed, wallet, signature);
-    for (const tx of txs) {
+    // Filter to real swaps only for scoring/alerting
+    // Non-SWAP deltas (transfers, airdrops, LP, wraps) are
+    // preserved in txs for any audit/balance tracking,
+    // but only tradeTxs feeds the scoring pipeline.
+    const tradeTxs = txs.filter((t) => t.tx_type === "SWAP");
+    for (const tx of tradeTxs) {
       if (await emitTransaction(tx, logIndex)) emitted += 1;
       logIndex += 1;
     }
