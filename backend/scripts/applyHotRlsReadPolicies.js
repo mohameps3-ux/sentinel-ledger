@@ -2,6 +2,9 @@
 /**
  * HOT tab / trending: public SELECT on tables that had RLS enabled without read policies.
  * Postgres has no CREATE POLICY IF NOT EXISTS; use DROP IF EXISTS + CREATE.
+ *
+ * Not run on API deploy — execute when needed: npm run db:apply-hot-rls-read-policies (cwd: backend).
+ * Railway: railway run npm run db:apply-hot-rls-read-policies. See README § Supabase.
  */
 require("dotenv").config({ path: require("path").join(__dirname, "..", ".env") });
 const { Client } = require("pg");

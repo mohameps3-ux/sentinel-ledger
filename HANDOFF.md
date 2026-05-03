@@ -238,6 +238,7 @@ Minimum to consider the feature **complete in production** (no extra code if you
 
 - Run migrations **once** on that Supabase project: `npm run db:ensure-signal-performance --prefix backend` (or `node backend/scripts/applySignalPerformanceSchema.js` with `DATABASE_URL` / `SUPABASE_DATABASE_URL` set), **or** apply by hand in order: **003 → 011 → 010 → 012 → 013 → 014** (`013` = RLS `coordination_outcomes`; `014` = RLS `wallet_behavior_stats` + `wallet_coordination_pairs`; service role bypasses). **CLI alternativa:** `supabase db push` si usas el flujo Supabase CLI con estas migraciones versionadas.
 - Tras **014**, revisa **Security Advisor** en Supabase: el aviso de tablas públicas sin RLS debería desaparecer tras un refresco (si aún ves hallazgos, vuelve a ejecutar el advisor).
+- **HOT / trending (`auto_discovered_wallets`, `signal_outcomes`):** si RLS está activo pero hace falta lectura pública acotada para esas tablas, el repo incluye `npm run db:apply-hot-rls-read-policies --prefix backend` (no se ejecuta en el deploy de Railway; es one-off con `DATABASE_URL` / URL Postgres, o `railway run npm run db:apply-hot-rls-read-policies` desde `backend/`). Detalle: **README → § Supabase**.
 - In SQL editor, confirm `wallet_coordination_alerts` and `coordination_outcomes` exist and the FK from 012 to alerts is valid (no error on join).
 
 ### 2) Environment (Railway / hosting)
