@@ -269,7 +269,11 @@ function LineChart({ signals }) {
   const ref = useRef(null);
   const W = 520;
   const H = 206;
-  const PAD = 15;
+  const PAD = 18;
+  const axisFs = 11;
+  const axisFill = "#cbd5e1";
+  const axisWeak = "#94a3b8";
+  const badgeFs = 11;
 
   const points = useMemo(() => {
     if (!signals?.length) return "";
@@ -350,18 +354,18 @@ function LineChart({ signals }) {
         y1={H / 2}
         x2={W - PAD}
         y2={H / 2}
-        stroke="#1f2937"
-        strokeWidth="0.5"
-        strokeDasharray="3 3"
+        stroke="#334155"
+        strokeWidth="0.75"
+        strokeDasharray="4 4"
       />
-      <text x={PAD} y={12} fill="#64748b" fontSize="6" fontFamily="monospace">
+      <text x={PAD} y={16} fill={axisWeak} fontSize={axisFs} fontFamily="monospace" fontWeight="600">
         +
       </text>
-      <text x={PAD} y={H / 2 + 5} fill="#64748b" fontSize="6" fontFamily="monospace">
+      <text x={PAD} y={H / 2 + 5} fill={axisFill} fontSize={axisFs} fontFamily="monospace" fontWeight="600">
         0%
       </text>
-      <text x={PAD} y={H - 6} fill="#64748b" fontSize="6" fontFamily="monospace">
-        -
+      <text x={PAD} y={H - PAD - 4} fill={axisWeak} fontSize={axisFs} fontFamily="monospace" fontWeight="600">
+        −
       </text>
       {points ? (
         <>
@@ -386,25 +390,25 @@ function LineChart({ signals }) {
           />
         </>
       ) : (
-        <text x={W / 2} y={H / 2 + 4} textAnchor="middle" fill="#64748b" fontSize="7" fontFamily="monospace">
+        <text x={W / 2} y={H / 2 + 5} textAnchor="middle" fill={axisFill} fontSize={12} fontFamily="monospace" fontWeight="500">
           Serie en formación
         </text>
       )}
       {lastPct != null ? (
         <>
-          <rect x={W - 52} y={H - 22} width={40} height={11} rx="2" fill="rgba(92, 38, 38, 0.85)" />
-          <text x={W - 50} y={H - 13} fill="#e89191" fontSize="7" fontFamily="monospace">
+          <rect x={W - 68} y={H - 36} width={56} height={18} rx="3" fill="rgba(92, 38, 38, 0.92)" stroke="#fca5a5" strokeWidth="0.5" />
+          <text x={W - 40} y={H - 22} textAnchor="middle" fill="#fecaca" fontSize={badgeFs} fontFamily="monospace" fontWeight="700">
             {(lastPct * 100).toFixed(2)}%
           </text>
         </>
       ) : null}
-      <text x={PAD} y={H} fill="#64748b" fontSize="6" fontFamily="monospace">
-        -48h
+      <text x={PAD + 2} y={H - 4} fill={axisFill} fontSize={axisFs} fontFamily="monospace" fontWeight="600">
+        −48h
       </text>
-      <text x={W / 2 - 10} y={H} fill="#64748b" fontSize="6" fontFamily="monospace">
-        -24h
+      <text x={W / 2} y={H - 4} textAnchor="middle" fill={axisFill} fontSize={axisFs} fontFamily="monospace" fontWeight="600">
+        −24h
       </text>
-      <text x={W - 28} y={H} fill="#64748b" fontSize="6" fontFamily="monospace">
+      <text x={W - PAD - 2} y={H - 4} textAnchor="end" fill={axisFill} fontSize={axisFs} fontFamily="monospace" fontWeight="600">
         Actual
       </text>
     </svg>

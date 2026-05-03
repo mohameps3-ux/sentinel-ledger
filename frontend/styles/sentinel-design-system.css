@@ -2836,8 +2836,8 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 }
 
 .grave-chart-sub {
-  font-size: 12px;
-  color: var(--g-label);
+  font-size: 13px;
+  color: #94a3b8;
   letter-spacing: 0.04em;
   line-height: 1.35;
   margin-bottom: 4px;
@@ -2854,9 +2854,9 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 }
 
 .grave-cc-t--chart {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 650;
-  color: var(--g-text-dim);
+  color: var(--g-text);
   letter-spacing: 0.055em;
   text-transform: uppercase;
   margin-bottom: 0;
