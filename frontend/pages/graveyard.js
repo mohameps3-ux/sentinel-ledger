@@ -951,20 +951,20 @@ export default function GraveyardPage() {
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
                 <div
                   style={{
-                    width: "14px",
-                    height: "14px",
+                    width: "16px",
+                    height: "16px",
                     borderRadius: "50%",
                     background: "#166534",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "8px",
+                    fontSize: "10px",
                     color: "#34d399"
                   }}
                 >
                   ✓
                 </div>
-                <div style={{ fontSize: "9px", fontWeight: "700", color: "#34d399", letterSpacing: ".04em" }}>
+                <div className="grave-insight-head" style={{ color: "#34d399" }}>
                   CASOS VERIFICADOS
                 </div>
               </div>
@@ -986,8 +986,10 @@ export default function GraveyardPage() {
                   }
                 ].map((x, idx) => (
                   <div key={idx} style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: "14px", fontWeight: "700", color: x.c, lineHeight: 1.1 }}>{x.v}</div>
-                    <div style={{ fontSize: "7px", color: "#6b7280" }}>{x.l}</div>
+                    <div className="grave-insight-metric-val" style={{ color: x.c }}>
+                      {x.v}
+                    </div>
+                    <div className="grave-insight-metric-lbl">{x.l}</div>
                   </div>
                 ))}
               </div>
@@ -997,11 +999,12 @@ export default function GraveyardPage() {
                     key={idx}
                     className="text-xs leading-none"
                     style={{
-                      padding: "2px 6px",
+                      padding: "3px 8px",
                       borderRadius: "999px",
                       color: "#34d399",
                       border: "1px solid #166534",
-                      background: "#0a1a10"
+                      background: "#0a1a10",
+                      fontSize: "12px"
                     }}
                   >
                     {s.asset || s.symbol || "?"}{" "}
@@ -1018,20 +1021,20 @@ export default function GraveyardPage() {
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
                 <div
                   style={{
-                    width: "14px",
-                    height: "14px",
+                    width: "16px",
+                    height: "16px",
                     borderRadius: "50%",
                     background: "#7f1d1d",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "8px",
+                    fontSize: "10px",
                     color: "#f87171"
                   }}
                 >
                   ⚠
                 </div>
-                <div style={{ fontSize: "9px", fontWeight: "700", color: "#f87171", letterSpacing: ".04em" }}>
+                <div className="grave-insight-head" style={{ color: "#f87171" }}>
                   CASOS NO FAVORABLES
                 </div>
               </div>
@@ -1053,8 +1056,10 @@ export default function GraveyardPage() {
                   }
                 ].map((x, idx) => (
                   <div key={idx} style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: "14px", fontWeight: "700", color: x.c, lineHeight: 1.1 }}>{x.v}</div>
-                    <div style={{ fontSize: "7px", color: "#6b7280" }}>{x.l}</div>
+                    <div className="grave-insight-metric-val" style={{ color: x.c }}>
+                      {x.v}
+                    </div>
+                    <div className="grave-insight-metric-lbl">{x.l}</div>
                   </div>
                 ))}
               </div>
@@ -1064,11 +1069,12 @@ export default function GraveyardPage() {
                     key={idx}
                     className="text-xs leading-none"
                     style={{
-                      padding: "2px 6px",
+                      padding: "3px 8px",
                       borderRadius: "999px",
                       color: "#f87171",
                       border: "1px solid #7f1d1d",
-                      background: "#1a0808"
+                      background: "#1a0808",
+                      fontSize: "12px"
                     }}
                   >
                     {s.asset || s.symbol || "?"}{" "}
@@ -1081,24 +1087,24 @@ export default function GraveyardPage() {
               <div className="grave-mini-panel grave-insight-subpanel">
                 <div className="grave-cc-t">Simulación de control de riesgo</div>
                 <div className="grave-mini-lead">Cap de pérdida aplicado (−10%)</div>
-                <div style={{ display: "grid", gap: "6px", fontSize: "8px", lineHeight: 1.4 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div className="grave-insight-kv">
+                  <div className="grave-insight-kv-row">
                     <span>Esperanza bruta</span>
                     <b style={{ color: "#f87171" }}>
                       {expectancy != null ? `${(expectancy * 100).toFixed(2)}%` : "—"}
                     </b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>Esperanza capada</span>
                     <b style={{ color: "#f87171" }}>
                       {cappedExpectancy != null ? `${(cappedExpectancy * 100).toFixed(2)}%` : "—"}
                     </b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>Señales cortadas</span>
                     <b className="grave-kill-stat">{killedCount ?? 0}</b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>DD máx. (cap)</span>
                     <b style={{ color: "#f87171" }}>−10.00%</b>
                   </div>
@@ -1111,20 +1117,20 @@ export default function GraveyardPage() {
               <div className="grave-mini-panel grave-insight-subpanel">
                 <div className="grave-cc-t">Indicadores del pipeline</div>
                 <div className="grave-mini-lead">Señales de calidad operativa</div>
-                <div style={{ display: "grid", gap: "6px", fontSize: "8px", lineHeight: 1.4 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div className="grave-insight-kv">
+                  <div className="grave-insight-kv-row">
                     <span>Tope de muestra</span>
                     <b>{metrics?.sampleCapHit ? "Sí" : "No"}</b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>Pendientes sin entrada</span>
                     <b>{metrics?.pendingWithoutEntry ?? 0}</b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>Resueltas sin resultado</span>
                     <b>{metrics?.resolvedWithoutOutcome ?? 0}</b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>Horizonte por defecto</span>
                     <b>{metrics?.defaultHorizon ?? "10 min"}</b>
                   </div>
@@ -1136,36 +1142,36 @@ export default function GraveyardPage() {
               <div className="grave-mini-panel grave-mini-panel--insight-tall">
                 <div className="grave-cc-t">Estado actual (48h)</div>
                 <div className="grave-mini-lead">Ventana de observación: 48h</div>
-                <div style={{ display: "grid", gap: "6px", fontSize: "8px", lineHeight: 1.4, flex: "1 1 auto", minHeight: 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div className="grave-insight-kv grave-insight-kv--grow">
+                  <div className="grave-insight-kv-row">
                     <span>Resueltas</span>
                     <b>{metrics?.resolvedRows ?? 0}</b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>Pendientes</span>
                     <b>{metrics?.pendingRows ?? 0}</b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>Fallidas</span>
                     <b>{metrics?.failedRows ?? 0}</b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>Tasa acierto</span>
                     <b>{hasMetrics ? `${(winRate * 100).toFixed(1)}%` : "—"}</b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>Profit factor</span>
                     <b>{hasMetrics ? safeProfitFactor : "—"}</b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>Retorno medio</span>
                     <b>{hasMetrics ? safeAvgOutcome : "—"}</b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>Correlación conf./retorno</span>
                     <b>{hasMetrics ? (correlationValue?.toFixed(2) ?? "—") : "—"}</b>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div className="grave-insight-kv-row">
                     <span>Máx. drawdown</span>
                     <b>{hasMetrics ? safeDrawdown : "—"}</b>
                   </div>
@@ -1191,15 +1197,16 @@ export default function GraveyardPage() {
               </div>
             </div>
 
-            <div className="grave-thdr">
-              {["", "Activo", "Origen", "Conf.", "Entrada", "P&L 60m", "Estado", "Hora"].map((h, idx) => (
-                <div key={idx} className="grave-th-cell">
-                  {h}
-                </div>
-              ))}
-            </div>
+            <div className="grave-tbl-scroll">
+              <div className="grave-thdr">
+                {["", "Activo", "Origen", "Conf.", "Entrada", "P&L 60m", "Estado", "Hora"].map((h, idx) => (
+                  <div key={idx} className="grave-th-cell">
+                    {h}
+                  </div>
+                ))}
+              </div>
 
-            {filteredRows.slice(0, 12).map((s, i) => {
+              {filteredRows.slice(0, 48).map((s, i) => {
               const rawOriginal = outcomeRaw(s);
               const raw = rawOriginal == null ? null : Math.max(-0.1, Math.min(0.2, rawOriginal));
               const pct = raw != null ? raw * 100 : null;
@@ -1250,7 +1257,7 @@ export default function GraveyardPage() {
               return (
                 <div
                   key={s.id != null ? String(s.id) : `row-${i}`}
-                  className="grave-trow"
+                  className={`grave-trow grave-trow--${statusKey.toLowerCase()}`}
                   style={{
                     background:
                       raw != null
@@ -1260,7 +1267,7 @@ export default function GraveyardPage() {
                         : "transparent"
                   }}
                 >
-                  <div style={{ fontSize: "8px", color: "#4a5568" }}>☆</div>
+                  <div className="grave-tbl-fav">☆</div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <div
@@ -1367,12 +1374,9 @@ export default function GraveyardPage() {
                 </div>
               );
             })}
+            </div>
 
-              <div
-                className="grave-tbl-more"
-              >
-                ↓ Cargar más historial
-              </div>
+            <div className="grave-tbl-more">↓ Cargar más historial</div>
           </div>
         </main>
       </div>

@@ -3149,6 +3149,55 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   flex-direction: column;
 }
 
+/* Insight block: match metric strip (.grave-mc-l 10px / .grave-mc-v 20px) */
+.grave-insight-row .grave-insight-metric-val {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.005em;
+}
+.grave-insight-row .grave-insight-metric-lbl {
+  font-size: 10px;
+  color: #6b7280;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.grave-insight-row .grave-insight-head {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.grave-insight-row .grave-insight-kv {
+  display: grid;
+  gap: 6px;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.grave-insight-row .grave-insight-kv b {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.005em;
+}
+.grave-insight-row .grave-insight-kv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.grave-insight-row .grave-mini-lead {
+  font-size: 10px;
+}
+.grave-insight-row .grave-kill-banner {
+  font-size: 10px;
+}
+
+.grave-insight-row .grave-insight-kv--grow {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .grave-oracle-panel {
   background: #0b1b12;
   border: 1px solid #14532d;
@@ -3276,6 +3325,45 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   font-size: 13px;
 }
 
+.grave-tbl-scroll {
+  max-height: min(420px, 52vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+  padding-right: 2px;
+  margin-right: -2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(90, 125, 174, 0.45) rgba(15, 23, 42, 0.5);
+}
+
+.grave-tbl-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.grave-tbl-scroll::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 4px;
+}
+
+.grave-tbl-scroll::-webkit-scrollbar-thumb {
+  background: rgba(90, 125, 174, 0.38);
+  border-radius: 4px;
+}
+
+.grave-tbl-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(90, 125, 174, 0.58);
+}
+
+.grave-tbl-scroll .grave-thdr {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #08111f;
+  box-shadow: 0 1px 0 #1e293b;
+  margin-bottom: 0;
+}
+
 .grave-tbl-toolbar {
   display: flex;
   align-items: center;
@@ -3349,6 +3437,15 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   line-height: 1.2;
 }
 
+.grave-tbl-fav {
+  font-size: 8px;
+  color: #4a5568;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s var(--g-out), transform 0.22s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
 .grave-trow {
   display: grid;
   grid-template-columns: 18px 1.55fr 1fr 0.6fr 0.9fr 0.9fr 0.7fr 0.5fr;
@@ -3359,11 +3456,44 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   min-height: 34px;
   font-size: 13px;
   line-height: 1.25;
-  transition: background var(--g-fast) var(--g-out);
+  border-radius: 4px;
+  position: relative;
+  transition: background 0.2s var(--g-out), transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .grave-trow:hover {
-  background: rgba(22, 32, 51, 0.42);
+  transform: translateX(2px);
+  box-shadow: -3px 0 0 0 rgba(143, 173, 207, 0.55), 0 4px 20px rgba(0, 0, 0, 0.22);
+}
+
+.grave-trow:hover .grave-tbl-fav {
+  color: #8fadcf;
+  transform: scale(1.15) rotate(-10deg);
+}
+
+.grave-trow--win:hover {
+  background: rgba(52, 211, 153, 0.12) !important;
+  box-shadow: -3px 0 0 0 rgba(52, 211, 153, 0.55), 0 4px 20px rgba(52, 211, 153, 0.06);
+}
+
+.grave-trow--loss:hover {
+  background: rgba(248, 113, 113, 0.12) !important;
+  box-shadow: -3px 0 0 0 rgba(248, 113, 113, 0.55), 0 4px 20px rgba(248, 113, 113, 0.06);
+}
+
+.grave-trow--killed:hover {
+  background: rgba(245, 158, 11, 0.1) !important;
+  box-shadow: -3px 0 0 0 rgba(245, 158, 11, 0.55), 0 4px 20px rgba(245, 158, 11, 0.06);
+}
+
+.grave-trow--pending:hover {
+  background: rgba(96, 165, 250, 0.1) !important;
+  box-shadow: -3px 0 0 0 rgba(96, 165, 250, 0.5), 0 4px 20px rgba(96, 165, 250, 0.06);
+}
+
+.grave-trow--neutral:hover {
+  background: rgba(31, 41, 55, 0.65) !important;
 }
 
 .grave-tbl-more {
@@ -3381,4 +3511,19 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 .grave-tbl-more:hover {
   color: var(--g-text-dim);
   background: rgba(255, 255, 255, 0.025);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grave-tbl-scroll {
+    scroll-behavior: auto;
+  }
+  .grave-trow {
+    transition: background var(--g-fast) var(--g-out);
+  }
+  .grave-trow:hover {
+    transform: none;
+  }
+  .grave-trow:hover .grave-tbl-fav {
+    transform: none;
+  }
 }
