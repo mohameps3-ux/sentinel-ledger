@@ -21,6 +21,7 @@
     "@metamask/connect-solana": "^0.8.0",
     "@noble/ed25519": "^2.3.0",
     "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/wallet-adapter-base-ui": "^0.1.6",
     "@solana/wallet-adapter-bitkeep": "^0.3.24",
     "@solana/wallet-adapter-coinbase": "^0.1.23",
     "@solana/wallet-adapter-phantom": "^0.9.29",

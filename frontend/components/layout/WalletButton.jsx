@@ -1,18 +1,23 @@
 import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useWalletMultiButton } from "@solana/wallet-adapter-base-ui";
+import { WalletMultiButton, useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useEffect, useRef, useState } from "react";
 import bs58 from "bs58";
-import { ChevronDown, LogOut, ShieldCheck } from "lucide-react";
+import { ChevronDown, LogOut, ShieldCheck, Wallet } from "lucide-react";
 import toast from "react-hot-toast";
 import { getPublicApiUrl } from "../../lib/publicRuntime";
 
 const walletMultiButtonClass =
   "!bg-sl-violet hover:!opacity-95 !rounded-[2px] !h-7 !min-h-0 !text-[9px] !min-w-0 !max-w-[5.25rem] !justify-center !truncate !px-1.5 !py-0 !leading-tight !font-semibold";
 const navWalletClass =
-  "!btn-ghost-sm !h-7 !min-h-0 !rounded-[2px] !border !border-sl-border !bg-transparent hover:!border-sl-hover !px-3 !py-0 !font-mono !text-2xs !font-medium !uppercase !tracking-[0.08em] !text-sl-muted hover:!text-sl-sub !shadow-none";
+  "!btn-ghost-sm !h-7 !min-h-0 !rounded-[2px] !border !border-sl-border !bg-transparent hover:!border-sl-hover !px-2 !py-0 !font-mono !text-2xs !font-medium !uppercase !tracking-[0.08em] !text-sl-muted hover:!text-sl-sub !shadow-none";
 
 export function WalletButton({ navCompact = false }) {
   const { publicKey, signMessage, connected, disconnect } = useWallet();
+  const { setVisible } = useWalletModal();
+  const { buttonState, onConnect } = useWalletMultiButton({
+    onSelectWallet: () => setVisible(true)
+  });
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const authInFlightRef = useRef(false);
@@ -134,22 +139,72 @@ export function WalletButton({ navCompact = false }) {
     toast.success("Wallet disconnected.");
   };
 
+  const handleConnectFromMenu = () => {
+    setOpen(false);
+    if (buttonState === "no-wallet") setVisible(true);
+    else if (buttonState === "has-wallet" && onConnect) onConnect();
+  };
+
+  const menuItemClass =
+    "w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-mono text-sl-sub transition hover:bg-white/5";
+
   return (
     <div ref={wrapRef} className="relative z-[200] flex items-center justify-end gap-1 min-w-0 shrink-0">
-      {navCompact && connected ? (
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="inline-flex h-7 items-center gap-2 border border-sl-border bg-transparent px-2 font-mono text-2xs font-medium uppercase tracking-[0.08em] text-sl-sub transition-colors hover:border-sl-hover hover:text-sl-text"
-          title={shortWallet}
-        >
-          <span className="flex h-7 w-7 items-center justify-center border border-sl-border bg-sl-card font-mono text-2xs text-sl-sub">
-            {publicKey?.toBase58()?.slice(0, 2) || "SL"}
-          </span>
-          <span>{shortWallet}</span>
-        </button>
-      ) : navCompact && walletUiReady ? (
-        <WalletMultiButton className={navWalletClass} />
+      {navCompact && walletUiReady ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className={`${navWalletClass} !inline-flex !max-w-[14rem] !min-w-0 !items-center !gap-1.5`}
+            aria-expanded={open}
+            aria-haspopup="menu"
+            title={connected ? shortWallet : "Wallet"}
+          >
+            {connected ? (
+              <>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-sl-border bg-sl-card text-emerald-400/90">
+                  <ShieldCheck size={15} strokeWidth={2} aria-hidden />
+                </span>
+                <span className="min-w-0 truncate normal-case tracking-normal">{shortWallet}</span>
+              </>
+            ) : (
+              <>
+                <Wallet size={14} className="shrink-0 text-sl-sub opacity-85" aria-hidden />
+                <span>Wallet</span>
+              </>
+            )}
+            <ChevronDown
+              size={12}
+              className={`ml-0.5 shrink-0 opacity-70 transition-transform ${open ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </button>
+
+          {open ? (
+            <div
+              role="menu"
+              className="absolute right-0 top-[calc(100%+6px)] z-[500] min-w-[11rem] rounded-[2px] border border-sl-border bg-sl-card py-1 shadow-2xl"
+            >
+              {connected ? (
+                <button type="button" role="menuitem" onClick={handleLogout} className={menuItemClass}>
+                  <LogOut size={14} className="shrink-0 opacity-80" aria-hidden />
+                  Desconectar
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={buttonState === "connecting"}
+                  onClick={handleConnectFromMenu}
+                  className={`${menuItemClass} disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  <Wallet size={14} className="shrink-0 opacity-80" aria-hidden />
+                  {buttonState === "connecting" ? "Conectando…" : "Conectar"}
+                </button>
+              )}
+            </div>
+          ) : null}
+        </>
       ) : walletUiReady ? (
         <WalletMultiButton className={walletMultiButtonClass} />
       ) : (
@@ -162,24 +217,27 @@ export function WalletButton({ navCompact = false }) {
           Select Wallet
         </button>
       )}
-      {!navCompact ? <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={`hidden sm:inline-flex items-center gap-0.5 h-7 pl-1 pr-1 rounded-md border text-[9px] transition max-w-[4.75rem] sm:max-w-[5.5rem] truncate ${
-          connected
-            ? "bg-[#0B0F14] soft-divider text-[#60A5FA] hover:bg-[#1E3A5F] hover:border-[#2563EB] hover:text-[#60A5FA]"
-            : "bg-[#0B0F14] soft-divider text-[#E6EDF3] hover:bg-[#1E3A5F] hover:border-[#2563EB] hover:text-[#60A5FA]"
-        }`}
-        aria-expanded={open}
-        aria-haspopup="true"
-        title="Cuenta y desconectar"
-      >
-        <ShieldCheck size={11} className="shrink-0" />
-        <span className="truncate min-w-0">{shortWallet}</span>
-        <ChevronDown size={11} className={`shrink-0 transition ${open ? "rotate-180" : ""}`} />
-      </button> : null}
 
-      {open && connected && (
+      {!navCompact ? (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className={`hidden sm:inline-flex items-center gap-0.5 h-7 pl-1 pr-1 rounded-md border text-[9px] transition max-w-[4.75rem] sm:max-w-[5.5rem] truncate ${
+            connected
+              ? "bg-[#0B0F14] soft-divider text-[#60A5FA] hover:bg-[#1E3A5F] hover:border-[#2563EB] hover:text-[#60A5FA]"
+              : "bg-[#0B0F14] soft-divider text-[#E6EDF3] hover:bg-[#1E3A5F] hover:border-[#2563EB] hover:text-[#60A5FA]"
+          }`}
+          aria-expanded={open}
+          aria-haspopup="true"
+          title="Cuenta y desconectar"
+        >
+          <ShieldCheck size={11} className="shrink-0" />
+          <span className="truncate min-w-0">{shortWallet}</span>
+          <ChevronDown size={11} className={`shrink-0 transition ${open ? "rotate-180" : ""}`} />
+        </button>
+      ) : null}
+
+      {open && !navCompact && connected ? (
         <div className="absolute right-0 top-[calc(100%+4px)] z-[500] w-40 rounded-[2px] border border-sl-border bg-sl-card p-1 shadow-2xl">
           <button
             type="button"
@@ -190,7 +248,7 @@ export function WalletButton({ navCompact = false }) {
             Disconnect
           </button>
         </div>
-      )}
+      ) : null}
 
       {loading && (
         <div className="w-4 h-4 border-2 border-[#2563EB] border-t-transparent rounded-full animate-spin ml-1" />
@@ -198,4 +256,3 @@ export function WalletButton({ navCompact = false }) {
     </div>
   );
 }
-
