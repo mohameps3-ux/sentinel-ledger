@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { formatUsdWhole, formatDateTime } from "../../lib/formatStable";
+import { BEHAVIOR_LEGEND_EN, BEHAVIOR_LEGEND_ES, formatLatencyPostDeployMin, formatPrePumpUsd } from "../../lib/walletBehaviorDisplay";
+import { useLocale } from "../../contexts/LocaleContext";
 
 const MIN_H = 5;
 
@@ -18,6 +20,7 @@ function fmtNum(v, d = 1) {
 }
 
 export function SmartWalletDetailPanel({ row, labelFor, titleFor, narrativeLang }) {
+  const { locale } = useLocale();
   const w = row;
   const p = w.profile;
 
@@ -148,7 +151,10 @@ export function SmartWalletDetailPanel({ row, labelFor, titleFor, narrativeLang 
             ) : null}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 text-[10px] text-gray-300">
-            <p>WR REAL: {p.winRateReal != null ? `${fmtNum(p.winRateReal)}%` : "—"}</p>
+            <p>
+              WR FINAL: {p.winRateReal != null ? `${fmtNum(p.winRateReal)}%` : "—"}{" "}
+              <span className="text-gray-600">(cierre señal)</span>
+            </p>
             <p>
               5M: {p.winRateReal5m != null ? `${fmtNum(p.winRateReal5m)}%` : "—"} (N {p.resolvedSignals5m ?? 0})
             </p>
@@ -162,9 +168,18 @@ export function SmartWalletDetailPanel({ row, labelFor, titleFor, narrativeLang 
             <p>STYLE: {p.styleLabel || "—"}</p>
           </div>
           <p className="text-[10px] text-gray-500 leading-relaxed">
-            PRE-PUMP ~${formatUsdWhole(p.avgSizePrePumpUsd || 0)} · LAT {p.avgLatencyPostDeployMin != null ? `${fmtNum(p.avgLatencyPostDeployMin, 1)}M` : "—"}{" "}
+            PRE-PUMP {formatPrePumpUsd(p.avgSizePrePumpUsd || 0).text}{" "}
+            <span className="text-gray-600">(solo señales ≥ +20%)</span> · LAT{" "}
+            {(() => {
+              const { text, unreliable } = formatLatencyPostDeployMin(p.avgLatencyPostDeployMin);
+              return unreliable ? "—" : text;
+            })()}{" "}
             · SOLO/GRP {Math.round(Number(p.soloBuyRatio || 0) * 100)}% / {Math.round(Number(p.groupBuyRatio || 0) * 100)}% · ANT/BRK{" "}
-            {Math.round(Number(p.anticipatoryBuyRatio || 0) * 100)}% / {Math.round(Number(p.breakoutBuyRatio || 0) * 100)}%
+            {Math.round(Number(p.anticipatoryBuyRatio || 0) * 100)}% /{" "}
+            {Math.round(Number(p.breakoutBuyRatio || 0) * 100)}%
+          </p>
+          <p className="text-[9px] text-gray-600 leading-snug border-l border-[#1F2937] pl-1.5">
+            {locale === "es" ? BEHAVIOR_LEGEND_ES : BEHAVIOR_LEGEND_EN}
           </p>
           {p.computedAt ? <p className="text-[9px] text-gray-600">COMPUTED: {formatDateTime(p.computedAt)}</p> : null}
         </div>

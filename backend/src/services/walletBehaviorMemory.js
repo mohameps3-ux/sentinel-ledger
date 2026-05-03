@@ -60,6 +60,9 @@ function maxKnownOutcome(row) {
   return best;
 }
 
+/** Ignore pathological pair-created anchors (migrated mints, wrong pool, ms/sec bugs upstream). */
+const MAX_LATENCY_MIN_FOR_STATS = 7 * 24 * 60;
+
 /**
  * Maps `wallet_behavior_stats` summary into `smart_wallets` early/cluster/consistency (and smart_score)
  * so home / smart-wallets top show real decomposed profile, not only win-rate heuristics.
@@ -278,7 +281,7 @@ async function computeWalletBehaviorForWindow({
     let latencyMin = null;
     if (pairCreatedAtMs != null) {
       const m = (boughtAtMs - pairCreatedAtMs) / 60000;
-      if (Number.isFinite(m) && m >= 0) {
+      if (Number.isFinite(m) && m >= 0 && m <= MAX_LATENCY_MIN_FOR_STATS) {
         latencyMin = m;
         latencyMinArr.push(m);
         if (m <= 60) anticipatoryBuys += 1;

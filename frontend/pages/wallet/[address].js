@@ -8,6 +8,12 @@ import { WalletNarrativeCard } from "../../components/WalletNarrativeCard";
 import { fetchWalletSummary } from "../../lib/api/walletSummary";
 import { fetchWalletBehaviorSummary, fetchWalletBehaviorTokens } from "../../lib/api/walletBehavior";
 import { formatDateTime, formatInteger, formatUsdAmount, formatUsdWhole } from "../../lib/formatStable";
+import {
+  BEHAVIOR_LEGEND_EN,
+  BEHAVIOR_LEGEND_ES,
+  formatLatencyPostDeployMin,
+  formatPrePumpUsd
+} from "../../lib/walletBehaviorDisplay";
 import { useLocale } from "../../contexts/LocaleContext";
 import { resolveWalletNarrativeLang, walletNarrativeApiLang } from "../../lib/walletNarrativeLang";
 
@@ -21,6 +27,22 @@ function normalizeAddress(query) {
 export async function getServerSideProps() {
   return { props: {} };
 }
+
+function behaviorWinTone(pct) {
+  const n = Number(pct);
+  if (!Number.isFinite(n)) return "text-sl-text font-semibold";
+  if (n >= 50) return "text-emerald-300 font-semibold";
+  return "text-rose-400 font-semibold";
+}
+
+const STYLE_READABLE = {
+  solo_operator: "Solo operator",
+  cluster_trader: "Cluster trader",
+  anticipatory_sniper: "Anticipatory sniper",
+  breakout_follower: "Breakout follower",
+  balanced_operator: "Balanced operator",
+  insufficient_sample: "Insufficient sample"
+};
 
 export default function WalletDetailPage() {
   const router = useRouter();
@@ -176,20 +198,28 @@ export default function WalletDetailPage() {
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
-                  <p className="text-sl-muted text-xs">Win rate real</p>
-                  <p className="text-emerald-300 font-semibold">{Number(behaviorRow.win_rate_real || 0).toFixed(1)}%</p>
+                  <p className="text-sl-muted text-xs">Win rate (final)</p>
+                  <p className={behaviorWinTone(behaviorRow.win_rate_real)} title="Agg. outcome per signal &gt; 0">
+                    {Number(behaviorRow.win_rate_real || 0).toFixed(1)}%
+                  </p>
                 </div>
                 <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
-                  <p className="text-sl-muted text-xs">Win rate real (5m)</p>
-                  <p className="text-emerald-200 font-semibold">{Number(behaviorRow.win_rate_real_5m || 0).toFixed(1)}%</p>
+                  <p className="text-sl-muted text-xs">Win rate (5m only)</p>
+                  <p className={behaviorWinTone(behaviorRow.win_rate_real_5m)}>
+                    {Number(behaviorRow.win_rate_real_5m || 0).toFixed(1)}%
+                  </p>
                 </div>
                 <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
-                  <p className="text-sl-muted text-xs">Win rate real (30m)</p>
-                  <p className="text-emerald-200 font-semibold">{Number(behaviorRow.win_rate_real_30m || 0).toFixed(1)}%</p>
+                  <p className="text-sl-muted text-xs">Win rate (30m only)</p>
+                  <p className={behaviorWinTone(behaviorRow.win_rate_real_30m)}>
+                    {Number(behaviorRow.win_rate_real_30m || 0).toFixed(1)}%
+                  </p>
                 </div>
                 <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
-                  <p className="text-sl-muted text-xs">Win rate real (2h)</p>
-                  <p className="text-emerald-200 font-semibold">{Number(behaviorRow.win_rate_real_2h || 0).toFixed(1)}%</p>
+                  <p className="text-sl-muted text-xs">Win rate (2h only)</p>
+                  <p className={behaviorWinTone(behaviorRow.win_rate_real_2h)}>
+                    {Number(behaviorRow.win_rate_real_2h || 0).toFixed(1)}%
+                  </p>
                 </div>
                 <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
                   <p className="text-sl-muted text-xs">Resolved</p>
@@ -204,18 +234,27 @@ export default function WalletDetailPage() {
                 </div>
                 <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
                   <p className="text-sl-muted text-xs">Avg pre-pump size</p>
-                  <p className="text-cyan-200 font-semibold">${formatUsdAmount(behaviorRow.avg_size_pre_pump_usd || 0)}</p>
+                  <p className="text-cyan-200 font-semibold" title="Solo señales con desenlace ≥ +20%">
+                    {formatPrePumpUsd(behaviorRow.avg_size_pre_pump_usd).text}
+                  </p>
                 </div>
                 <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
                   <p className="text-sl-muted text-xs">Style</p>
-                  <p className="text-violet-200 font-semibold">{behaviorRow.style_label || "—"}</p>
+                  <p className="text-violet-200 font-semibold">
+                    {STYLE_READABLE[behaviorRow.style_label] || behaviorRow.style_label || "—"}
+                  </p>
                 </div>
                 <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
                   <p className="text-sl-muted text-xs">Latency post-deploy</p>
                   <p className="text-sl-text font-semibold">
-                    {behaviorRow.avg_latency_post_deploy_min != null
-                      ? `${Number(behaviorRow.avg_latency_post_deploy_min).toFixed(1)} min`
-                      : "—"}
+                    {(() => {
+                      const { text, unreliable } = formatLatencyPostDeployMin(behaviorRow.avg_latency_post_deploy_min);
+                      return unreliable ? (
+                        <span title="Ancla de pool dudosa o par demasiado antiguo">—</span>
+                      ) : (
+                        text
+                      );
+                    })()}
                   </p>
                 </div>
                 <div className="border border-sl-border bg-white/[0.03] px-3 py-2">
@@ -238,6 +277,9 @@ export default function WalletDetailPage() {
                   </p>
                 </div>
               </div>
+              <p className="text-[11px] text-sl-muted leading-snug border-l-2 border-sl-border pl-2">
+                {locale === "es" ? BEHAVIOR_LEGEND_ES : BEHAVIOR_LEGEND_EN}
+              </p>
               <p className="text-[11px] text-sl-muted">
                 Computed {behaviorRow.computed_at ? formatDateTime(behaviorRow.computed_at) : "—"} · lookback{" "}
                 {formatInteger(behaviorRow.lookback_days || 0)}d
