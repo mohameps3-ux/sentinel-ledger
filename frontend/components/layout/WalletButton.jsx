@@ -12,8 +12,10 @@ const walletMultiButtonClass =
 const navWalletClass =
   "!btn-ghost-sm !h-7 !min-h-0 !rounded-[2px] !border !border-sl-border !bg-transparent hover:!border-sl-hover !px-2 !py-0 !font-mono !text-2xs !font-medium !uppercase !tracking-[0.08em] !text-sl-muted hover:!text-sl-sub !shadow-none";
 
+const CONNECTING_STUCK_MS = 40000;
+
 export function WalletButton({ navCompact = false }) {
-  const { publicKey, signMessage, connected, disconnect } = useWallet();
+  const { publicKey, signMessage, connected, connecting, disconnect } = useWallet();
   const { setVisible } = useWalletModal();
   const { buttonState, onConnect } = useWalletMultiButton({
     onSelectWallet: () => setVisible(true)
@@ -37,6 +39,16 @@ export function WalletButton({ navCompact = false }) {
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
+
+  /** autoConnect / extension hang leaves `connecting` true forever — clear so UI is usable again */
+  useEffect(() => {
+    if (!connecting || connected) return undefined;
+    const id = window.setTimeout(() => {
+      disconnect().catch(() => {});
+      toast.error("Conexión cancelada: tardó demasiado. Elige cartera de nuevo.");
+    }, CONNECTING_STUCK_MS);
+    return () => window.clearTimeout(id);
+  }, [connecting, connected, disconnect]);
 
   useEffect(() => {
     if (!connected || !publicKey) return;
@@ -140,10 +152,17 @@ export function WalletButton({ navCompact = false }) {
   };
 
   const handleConnectFromMenu = () => {
+    if (connecting || buttonState === "connecting") {
+      setOpen(false);
+      setVisible(true);
+      return;
+    }
     setOpen(false);
     if (buttonState === "no-wallet") setVisible(true);
     else if (buttonState === "has-wallet" && onConnect) onConnect();
   };
+
+  const showConnectingLabel = connecting || buttonState === "connecting";
 
   const menuItemClass =
     "w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-mono text-sl-sub transition hover:bg-white/5";
@@ -194,12 +213,16 @@ export function WalletButton({ navCompact = false }) {
                 <button
                   type="button"
                   role="menuitem"
-                  disabled={buttonState === "connecting"}
                   onClick={handleConnectFromMenu}
-                  className={`${menuItemClass} disabled:cursor-not-allowed disabled:opacity-50`}
+                  className={menuItemClass}
+                  title={
+                    showConnectingLabel
+                      ? "Abre el listado de carteras si la conexión no termina"
+                      : undefined
+                  }
                 >
                   <Wallet size={14} className="shrink-0 opacity-80" aria-hidden />
-                  {buttonState === "connecting" ? "Conectando…" : "Conectar"}
+                  {showConnectingLabel ? "Elegir cartera" : "Conectar"}
                 </button>
               )}
             </div>

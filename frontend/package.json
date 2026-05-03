@@ -49,6 +49,10 @@
     "tailwindcss": "^4.2.4",
     "zustand": "^5.0.12"
   },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.8",
+    "utf-8-validate": "^5.0.10"
+  },
   "overrides": {
     "use-sync-external-store": "^1.4.0"
   },
