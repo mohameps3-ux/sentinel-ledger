@@ -32,6 +32,15 @@ Ejecuta `supabase/schema.sql` en el SQL editor del proyecto (incluye tablas base
 
 Si Supabase Security Advisor marca "RLS disabled in public", aplica `supabase/rls_public_lockdown.sql` para activar RLS en tablas `public` usadas por backend (incluye `tokens_analyzed`, `signal_performance`, `ops_data_freshness_history`, `wallet_behavior_stats`, `wallet_coordination_pairs`, etc.). La migración **`014_wallet_behavior_and_coordination_rls.sql`** cubre explícitamente esas dos tablas de wallet/coordinación; también va al final de `npm run db:ensure-signal-performance --prefix backend`. El backend con `service_role` sigue funcionando; acceso PostgREST `anon`/`authenticated` queda en **deny-by-default** sin políticas. Tras aplicar, **Security Advisor** suele limpiar el hallazgo tras un refresco.
 
+**Importante (backend Git / Railway vs Postgres):** El código del **backend** que subes a Git **sí** entra en el **próximo deploy de Railway**. Eso **no** aplica solo las políticas SQL en Supabase: en Postgres hay que ejecutarlas cuando toque. Ejemplo (lee `DATABASE_URL` / URL Postgres desde `.env` local o variables del proyecto):
+
+```bash
+cd backend
+npm run db:apply-hot-rls-read-policies
+```
+
+Con variables ya cargadas desde Railway: `railway run npm run db:apply-hot-rls-read-policies` (desde `backend/`). El script es `scripts/applyHotRlsReadPolicies.js` (Node). Los **scripts Python** del repo (p. ej. utilidades bajo `scripts/`) **no** forman parte del runtime del API; son herramienta local o CI si los usas.
+
 ## Recovery express (produccion)
 
 Si ves errores intermitentes (ej. `Service Unavailable`), usa el script:
