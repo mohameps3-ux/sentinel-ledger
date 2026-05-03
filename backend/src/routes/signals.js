@@ -38,6 +38,24 @@ function actionFromConfidence(confidence) {
   return "TOO_LATE";
 }
 
+/** Confidence for UI (0–100): DB may store fraction (0–1) or percent (>1). */
+function confidenceToPct(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return n > 1 ? Math.min(100, n) : Math.round(n * 10000) / 100;
+}
+
+function graveyardSignalSourceTags(signal, row) {
+  const rid = String(row.rule_id || "").toLowerCase();
+  if (rid.includes("cluster")) return ["cluster_signal"];
+  const w = Number(row.wallets_involved || 0);
+  if (w > 1) return ["whale_signal"];
+  const la = String(signal?.last_action || "").toLowerCase();
+  if (la.includes("cluster")) return ["cluster_signal"];
+  if (la.includes("whale")) return ["whale_signal"];
+  return ["smart_money"];
+}
+
 function oracleAction(row = {}, signal = null) {
   const action = String(signal?.last_action || "").toLowerCase();
   if (action === "sell") return "TOO LATE";
@@ -183,18 +201,25 @@ function mapOracleSignal(row, signalById, snapshotByMint) {
   const signal = signalById.get(String(row.signal_id || ""));
   const snapshot = snapshotByMint.get(row.mint);
   const outcome60 = row.outcome_60m != null ? Number(row.outcome_60m) : null;
+  const rawConf = row.rule_snapshot?.confidence ?? signal?.confidence ?? 0;
+  const confPct = confidenceToPct(rawConf);
   return {
     id: row.id,
     signal_id: row.signal_id,
     time: row.created_at,
     created_at: row.created_at,
+    emitted_at: row.created_at,
     mint: row.mint,
     token: row.mint,
     token_address: row.mint,
     token_name: tokenName(row, snapshot),
+    asset: tokenSymbol(row, snapshot),
     symbol: tokenSymbol(row, snapshot),
+    confidence: confPct,
+    strength: Number(rawConf),
+    signals: graveyardSignalSourceTags(signal, row),
+    entry_price_usd: row.price_at_signal != null ? Number(row.price_at_signal) : null,
     rule_id: row.rule_id || "unknown",
-    strength: Number(row.rule_snapshot?.confidence ?? signal?.confidence ?? 0),
     action: oracleAction(row, signal),
     outcome_5m: row.outcome_5m != null ? Number(row.outcome_5m) : null,
     outcome_15m: row.outcome_15m != null ? Number(row.outcome_15m) : null,

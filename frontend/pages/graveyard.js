@@ -52,6 +52,23 @@ function outcomeRaw(s) {
   return null;
 }
 
+/** 0–100 for bars / scatter; supports legacy rows with only `strength` or 0–1 fractions. */
+function signalConfidencePct(s) {
+  if (s == null) return NaN;
+  if (s.confidence != null && Number.isFinite(Number(s.confidence))) {
+    return Number(s.confidence);
+  }
+  const st = Number(s.strength);
+  if (Number.isFinite(st)) {
+    return st > 1 ? Math.min(100, st) : st * 100;
+  }
+  const alt = Number(s.sentinel_score ?? s.sentinelScore);
+  if (Number.isFinite(alt)) {
+    return alt > 1 ? Math.min(100, alt) : alt * 100;
+  }
+  return NaN;
+}
+
 function sourceWeight(source) {
   const s = String(source ?? "unknown").toLowerCase();
   if (s.includes("cluster")) return 1.2;
@@ -397,11 +414,11 @@ function ScatterPlot({ signals, correlation }) {
     if (!signals?.length) return [];
     return signals
       .filter((s) => {
-        const conf = Number(s.confidence ?? s.sentinel_score ?? s.sentinelScore ?? NaN);
+        const conf = signalConfidencePct(s);
         return Number.isFinite(conf) && outcomeRaw(s) != null;
       })
       .map((s) => {
-        const conf = Number(s.confidence ?? s.sentinel_score ?? s.sentinelScore ?? 0);
+        const conf = signalConfidencePct(s);
         const ret = Number(outcomeRaw(s) ?? 0);
         const x = PAD + (conf / 100) * (W - PAD * 2);
         const clampedRet = Math.max(-0.2, Math.min(0.2, ret));
@@ -516,11 +533,11 @@ export default function GraveyardPage() {
   const correlationValue = useMemo(() => {
     const pairs = completed
       .filter((s) => {
-        const c = Number(s.confidence ?? s.sentinel_score ?? s.sentinelScore ?? NaN);
+        const c = signalConfidencePct(s);
         return Number.isFinite(c) && outcomeRaw(s) != null;
       })
       .map((s) => ({
-        x: Number(s.confidence ?? s.sentinel_score ?? s.sentinelScore ?? 0),
+        x: signalConfidencePct(s),
         y: outcomeRaw(s) ?? 0
       }));
     if (pairs.length < 2) return null;
@@ -538,6 +555,31 @@ export default function GraveyardPage() {
     }
     const den = Math.sqrt(dx * dy);
     return den > 1e-9 ? num / den : null;
+  }, [completed]);
+
+  const sourceMixSegments = useMemo(() => {
+    const tally = { cluster: 0, whale: 0, wallet: 0, other: 0 };
+    for (const s of completed) {
+      const raw = String(s.signals?.[0] || "smart_money").toLowerCase();
+      if (raw.includes("cluster")) tally.cluster += 1;
+      else if (raw.includes("whale")) tally.whale += 1;
+      else if (raw.includes("smart")) tally.wallet += 1;
+      else tally.other += 1;
+    }
+    const n = tally.cluster + tally.whale + tally.wallet + tally.other;
+    if (!n) {
+      return { segments: [{ pct: 100, color: "#4b5563", label: "Sin datos" }], centerPct: 0 };
+    }
+    const toPct = (v) => (v / n) * 100;
+    const segments = [
+      { pct: toPct(tally.cluster), color: "#818cf8", label: "Clúster" },
+      { pct: toPct(tally.whale), color: "#34d399", label: "Smart money" },
+      { pct: toPct(tally.wallet), color: "#f59e0b", label: "Wallet activity" },
+      { pct: toPct(tally.other), color: "#4b5563", label: "Otros" }
+    ].filter((seg) => seg.pct >= 0.5);
+    const centerPct =
+      segments.length > 0 ? Math.round(Math.max(...segments.map((seg) => seg.pct))) : 0;
+    return { segments: segments.length ? segments : [{ pct: 100, color: "#4b5563", label: "Mixto" }], centerPct };
   }, [completed]);
 
   const bestCall =
@@ -565,7 +607,8 @@ export default function GraveyardPage() {
   const features = useMemo(() => {
     return completed.map((s, idx) => {
       const r = outcomeRaw(s);
-      const conf = Number(s.confidence || 0) / 100;
+      const confPct = signalConfidencePct(s);
+      const conf = Number.isFinite(confPct) ? confPct / 100 : 0;
 
       return {
         signalKey: s?.id != null ? String(s.id) : `ml-${idx}-${String(s.emitted_at || s.time || s.mint || "")}`,
@@ -871,14 +914,17 @@ export default function GraveyardPage() {
               <div className="grave-box-chart-host">
                 <AnimatedDonut
                   size={108}
-                  pct={75}
+                  pct={hasMetrics ? sourceMixSegments.centerPct : 0}
                   label="por origen"
-                  segments={[
-                    { pct: 46, color: "#818cf8", label: "Clúster" },
-                    { pct: 27, color: "#34d399", label: "Smart money" },
-                    { pct: 16, color: "#f59e0b", label: "Wallet activity" },
-                    { pct: 11, color: "#4b5563", label: "Otros" }
-                  ]}
+                  segments={
+                    hasMetrics
+                      ? sourceMixSegments.segments
+                      : [
+                          { pct: 40, color: "#818cf8", label: "Clúster" },
+                          { pct: 35, color: "#34d399", label: "Smart money" },
+                          { pct: 25, color: "#4b5563", label: "Otros" }
+                        ]
+                  }
                 />
               </div>
             </div>
@@ -1153,13 +1199,13 @@ export default function GraveyardPage() {
                 ? "Clúster"
                 : source.includes("whale")
                   ? "Smart money"
-                  : "Smart money";
+                  : "Wallet activity";
               const sourceColor = source.includes("cluster")
                 ? { bg: "#1e1b4b", c: "#818cf8" }
                 : source.includes("whale")
-                  ? { bg: "#1c1009", c: "#f59e0b" }
-                  : { bg: "#0d2818", c: "#34d399" };
-              const conf = Number(s.confidence ?? 0);
+                  ? { bg: "#0d2818", c: "#34d399" }
+                  : { bg: "#1c1009", c: "#f59e0b" };
+              const conf = signalConfidencePct(s);
               const statusKey = isPending
                 ? "PENDING"
                 : isKilled
@@ -1242,7 +1288,9 @@ export default function GraveyardPage() {
                   </div>
 
                   <div>
-                    <div style={{ fontSize: "9px", color: "#e2e8f0" }}>{Number.isFinite(conf) ? conf.toFixed(0) : "—"}</div>
+                    <div style={{ fontSize: "9px", color: "#e2e8f0" }}>
+                      {Number.isFinite(conf) ? conf.toFixed(0) : "—"}
+                    </div>
                     <div
                       style={{
                         height: "3px",
@@ -1255,7 +1303,7 @@ export default function GraveyardPage() {
                       <div
                         style={{
                           height: "3px",
-                          width: `${Math.min(Math.max(conf, 0), 100)}%`,
+                          width: `${Math.min(Math.max(Number.isFinite(conf) ? conf : 0, 0), 100)}%`,
                           background:
                             conf > 70
                               ? "linear-gradient(90deg,#34d399,#22c55e)"
@@ -1295,8 +1343,11 @@ export default function GraveyardPage() {
                   </div>
 
                   <div style={{ fontSize: "6px", color: "#6b7280" }}>
-                    {s.emitted_at
-                      ? new Date(s.emitted_at).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })
+                    {s.emitted_at || s.created_at || s.time
+                      ? new Date(s.emitted_at || s.created_at || s.time).toLocaleTimeString("es", {
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })
                       : "—"}
                   </div>
                 </div>
