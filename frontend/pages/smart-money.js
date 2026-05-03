@@ -164,6 +164,18 @@ function TerminalHeader({
               <Link href="/wallet-stalker" className="block px-2 py-1 text-indigo-400 hover:bg-[#111722] hover:text-indigo-300">
                 [ W ] WALLET STALKER
               </Link>
+              <Link href="/watchlist" className="block px-2 py-1 text-indigo-400 hover:bg-[#111722] hover:text-indigo-300">
+                [ WL ] WATCHLIST
+              </Link>
+              <Link href="/alerts" className="block px-2 py-1 text-indigo-400 hover:bg-[#111722] hover:text-indigo-300">
+                [ A ] ALERTS
+              </Link>
+              <Link href="/compare" className="block px-2 py-1 text-indigo-400 hover:bg-[#111722] hover:text-indigo-300">
+                [ C ] COMPARE
+              </Link>
+              <Link href="/portfolio" className="block px-2 py-1 text-indigo-400 hover:bg-[#111722] hover:text-indigo-300">
+                [ P ] PORTFOLIO
+              </Link>
               <Link href="/pricing" className="block px-2 py-1 text-indigo-400 hover:bg-[#111722] hover:text-indigo-300">
                 [ $ ] PRICING
               </Link>
