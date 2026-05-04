@@ -485,36 +485,33 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
       </div>
 
       <div className="war-room-body">
-        <div className="war-room-main">
-          <div className="war-room-section-header">
-            <span className="war-room-section-title">⊛ TOP OPPORTUNITIES</span>
-            <span className="war-room-section-sub">Sorted by Smart Money Intent</span>
-          </div>
-
-          <div className="war-opportunities-list war-velocity-scroll">
-            {displayTokens.map((tok, i) => {
-              const mint = tok.mint ?? tok.address;
-              return (
-                <OpportunityRow
-                  key={mint}
-                  tok={tok}
-                  rank={i + 1}
-                  onSelect={handleSelectToken}
-                  isActive={Boolean(mint && activeMint === mint)}
-                  isNew={false}
-                  activeMint={activeMint}
-                />
-              );
-            })}
-          </div>
+        <div className="war-grid-main-head war-room-section-header">
+          <span className="war-room-section-title">⊛ TOP OPPORTUNITIES</span>
+          <span className="war-room-section-sub">Sorted by Smart Money Intent</span>
         </div>
 
-        <div className="war-room-aside">
-          <div className="war-aside-section">
-            <div className="war-aside-title">
-              ⬤ RECENT SIGNALS <span style={{ color: "#22c55e", marginLeft: 4 }}>Live</span>
-            </div>
-            <div className="war-recent-signals-scroll war-velocity-scroll">
+        <div className="war-grid-main-list war-opportunities-list">
+          {displayTokens.map((tok, i) => {
+            const mint = tok.mint ?? tok.address;
+            return (
+              <OpportunityRow
+                key={mint}
+                tok={tok}
+                rank={i + 1}
+                onSelect={handleSelectToken}
+                isActive={Boolean(mint && activeMint === mint)}
+                isNew={false}
+                activeMint={activeMint}
+              />
+            );
+          })}
+        </div>
+
+        <div className="war-grid-aside-top war-aside-section">
+          <div className="war-aside-title">
+            ⬤ RECENT SIGNALS <span style={{ color: "#22c55e", marginLeft: 4 }}>Live</span>
+          </div>
+          <div className="war-recent-signals-scroll">
             {displayTokens.map((tok) => {
               const sc = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
               const intent = getIntentLevel(sc);
@@ -546,24 +543,30 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
                 </div>
               );
             })}
-            </div>
           </div>
-          <div className="war-aside-section">
-            <div className="war-aside-title">QUICK ACTIONS</div>
-            <a href="/alerts" className="war-quick-action">
-              ⚑ VIEW ALL ALERTS
-            </a>
-            <a href="/wallet-stalker" className="war-quick-action">
-              ◎ TRACK WALLET
-            </a>
-            <a href="/watchlist" className="war-quick-action">
-              ★ MANAGE WATCHLIST
-            </a>
-          </div>
+        </div>
+
+        <div className="war-grid-main-spacer" aria-hidden="true" />
+
+        <div className="war-grid-aside-pair">
           <SmartMoneyFlow
             key={activeTok?.mint ?? activeTok?.address ?? "default"}
             tok={activeTok}
           />
+          <div className="war-aside-section war-quick-actions-panel">
+            <div className="war-aside-title">QUICK ACTIONS</div>
+            <div className="war-quick-actions-inner">
+              <a href="/alerts" className="war-quick-action">
+                ⚑ VIEW ALL ALERTS
+              </a>
+              <a href="/wallet-stalker" className="war-quick-action">
+                ◎ TRACK WALLET
+              </a>
+              <a href="/watchlist" className="war-quick-action">
+                ★ MANAGE WATCHLIST
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 
