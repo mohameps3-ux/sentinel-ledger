@@ -28,6 +28,55 @@ function toIso(ms) {
   return new Date(ms).toISOString();
 }
 
+/**
+ * Track record (`GET /api/v1/signals/track-record`) reads `signal_outcomes`. Resolution cron updates
+ * `signal_performance` only; sync keeps the public ledger aligned when a matching `signal_id` exists.
+ * `outcome_pct` on performance is in **percent** (e.g. 5.2 = 5.2%); `signal_outcomes.outcome_60m` is fractional (0.052).
+ */
+async function syncSignalOutcomesFromPerformanceRow(supabase, perfRow, { outcomePriceUsd, outcomePctPercent, validatedAtIso }) {
+  const eventId = perfRow?.event_id != null ? String(perfRow.event_id).trim() : "";
+  if (!eventId || !supabase) return;
+
+  const pctNum = Number(outcomePctPercent);
+  if (!Number.isFinite(pctNum)) return;
+  const outcomeFrac = pctNum / 100;
+
+  const price60 = Number(outcomePriceUsd);
+  if (!Number.isFinite(price60) || price60 <= 0) return;
+
+  const entry = Number(perfRow.entry_price_usd);
+  const minObs = Number.isFinite(entry) && entry > 0 ? Math.min(entry, price60) : null;
+
+  const { data: existing, error: selErr } = await supabase
+    .from("signal_outcomes")
+    .select("id,rule_id")
+    .eq("signal_id", eventId)
+    .maybeSingle();
+  if (selErr || !existing?.id) return;
+
+  const patch = {
+    price_60m: price60,
+    outcome_60m: outcomeFrac,
+    validated_at: validatedAtIso,
+    validated: true
+  };
+  if (minObs != null && Number.isFinite(minObs)) {
+    patch.min_price_observed = minObs;
+  }
+
+  const { error: upErr } = await supabase.from("signal_outcomes").update(patch).eq("id", existing.id);
+  if (upErr) return;
+
+  try {
+    const { recomputeRulePerformance } = require("../workers/validationOracle");
+    if (existing.rule_id) {
+      await recomputeRulePerformance(supabase, existing.rule_id);
+    }
+  } catch (_) {
+    /* best-effort — rule_performance refresh */
+  }
+}
+
 function pctFromPrices(entry, later) {
   const e = Number(entry);
   const l = Number(later);
@@ -172,7 +221,7 @@ async function runSignalOutcomeResolutionOnce(options = {}) {
   const lookbackIso = toIso(nowMs - Math.max(1, KILL_SWEEP_LOOKBACK_HOURS) * 3600_000);
   const { data: earlyRows, error: earlyErr } = await supabase
     .from("signal_performance")
-    .select("id,asset,entry_price_usd,attempts,resolve_after,emitted_at,status")
+    .select("id,asset,event_id,entry_price_usd,attempts,resolve_after,emitted_at,status")
     .eq("status", "pending")
     .gt("resolve_after", nowIso)
     .gte("emitted_at", lookbackIso)
@@ -207,7 +256,14 @@ async function runSignalOutcomeResolutionOnce(options = {}) {
         })
         .eq("id", row.id)
         .eq("status", "pending");
-      if (!killErr) killed += 1;
+      if (!killErr) {
+        killed += 1;
+        await syncSignalOutcomesFromPerformanceRow(supabase, row, {
+          outcomePriceUsd: px,
+          outcomePctPercent: KILL_OUTCOME_PCT,
+          validatedAtIso: nowIso
+        });
+      }
     }
   }
 
@@ -298,6 +354,11 @@ async function runSignalOutcomeResolutionOnce(options = {}) {
       continue;
     }
     resolved += 1;
+    await syncSignalOutcomesFromPerformanceRow(supabase, row, {
+      outcomePriceUsd: outcomePrice,
+      outcomePctPercent: outcomePct,
+      validatedAtIso: toIso(Date.now())
+    });
   }
 
   return { examined: (rows || []).length, resolved, deferred, failed, killed, error: null };

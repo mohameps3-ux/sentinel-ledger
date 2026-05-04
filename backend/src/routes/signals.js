@@ -587,7 +587,9 @@ router.get("/desk-proof-of-edge", async (req, res) => {
 
 /**
  * GET /api/v1/signals/track-record
- * Validation Oracle trust ledger. Redis TTL configurable (see trackRecordCacheSeconds).
+ * Reads `signal_outcomes` (inserted at emission via validation oracle; 60m fields filled by oracle
+ * and/or synced from `signal_performance` when the signal-outcome cron resolves).
+ * Redis TTL configurable (see trackRecordCacheSeconds); default ~15s — not a source of multi-day staleness.
  */
 router.get("/track-record", async (req, res) => {
   const supabase = safeSupabase();
@@ -597,7 +599,7 @@ router.get("/track-record", async (req, res) => {
   const filter = String(req.query.filter || "all").toLowerCase();
   const page = Math.max(1, Number(req.query.page || 1));
   const pageSize = Math.max(1, Math.min(50, Number(req.query.limit || 25)));
-  const cacheKey = `signals:track-record:v3:${filter}:${page}:${pageSize}`;
+  const cacheKey = `signals:track-record:v4:${filter}:${page}:${pageSize}`;
   const cacheSec = trackRecordCacheSeconds();
   try {
     const cached = await redis.get(cacheKey);

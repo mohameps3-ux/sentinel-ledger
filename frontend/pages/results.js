@@ -63,6 +63,14 @@ export default function ResultsPage() {
     load();
   }, [load]);
 
+  /** Keep /results aligned with DB without manual refresh (public track-record has no short Redis TTL). */
+  useEffect(() => {
+    const id = setInterval(() => {
+      load();
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [load]);
+
   const badge = useMemo(() => {
     const wr = data.winRate7d;
     const n = data.count7d;

@@ -488,6 +488,7 @@ module.exports = {
   asRuleId,
   primaryRuleId,
   recordOracleSignal,
+  recomputeRulePerformance,
   runValidationOracleTick,
   startValidationOracle,
   getValidationOracleStatus,
