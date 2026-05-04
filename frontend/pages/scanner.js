@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 import { PageHead } from "../components/seo/PageHead";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
 import { useLocale } from "../contexts/LocaleContext";
-import { useSortedTokens } from "@/hooks/useSortedTokens";
 import { ScannerStatusStrip } from "../components/scanner/ScannerStatusStrip";
 import { ScannerDecisionHeader } from "../components/scanner/ScannerDecisionHeader";
 import { ScannerMetricsStrip } from "../components/scanner/ScannerMetricsStrip";
@@ -14,6 +13,26 @@ import { ScannerTokenTable } from "../components/scanner/ScannerTokenTable";
 const NARRATIVE_OPTIONS = ["ALL", "AI", "DeFi", "Gaming", "Meme", "RWA", "L2", "Dog", "Cat"];
 const VENUE_FILTERS = ["all", "pump", "raydium", "new24h", "highScore"];
 const TABLE_ROWS_MAX = 24;
+
+/** Scanner universe must NOT use `useSortedTokens` (war mode + sniper/liquidity profiles strip rows). */
+
+function tokenMatchesNarrativeClient(token, narrative) {
+  if (!narrative || narrative === "ALL") return true;
+  const needle = String(narrative).toUpperCase();
+  const parts = [
+    ...(Array.isArray(token.narrativeTags) ? token.narrativeTags : []),
+    token.symbol,
+    token.token,
+    ...(Array.isArray(token.whyTrade) ? token.whyTrade : []),
+    ...(Array.isArray(token.evidenceChips) ? token.evidenceChips : [])
+  ]
+    .filter(Boolean)
+    .map((x) => String(x).toUpperCase());
+  const hay = parts.join(" ");
+  if (hay.includes(needle)) return true;
+  if (needle === "L2" && (hay.includes("LAYER") || hay.includes(" ROLLUP"))) return true;
+  return false;
+}
 
 function tokenMatchesVenueFilter(token, id) {
   if (id === "all") return true;
@@ -44,7 +63,8 @@ export default function ScannerPage() {
   const [venueFilter, setVenueFilter] = useState("all");
   const [focusedMint, setFocusedMint] = useState(null);
   const router = useRouter();
-  const trending = useTrendingTokens([], {}, narrative === "ALL" ? "" : narrative);
+  // Always fetch full /hot universe; narrative is filtered client-side (API narrativeTags are often empty).
+  const trending = useTrendingTokens([], {}, "", { limit: 24 });
 
   const scannerSource = useMemo(() => trending.data?.data || [], [trending.data?.data]);
   const normalizedScanner = useMemo(
@@ -60,7 +80,10 @@ export default function ScannerPage() {
       })),
     [scannerSource]
   );
-  const sorted = useSortedTokens(normalizedScanner);
+  const sorted = useMemo(() => {
+    const rows = normalizedScanner.filter((row) => tokenMatchesNarrativeClient(row, narrative));
+    return [...rows].sort((a, b) => (Number(b.sentinelScore) || 0) - (Number(a.sentinelScore) || 0));
+  }, [normalizedScanner, narrative]);
   const filteredSorted = useMemo(
     () => sorted.filter((row) => tokenMatchesVenueFilter(row, venueFilter)),
     [sorted, venueFilter]
