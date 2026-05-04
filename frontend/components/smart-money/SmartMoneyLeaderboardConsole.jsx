@@ -127,10 +127,13 @@ export function SmartMoneyLeaderboardConsole({
   const [selectedWallet, setSelectedWallet] = useState("");
 
   const sortedRows = useMemo(() => {
-    const list = displayedRanked.map((row) => ({
-      ...row,
-      _pf: profitFactorApprox(row.totalTrades, row.winRate)
-    }));
+    const list = displayedRanked.map((row) => {
+      const pf =
+        row.profitFactor != null && Number.isFinite(Number(row.profitFactor))
+          ? Number(row.profitFactor)
+          : profitFactorApprox(row.totalTrades, row.winRate);
+      return { ...row, _pf: pf };
+    });
     const dir = sortOrder === "asc" ? 1 : -1;
     const val = (row, key) => {
       switch (key) {
@@ -139,7 +142,7 @@ export function SmartMoneyLeaderboardConsole({
         case "wallet":
           return row.wallet || "";
         case "score":
-          return Number(row.score);
+          return Number(row.unifiedScore ?? row.score);
         case "winRate":
           return Number(row.winRate);
         case "pnl30d":
@@ -567,7 +570,11 @@ export function SmartMoneyLeaderboardConsole({
                         const pf = w._pf != null ? w._pf.toFixed(2) : "—";
                         const pnl = Number(w.pnl30d || 0);
                         const scoreNum =
-                          w.score != null && Number.isFinite(Number(w.score)) ? Number(w.score) : null;
+                          w.unifiedScore != null && Number.isFinite(Number(w.unifiedScore))
+                            ? Number(w.unifiedScore)
+                            : w.score != null && Number.isFinite(Number(w.score))
+                              ? Number(w.score)
+                              : null;
                         const isSel = selectedWallet === w.wallet;
                         return (
                           <tr
@@ -746,7 +753,12 @@ export function SmartMoneyLeaderboardConsole({
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         {[
-                          ["Score", selectedRow.score != null ? Number(selectedRow.score).toFixed(1) : "—"],
+                          [
+                            "Score",
+                            selectedRow.unifiedScore != null || selectedRow.score != null
+                              ? Number(selectedRow.unifiedScore ?? selectedRow.score).toFixed(1)
+                              : "—"
+                          ],
                           ["Win rate", `${Number(selectedRow.winRate || 0).toFixed(1)}%`],
                           [
                             "30D PnL",

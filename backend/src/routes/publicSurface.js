@@ -20,6 +20,20 @@ function safeSupabase() {
   }
 }
 
+/**
+ * Implied wins/losses ratio from aggregate win-rate % and trade count.
+ * Matches the Smart Money UI fallback — not brokerage gross-profit factor.
+ */
+function approxProfitFactorFromWinRate(totalTrades, winRatePct) {
+  const tt = Number(totalTrades || 0);
+  const wr = Number(winRatePct || 0);
+  if (!Number.isFinite(tt) || tt <= 0 || !Number.isFinite(wr)) return null;
+  const wins = Math.round(tt * (wr / 100));
+  const losses = Math.max(0, tt - wins);
+  if (losses <= 0) return null;
+  return Math.round((wins / losses) * 1000) / 1000;
+}
+
 function pctFromPrices(entry, later) {
   const e = Number(entry);
   const l = Number(later);
@@ -445,13 +459,18 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
         tradesWeight * 100 * 0.3 + // 30% trades confidence
         pnlWeight * 0.2; // 20% pnl influence
 
+      const scoreVal = Number(score.toFixed(2));
+      const profitFactor = approxProfitFactorFromWinRate(r.totalTrades, r.winRate);
+
       return {
         ...r,
         roi30dVsAvgSize: Number(roiMult.toFixed(2)),
         bestTradePct: bt ? Number(Number(bt.pct).toFixed(2)) : null,
         bestTradeMint: bt?.token || null,
         bestTradeAt: bt?.at || null,
-        score: Number(score.toFixed(2)),
+        score: scoreVal,
+        unifiedScore: scoreVal,
+        profitFactor,
         profile: wb
           ? {
               winRateReal: wb.win_rate_real != null ? Number(wb.win_rate_real) : null,

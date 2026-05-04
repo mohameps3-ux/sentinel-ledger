@@ -72,6 +72,22 @@ export function SmartWalletDetailPanel({ row, labelFor, titleFor, narrativeLang 
           </p>
         </div>
         <div className="border border-[#1F2937] p-1.5 bg-[#0D1117]">
+          <p className="text-[9px] text-gray-500 uppercase tracking-wide">UNIFIED (RANK)</p>
+          <p className="text-amber-200/90 tabular-nums mt-0.5">
+            {w.unifiedScore != null && Number.isFinite(Number(w.unifiedScore))
+              ? fmtNum(w.unifiedScore, 1)
+              : w.score != null && Number.isFinite(Number(w.score))
+                ? fmtNum(w.score, 1)
+                : "—"}
+          </p>
+        </div>
+        <div className="border border-[#1F2937] p-1.5 bg-[#0D1117]">
+          <p className="text-[9px] text-gray-500 uppercase tracking-wide">P/F (IMPLIED)</p>
+          <p className="text-gray-100 tabular-nums mt-0.5">
+            {w.profitFactor != null && Number.isFinite(Number(w.profitFactor)) ? fmtNum(w.profitFactor, 2) : "—"}
+          </p>
+        </div>
+        <div className="border border-[#1F2937] p-1.5 bg-[#0D1117]">
           <p className="text-[9px] text-gray-500 uppercase tracking-wide">30D PnL (EST.)</p>
           <p className="text-emerald-400 tabular-nums mt-0.5">+${formatUsdWhole(w.pnl30d || 0)}</p>
         </div>
