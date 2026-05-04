@@ -50,6 +50,82 @@ export const MEDIUM_PAGES_STRINGS = {
   "scanner.filter.new24h": S("NEW <24H", { es: "<24H NUEVO", fr: "NEUF <24H", de: "NEU <24H" }),
   "scanner.filter.highScore": S("HIGH SCORE", { es: "ALTO SCORE" }),
 
+  "scanner.focus.emptyLabel": S("NO FOCUS", { es: "SIN FOCO", de: "KEIN FOKUS" }),
+  "scanner.focus.emptyBody": S("Select a row in the universe table to load decision context.", {
+    es: "Selecciona una fila en la tabla del universo para cargar el contexto de decisión.",
+    de: "Wählen Sie eine Zeile in der Universumstabelle."
+  }),
+  "scanner.focus.tokenLabel": S("TOKEN:", { es: "TOKEN:", de: "TOKEN:" }),
+  "scanner.focus.scoreLabel": S("SCORE:", { es: "SCORE:", de: "SCORE:" }),
+  "scanner.focus.statusLabel": S("STATUS:", { es: "ESTADO:", de: "STATUS:" }),
+
+  "scanner.conviction.high": S("HIGH CONVICTION", { es: "ALTA CONVICCIÓN", de: "HOHE ÜBERZEUGUNG" }),
+  "scanner.conviction.neutral": S("NEUTRAL", { es: "NEUTRAL", de: "NEUTRAL" }),
+  "scanner.conviction.avoid": S("AVOID", { es: "EVITAR", de: "MEIDEN" }),
+
+  "scanner.metric.liquidity": S("Liquidity", { es: "Liquidez", de: "Liquidität" }),
+  "scanner.metric.volume": S("Volume", { es: "Volumen", de: "Volumen" }),
+  "scanner.metric.momentum": S("Momentum", { es: "Momentum", de: "Momentum" }),
+  "scanner.metric.confidence": S("Confidence", { es: "Confianza", de: "Konfidenz" }),
+
+  "scanner.signal.system": S("SYSTEM SIGNAL", { es: "SEÑAL DE SISTEMA", de: "SYSTEMSIGNAL" }),
+  "scanner.signal.risk": S("RISK LEVEL", { es: "NIVEL DE RIESGO", de: "RISIKOSTUFE" }),
+  "scanner.signal.horizon": S("TIME HORIZON", { es: "HORIZONTE", de: "ZEITHORIZONT" }),
+  "scanner.signal.longBias": S("LONG BIAS", { es: "SESGO LONG", de: "LONG-BIAS" }),
+  "scanner.signal.neutralStance": S("NEUTRAL STANCE", { es: "POSTURA NEUTRAL", de: "NEUTRALE HALTUNG" }),
+  "scanner.signal.avoidExposure": S("AVOID EXPOSURE", { es: "EVITAR EXPOSICIÓN", de: "KEINE EXPOSITION" }),
+
+  "scanner.risk.high": S("HIGH", { es: "ALTO", de: "HOCH" }),
+  "scanner.risk.medium": S("MEDIUM", { es: "MEDIO", de: "MITTEL" }),
+  "scanner.risk.low": S("LOW", { es: "BAJO", de: "NIEDRIG" }),
+
+  "scanner.horizon.10m": S("10m", { es: "10m", de: "10m" }),
+  "scanner.horizon.4h": S("4h", { es: "4h", de: "4h" }),
+  "scanner.horizon.24h": S("24h", { es: "24h", de: "24h" }),
+  "scanner.horizon.minutes": S("{{m}}m", { es: "{{m}}m", de: "{{m}}m" }),
+
+  "scanner.narrative.line.pumpOrigin": S("Pump.fun origin (launchpad exposure)", {
+    es: "Origen Pump.fun (exposición a launchpad)",
+    de: "Pump.fun-Ursprung"
+  }),
+  "scanner.narrative.line.new24h": S("New pool — under 24h on-chain age", {
+    es: "Pool nuevo — menos de 24h de antigüedad",
+    de: "Neuer Pool <24h"
+  }),
+  "scanner.narrative.line.highVelocity": S("High velocity volume vs liquidity", {
+    es: "Alto volumen relativo a la liquidez",
+    de: "Hohe Volumen-Geschwindigkeit"
+  }),
+  "scanner.narrative.line.fallback": S("Insufficient structured narrative tags — verify on token terminal.", {
+    es: "Etiquetas de narrativa insuficientes — verificar en la ficha del token.",
+    de: "Keine Narrativ-Tags — Token-Terminal prüfen."
+  }),
+
+  "scanner.table.token": S("Token", { es: "Token", de: "Token" }),
+  "scanner.table.score": S("Score", { es: "Score", de: "Score" }),
+  "scanner.table.liquidity": S("Liquidity", { es: "Liq.", de: "Liq." }),
+  "scanner.table.volume": S("Volume", { es: "Vol.", de: "Vol." }),
+  "scanner.table.change": S("Change", { es: "Δ%", de: "Δ%" }),
+  "scanner.table.route": S("Route", { es: "Ruta", de: "Route" }),
+  "scanner.table.intel": S("Intel", { es: "Intel", de: "Intel" }),
+  "scanner.table.empty": S("No tokens in this universe slice.", {
+    es: "Sin tokens en este corte del universo.",
+    de: "Keine Tokens in diesem Universumssegment."
+  }),
+
+  "scanner.universe.title": S("UNIVERSE", { es: "UNIVERSO", de: "UNIVERSUM" }),
+  "scanner.universe.sub": S("Comparison grid · capped rows", {
+    es: "Cuadrícula de comparación · filas limitadas",
+    de: "Vergleichsraster"
+  }),
+
+  "scanner.narrative.needFocus": S("Focus a token from the table to load narrative context.", {
+    es: "Enfoca un token desde la tabla para cargar el contexto narrativo.",
+    de: "Token aus der Tabelle wählen."
+  }),
+
+  "scanner.filters.heading": S("Universe filters", { es: "Filtros de universo", de: "Universumsfilter" }),
+
   "results.pageTitle": S("Verified Results — Sentinel Ledger", {
     es: "Resultados verificados — Sentinel Ledger",
     fr: "Résultats vérifiés — Sentinel Ledger",

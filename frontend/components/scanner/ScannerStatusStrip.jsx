@@ -2,15 +2,10 @@ import { useTerminalInfrastructureStatus } from "../../hooks/useTerminalInfrastr
 
 function Led({ ok }) {
   if (ok === true) {
-    return <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500/90 shadow-[0_0_6px_rgba(16,185,129,0.45)]" aria-hidden />;
+    return <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500/85" aria-hidden />;
   }
   if (ok === false) {
-    return (
-      <span
-        className="h-2 w-2 shrink-0 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.4)] animate-pulse"
-        aria-hidden
-      />
-    );
+    return <span className="h-2 w-2 shrink-0 rounded-full bg-red-500/90 animate-pulse" aria-hidden />;
   }
   return <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500/80 animate-pulse" aria-hidden />;
 }
