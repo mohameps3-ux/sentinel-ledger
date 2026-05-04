@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.signal_performance (
   outcome_price_usd NUMERIC(18,8),
   outcome_pct NUMERIC(10,4),
   success BOOLEAN,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'resolved', 'failed')),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'resolved', 'failed', 'killed')),
   attempts INT NOT NULL DEFAULT 0,
   failure_reason TEXT,
   resolved_at TIMESTAMPTZ,
