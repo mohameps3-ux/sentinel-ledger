@@ -491,10 +491,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
             <span className="war-room-section-sub">Sorted by Smart Money Intent</span>
           </div>
 
-          <div
-            className="war-opportunities-list"
-            style={{ maxHeight: "calc(100vh - 200px)", overflowY: "auto" }}
-          >
+          <div className="war-opportunities-list war-velocity-scroll">
             {displayTokens.map((tok, i) => {
               const mint = tok.mint ?? tok.address;
               return (
@@ -517,6 +514,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
             <div className="war-aside-title">
               ⬤ RECENT SIGNALS <span style={{ color: "#22c55e", marginLeft: 4 }}>Live</span>
             </div>
+            <div className="war-recent-signals-scroll war-velocity-scroll">
             {displayTokens.map((tok) => {
               const sc = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
               const intent = getIntentLevel(sc);
@@ -548,6 +546,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
                 </div>
               );
             })}
+            </div>
           </div>
           <div className="war-aside-section">
             <div className="war-aside-title">QUICK ACTIONS</div>

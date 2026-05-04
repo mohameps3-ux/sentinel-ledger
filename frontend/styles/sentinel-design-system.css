@@ -703,6 +703,17 @@ a {
   display: grid;
   grid-template-columns: 1fr 280px;
   gap: 16px;
+  align-items: start;
+}
+
+/* Velocity: opportunity cards and aside “Live” feed share the same scroll viewport height */
+.war-velocity-scroll {
+  max-height: calc(100vh - 200px);
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
 }
 @media (max-width: 900px) {
   .war-room-body {
@@ -1138,6 +1149,12 @@ a {
   color: rgba(255, 255, 255, 0.4);
   margin-bottom: 4px;
 }
+.war-recent-signals-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .war-recent-signal {
   display: flex;
   align-items: center;
