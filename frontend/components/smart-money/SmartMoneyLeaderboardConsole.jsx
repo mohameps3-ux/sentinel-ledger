@@ -615,16 +615,18 @@ export function SmartMoneyLeaderboardConsole({
                             </td>
                             <td className="px-5 py-5">
                               {scoreNum != null ? (
-                                <div className="flex min-w-[108px] flex-col gap-2">
-                                  <div className="h-1 overflow-hidden rounded-full bg-zinc-800/90">
-                                    <div
-                                      className="h-full rounded-full bg-emerald-700/45"
-                                      style={{ width: `${Math.min(100, Math.max(0, scoreNum))}%` }}
-                                    />
-                                  </div>
+                                <div className="flex min-w-[108px] flex-col">
                                   <span className="font-mono text-[12px] tabular-nums text-zinc-200">
                                     {scoreNum.toFixed(1)}
                                   </span>
+                                  <div className="mt-1 h-1.5 w-full rounded-full bg-zinc-700/50">
+                                    <div
+                                      className="h-1.5 rounded-full bg-emerald-500"
+                                      style={{
+                                        width: `${Math.min(Math.max(0, scoreNum), 100)}%`
+                                      }}
+                                    />
+                                  </div>
                                 </div>
                               ) : (
                                 <span className="text-zinc-600">—</span>
