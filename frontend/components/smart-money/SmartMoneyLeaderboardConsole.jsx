@@ -2,11 +2,13 @@ import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
+  Activity,
   Bell,
   ChevronRight,
   Copy,
   Eye,
   Loader2,
+  Radio,
   RefreshCw,
   Star
 } from "lucide-react";
@@ -17,7 +19,7 @@ import { WalletNarrativeCard } from "../WalletNarrativeCard";
 
 function truncateWallet(addr) {
   if (!addr || addr.length < 9) return addr || "—";
-  return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
 function wlFromWinRate(totalTrades, winRate) {
@@ -67,14 +69,21 @@ function relShort(iso) {
 
 function winRateBadgeClass(wr) {
   const n = Number(wr || 0);
-  if (n > 70) return "bg-emerald-500/15 text-emerald-400 border-emerald-500/25";
-  if (n > 50) return "bg-amber-500/15 text-amber-400 border-amber-500/25";
-  return "bg-rose-500/10 text-rose-400 border-rose-500/25";
+  if (n > 70) return "bg-emerald-950/40 text-emerald-400/95 ring-1 ring-emerald-800/40";
+  if (n > 50) return "bg-amber-950/35 text-amber-400/90 ring-1 ring-amber-900/35";
+  return "bg-rose-950/30 text-rose-400/85 ring-1 ring-rose-900/30";
 }
 
-const cardShell = "rounded-lg border border-white/5 bg-[#0C0F14] shadow-sm";
-
 /** @typedef {'rank'|'wallet'|'score'|'winRate'|'pnl30d'|'totalTrades'|'profitFactor'|'lastSeen'} SortKey */
+
+function StatusDot({ tone }) {
+  const map = {
+    ok: "bg-emerald-600/80",
+    load: "bg-amber-600/75",
+    err: "bg-rose-700/75"
+  };
+  return <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${map[tone] || map.load}`} aria-hidden />;
+}
 
 export function SmartMoneyLeaderboardConsole({
   displayedRanked,
@@ -162,6 +171,22 @@ export function SmartMoneyLeaderboardConsole({
     [sortedRows, selectedWallet]
   );
 
+  const filteredActivity = useMemo(
+    () => activityRows.filter((r) => activityInTimeframe(r.createdAt, timeframe)),
+    [activityRows, timeframe]
+  );
+
+  const signalQuality = useMemo(() => {
+    const confs = filteredActivity
+      .map((r) => r.confidence)
+      .filter((c) => Number.isFinite(Number(c)))
+      .map(Number);
+    if (!confs.length) return { avg: null, high: 0, n: 0 };
+    const avg = confs.reduce((a, b) => a + b, 0) / confs.length;
+    const high = confs.filter((c) => c >= 50).length;
+    return { avg, high, n: confs.length };
+  }, [filteredActivity]);
+
   const onHeaderClick = useCallback((key) => {
     setSortBy((prev) => {
       if (prev === key) {
@@ -202,27 +227,75 @@ export function SmartMoneyLeaderboardConsole({
     [narrativeLang, router]
   );
 
-  const filteredActivity = useMemo(
-    () => activityRows.filter((r) => activityInTimeframe(r.createdAt, timeframe)),
-    [activityRows, timeframe]
-  );
-
   const filterCtl =
-    "rounded-md border border-zinc-700/80 bg-black/30 text-[10px] font-mono text-zinc-200 px-2 py-1.5";
+    "h-8 rounded-md border-0 bg-[#141A24]/90 px-2.5 text-[11px] text-zinc-300 outline-none ring-1 ring-white/[0.06] focus:ring-white/12";
+
+  const connectorsOk = !leaderboardError && !activityError;
+  const chainLabel = chain === "all" ? "MULTI" : "SOL";
 
   return (
-    <div className="mx-auto max-w-[1920px] px-4 pb-6 pt-4 font-sans text-zinc-100">
-      {/* Toolbar */}
-      <div className={`${cardShell} mb-6 px-4 py-3`}>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between min-w-0">
-          <div className="min-w-0">
-            <h1 className="text-[11px] font-mono font-semibold uppercase tracking-[0.2em] text-zinc-400">
-              Sentinel SMX · Smart money intelligence
-            </h1>
-            <p className="mt-0.5 text-[10px] text-zinc-500 font-mono">Live leaderboard + cross-market signals</p>
+    <div
+      className="smx-console min-h-screen bg-[#090C11] font-sans text-zinc-200 antialiased selection:bg-emerald-900/40"
+      style={{ fontFamily: "var(--font-inter), Inter, system-ui, sans-serif" }}
+    >
+      <div className="mx-auto max-w-[1920px] px-6 pb-12 pt-6 lg:px-8">
+        {/* TOP STATUS BAR */}
+        <div className="mb-8 flex min-h-11 flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-white/[0.06] pb-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
+            <div className="flex items-center gap-2">
+              <StatusDot
+                tone={leaderboardError ? "err" : isLoadingLeaderboard ? "load" : "ok"}
+              />
+              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">Feed</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <StatusDot tone={activityError ? "err" : activityLoading ? "load" : "ok"} />
+              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">Probe stream</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Radio className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
+              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">{chainLabel}</span>
+            </div>
+            <div className="hidden h-4 w-px bg-white/[0.08] sm:block" aria-hidden />
+            <div className="flex items-center gap-2 text-[11px] text-zinc-400">
+              <Activity className="h-3.5 w-3.5 text-zinc-500" />
+              <span className="font-medium tracking-wide">Signals ·</span>
+              <span className="font-mono tabular-nums text-zinc-300">{filteredActivity.length}</span>
+              <span className="text-zinc-600">·</span>
+              <span className="text-zinc-500">{timeframe} window</span>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] uppercase text-zinc-500 font-mono">Limit</span>
+            <button
+              type="button"
+              onClick={() => refetchLeaderboard()}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[11px] font-medium text-zinc-400 ring-1 ring-white/[0.06] transition hover:bg-white/[0.04] hover:text-zinc-200"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </button>
+            <span
+              className={`hidden text-[10px] font-medium uppercase tracking-[0.12em] sm:inline ${
+                connectorsOk ? "text-emerald-600/90" : "text-amber-600/85"
+              }`}
+            >
+              {connectorsOk ? "Systems nominal" : "Degraded"}
+            </span>
+          </div>
+        </div>
+
+        {/* Title + controls — secondary, airy */}
+        <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Smart money</p>
+            <h1 className="mt-1 text-lg font-medium tracking-tight text-zinc-100">Wallet intelligence console</h1>
+            <p className="mt-2 max-w-xl text-sm font-normal leading-relaxed text-zinc-500">
+              Institutional ranking and live market probes. One primary grid, one persistent context rail — no
+              side-by-side lists.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Limit</span>
             <select
               className={filterCtl}
               value={String(limit)}
@@ -238,31 +311,31 @@ export function SmartMoneyLeaderboardConsole({
                 </option>
               ))}
             </select>
-            <span className="text-[10px] uppercase text-zinc-500 font-mono">Chain</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Chain</span>
             <select className={filterCtl} value={chain} onChange={(e) => setChain(e.target.value)}>
               <option value="solana">{t("smart.filters.opt.solana")}</option>
               <option value="all">{t("smart.filters.opt.all")}</option>
             </select>
-            <span className="text-[10px] uppercase text-zinc-500 font-mono">Min WR</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Min WR</span>
             <input
               type="number"
               min={0}
               max={100}
-              className={`${filterCtl} w-14`}
+              className={`${filterCtl} w-16`}
               value={minWinRate || ""}
               placeholder="0"
               onChange={(e) => setMinWinRate(Number(e.target.value || 0))}
             />
-            <span className="text-[10px] uppercase text-zinc-500 font-mono">Min TR</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Min trades</span>
             <input
               type="number"
               min={0}
-              className={`${filterCtl} w-14`}
+              className={`${filterCtl} w-16`}
               value={minTrades || ""}
               placeholder="0"
               onChange={(e) => setMinTrades(Number(e.target.value || 0))}
             />
-            <span className="text-[10px] uppercase text-zinc-500 font-mono">NAR</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Narrative</span>
             <select
               className={filterCtl}
               value={narrativeLang}
@@ -274,10 +347,10 @@ export function SmartMoneyLeaderboardConsole({
               <option value="es">ES</option>
               <option value="en">EN</option>
             </select>
-            <label className="flex items-center gap-1.5 cursor-pointer text-[10px] font-mono text-zinc-500">
+            <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-zinc-500">
               <input
                 type="checkbox"
-                className="rounded border-zinc-600 bg-black/40"
+                className="rounded border-zinc-600/60 bg-[#141A24]"
                 checked={soloFavorites}
                 onChange={(e) => {
                   if (e.target.checked) pushQuery({ favorites: "1" });
@@ -285,452 +358,550 @@ export function SmartMoneyLeaderboardConsole({
                 }}
                 disabled={!routerReady}
               />
-              Fav only
+              Favorites only
             </label>
-            {(["24h", "7d", "30d"]).map((tf) => (
-              <button
-                key={tf}
-                type="button"
-                onClick={() => setTimeframe(tf)}
-                className={`rounded-md border px-2 py-1.5 text-[10px] font-mono uppercase ${
-                  timeframe === tf
-                    ? "border-red-500/40 bg-red-500/10 text-red-300"
-                    : "border-zinc-700/80 bg-black/30 text-zinc-500"
-                }`}
-              >
-                {tf}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => refetchLeaderboard()}
-              className="inline-flex items-center gap-1 rounded-md border border-zinc-700/80 bg-black/30 px-2 py-1.5 text-[10px] font-mono uppercase text-zinc-300 hover:bg-white/5"
-            >
-              <RefreshCw className="h-3 w-3" />
-              Sync
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* KPI strip */}
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-        {[
-          {
-            label: "Tracked wallets",
-            body:
-              displayedRanked.length != null ? (
-                <span className="text-2xl font-mono tabular-nums text-white">{displayedRanked.length}</span>
-              ) : (
-                "—"
-              )
-          },
-          {
-            label: "Median win rate",
-            body:
-              medianWinRate != null ? (
-                <div className="space-y-1">
-                  <span className="text-2xl font-mono tabular-nums text-white">{medianWinRate.toFixed(1)}%</span>
-                  <div className="h-1 w-full overflow-hidden rounded bg-zinc-800">
-                    <div
-                      className="h-full rounded bg-emerald-500/70"
-                      style={{ width: `${Math.min(100, medianWinRate)}%` }}
-                    />
-                  </div>
-                </div>
-              ) : (
-                "—"
-              )
-          },
-          {
-            label: "Avg 30D PnL",
-            body:
-              avgPnl30 != null ? (
-                <span
-                  className={`text-2xl font-mono tabular-nums ${
-                    avgPnl30 >= 0 ? "text-emerald-400" : "text-rose-400"
+            <div className="flex rounded-md p-0.5 ring-1 ring-white/[0.06]">
+              {(["24h", "7d", "30d"]).map((tf) => (
+                <button
+                  key={tf}
+                  type="button"
+                  onClick={() => setTimeframe(tf)}
+                  className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                    timeframe === tf
+                      ? "rounded bg-zinc-700/50 text-zinc-100"
+                      : "text-zinc-500 hover:text-zinc-400"
                   }`}
                 >
-                  {avgPnl30 >= 0 ? "+" : "-"}${formatUsdWhole(Math.abs(avgPnl30))}
-                </span>
-              ) : (
-                "—"
-              )
-          },
-          {
-            label: "Avg unified score",
-            body:
-              avgUnifiedScore != null ? (
-                <span className="text-2xl font-mono tabular-nums text-white">{avgUnifiedScore.toFixed(1)}</span>
-              ) : (
-                "—"
-              )
-          },
-          {
-            label: "Active probes (24h)",
-            body:
-              activeProbes24h != null ? (
-                <span className="text-2xl font-mono tabular-nums text-red-400/90">{activeProbes24h}</span>
-              ) : (
-                "—"
-              )
-          }
-        ].map((k) => (
-          <div key={k.label} className={`${cardShell} bg-white/[0.03] p-3`}>
-            <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">{k.label}</p>
-            <div className="mt-1 min-h-[2rem]">{k.body}</div>
-          </div>
-        ))}
-      </div>
-
-      {isLoadingLeaderboard ? (
-        <div className={`${cardShell} flex items-center gap-2 p-6 text-zinc-500`}>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="font-mono text-xs">Loading leaderboard…</span>
-        </div>
-      ) : null}
-
-      {leaderboardError ? (
-        <div className={`${cardShell} border-rose-500/20 bg-rose-950/20 p-4 font-mono text-xs text-rose-200`}>
-          {leaderboardError?.message || t("smart.errorFallback")}
-        </div>
-      ) : null}
-
-      {!isLoadingLeaderboard && !leaderboardError && rawRowCount === 0 ? (
-        <div className={`${cardShell} mx-auto max-w-lg p-8 text-center`}>
-          <p className="font-mono text-xs uppercase text-zinc-500">{t("smart.empty.title")}</p>
-          <p className="mt-2 font-mono text-[11px] text-zinc-500">{t("smart.empty.hint")}</p>
-          <Link
-            href="/pricing"
-            className="mt-4 inline-block rounded-md border border-zinc-600 px-4 py-2 font-mono text-[10px] uppercase text-zinc-400 hover:bg-white/5"
-          >
-            Upgrade
-          </Link>
-        </div>
-      ) : null}
-
-      {!isLoadingLeaderboard &&
-      !leaderboardError &&
-      rawRowCount > 0 &&
-      displayedRanked.length === 0 &&
-      soloFavorites ? (
-        <div className={`${cardShell} mx-auto max-w-lg border-amber-500/20 bg-amber-950/10 p-8 text-center`}>
-          <p className="font-mono text-xs uppercase text-amber-200/80">{t("smart.favEmpty.title", { limit })}</p>
-          <p className="mt-2 font-mono text-[11px] text-zinc-500">{t("smart.favEmpty.hint")}</p>
-          <button
-            type="button"
-            className="mt-4 rounded-md border border-zinc-600 px-4 py-2 font-mono text-[10px] uppercase text-zinc-400 hover:bg-white/5"
-            onClick={onClearFavoritesFilter}
-          >
-            Clear fav filter
-          </button>
-        </div>
-      ) : null}
-
-      {!isLoadingLeaderboard && !leaderboardError && displayedRanked.length > 0 ? (
-        <div className="grid grid-cols-12 gap-6 lg:gap-8">
-          {/* Main table — col-span-12 lg:col-span-8 */}
-          <div className={`col-span-12 lg:col-span-8 ${cardShell} flex min-h-0 flex-col overflow-hidden`}>
-            <div className="border-b border-white/5 px-4 py-2.5">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
-                Wallet universe · {sortedRows.length} rows
-              </span>
-              {soloFavorites ? (
-                <span className="ml-2 text-[10px] font-mono text-amber-400/90">Favorites filter on</span>
-              ) : null}
-            </div>
-            <div className="max-h-[min(70vh,920px)] overflow-auto">
-              <table className="w-full min-w-[880px] text-left text-[11px]">
-                <thead className="sticky top-0 z-[1] bg-[#0C0F14]">
-                  <tr className="border-b border-white/5 text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                    {[
-                      ["rank", "Rank"],
-                      ["wallet", "Wallet"],
-                      ["score", "Score"],
-                      ["winRate", "Win rate"],
-                      ["pnl30d", "30D PnL"],
-                      ["totalTrades", "Trades (W/L)"],
-                      ["profitFactor", "Profit factor"],
-                      ["lastSeen", "Last active"],
-                      [null, "Action"]
-                    ].map(([key, label]) =>
-                      key ? (
-                        <th key={key} className="cursor-pointer select-none px-3 py-3 hover:text-zinc-300" scope="col">
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 font-mono uppercase tracking-wider"
-                            onClick={() => onHeaderClick(key)}
-                          >
-                            {label}
-                            {sortBy === key ? (sortOrder === "asc" ? " ↑" : " ↓") : ""}
-                          </button>
-                        </th>
-                      ) : (
-                        <th key="action" className="px-3 py-3 font-mono uppercase tracking-wider" scope="col">
-                          {label}
-                        </th>
-                      )
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedRows.map((w) => {
-                    const wr = Number(w.winRate || 0);
-                    const { w: wc, l: lc } = wlFromWinRate(w.totalTrades, w.winRate);
-                    const pf = w._pf != null ? w._pf.toFixed(2) : "—";
-                    const pnl = Number(w.pnl30d || 0);
-                    const scoreNum = w.score != null && Number.isFinite(Number(w.score)) ? Number(w.score) : null;
-                    const isSel = selectedWallet === w.wallet;
-                    return (
-                        <tr
-                          key={w.wallet}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              setSelectedWallet(w.wallet);
-                            }
-                          }}
-                          onClick={(e) => {
-                            const el = e.target;
-                            if (el.closest?.("a,button,[data-no-row-select]")) return;
-                            setSelectedWallet(w.wallet);
-                          }}
-                          className={`cursor-pointer border-b border-white/[0.04] transition-colors ${
-                            isSel ? "bg-red-500/[0.07]" : "hover:bg-white/[0.04]"
-                          }`}
-                        >
-                          <td className="px-3 py-4 font-mono tabular-nums text-zinc-300">
-                            {soloFavorites ? `${w.rank} (${w.globalRank})` : w.rank}
-                          </td>
-                          <td className="max-w-[160px] px-3 py-4 font-mono text-zinc-200" title={titleFor?.(w.wallet)}>
-                            <span className="text-indigo-300/90">{truncateWallet(w.wallet)}</span>
-                            {labelFor?.(w.wallet) ? (
-                              <span className="ml-1 text-[9px] text-zinc-500">· {labelFor(w.wallet)}</span>
-                            ) : null}
-                          </td>
-                          <td className="px-3 py-4">
-                            {scoreNum != null ? (
-                              <div className="flex min-w-[100px] flex-col gap-1">
-                                <div className="h-1.5 w-full overflow-hidden rounded bg-zinc-800">
-                                  <div
-                                    className="h-full rounded bg-gradient-to-r from-red-600/80 to-emerald-500/80"
-                                    style={{ width: `${Math.min(100, Math.max(0, scoreNum))}%` }}
-                                  />
-                                </div>
-                                <span className="font-mono tabular-nums text-zinc-200">{scoreNum.toFixed(1)}</span>
-                              </div>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                          <td className="px-3 py-4">
-                            <span
-                              className={`inline-flex rounded border px-2 py-0.5 font-mono tabular-nums text-[10px] ${winRateBadgeClass(wr)}`}
-                            >
-                              {wr.toFixed(1)}%
-                            </span>
-                          </td>
-                          <td
-                            className={`px-3 py-4 font-mono tabular-nums ${pnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}
-                          >
-                            {pnl >= 0 ? "+" : "-"}${formatUsdWhole(Math.abs(pnl))}
-                          </td>
-                          <td className="px-3 py-4 font-mono tabular-nums text-zinc-300">
-                            {w.totalTrades ?? "—"}{" "}
-                            <span className="text-zinc-600">
-                              ({wc}/{lc})
-                            </span>
-                          </td>
-                          <td className="px-3 py-4 font-mono tabular-nums text-zinc-400">{pf}</td>
-                          <td className="whitespace-nowrap px-3 py-4 font-mono text-zinc-500">
-                            {w.lastSeen ? formatDateTime(w.lastSeen) : "—"}
-                          </td>
-                          <td className="px-3 py-4">
-                            <div className="flex flex-wrap items-center gap-1.5" data-no-row-select>
-                              <button
-                                type="button"
-                                onClick={() => onMonitor(w.wallet)}
-                                className="inline-flex items-center gap-1 rounded border border-zinc-600/80 bg-black/20 px-2 py-1 text-[9px] font-mono uppercase text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
-                                title="Open wallet dossier"
-                              >
-                                <Bell className="h-3 w-3" />
-                                Monitor
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => onFollow(w.wallet)}
-                                className="inline-flex items-center gap-1 rounded border border-zinc-600/80 bg-black/20 px-2 py-1 text-[9px] font-mono uppercase text-zinc-400 hover:border-emerald-500/40 hover:text-emerald-300"
-                                title="Local favorite"
-                              >
-                                <Eye className="h-3 w-3" />
-                                {isFavorite(w.wallet) ? "Following" : "Follow"}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Right intelligence rail — col-span-12 lg:col-span-4 */}
-          <aside className="col-span-12 flex flex-col gap-4 lg:col-span-4">
-            <div className={`${cardShell} flex min-h-[200px] flex-col`}>
-              <div className="border-b border-white/5 px-4 py-2.5">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Wallet intelligence</span>
-              </div>
-              <div className="flex-1 space-y-3 p-4">
-                {!selectedRow ? (
-                  <div className="rounded-md border border-dashed border-zinc-700/60 bg-black/20 p-4">
-                    <p className="text-xs font-medium text-zinc-300">Select a wallet from the universe</p>
-                    <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
-                      Row-click loads on-chain stats, behavior profile, and narrative context in this panel. Use
-                      Monitor for full dossier or Follow for local favorites.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Address</p>
-                        <p className="mt-1 break-all font-mono text-[11px] text-indigo-300/90" title={selectedRow.wallet}>
-                          {truncateWallet(selectedRow.wallet)}
-                        </p>
-                      </div>
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          onClick={() => copyAddr(selectedRow.wallet)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded border border-zinc-700/80 bg-black/30 text-zinc-400 hover:text-white"
-                          title="Copy"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </button>
-                        <Link
-                          href={`/wallet/${selectedRow.wallet}?lang=${narrativeLang || "en"}`}
-                          className="inline-flex h-8 items-center justify-center rounded border border-zinc-700/80 bg-black/30 px-2 text-[9px] font-mono uppercase text-zinc-400 hover:text-white"
-                        >
-                          Dossier
-                        </Link>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        ["Score", selectedRow.score != null ? Number(selectedRow.score).toFixed(1) : "—"],
-                        ["Win rate", `${Number(selectedRow.winRate || 0).toFixed(1)}%`],
-                        [
-                          "30D PnL",
-                          `${Number(selectedRow.pnl30d || 0) >= 0 ? "+" : "-"}$${formatUsdWhole(Math.abs(Number(selectedRow.pnl30d || 0)))}`
-                        ],
-                        ["Last active", selectedRow.lastSeen ? relShort(selectedRow.lastSeen) : "—"]
-                      ].map(([lab, val]) => (
-                        <div key={lab} className="rounded-md border border-white/5 bg-black/25 p-2">
-                          <p className="text-[9px] font-mono uppercase text-zinc-500">{lab}</p>
-                          <p className="mt-0.5 font-mono text-xs text-zinc-200">{val}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onMonitor(selectedRow.wallet)}
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-zinc-600 bg-zinc-900/50 py-2.5 text-[10px] font-mono uppercase tracking-wide text-zinc-200 hover:bg-zinc-800"
-                      >
-                        <Bell className="h-4 w-4" />
-                        Monitor
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onFollow(selectedRow.wallet)}
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 py-2.5 text-[10px] font-mono uppercase tracking-wide text-emerald-300 hover:bg-emerald-500/20"
-                      >
-                        {isFavorite(selectedRow.wallet) ? (
-                          <Star className="h-4 w-4 fill-current" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                        {isFavorite(selectedRow.wallet) ? "Following" : "Follow"}
-                      </button>
-                    </div>
-                    <div className="max-h-[220px] overflow-y-auto rounded-md border border-white/5">
-                      <WalletNarrativeCard walletAddress={selectedRow.wallet} lang={narrativeLang} />
-                    </div>
-                    <SmartWalletDetailPanel
-                      row={selectedRow}
-                      labelFor={labelFor}
-                      titleFor={titleFor}
-                      narrativeLang={narrativeLang}
-                    />
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className={`${cardShell} flex max-h-[min(52vh,560px)] min-h-[280px] flex-col overflow-hidden`}>
-              <div className="flex items-center justify-between border-b border-white/5 px-4 py-2.5">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Recent signals</span>
-                <button
-                  type="button"
-                  onClick={() => activityRefetch()}
-                  className="inline-flex items-center gap-1 text-[10px] font-mono uppercase text-zinc-500 hover:text-zinc-300"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  Sync
+                  {tf}
                 </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* HERO / SUMMARY STRIP — one clean row, layered surface */}
+        <div className="mb-10 rounded-2xl bg-gradient-to-b from-[#101620]/90 to-[#0D1118]/90 px-6 py-7 lg:px-10 lg:py-8">
+          <div className="flex flex-col gap-8 lg:flex-row lg:flex-nowrap lg:items-start lg:justify-between lg:gap-12">
+            {[
+              {
+                k: "Total tracked wallets",
+                v:
+                  displayedRanked.length != null ? (
+                    <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-50">
+                      {displayedRanked.length}
+                    </span>
+                  ) : (
+                    "—"
+                  )
+              },
+              {
+                k: "Median win rate",
+                v:
+                  medianWinRate != null ? (
+                    <div className="space-y-3">
+                      <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-50">
+                        {medianWinRate.toFixed(1)}
+                        <span className="text-lg text-zinc-500">%</span>
+                      </span>
+                      <div className="h-1 max-w-[140px] overflow-hidden rounded-full bg-zinc-800/80">
+                        <div
+                          className="h-full rounded-full bg-emerald-700/55"
+                          style={{ width: `${Math.min(100, medianWinRate)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    "—"
+                  )
+              },
+              {
+                k: "Avg 30D PnL",
+                v:
+                  avgPnl30 != null ? (
+                    <span
+                      className={`font-mono text-3xl font-medium tabular-nums tracking-tight ${
+                        avgPnl30 >= 0 ? "text-emerald-500/85" : "text-rose-500/80"
+                      }`}
+                    >
+                      {avgPnl30 >= 0 ? "+" : "-"}${formatUsdWhole(Math.abs(avgPnl30))}
+                    </span>
+                  ) : (
+                    "—"
+                  )
+              },
+              {
+                k: "Avg unified score",
+                v:
+                  avgUnifiedScore != null ? (
+                    <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-50">
+                      {avgUnifiedScore.toFixed(1)}
+                    </span>
+                  ) : (
+                    "—"
+                  )
+              },
+              {
+                k: "Active probes",
+                v:
+                  activeProbes24h != null ? (
+                    <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-200">
+                      {activeProbes24h}
+                      <span className="ml-1.5 text-sm font-normal text-zinc-500">24h</span>
+                    </span>
+                  ) : (
+                    "—"
+                  )
+              }
+            ].map((item, i) => (
+              <div
+                key={item.k}
+                className={`min-w-0 flex-1 ${i > 0 ? "lg:border-l lg:border-white/[0.05] lg:pl-12" : ""}`}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">{item.k}</p>
+                <div className="mt-3">{item.v}</div>
               </div>
-              <div className="flex-1 overflow-y-auto">
-                {activityLoading ? (
-                  <div className="flex items-center gap-2 p-4 text-xs text-zinc-500">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Streaming…
-                  </div>
-                ) : null}
-                {activityError ? (
-                  <div className="p-4 text-xs text-rose-400/90">{activityError?.message || t("smart.activity.error")}</div>
-                ) : null}
-                {!activityLoading && !activityError && filteredActivity.length === 0 ? (
-                  <div className="p-4 text-xs text-zinc-500">{t("smart.activity.empty")}</div>
-                ) : null}
-                {!activityLoading &&
-                  !activityError &&
-                  filteredActivity.map((r) => {
-                    const tick = r.token ? truncateWallet(r.token) : "—";
-                    const typ = signalTypeLabel(r.side);
-                    const conf = Number.isFinite(r.confidence) ? Math.round(r.confidence) : "—";
-                    return (
-                      <div
-                        key={`${r.wallet}-${r.token}-${r.createdAt}`}
-                        className="flex items-start gap-2 border-b border-white/[0.04] px-4 py-3 hover:bg-white/[0.03]"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`rounded border px-1.5 py-0 text-[9px] font-mono uppercase ${
-                                typ === "SWAP"
-                                  ? "border-amber-500/25 bg-amber-500/10 text-amber-300"
-                                  : "border-cyan-500/25 bg-cyan-500/10 text-cyan-300"
+            ))}
+          </div>
+        </div>
+
+        {isLoadingLeaderboard ? (
+          <div className="mb-8 flex items-center gap-3 rounded-2xl bg-[#101620]/50 px-6 py-8 text-zinc-500">
+            <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+            <span className="text-sm font-medium">Loading universe…</span>
+          </div>
+        ) : null}
+
+        {leaderboardError ? (
+          <div className="mb-8 rounded-2xl bg-rose-950/20 px-6 py-5 text-sm text-rose-300/90 ring-1 ring-rose-900/25">
+            {leaderboardError?.message || t("smart.errorFallback")}
+          </div>
+        ) : null}
+
+        {!isLoadingLeaderboard && !leaderboardError && rawRowCount === 0 ? (
+          <div className="mx-auto max-w-md rounded-2xl bg-[#101620]/60 px-8 py-10 text-center ring-1 ring-white/[0.05]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{t("smart.empty.title")}</p>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-500">{t("smart.empty.hint")}</p>
+            <Link
+              href="/pricing"
+              className="mt-6 inline-flex rounded-lg bg-zinc-800/80 px-4 py-2.5 text-xs font-semibold text-zinc-200 ring-1 ring-white/[0.06] hover:bg-zinc-800"
+            >
+              Upgrade
+            </Link>
+          </div>
+        ) : null}
+
+        {!isLoadingLeaderboard &&
+        !leaderboardError &&
+        rawRowCount > 0 &&
+        displayedRanked.length === 0 &&
+        soloFavorites ? (
+          <div className="mx-auto max-w-md rounded-2xl bg-amber-950/15 px-8 py-10 text-center ring-1 ring-amber-900/20">
+            <p className="text-xs font-semibold uppercase tracking-wider text-amber-200/80">
+              {t("smart.favEmpty.title", { limit })}
+            </p>
+            <p className="mt-3 text-sm text-zinc-500">{t("smart.favEmpty.hint")}</p>
+            <button
+              type="button"
+              className="mt-6 text-xs font-semibold text-zinc-400 underline-offset-2 hover:text-zinc-300 hover:underline"
+              onClick={onClearFavoritesFilter}
+            >
+              Clear favorites filter
+            </button>
+          </div>
+        ) : null}
+
+        {!isLoadingLeaderboard && !leaderboardError && displayedRanked.length > 0 ? (
+          <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-12 xl:gap-16">
+            {/* MAIN TABLE ~68–72% */}
+            <div className="min-w-0 flex-1">
+              <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Wallet universe</h2>
+                <p className="text-sm text-zinc-500">
+                  <span className="font-mono tabular-nums text-zinc-400">{sortedRows.length}</span> rows
+                  {soloFavorites ? (
+                    <span className="ml-2 text-amber-500/80">· favorites filter</span>
+                  ) : null}
+                </p>
+              </div>
+              <div className="overflow-hidden rounded-2xl bg-[#0E131C]/70 ring-1 ring-white/[0.05]">
+                <div className="max-h-[min(72vh,960px)] overflow-x-auto overflow-y-auto">
+                  <table className="w-full min-w-[900px] text-left text-[13px]">
+                    <thead className="sticky top-0 z-10 bg-[#121A26]/95 backdrop-blur-md">
+                      <tr className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                        {[
+                          ["rank", "Rank"],
+                          ["wallet", "Wallet"],
+                          ["score", "Score"],
+                          ["winRate", "Win rate"],
+                          ["pnl30d", "30D PnL"],
+                          ["totalTrades", "Trades"],
+                          ["profitFactor", "P / F"],
+                          ["lastSeen", "Last active"],
+                          [null, "Action"]
+                        ].map(([key, label]) =>
+                          key ? (
+                            <th key={key} className="cursor-pointer select-none whitespace-nowrap px-5 py-4 first:pl-6" scope="col">
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 text-left font-semibold text-zinc-500 transition hover:text-zinc-300"
+                                onClick={() => onHeaderClick(key)}
+                              >
+                                {label}
+                                {sortBy === key ? (
+                                  <span className="font-mono text-zinc-400">{sortOrder === "asc" ? "↑" : "↓"}</span>
+                                ) : null}
+                              </button>
+                            </th>
+                          ) : (
+                            <th key="action" className="whitespace-nowrap px-5 py-4 last:pr-6" scope="col">
+                              {label}
+                            </th>
+                          )
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody className="text-zinc-300">
+                      {sortedRows.map((w) => {
+                        const wr = Number(w.winRate || 0);
+                        const { w: wc, l: lc } = wlFromWinRate(w.totalTrades, w.winRate);
+                        const pf = w._pf != null ? w._pf.toFixed(2) : "—";
+                        const pnl = Number(w.pnl30d || 0);
+                        const scoreNum =
+                          w.score != null && Number.isFinite(Number(w.score)) ? Number(w.score) : null;
+                        const isSel = selectedWallet === w.wallet;
+                        return (
+                          <tr
+                            key={w.wallet}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setSelectedWallet(w.wallet);
+                              }
+                            }}
+                            onClick={(e) => {
+                              if (e.target.closest?.("a,button,[data-no-row-select]")) return;
+                              setSelectedWallet(w.wallet);
+                            }}
+                            className={`border-t border-white/[0.04] transition-colors ${
+                              isSel
+                                ? "bg-[#161E2C]/95 ring-1 ring-inset ring-emerald-500/15"
+                                : "hover:bg-[#121722]/90"
+                            }`}
+                          >
+                            <td className="px-5 py-5 font-mono text-[12px] tabular-nums text-zinc-400 first:pl-6">
+                              {soloFavorites ? `${w.rank} (${w.globalRank})` : w.rank}
+                            </td>
+                            <td className="max-w-[200px] px-5 py-5" title={titleFor?.(w.wallet)}>
+                              <span className="font-mono text-[12px] text-sky-400/90">{truncateWallet(w.wallet)}</span>
+                              {labelFor?.(w.wallet) ? (
+                                <span className="mt-0.5 block truncate text-[11px] font-normal text-zinc-500">
+                                  {labelFor(w.wallet)}
+                                </span>
+                              ) : null}
+                            </td>
+                            <td className="px-5 py-5">
+                              {scoreNum != null ? (
+                                <div className="flex min-w-[108px] flex-col gap-2">
+                                  <div className="h-1 overflow-hidden rounded-full bg-zinc-800/90">
+                                    <div
+                                      className="h-full rounded-full bg-emerald-700/45"
+                                      style={{ width: `${Math.min(100, Math.max(0, scoreNum))}%` }}
+                                    />
+                                  </div>
+                                  <span className="font-mono text-[12px] tabular-nums text-zinc-200">
+                                    {scoreNum.toFixed(1)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-zinc-600">—</span>
+                              )}
+                            </td>
+                            <td className="px-5 py-5">
+                              <span
+                                className={`inline-flex rounded-md px-2.5 py-1 text-[11px] font-mono tabular-nums ${winRateBadgeClass(wr)}`}
+                              >
+                                {wr.toFixed(1)}%
+                              </span>
+                            </td>
+                            <td
+                              className={`px-5 py-5 font-mono text-[12px] tabular-nums ${
+                                pnl >= 0 ? "text-emerald-500/80" : "text-rose-500/75"
                               }`}
                             >
-                              {typ}
-                            </span>
-                            <span className="font-mono text-[10px] text-zinc-300">{tick}</span>
-                            <span className="text-[10px] text-zinc-500">CONF {conf}%</span>
-                          </div>
-                          <p className="mt-1 text-[9px] font-mono text-zinc-600">{relShort(r.createdAt)}</p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-zinc-600" aria-hidden />
-                      </div>
-                    );
-                  })}
+                              {pnl >= 0 ? "+" : "-"}${formatUsdWhole(Math.abs(pnl))}
+                            </td>
+                            <td className="px-5 py-5 font-mono text-[12px] tabular-nums text-zinc-400">
+                              {w.totalTrades ?? "—"}
+                              <span className="text-zinc-600"> ({wc}W / {lc}L)</span>
+                            </td>
+                            <td className="px-5 py-5 font-mono text-[12px] tabular-nums text-zinc-500">{pf}</td>
+                            <td className="whitespace-nowrap px-5 py-5 font-mono text-[11px] tabular-nums text-zinc-500">
+                              {w.lastSeen ? formatDateTime(w.lastSeen) : "—"}
+                            </td>
+                            <td className="px-5 py-5 last:pr-6">
+                              <div className="flex flex-wrap gap-1.5" data-no-row-select>
+                                <button
+                                  type="button"
+                                  onClick={() => onMonitor(w.wallet)}
+                                  className="inline-flex h-8 items-center gap-1 rounded-md px-2.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400 ring-1 ring-white/[0.08] hover:bg-white/[0.04] hover:text-zinc-200"
+                                >
+                                  <Bell className="h-3 w-3" />
+                                  Monitor
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onFollow(w.wallet)}
+                                  className="inline-flex h-8 items-center gap-1 rounded-md px-2.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400 ring-1 ring-white/[0.08] hover:bg-emerald-950/40 hover:text-emerald-400/90"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                  {isFavorite(w.wallet) ? "Following" : "Follow"}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          </aside>
-        </div>
-      ) : null}
+
+            {/* RIGHT RAIL ~28–32% — panel de contexto permanente */}
+            <aside className="w-full shrink-0 space-y-10 lg:w-[min(32vw,400px)] lg:max-w-[32%] xl:w-[400px]">
+              <div className="rounded-2xl bg-[#0E131C]/70 ring-1 ring-white/[0.05]">
+                <div className="border-b border-white/[0.05] px-6 py-4">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Context</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-600">
+                    {selectedRow ? "Selected wallet — full profile below." : "No row selected — live market summary active."}
+                  </p>
+                </div>
+                <div className="space-y-8 px-6 py-6">
+                  {!selectedRow ? (
+                    <div className="space-y-4 text-sm leading-relaxed text-zinc-400">
+                      <p className="font-medium text-zinc-300">Executive snapshot</p>
+                      <ul className="list-inside list-disc space-y-2 text-[13px] text-zinc-500 marker:text-zinc-600">
+                        <li>
+                          Coverage:{" "}
+                          <span className="font-mono tabular-nums text-zinc-400">{displayedRanked.length}</span> wallets
+                          in view
+                          {medianWinRate != null ? (
+                            <>
+                              {" "}
+                              · median win rate{" "}
+                              <span className="font-mono text-zinc-400">{medianWinRate.toFixed(1)}%</span>
+                            </>
+                          ) : null}
+                        </li>
+                        <li>
+                          Probe cadence:{" "}
+                          <span className="font-mono text-zinc-400">{activeProbes24h ?? "—"}</span> touches in 24h ·{" "}
+                          <span className="font-mono text-zinc-400">{filteredActivity.length}</span> signals in{" "}
+                          {timeframe}
+                        </li>
+                        <li>
+                          Avg book PnL (30D):{" "}
+                          {avgPnl30 != null ? (
+                            <span
+                              className={`font-mono tabular-nums ${avgPnl30 >= 0 ? "text-emerald-500/75" : "text-rose-500/75"}`}
+                            >
+                              {avgPnl30 >= 0 ? "+" : "-"}${formatUsdWhole(Math.abs(avgPnl30))}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </li>
+                      </ul>
+                      <p className="text-[12px] text-zinc-600">
+                        Click any row to load wallet intelligence, narrative, and execution context in this column.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Wallet</p>
+                          <p className="mt-1 font-mono text-sm text-sky-400/90" title={selectedRow.wallet}>
+                            {truncateWallet(selectedRow.wallet)}
+                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => copyAddr(selectedRow.wallet)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 ring-1 ring-white/[0.08] hover:bg-white/[0.04] hover:text-zinc-200"
+                            title="Copy address"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
+                          <Link
+                            href={`/wallet/${selectedRow.wallet}?lang=${narrativeLang || "en"}`}
+                            className="inline-flex h-9 items-center rounded-lg px-3 text-[10px] font-semibold uppercase tracking-wide text-zinc-400 ring-1 ring-white/[0.08] hover:bg-white/[0.04]"
+                          >
+                            Full dossier
+                          </Link>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          ["Score", selectedRow.score != null ? Number(selectedRow.score).toFixed(1) : "—"],
+                          ["Win rate", `${Number(selectedRow.winRate || 0).toFixed(1)}%`],
+                          [
+                            "30D PnL",
+                            `${Number(selectedRow.pnl30d || 0) >= 0 ? "+" : "-"}$${formatUsdWhole(Math.abs(Number(selectedRow.pnl30d || 0)))}`
+                          ],
+                          ["Last active", selectedRow.lastSeen ? relShort(selectedRow.lastSeen) : "—"]
+                        ].map(([lab, val]) => (
+                          <div key={lab} className="rounded-xl bg-[#121926]/60 px-3 py-3 ring-1 ring-white/[0.04]">
+                            <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-500">{lab}</p>
+                            <p className="mt-1 font-mono text-[13px] tabular-nums text-zinc-200">{val}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onMonitor(selectedRow.wallet)}
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-[11px] font-semibold uppercase tracking-wide text-zinc-200 ring-1 ring-white/[0.1] hover:bg-white/[0.05]"
+                        >
+                          <Bell className="h-4 w-4" />
+                          Monitor
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onFollow(selectedRow.wallet)}
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-[11px] font-semibold uppercase tracking-wide text-emerald-400/90 ring-1 ring-emerald-800/35 hover:bg-emerald-950/30"
+                        >
+                          {isFavorite(selectedRow.wallet) ? (
+                            <Star className="h-4 w-4 fill-current" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                          {isFavorite(selectedRow.wallet) ? "Following" : "Follow"}
+                        </button>
+                      </div>
+                      <div className="max-h-[200px] overflow-y-auto rounded-xl ring-1 ring-white/[0.05]">
+                        <WalletNarrativeCard walletAddress={selectedRow.wallet} lang={narrativeLang} />
+                      </div>
+                      <SmartWalletDetailPanel
+                        row={selectedRow}
+                        labelFor={labelFor}
+                        titleFor={titleFor}
+                        narrativeLang={narrativeLang}
+                      />
+                    </div>
+                  )}
+
+                  {/* Signal quality — always visible */}
+                  <div className="border-t border-white/[0.05] pt-8">
+                    <h4 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Signal quality</h4>
+                    <p className="mt-3 text-sm text-zinc-500">
+                      {signalQuality.n > 0 ? (
+                        <>
+                          Mean confidence{" "}
+                          <span className="font-mono tabular-nums text-zinc-300">
+                            {signalQuality.avg != null ? signalQuality.avg.toFixed(0) : "—"}%
+                          </span>
+                          ·{" "}
+                          <span className="font-mono tabular-nums text-zinc-300">{signalQuality.high}</span> /{" "}
+                          <span className="font-mono text-zinc-600">{signalQuality.n}</span> ≥ half-scale in window
+                        </>
+                      ) : (
+                        <span className="text-zinc-600">No confidence samples in this timeframe.</span>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Action context */}
+                  <div className="border-t border-white/[0.05] pt-8">
+                    <h4 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Actions</h4>
+                    <p className="mt-3 text-[12px] leading-relaxed text-zinc-600">
+                      <strong className="font-medium text-zinc-500">Monitor</strong> opens the institutional wallet dossier
+                      (charts, behavior, narratives).
+                      <br />
+                      <strong className="font-medium text-zinc-500">Follow</strong> persists a local bookmark — same
+                      storage as your smart-money favorites.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline — recent probes */}
+              <div className="rounded-2xl bg-[#0E131C]/70 ring-1 ring-white/[0.05]">
+                <div className="flex items-center justify-between border-b border-white/[0.05] px-6 py-4">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Live probe timeline</h3>
+                  <button
+                    type="button"
+                    onClick={() => activityRefetch()}
+                    className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 hover:text-zinc-300"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Sync
+                  </button>
+                </div>
+                <div className="max-h-[420px] overflow-y-auto px-2 py-2">
+                  {activityLoading ? (
+                    <div className="flex items-center gap-2 px-4 py-6 text-sm text-zinc-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Ingesting…
+                    </div>
+                  ) : null}
+                  {activityError ? (
+                    <div className="px-4 py-4 text-sm text-rose-400/85">
+                      {activityError?.message || t("smart.activity.error")}
+                    </div>
+                  ) : null}
+                  {!activityLoading && !activityError && filteredActivity.length === 0 ? (
+                    <div className="px-4 py-6 text-sm text-zinc-600">{t("smart.activity.empty")}</div>
+                  ) : null}
+                  {!activityLoading &&
+                    !activityError &&
+                    filteredActivity.map((r, i) => {
+                      const tick = r.token ? truncateWallet(r.token) : "—";
+                      const typ = signalTypeLabel(r.side);
+                      const conf = Number.isFinite(r.confidence) ? Math.round(r.confidence) : "—";
+                      return (
+                        <div key={`${r.wallet}-${r.token}-${r.createdAt}-${i}`} className="relative flex gap-3 px-4 py-3">
+                          <div className="flex w-8 shrink-0 flex-col items-center pt-1">
+                            <span className="h-2 w-2 rounded-full bg-zinc-600" />
+                            {i < filteredActivity.length - 1 ? (
+                              <span className="mt-1 w-px flex-1 min-h-[24px] bg-white/[0.06]" aria-hidden />
+                            ) : null}
+                          </div>
+                          <div className="min-w-0 flex-1 pb-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-md bg-zinc-800/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-400 ring-1 ring-white/[0.06]">
+                                {typ}
+                              </span>
+                              <span className="font-mono text-[11px] text-zinc-300">{tick}</span>
+                              <span className="text-[10px] text-zinc-500">conf {conf}%</span>
+                              {r.resultPct != null && Number.isFinite(r.resultPct) ? (
+                                <span
+                                  className={`text-[10px] font-mono tabular-nums ${
+                                    r.resultPct >= 0 ? "text-emerald-600/85" : "text-rose-600/80"
+                                  }`}
+                                >
+                                  {r.resultPct >= 0 ? "+" : ""}
+                                  {Number(r.resultPct).toFixed(1)}%
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="mt-1.5 font-mono text-[10px] tabular-nums text-zinc-600">
+                              {relShort(r.createdAt)}
+                            </p>
+                          </div>
+                          <ChevronRight className="mt-2 h-4 w-4 shrink-0 text-zinc-700" aria-hidden />
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </aside>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

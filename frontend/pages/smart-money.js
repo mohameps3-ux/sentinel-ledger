@@ -144,7 +144,7 @@ export default function SmartMoneyPage() {
   return (
     <>
       <PageHead title={t("smart.pageTitle")} description={t("smart.pageDesc")} />
-      <div className="min-h-screen overflow-x-hidden bg-[#05070A] text-zinc-100">
+      <div className="min-h-screen overflow-x-hidden bg-[#090C11] text-zinc-100">
         <SmartMoneyLeaderboardConsole
           displayedRanked={displayedRanked}
           soloFavorites={soloFavorites}
