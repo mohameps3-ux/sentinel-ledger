@@ -4,6 +4,7 @@ const redis = require("../lib/cache");
 const { getSupabase } = require("../lib/supabase");
 const { handleSupportInbound } = require("../services/supportService");
 const { sendOmniAlert } = require("../services/omniAlertsService");
+const { validatePublicHttpsMediaUrl } = require("../lib/publicMediaUrl");
 const { getProAlertCronStatus, runProAlertTick } = require("../jobs/proAlertCron");
 
 const router = express.Router();
@@ -110,9 +111,40 @@ router.post("/inbound", inboundLimiter, assertInboundAuth, enforceInboundPayload
 
 router.post("/alerts/broadcast", assertOpsAuth, async (req, res) => {
   try {
-    const { title = "Sentinel Alert", message = "", channels = ["telegram"], severity = "info" } = req.body || {};
-    if (!message) return res.status(400).json({ ok: false, error: "message_required" });
-    const sent = await sendOmniAlert({ title, message, channels, severity });
+    const {
+      title = "Sentinel Alert",
+      message = "",
+      channels = ["telegram"],
+      severity = "info",
+      mediaType: rawMediaType,
+      mediaUrl: rawMediaUrl
+    } = req.body || {};
+
+    const mt = String(rawMediaType || "").trim().toLowerCase();
+    const normalizedMedia = mt === "photo" || mt === "video" ? mt : null;
+    const urlTrim = typeof rawMediaUrl === "string" ? rawMediaUrl.trim() : "";
+    const hasUrlHint = urlTrim.length > 0;
+
+    if (normalizedMedia) {
+      if (!validatePublicHttpsMediaUrl(urlTrim)) {
+        return res.status(400).json({ ok: false, error: "invalid_media_url" });
+      }
+    } else if (hasUrlHint) {
+      return res.status(400).json({ ok: false, error: "media_type_required" });
+    }
+
+    if (!normalizedMedia && !String(message || "").trim()) {
+      return res.status(400).json({ ok: false, error: "message_required" });
+    }
+
+    const sent = await sendOmniAlert({
+      title,
+      message,
+      channels,
+      severity,
+      mediaType: normalizedMedia,
+      mediaUrl: normalizedMedia ? urlTrim : undefined
+    });
     return res.json({ ok: true, data: sent });
   } catch (error) {
     console.error("Omni broadcast failed:", error.message);

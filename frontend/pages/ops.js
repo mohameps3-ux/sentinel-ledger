@@ -133,6 +133,8 @@ export default function OpsPage() {
   const [autoDiscoveryCandidates, setAutoDiscoveryCandidates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
+  const [broadcastMediaType, setBroadcastMediaType] = useState("none");
+  const [broadcastMediaUrl, setBroadcastMediaUrl] = useState("");
   const [verifyPaste, setVerifyPaste] = useState("");
   const [verifyResult, setVerifyResult] = useState(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
@@ -244,18 +246,39 @@ export default function OpsPage() {
   };
 
   const sendBroadcast = async () => {
-    if (!broadcastMsg.trim()) return;
+    const msg = broadcastMsg.trim();
+    const url = broadcastMediaUrl.trim();
+    if (broadcastMediaType !== "none" && !url) {
+      toast.error("HTTPS URL required for photo or video.");
+      return;
+    }
+    if (broadcastMediaType === "none" && !msg) return;
     try {
-      await withOpsBridge("/api/v1/bots/omni/alerts/broadcast", {
+      const payload = {
+        title: "Sentinel Ops Broadcast",
+        message: msg,
+        channels: ["telegram"],
+        severity: "info"
+      };
+      if (broadcastMediaType === "photo") {
+        payload.mediaType = "photo";
+        payload.mediaUrl = url;
+      } else if (broadcastMediaType === "video") {
+        payload.mediaType = "video";
+        payload.mediaUrl = url;
+      }
+      const r = await withOpsBridge("/api/v1/bots/omni/alerts/broadcast", {
         method: "POST",
-        body: JSON.stringify({
-          title: "Sentinel Ops Broadcast",
-          message: broadcastMsg.trim(),
-          channels: ["telegram"],
-          severity: "info"
-        })
+        body: JSON.stringify(payload)
       });
+      const tg = Array.isArray(r.data) ? r.data.find((x) => x.channel === "telegram") : null;
+      if (tg && !tg.sent) {
+        toast.error(tg.reason ? `Telegram: ${tg.reason}` : "Telegram send failed");
+        return;
+      }
       setBroadcastMsg("");
+      setBroadcastMediaUrl("");
+      setBroadcastMediaType("none");
       toast.success("Broadcast sent.");
     } catch (error) {
       toast.error(`Broadcast failed: ${error.message}`);
@@ -1500,22 +1523,72 @@ export default function OpsPage() {
 
               <div className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5">
                 <h2 className="text-lg font-semibold text-sl-text mb-3">Broadcast</h2>
-                <div className="flex flex-col sm:flex-row gap-2 min-w-0">
-                  <input
-                    value={broadcastMsg}
-                    onChange={(e) => setBroadcastMsg(e.target.value)}
-                    placeholder="Message to omni channels (Telegram)…"
-                    className="flex-1 min-w-0 h-11  bg-[#0E1318] border border-white/[0.08] px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/25"
-                  />
-                  <button
-                    type="button"
-                    onClick={sendBroadcast}
-                    className="btn-ghost-sm h-11 px-5  border border-white/[0.1] bg-white/[0.04] text-sm font-medium text-sl-sub hover:bg-white/[0.08] shrink-0"
-                  >
-                    Send
-                  </button>
+                <div className="flex flex-col gap-3 min-w-0">
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    <span className="text-sl-muted">Telegram:</span>
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="broadcast-media"
+                        checked={broadcastMediaType === "none"}
+                        onChange={() => setBroadcastMediaType("none")}
+                        className="accent-violet-500"
+                      />
+                      Text only
+                    </label>
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="broadcast-media"
+                        checked={broadcastMediaType === "photo"}
+                        onChange={() => setBroadcastMediaType("photo")}
+                        className="accent-violet-500"
+                      />
+                      Photo URL
+                    </label>
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="broadcast-media"
+                        checked={broadcastMediaType === "video"}
+                        onChange={() => setBroadcastMediaType("video")}
+                        className="accent-violet-500"
+                      />
+                      Video URL
+                    </label>
+                  </div>
+                  {broadcastMediaType !== "none" ? (
+                    <input
+                      type="url"
+                      value={broadcastMediaUrl}
+                      onChange={(e) => setBroadcastMediaUrl(e.target.value)}
+                      placeholder="https://… direct link (Telegram fetches; must be public)"
+                      className="w-full h-11  bg-[#0E1318] border border-white/[0.08] px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/25 font-mono text-xs"
+                    />
+                  ) : null}
+                  <div className="flex flex-col sm:flex-row gap-2 min-w-0">
+                    <input
+                      value={broadcastMsg}
+                      onChange={(e) => setBroadcastMsg(e.target.value)}
+                      placeholder={
+                        broadcastMediaType === "none"
+                          ? "Message to Telegram…"
+                          : "Caption (optional, max ~1024 chars)…"
+                      }
+                      className="flex-1 min-w-0 h-11  bg-[#0E1318] border border-white/[0.08] px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/25"
+                    />
+                    <button
+                      type="button"
+                      onClick={sendBroadcast}
+                      className="btn-ghost-sm h-11 px-5  border border-white/[0.1] bg-white/[0.04] text-sm font-medium text-sl-sub hover:bg-white/[0.08] shrink-0"
+                    >
+                      Send
+                    </button>
+                  </div>
                 </div>
-                <p className="text-[11px] text-sl-muted mt-2">Uses the ops bridge (your gate cookie); needs Telegram routing on the server.</p>
+                <p className="text-[11px] text-sl-muted mt-2">
+                  Photo/video: public <span className="font-mono text-sl-sub">https</span> URL only (no local files). Telegram downloads from that link.
+                </p>
               </div>
 
               <div className="grid xl:grid-cols-2 gap-4">

@@ -134,6 +134,33 @@ async function sendTelegramText(text) {
   return true;
 }
 
+/** Telegram fetches the file from this HTTPS URL (must be publicly reachable). */
+async function sendTelegramPhoto(photoUrl, caption) {
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!bot || !chatId || !photoUrl) return false;
+  try {
+    const cap = caption && String(caption).trim() ? String(caption).trim().slice(0, 1024) : undefined;
+    await bot.telegram.sendPhoto(chatId, photoUrl, cap ? { caption: cap } : undefined);
+    return true;
+  } catch (e) {
+    console.error("sendTelegramPhoto:", e.message);
+    return false;
+  }
+}
+
+async function sendTelegramVideo(videoUrl, caption) {
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!bot || !chatId || !videoUrl) return false;
+  try {
+    const cap = caption && String(caption).trim() ? String(caption).trim().slice(0, 1024) : undefined;
+    await bot.telegram.sendVideo(chatId, videoUrl, cap ? { caption: cap } : undefined);
+    return true;
+  } catch (e) {
+    console.error("sendTelegramVideo:", e.message);
+    return false;
+  }
+}
+
 /** One alert per mint per hour when wallet heuristics are high (dedup Redis). */
 async function sendWalletThreatAlert(tokenAddress, walletIntel, marketData) {
   const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -373,6 +400,8 @@ module.exports = {
   startTelegramBot,
   sendGradeAlert,
   sendTelegramText,
+  sendTelegramPhoto,
+  sendTelegramVideo,
   sendWalletThreatAlert,
   sendProUserAlert
 };
