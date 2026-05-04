@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { SearchBar } from "./SearchBar";
 import { APP_NAV_LINKS } from "./appNavConfig";
 import { useLocale } from "../../contexts/LocaleContext";
-import { useLayoutEffect, useRef, useEffect, useState } from "react";
+import { useLayoutEffect, useRef, useEffect, useState, useMemo } from "react";
 import { Menu, X } from "lucide-react";
 import { SentinelLogo } from "./SentinelLogo";
 
@@ -51,9 +51,21 @@ const ALL_PAGES_SECTIONS = [
   }
 ];
 
+const showOpsInNav =
+  process.env.NEXT_PUBLIC_SHOW_OPS_NAV === "1" ||
+  process.env.NEXT_PUBLIC_SHOW_OPS_NAV?.toLowerCase() === "true";
+
 export function Navbar() {
   const { t } = useLocale();
   const router = useRouter();
+  const allPagesSections = useMemo(
+    () =>
+      ALL_PAGES_SECTIONS.map((section) => ({
+        ...section,
+        links: section.links.filter((link) => link.href !== "/ops" || showOpsInNav)
+      })),
+    []
+  );
   const isControlRoom = ["/ops", "/pricing", "/legal", "/privacy", "/terms", "/contact"].includes(router.pathname);
   const showTradingChrome = !isControlRoom;
   const navRef = useRef(null);
@@ -144,7 +156,7 @@ export function Navbar() {
               </button>
               {allPagesOpen ? (
                 <div className="absolute left-0 top-full z-[100] mt-1 min-w-[240px] border border-sl-border bg-sl-panel py-2">
-                  {ALL_PAGES_SECTIONS.map((section, si) => (
+                  {allPagesSections.map((section, si) => (
                     <div key={section.key}>
                       {si > 0 ? <div className="my-1 border-t border-sl-border" /> : null}
                       <div className="px-4 py-1 font-mono text-2xs text-sl-muted uppercase tracking-widest">

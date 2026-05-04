@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useLocale } from "../../contexts/LocaleContext";
 import { FinancialDisclaimer } from "./FinancialDisclaimer";
 
+const showOpsLink =
+  process.env.NEXT_PUBLIC_SHOW_OPS_NAV === "1" ||
+  process.env.NEXT_PUBLIC_SHOW_OPS_NAV?.toLowerCase() === "true";
+
 const FOOTER_GROUPS = [
   {
     titleKey: "footer.col.trading",
@@ -91,7 +95,9 @@ export function SiteFooter() {
             <nav key={group.titleKey} aria-label={t(group.titleKey)}>
               <p className={titleBase}>{t(group.titleKey)}</p>
               <ul className="space-y-0.5">
-                {group.items.map((item) => (
+                {group.items
+                  .filter((item) => item.href !== "/ops" || showOpsLink)
+                  .map((item) => (
                   <li key={item.href}>
                     <Link href={item.href} className={linkBase}>
                       {t(item.labelKey)}

@@ -1,22 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { getPublicApiUrl } from "../lib/publicRuntime";
+import { withOpsBridge, toOpsBridgeUrl } from "../lib/opsBridgeClient";
 import { formatDateTime, formatInteger } from "../lib/formatStable";
 import { PageHead } from "../components/seo/PageHead";
-
-async function withOpsKey(path, opsKey, options = {}) {
-  const res = await fetch(`${getPublicApiUrl()}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "x-ops-key": opsKey,
-      ...(options.headers || {})
-    }
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || "request_failed");
-  return body;
-}
 
 function formatBytes(n) {
   const v = Number(n);
@@ -119,9 +106,8 @@ function TabButton({ active, children, onClick, id }) {
 }
 
 export default function OpsPage() {
-  const [opsKey, setOpsKey] = useState("");
-  const [savedOpsKey, setSavedOpsKey] = useState("");
   const autoLoadedRef = useRef(false);
+  const [bridgeOk, setBridgeOk] = useState(null);
   const [tab, setTab] = useState("overview");
   const [tickets, setTickets] = useState([]);
   const [events, setEvents] = useState([]);
@@ -153,25 +139,14 @@ export default function OpsPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = localStorage.getItem("sentinel-ops-key");
-    if (saved) {
-      setOpsKey(saved);
-      setSavedOpsKey(saved);
+    try {
+      localStorage.removeItem("sentinel-ops-key");
+    } catch {
+      /* ignore */
     }
   }, []);
 
-  const hasKey = useMemo(() => opsKey.trim().length > 0, [opsKey]);
-
-  const saveKey = () => {
-    const trimmed = opsKey.trim();
-    localStorage.setItem("sentinel-ops-key", trimmed);
-    autoLoadedRef.current = false;
-    setSavedOpsKey(trimmed);
-    toast.success("Ops key saved locally.");
-  };
-
   const loadData = useCallback(async () => {
-    if (!hasKey) return toast.error("Set your ops key first.");
     setLoading(true);
     try {
       const [
@@ -196,26 +171,26 @@ export default function OpsPage() {
         autoDiscoveryStatusRes,
         autoDiscoveryCandidatesRes
       ] = await Promise.all([
-        withOpsKey("/api/v1/bots/omni/tickets?limit=50", opsKey),
-        withOpsKey("/api/v1/bots/omni/events?limit=100", opsKey),
-        withOpsKey("/api/v1/ops/entropy-guard/snapshot", opsKey),
-        withOpsKey("/api/v1/ops/signal-performance/summary?lookbackHours=48&maxRows=2000", opsKey),
-        withOpsKey("/api/v1/ops/signal-performance/calibration", opsKey),
-        withOpsKey("/api/v1/ops/data-freshness", opsKey),
-        withOpsKey("/api/v1/ops/data-freshness/history?hours=168&endpoint=signalsLatest&limit=1000", opsKey),
-        withOpsKey("/api/v1/ops/signals-supabase-slo/snapshot", opsKey),
-        withOpsKey("/api/v1/ops/data-freshness/history/status", opsKey),
-        withOpsKey("/api/v1/ops/wallet-behavior/status", opsKey),
-        withOpsKey("/api/v1/ops/wallet-behavior/top?limit=25&minResolved=5", opsKey),
-        withOpsKey("/api/v1/ops/signal-gate/status", opsKey),
-        withOpsKey("/api/v1/ops/signal-gate/tuner/status", opsKey),
-        withOpsKey("/api/v1/telemetry/client/summary", opsKey),
-        withOpsKey("/api/v1/ops/wallet-coordination/status", opsKey),
-        withOpsKey("/api/v1/ops/wallet-coordination/alerts?limit=50", opsKey),
-        withOpsKey("/api/v1/ops/wallet-coordination/outcomes?limit=40", opsKey),
-        withOpsKey("/api/v1/ops/validation-oracle/rules?limit=100", opsKey),
-        withOpsKey("/api/v1/ops/auto-discovery/status", opsKey),
-        withOpsKey("/api/v1/ops/auto-discovery/candidates?limit=25", opsKey)
+        withOpsBridge("/api/v1/bots/omni/tickets?limit=50"),
+        withOpsBridge("/api/v1/bots/omni/events?limit=100"),
+        withOpsBridge("/api/v1/ops/entropy-guard/snapshot"),
+        withOpsBridge("/api/v1/ops/signal-performance/summary?lookbackHours=48&maxRows=2000"),
+        withOpsBridge("/api/v1/ops/signal-performance/calibration"),
+        withOpsBridge("/api/v1/ops/data-freshness"),
+        withOpsBridge("/api/v1/ops/data-freshness/history?hours=168&endpoint=signalsLatest&limit=1000"),
+        withOpsBridge("/api/v1/ops/signals-supabase-slo/snapshot"),
+        withOpsBridge("/api/v1/ops/data-freshness/history/status"),
+        withOpsBridge("/api/v1/ops/wallet-behavior/status"),
+        withOpsBridge("/api/v1/ops/wallet-behavior/top?limit=25&minResolved=5"),
+        withOpsBridge("/api/v1/ops/signal-gate/status"),
+        withOpsBridge("/api/v1/ops/signal-gate/tuner/status"),
+        withOpsBridge("/api/v1/telemetry/client/summary"),
+        withOpsBridge("/api/v1/ops/wallet-coordination/status"),
+        withOpsBridge("/api/v1/ops/wallet-coordination/alerts?limit=50"),
+        withOpsBridge("/api/v1/ops/wallet-coordination/outcomes?limit=40"),
+        withOpsBridge("/api/v1/ops/validation-oracle/rules?limit=100"),
+        withOpsBridge("/api/v1/ops/auto-discovery/status"),
+        withOpsBridge("/api/v1/ops/auto-discovery/candidates?limit=25")
       ]);
       setTickets(ticketRes.data || []);
       setEvents(eventRes.data || []);
@@ -239,23 +214,25 @@ export default function OpsPage() {
       setValidationOracleStatus(validationRulesRes.status || null);
       setAutoDiscoveryStatus(autoDiscoveryStatusRes.data || null);
       setAutoDiscoveryCandidates(autoDiscoveryCandidatesRes.data || []);
+      setBridgeOk(true);
       toast.success("Ops data refreshed.");
     } catch (error) {
+      setBridgeOk(false);
       toast.error(`Load failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
-  }, [hasKey, opsKey]);
+  }, []);
 
   useEffect(() => {
-    if (!savedOpsKey || autoLoadedRef.current) return;
+    if (autoLoadedRef.current) return;
     autoLoadedRef.current = true;
     loadData();
-  }, [loadData, savedOpsKey]);
+  }, [loadData]);
 
   const setTicketStatus = async (ticketId, status) => {
     try {
-      await withOpsKey(`/api/v1/bots/omni/tickets/${ticketId}`, opsKey, {
+      await withOpsBridge(`/api/v1/bots/omni/tickets/${ticketId}`, {
         method: "PATCH",
         body: JSON.stringify({ status })
       });
@@ -269,7 +246,7 @@ export default function OpsPage() {
   const sendBroadcast = async () => {
     if (!broadcastMsg.trim()) return;
     try {
-      await withOpsKey("/api/v1/bots/omni/alerts/broadcast", opsKey, {
+      await withOpsBridge("/api/v1/bots/omni/alerts/broadcast", {
         method: "POST",
         body: JSON.stringify({
           title: "Sentinel Ops Broadcast",
@@ -286,14 +263,9 @@ export default function OpsPage() {
   };
 
   const downloadHistoryCsv = async (hours) => {
-    if (!hasKey) return toast.error("Set your ops key first.");
     try {
-      const url = `${getPublicApiUrl()}/api/v1/ops/data-freshness/history/export?hours=${hours}&endpoint=signalsLatest&limit=5000`;
-      const res = await fetch(url, {
-        headers: {
-          "x-ops-key": opsKey.trim()
-        }
-      });
+      const path = `/api/v1/ops/data-freshness/history/export?hours=${hours}&endpoint=signalsLatest&limit=5000`;
+      const res = await fetch(toOpsBridgeUrl(path), { credentials: "include" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || "export_failed");
@@ -314,14 +286,9 @@ export default function OpsPage() {
   };
 
   const downloadHistorySignedJson = async (hours) => {
-    if (!hasKey) return toast.error("Set your ops key first.");
     try {
-      const url = `${getPublicApiUrl()}/api/v1/ops/data-freshness/history/export/signed?hours=${hours}&endpoint=signalsLatest&limit=5000`;
-      const res = await fetch(url, {
-        headers: {
-          "x-ops-key": opsKey.trim()
-        }
-      });
+      const path = `/api/v1/ops/data-freshness/history/export/signed?hours=${hours}&endpoint=signalsLatest&limit=5000`;
+      const res = await fetch(toOpsBridgeUrl(path), { credentials: "include" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || "signed_export_failed");
@@ -370,11 +337,10 @@ export default function OpsPage() {
   };
 
   const runWalletBehaviorNow = async () => {
-    if (!hasKey) return toast.error("Set your ops key first.");
     try {
-      const runRes = await withOpsKey("/api/v1/ops/wallet-behavior/run", opsKey, { method: "POST" });
+      const runRes = await withOpsBridge("/api/v1/ops/wallet-behavior/run", { method: "POST" });
       setWalletBehaviorStatus(runRes.data || null);
-      const topRes = await withOpsKey("/api/v1/ops/wallet-behavior/top?limit=25&minResolved=5", opsKey);
+      const topRes = await withOpsBridge("/api/v1/ops/wallet-behavior/top?limit=25&minResolved=5");
       setWalletBehaviorTop(topRes.data || []);
       toast.success("Wallet behavior recompute triggered.");
     } catch (error) {
@@ -383,13 +349,12 @@ export default function OpsPage() {
   };
 
   const runWalletCoordinationNow = async () => {
-    if (!hasKey) return toast.error("Set your ops key first.");
     try {
-      const runRes = await withOpsKey("/api/v1/ops/wallet-coordination/run", opsKey, { method: "POST" });
+      const runRes = await withOpsBridge("/api/v1/ops/wallet-coordination/run", { method: "POST" });
       setWalletCoordStatus(runRes.data || null);
-      const alertsRes = await withOpsKey("/api/v1/ops/wallet-coordination/alerts?limit=50", opsKey);
+      const alertsRes = await withOpsBridge("/api/v1/ops/wallet-coordination/alerts?limit=50");
       setWalletCoordAlerts(alertsRes.data || []);
-      const outRes = await withOpsKey("/api/v1/ops/wallet-coordination/outcomes?limit=40", opsKey);
+      const outRes = await withOpsBridge("/api/v1/ops/wallet-coordination/outcomes?limit=40");
       setWalletCoordOutcomes(outRes.data || []);
       setWalletCoordOutcomesDegraded(Boolean(outRes.degraded));
       toast.success("Wallet coordination recompute triggered.");
@@ -399,11 +364,10 @@ export default function OpsPage() {
   };
 
   const runAutoDiscoveryPromotionNow = async () => {
-    if (!hasKey) return toast.error("Set your ops key first.");
     try {
-      const runRes = await withOpsKey("/api/v1/ops/auto-discovery/promote/run", opsKey, { method: "POST" });
+      const runRes = await withOpsBridge("/api/v1/ops/auto-discovery/promote/run", { method: "POST" });
       setAutoDiscoveryStatus(runRes.data?.status || null);
-      const candidatesRes = await withOpsKey("/api/v1/ops/auto-discovery/candidates?limit=25", opsKey);
+      const candidatesRes = await withOpsBridge("/api/v1/ops/auto-discovery/candidates?limit=25");
       setAutoDiscoveryCandidates(candidatesRes.data || []);
       toast.success("Auto-discovery promotion tick executed.");
     } catch (error) {
@@ -412,11 +376,10 @@ export default function OpsPage() {
   };
 
   const runSignalGateTunerNow = async () => {
-    if (!hasKey) return toast.error("Set your ops key first.");
     try {
-      const runRes = await withOpsKey("/api/v1/ops/signal-gate/tuner/run", opsKey, { method: "POST" });
+      const runRes = await withOpsBridge("/api/v1/ops/signal-gate/tuner/run", { method: "POST" });
       setSignalGateTuner(runRes.data?.status || null);
-      const gateRes = await withOpsKey("/api/v1/ops/signal-gate/status", opsKey);
+      const gateRes = await withOpsBridge("/api/v1/ops/signal-gate/status");
       setSignalGate(gateRes.data || null);
       toast.success("Signal gate tuner executed.");
     } catch (error) {
@@ -480,11 +443,16 @@ export default function OpsPage() {
           <p className="text-[10px] uppercase tracking-[0.2em] text-sl-muted font-semibold">Internal</p>
           <h1 className="text-2xl sm:text-3xl font-bold text-sl-text tracking-tight">System Health Dashboard</h1>
           <p className="text-sm text-sl-muted max-w-2xl leading-relaxed">
-            Authenticate once for Ops APIs. Signed export integrity checks use a separate public endpoint (no ops key,
-            rate-limited) so third parties can validate evidence you share.
+            Dashboard data loads through this site&apos;s server — no ops key in localStorage. Add{" "}
+            <span className="text-sl-sub font-medium">OMNI_BOT_OPS_KEY</span> to Vercel (same value as Railway). Signed export
+            verification stays on the public API (no ops key, rate-limited).
           </p>
           <div className="grid grid-cols-2 gap-2 pt-3 md:grid-cols-4">
-            <Kpi label="API" value={hasKey ? "READY" : "LOCKED"} tone={hasKey ? "good" : "warn"} />
+            <Kpi
+              label="API"
+              value={bridgeOk === true ? "READY" : bridgeOk === false ? "LOCKED" : "—"}
+              tone={bridgeOk === true ? "good" : bridgeOk === false ? "warn" : "neutral"}
+            />
             <Kpi label="Oracle" value={validationOracleStatus ? "ONLINE" : "PENDING"} tone={validationOracleStatus ? "good" : "neutral"} />
             <Kpi label="Auto Discovery" value={autoDiscoveryStatus ? "ONLINE" : "PENDING"} tone={autoDiscoveryStatus ? "good" : "neutral"} />
             <Kpi label="Freshness" value={degradedFreshnessCount ? "DEGRADED" : "GREEN"} tone={degradedFreshnessCount ? "warn" : "good"} />
@@ -492,38 +460,19 @@ export default function OpsPage() {
         </header>
 
         <section className="glass-card sl-inset space-y-4">
-          <div className="flex flex-col lg:flex-row lg:items-end gap-3 min-w-0">
-            <div className="flex-1 min-w-0 space-y-1.5">
-              <label htmlFor="ops-key" className="text-[11px] text-sl-muted font-medium">
-                Ops key <span className="text-sl-muted">(stored only in this browser)</span>
-              </label>
-              <input
-                id="ops-key"
-                type="password"
-                autoComplete="off"
-                value={opsKey}
-                onChange={(e) => setOpsKey(e.target.value)}
-                placeholder="OMNI_BOT_OPS_KEY"
-                className="w-full h-11  bg-[#0E1318] border border-white/[0.08] px-3 text-sm text-sl-sub placeholder:text-sl-muted focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/40"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={saveKey}
-                className="h-11 px-4  border border-white/[0.1] bg-white/[0.03] text-sm text-sl-sub hover:bg-white/[0.06] transition"
-              >
-                Save locally
-              </button>
-              <button
-                type="button"
-                onClick={loadData}
-                disabled={loading || !hasKey}
-                className="h-11 px-5  bg-gradient-to-r from-violet-600 to-cyan-600 text-sm font-semibold text-sl-text hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed transition"
-              >
-                {loading ? "Loading…" : "Refresh data"}
-              </button>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-w-0">
+            <p className="text-sm text-sl-muted max-w-xl leading-relaxed">
+              After you open <span className="text-sl-sub">/ops</span> with your gate link once, cookies handle access — just
+              click refresh when you need new data.
+            </p>
+            <button
+              type="button"
+              onClick={loadData}
+              disabled={loading}
+              className="h-11 px-5 shrink-0 bg-gradient-to-r from-violet-600 to-cyan-600 text-sm font-semibold text-sl-text hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            >
+              {loading ? "Loading…" : "Refresh data"}
+            </button>
           </div>
 
           <div
@@ -1566,7 +1515,7 @@ export default function OpsPage() {
                     Send
                   </button>
                 </div>
-                <p className="text-[11px] text-sl-muted mt-2">Requires a valid ops key and server-side routing to Telegram.</p>
+                <p className="text-[11px] text-sl-muted mt-2">Uses the ops bridge (your gate cookie); needs Telegram routing on the server.</p>
               </div>
 
               <div className="grid xl:grid-cols-2 gap-4">
