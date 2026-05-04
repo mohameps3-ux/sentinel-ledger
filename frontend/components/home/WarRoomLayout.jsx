@@ -485,87 +485,88 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
       </div>
 
       <div className="war-room-body">
-        <div className="war-grid-main-head war-room-section-header">
-          <span className="war-room-section-title">⊛ TOP OPPORTUNITIES</span>
-          <span className="war-room-section-sub">Sorted by Smart Money Intent</span>
-        </div>
-
-        <div className="war-grid-main-list war-opportunities-list">
-          {displayTokens.map((tok, i) => {
-            const mint = tok.mint ?? tok.address;
-            return (
-              <OpportunityRow
-                key={mint}
-                tok={tok}
-                rank={i + 1}
-                onSelect={handleSelectToken}
-                isActive={Boolean(mint && activeMint === mint)}
-                isNew={false}
-                activeMint={activeMint}
-              />
-            );
-          })}
-        </div>
-
-        <div className="war-grid-aside-top war-aside-section">
-          <div className="war-aside-title">
-            ⬤ RECENT SIGNALS <span style={{ color: "#22c55e", marginLeft: 4 }}>Live</span>
-          </div>
-          <div className="war-recent-signals-scroll">
-            {displayTokens.map((tok) => {
-              const sc = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
-              const intent = getIntentLevel(sc);
-              const mint = tok.mint ?? tok.address;
-              const isRecentActive = Boolean(mint && activeMint === mint);
-              return (
-                <div
-                  key={mint}
-                  className={`war-recent-signal${isRecentActive ? " war-recent-active" : ""}`}
-                  onClick={() => handleSelectToken(tok)}
-                  style={{ cursor: "pointer" }}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleSelectToken(tok);
-                    }
-                  }}
-                >
-                  <span className={`war-intent-dot ${intent.cls}`} />
-                  <span className="war-recent-symbol">
-                    ${tok.symbol ?? tok.name ?? "TOKEN"}
-                  </span>
-                  <span className="war-recent-narrative">
-                    <WarNarrativeSnippet tok={tok} maxLen={32} />
-                  </span>
-                  <span className="war-recent-score">{sc}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="war-grid-main-spacer" aria-hidden="true" />
-
-        <div className="war-grid-aside-pair">
-          <SmartMoneyFlow
-            key={activeTok?.mint ?? activeTok?.address ?? "default"}
-            tok={activeTok}
-          />
-          <div className="war-aside-section war-quick-actions-panel">
-            <div className="war-aside-title">QUICK ACTIONS</div>
-            <div className="war-quick-actions-inner">
-              <a href="/alerts" className="war-quick-action">
-                ⚑ VIEW ALL ALERTS
-              </a>
-              <a href="/wallet-stalker" className="war-quick-action">
-                ◎ TRACK WALLET
-              </a>
-              <a href="/watchlist" className="war-quick-action">
-                ★ MANAGE WATCHLIST
-              </a>
+        <div className="war-room-columns">
+          <div className="war-room-main">
+            <div className="war-room-section-header">
+              <span className="war-room-section-title">⊛ TOP OPPORTUNITIES</span>
+              <span className="war-room-section-sub">Sorted by Smart Money Intent</span>
             </div>
+            <div className="war-opportunities-list war-velocity-scroll">
+              {displayTokens.map((tok, i) => {
+                const mint = tok.mint ?? tok.address;
+                return (
+                  <OpportunityRow
+                    key={mint}
+                    tok={tok}
+                    rank={i + 1}
+                    onSelect={handleSelectToken}
+                    isActive={Boolean(mint && activeMint === mint)}
+                    isNew={false}
+                    activeMint={activeMint}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="war-room-feed war-aside-section">
+            <div className="war-aside-title">
+              ⬤ RECENT SIGNALS <span style={{ color: "#22c55e", marginLeft: 4 }}>Live</span>
+            </div>
+            <div className="war-recent-signals-scroll war-velocity-scroll">
+              {displayTokens.map((tok) => {
+                const sc = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
+                const intent = getIntentLevel(sc);
+                const mint = tok.mint ?? tok.address;
+                const isRecentActive = Boolean(mint && activeMint === mint);
+                return (
+                  <div
+                    key={mint}
+                    className={`war-recent-signal${isRecentActive ? " war-recent-active" : ""}`}
+                    onClick={() => handleSelectToken(tok)}
+                    style={{ cursor: "pointer" }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleSelectToken(tok);
+                      }
+                    }}
+                  >
+                    <span className={`war-intent-dot ${intent.cls}`} />
+                    <span className="war-recent-symbol">
+                      ${tok.symbol ?? tok.name ?? "TOKEN"}
+                    </span>
+                    <span className="war-recent-narrative">
+                      <WarNarrativeSnippet tok={tok} maxLen={32} />
+                    </span>
+                    <span className="war-recent-score">{sc}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="war-room-bottom-pair">
+          <div className="war-aside-section war-quick-actions-panel war-bottom-box">
+            <div className="war-aside-title">QUICK ACTIONS</div>
+            <a href="/alerts" className="war-quick-action">
+              ⚑ VIEW ALL ALERTS
+            </a>
+            <a href="/wallet-stalker" className="war-quick-action">
+              ◎ TRACK WALLET
+            </a>
+            <a href="/watchlist" className="war-quick-action">
+              ★ MANAGE WATCHLIST
+            </a>
+          </div>
+          <div className="war-bottom-box war-bottom-smflow">
+            <SmartMoneyFlow
+              key={activeTok?.mint ?? activeTok?.address ?? "default"}
+              tok={activeTok}
+            />
           </div>
         </div>
       </div>
