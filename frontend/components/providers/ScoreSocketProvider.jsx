@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useMarketStore } from '@/lib/store/marketStore'
 import { getPublicWsUrl } from '@/lib/publicRuntime'
-import { bindScoreRoomSocket } from '@/lib/scoreRoomClient'
+import { bindScoreRoomSocket, replayScoreRoomJoins } from '@/lib/scoreRoomClient'
 
 export function ScoreSocketProvider({ children }) {
   // Selectores finos: solo suscribe a las funciones, nunca al store completo.
@@ -29,7 +29,10 @@ export function ScoreSocketProvider({ children }) {
 
       bindScoreRoomSocket(socket)
 
-      const onConnect = () => setScoreSocketConnected(true)
+      const onConnect = () => {
+        setScoreSocketConnected(true)
+        replayScoreRoomJoins()
+      }
       const onDisconnect = () => setScoreSocketConnected(false)
 
       socket.on('connect', onConnect)
@@ -48,7 +51,10 @@ export function ScoreSocketProvider({ children }) {
         }
       })
 
-      if (socket.connected) setScoreSocketConnected(true)
+      if (socket.connected) {
+        setScoreSocketConnected(true)
+        replayScoreRoomJoins()
+      }
     })
 
     return () => {

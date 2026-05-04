@@ -3,6 +3,19 @@
 let activeSocket = null;
 const refCounts = new Map();
 
+/** Re-send join-token for all subscribed mints (after socket connect or late bind). */
+export function replayScoreRoomJoins() {
+  const ws = activeSocket;
+  if (!ws || !ws.connected) return;
+  for (const [mint, count] of refCounts) {
+    if (count > 0) {
+      try {
+        ws.emit("join-token", mint);
+      } catch (_) {}
+    }
+  }
+}
+
 export function bindScoreRoomSocket(socket) {
   activeSocket = socket;
 }
