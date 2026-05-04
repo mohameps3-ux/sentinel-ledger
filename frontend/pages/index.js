@@ -542,10 +542,14 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     const seen = new Set();
 
     const tryAdd = (t) => {
-      if (!t?.mint || !isProbableSolanaMint(t.mint)) return;
-      if (seen.has(t.mint)) return;
-      seen.add(t.mint);
-      out.push(t);
+      if (!t || typeof t !== "object") return;
+      const mint =
+        (t.mint && isProbableSolanaMint(String(t.mint)) && String(t.mint)) ||
+        (t.tokenAddress && isProbableSolanaMint(String(t.tokenAddress)) && String(t.tokenAddress)) ||
+        null;
+      if (!mint || seen.has(mint)) return;
+      seen.add(mint);
+      out.push(t.mint === mint ? t : { ...t, mint, tokenAddress: t.tokenAddress || mint });
     };
 
     trending.forEach((t) => tryAdd(t));

@@ -32,11 +32,23 @@ export const MEDIUM_PAGES_STRINGS = {
     de: "Zurück zum Dashboard",
     pt: "Voltar ao painel"
   }),
-  "scanner.narrativeLabel": S("Narrative Scanner", { es: "Escáner por narrativa", de: "Narrativ-Scanner" }),
-  "scanner.narrativeH2": S("Show me only specific narratives", {
-    es: "Mostrar solo narrativas concretas",
-    fr: "Afficher seulement certaines narratifs"
+  "scanner.narrativeLabel": S("MARKET NARRATIVES", {
+    es: "NARRATIVAS DE MERCADO",
+    fr: "NARRATIFS DE MARCHÉ",
+    de: "MARKT-NARRATIVE",
+    pt: "NARRATIVAS DE MERCADO"
   }),
+  "scanner.narrativeH2": S("Thematic cluster filter · live universe", {
+    es: "Filtro por clúster temático · universo en vivo",
+    fr: "Filtre par cluster thématique · univers temps réel",
+    de: "Thematischer Cluster-Filter · Live-Universum",
+    pt: "Filtro de cluster temático · universo ao vivo"
+  }),
+  "scanner.filter.all": S("ALL", { es: "TODOS" }),
+  "scanner.filter.pump": S("PUMP.FUN", { es: "PUMP.FUN" }),
+  "scanner.filter.raydium": S("RAYDIUM", { es: "RAYDIUM" }),
+  "scanner.filter.new24h": S("NEW <24H", { es: "<24H NUEVO", fr: "NEUF <24H", de: "NEU <24H" }),
+  "scanner.filter.highScore": S("HIGH SCORE", { es: "ALTO SCORE" }),
 
   "results.pageTitle": S("Verified Results — Sentinel Ledger", {
     es: "Resultados verificados — Sentinel Ledger",

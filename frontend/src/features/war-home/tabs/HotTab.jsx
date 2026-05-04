@@ -21,12 +21,7 @@ import { RankBadge, RankDeltaChip } from "./RankIndicators";
 import { useLocale } from "../../../../contexts/LocaleContext";
 import { deriveApexState } from "../../../../components/apex";
 import { useWarMode } from "../../../../contexts/WarModeContext";
-
-function cockpitCardClickTargetIsInteractive(e) {
-  const el = e?.target;
-  if (!el || typeof el.closest !== "function") return true;
-  return Boolean(el.closest("a, button, summary, details"));
-}
+import { cockpitCardClickTargetIsInteractive } from "../../../../lib/cockpitCardClick.mjs";
 
 function normalizeSignalDecision(action) {
   const raw = String(action || "").trim().toUpperCase();

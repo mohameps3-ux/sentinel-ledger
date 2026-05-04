@@ -23,6 +23,7 @@ import { AnimatedNumber } from "../../../../components/ui/AnimatedNumber";
 import { useLocale } from "../../../../contexts/LocaleContext";
 import { deriveApexState } from "../../../../components/apex";
 import { useWarMode } from "../../../../contexts/WarModeContext";
+import { cockpitCardClickTargetIsInteractive } from "../../../../lib/cockpitCardClick.mjs";
 
 /**
  * War Home — Live tab (grid / Virtuoso). Parent `index.js` controls merge + hysteresis; this file only renders.
@@ -30,11 +31,6 @@ import { useWarMode } from "../../../../contexts/WarModeContext";
  *   single-threshold Grid↔Virtuoso switch (see `index.js` + `check-home-live-invariants.cjs` + PR template).
  * — `data-testid` on section/cards: keeps optional E2E / grep-smoke stable; do not remove without updating the check script.
  */
-function cockpitCardClickTargetIsInteractive(e) {
-  const el = e?.target;
-  if (!el || typeof el.closest !== "function") return true;
-  return Boolean(el.closest("a, button, summary, details"));
-}
 
 function normalizeSignalDecision(action) {
   const raw = String(action || "").trim().toUpperCase();
