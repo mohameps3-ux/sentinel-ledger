@@ -571,7 +571,7 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
         </div>
       </div>
 
-      <div className="war-narrative-bar">
+      <div className="war-narrative-bar war-room-narrative-bar">
         <div className="war-narrative-bar-left">
           <span className="war-narrative-engine-label">⊕ SENTINEL NARRATIVE ENGINE</span>
           <span className="war-narrative-engine-sub">Generating insights...</span>

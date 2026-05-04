@@ -619,10 +619,14 @@ a {
 .war-room-container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
   padding: 20px;
+  padding-bottom: 16px;
   min-height: 100vh;
   background: #060608;
+}
+.war-room-container > .war-room-narrative-bar {
+  margin-top: 4px;
 }
 .war-room-header {
   padding-bottom: 4px;
@@ -651,6 +655,7 @@ a {
 }
 
 .war-room-kpis {
+  margin-top: 16px;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
@@ -700,6 +705,7 @@ a {
 }
 
 .war-room-body {
+  margin-top: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -745,29 +751,62 @@ a {
   align-items: stretch;
 }
 
-.war-room-bottom-pair .war-bottom-box {
+/* Equal-height row: QUICK ACTIONS and SMART MONEY FLOW match; SM events area grows */
+.war-room-bottom-pair > .war-bottom-box {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
 }
 
-/* Compact footer modules; share width 50/50 via grid, content-sized height */
 .war-room-bottom-pair .war-quick-actions-panel {
+  height: 100%;
   padding: 12px;
-  gap: 6px;
+  gap: 8px;
+  display: flex;
+  flex-direction: column;
 }
 
-.war-room-bottom-pair .war-smflow {
+.war-room-bottom-pair .war-quick-actions-panel .war-aside-title {
+  flex-shrink: 0;
+}
+
+.war-room-bottom-pair .war-quick-actions-panel .war-quick-action {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 42px;
+}
+
+.war-room-bottom-pair .war-bottom-smflow {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.war-room-bottom-pair .war-bottom-smflow > .war-smflow {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
   padding: 12px;
   display: flex;
   flex-direction: column;
 }
 
+.war-room-bottom-pair .war-smflow .war-aside-title {
+  flex-shrink: 0;
+}
+
 .war-room-bottom-pair .war-smflow-events {
-  max-height: 120px;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
 }
 
 .war-room-bottom-pair .war-pressure-row {
+  flex-shrink: 0;
   margin-bottom: 6px;
 }
 
@@ -778,6 +817,10 @@ a {
   }
   .war-room-bottom-pair {
     gap: 12px;
+  }
+  .war-room-bottom-pair .war-quick-actions-panel .war-quick-action {
+    flex: 0 0 auto;
+    min-height: 44px;
   }
   .war-velocity-scroll {
     max-height: min(420px, 50vh);
