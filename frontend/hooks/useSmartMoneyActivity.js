@@ -10,10 +10,12 @@ async function fetchActivity(limit) {
   return j;
 }
 
-export function useSmartMoneyActivity(limit = 48) {
+export function useSmartMoneyActivity(limit = 48, opts = {}) {
+  const refetchInterval = opts.refetchInterval;
   return useQuery({
     queryKey: ["smart-money-activity", limit],
     queryFn: () => fetchActivity(limit),
-    staleTime: 30_000
+    staleTime: 30_000,
+    ...(refetchInterval != null ? { refetchInterval } : {})
   });
 }

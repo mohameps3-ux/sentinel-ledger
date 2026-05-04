@@ -19,9 +19,11 @@ export function useSmartWalletsLeaderboard(opts = {}) {
   const minWinRate = Number(opts.minWinRate || 0);
   const minTrades = Number(opts.minTrades || 0);
   const limit = opts.limit ?? 50;
+  const refetchInterval = opts.refetchInterval;
   return useQuery({
     queryKey: ["smart-wallets-leaderboard", chain, minWinRate, minTrades, limit],
     queryFn: () => fetchLeaderboard({ chain, minWinRate, minTrades, limit }),
-    staleTime: 60_000
+    staleTime: 60_000,
+    ...(refetchInterval != null ? { refetchInterval } : {})
   });
 }
