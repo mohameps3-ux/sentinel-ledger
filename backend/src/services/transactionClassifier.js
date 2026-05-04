@@ -29,10 +29,12 @@ const WSOL_MINT = "So11111111111111111111111111111111111111112";
 const ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bfd";
 
 // ─── Stats (call getClassifierStats() from /health) ──────────
-// Use a per-call result instead of mutating module-level counters
-// to avoid inflating counts when classifyTransaction is called
-// multiple times for the same tx in different code paths.
+// In-memory counters since process start; incremented once per distinct tx object
+// (WeakMap cache avoids double-counting when classifyTransaction runs twice on the same tx).
 const _stats = { SWAP: 0, LP: 0, TRANSFER: 0, WRAP: 0, AIRDROP: 0, UNKNOWN: 0 };
+
+/** Keys exposed via getClassifierStats() (WRAP included — classifyTransaction emits it). */
+const STATS_KEYS = ["SWAP", "LP", "TRANSFER", "WRAP", "AIRDROP", "UNKNOWN"];
 const _classified = new WeakMap(); // cache result per tx object
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -118,6 +120,43 @@ function detectLP(tx, programIds) {
 }
 
 /**
+ * Collect top-level + inner instructions (same shape as detectLP).
+ * @param {object} tx
+ * @returns {object[]}
+ */
+function allInstructionsFlat(tx) {
+  const message = tx?.transaction?.message || {};
+  return [
+    ...(message.instructions || []),
+    ...(tx?.meta?.innerInstructions || []).flatMap((b) => b.instructions || [])
+  ];
+}
+
+/**
+ * SOL wrap / unwrap — logs ("wrap sol" / "unwrap sol") or SPL-Token transfer of wSOL mint.
+ * Checked before DEX / transfer heuristics so WRAP is never labeled SWAP or TRANSFER.
+ */
+function isWrapOrUnwrap(tx) {
+  try {
+    const logs = tx?.meta?.logMessages || [];
+    const logStr = logs.join(" ").toLowerCase();
+    if (logStr.includes("wrap sol") || logStr.includes("unwrap sol")) return true;
+
+    for (const ix of allInstructionsFlat(tx)) {
+      const pid = ix.programId?.toString?.() || ix.program || "";
+      if (pid !== TOKEN_PROGRAM) continue;
+      const typ = String(ix.parsed?.type || "").toLowerCase();
+      if (typ !== "transfer") continue;
+      const mint = ix.parsed?.info?.mint ?? ix.parsed?.info?.tokenMint ?? "";
+      if (String(mint) === WSOL_MINT) return true;
+    }
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
  * Detect airdrop / spam:
  * - No DEX program involved (already checked by caller)
  * - Token balance increased somewhere
@@ -154,7 +193,16 @@ function classifyTransaction(tx) {
   try {
     if (!tx || !tx.transaction) return "UNKNOWN";
 
-    // Return cached result for this tx object
+    // Priority: native SOL wrap/unwrap (before general cache read / DEX / SPL transfer branch).
+    // Still bump stats once per tx object via _classified.
+    if (isWrapOrUnwrap(tx)) {
+      if (!_classified.has(tx)) {
+        _classified.set(tx, "WRAP");
+        _stats.WRAP = (_stats.WRAP || 0) + 1;
+      }
+      return "WRAP";
+    }
+
     if (_classified.has(tx)) return _classified.get(tx);
 
     const programIds = extractProgramIds(tx);
@@ -167,13 +215,7 @@ function classifyTransaction(tx) {
     } else if (hasDex) {
       result = "SWAP";
     } else {
-      const pre = tx?.meta?.preTokenBalances || [];
-      const post = tx?.meta?.postTokenBalances || [];
-      const allMints = [...pre, ...post].map((b) => b.mint);
-
-      if (allMints.includes(WSOL_MINT)) {
-        result = "WRAP";
-      } else if (detectAirdrop(tx, programIds)) {
+      if (detectAirdrop(tx, programIds)) {
         result = "AIRDROP";
       } else if (programIds.has(TOKEN_PROGRAM) || programIds.has(TOKEN_2022)) {
         result = "TRANSFER";
@@ -198,8 +240,16 @@ function isRealTrade(tx) {
   return classifyTransaction(tx) === "SWAP";
 }
 
+/**
+ * Snapshot of classifier counts since process start.
+ * @returns {{ SWAP: number, LP: number, TRANSFER: number, WRAP: number, AIRDROP: number, UNKNOWN: number }}
+ */
 function getClassifierStats() {
-  return { ..._stats };
+  const out = {};
+  for (const k of STATS_KEYS) {
+    out[k] = Number(_stats[k] || 0);
+  }
+  return out;
 }
 
 module.exports = { classifyTransaction, isRealTrade, getClassifierStats };

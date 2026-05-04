@@ -132,8 +132,14 @@ export default function SmartMoneyPage() {
   const avgUnifiedScore = useMemo(() => {
     if (!displayedRanked.length) return null;
     const nums = displayedRanked
-      .map((w) => Number(w.unifiedScore ?? w.score))
-      .filter(Number.isFinite);
+      .map((w) => {
+        const u = w.unifiedScore != null ? Number(w.unifiedScore) : null;
+        if (u != null && Number.isFinite(u)) return u;
+        const s = w.score != null ? Number(w.score) : null;
+        if (s != null && Number.isFinite(s)) return s;
+        return null;
+      })
+      .filter((n) => n != null);
     if (!nums.length) return null;
     return nums.reduce((a, b) => a + b, 0) / nums.length;
   }, [displayedRanked]);

@@ -82,9 +82,11 @@ export function SmartWalletDetailPanel({ row, labelFor, titleFor, narrativeLang 
           </p>
         </div>
         <div className="border border-[#1F2937] p-1.5 bg-[#0D1117]">
-          <p className="text-[9px] text-gray-500 uppercase tracking-wide">P/F (IMPLIED)</p>
+          <p className="text-[9px] text-gray-500 uppercase tracking-wide">PROFIT FACTOR (API)</p>
           <p className="text-gray-100 tabular-nums mt-0.5">
-            {w.profitFactor != null && Number.isFinite(Number(w.profitFactor)) ? fmtNum(w.profitFactor, 2) : "—"}
+            {w.profitFactor != null && w.profitFactor !== "" && Number.isFinite(Number(w.profitFactor))
+              ? fmtNum(w.profitFactor, 2)
+              : "—"}
           </p>
         </div>
         <div className="border border-[#1F2937] p-1.5 bg-[#0D1117]">

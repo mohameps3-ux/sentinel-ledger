@@ -215,6 +215,11 @@ app.get("/health/live", (_req, res) => {
   });
 });
 
+/** Transaction classifier counts (in-memory since boot); always 200 for monitors. */
+app.get("/health/classifier", (_req, res) => {
+  res.json(getClassifierStats());
+});
+
 app.use("/api/v1/public", publicSurfaceRouter);
 
 app.use(
@@ -287,9 +292,7 @@ app.get("/health", async (_, res) => {
     },
     signalGate: getSignalGateOpsSnapshot(),
     signalGateTuner: getSignalGateTunerCronStatus(),
-    transactionClassifier: {
-      stats: getClassifierStats()
-    }
+    classifier: getClassifierStats()
   };
   if (missingCritical.length) {
     return res.status(503).json(body);

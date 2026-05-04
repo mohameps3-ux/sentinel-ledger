@@ -31,11 +31,27 @@ function wlFromWinRate(totalTrades, winRate) {
   return { w, l };
 }
 
-function profitFactorApprox(totalTrades, winRate) {
-  const { w, l } = wlFromWinRate(totalTrades, winRate);
-  if (!w && !l) return null;
-  if (l === 0) return null;
-  return w / l;
+/** Leaderboard composite rank score (API `unifiedScore`, legacy `score`) — not DB `smartScore`. */
+function leaderboardUnifiedScore(row) {
+  const u = row.unifiedScore != null ? Number(row.unifiedScore) : null;
+  if (u != null && Number.isFinite(u)) return u;
+  const s = row.score != null ? Number(row.score) : null;
+  if (s != null && Number.isFinite(s)) return s;
+  return null;
+}
+
+/** Table display: server `profitFactor` only. */
+function profitFactorDisplay(row) {
+  if (row.profitFactor == null || row.profitFactor === "") return "—";
+  const s = Number(row.profitFactor);
+  if (Number.isFinite(s)) return s.toFixed(2);
+  return "—";
+}
+
+/** Sort by server `profitFactor` only (missing → 0). */
+function profitFactorSortValue(row) {
+  const s = Number(row.profitFactor);
+  return Number.isFinite(s) ? s : 0;
 }
 
 function activityInTimeframe(createdAt, tf) {
@@ -74,7 +90,7 @@ function winRateBadgeClass(wr) {
   return "bg-rose-950/30 text-rose-400/85 ring-1 ring-rose-900/30";
 }
 
-/** @typedef {'rank'|'wallet'|'score'|'winRate'|'pnl30d'|'totalTrades'|'profitFactor'|'lastSeen'} SortKey */
+/** @typedef {'rank'|'wallet'|'unifiedScore'|'winRate'|'pnl30d'|'totalTrades'|'profitFactor'|'lastSeen'} SortKey */
 
 function StatusDot({ tone }) {
   const map = {
@@ -127,13 +143,7 @@ export function SmartMoneyLeaderboardConsole({
   const [selectedWallet, setSelectedWallet] = useState("");
 
   const sortedRows = useMemo(() => {
-    const list = displayedRanked.map((row) => {
-      const pf =
-        row.profitFactor != null && Number.isFinite(Number(row.profitFactor))
-          ? Number(row.profitFactor)
-          : profitFactorApprox(row.totalTrades, row.winRate);
-      return { ...row, _pf: pf };
-    });
+    const list = displayedRanked.slice();
     const dir = sortOrder === "asc" ? 1 : -1;
     const val = (row, key) => {
       switch (key) {
@@ -141,8 +151,8 @@ export function SmartMoneyLeaderboardConsole({
           return row.rank;
         case "wallet":
           return row.wallet || "";
-        case "score":
-          return Number(row.unifiedScore ?? row.score);
+        case "unifiedScore":
+          return leaderboardUnifiedScore(row) ?? 0;
         case "winRate":
           return Number(row.winRate);
         case "pnl30d":
@@ -150,7 +160,7 @@ export function SmartMoneyLeaderboardConsole({
         case "totalTrades":
           return Number(row.totalTrades);
         case "profitFactor":
-          return row._pf ?? 0;
+          return profitFactorSortValue(row);
         case "lastSeen":
           return row.lastSeen ? new Date(row.lastSeen).getTime() : 0;
         default:
@@ -433,7 +443,7 @@ export function SmartMoneyLeaderboardConsole({
                   )
               },
               {
-                k: "Avg unified score",
+                k: "Avg Unified Score",
                 v:
                   avgUnifiedScore != null ? (
                     <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-50">
@@ -534,11 +544,11 @@ export function SmartMoneyLeaderboardConsole({
                         {[
                           ["rank", "Rank"],
                           ["wallet", "Wallet"],
-                          ["score", "Score"],
+                          ["unifiedScore", "Unified score"],
                           ["winRate", "Win rate"],
                           ["pnl30d", "30D PnL"],
                           ["totalTrades", "Trades"],
-                          ["profitFactor", "P / F"],
+                          ["profitFactor", "Profit factor"],
                           ["lastSeen", "Last active"],
                           [null, "Action"]
                         ].map(([key, label]) =>
@@ -567,14 +577,9 @@ export function SmartMoneyLeaderboardConsole({
                       {sortedRows.map((w) => {
                         const wr = Number(w.winRate || 0);
                         const { w: wc, l: lc } = wlFromWinRate(w.totalTrades, w.winRate);
-                        const pf = w._pf != null ? w._pf.toFixed(2) : "—";
+                        const pf = profitFactorDisplay(w);
                         const pnl = Number(w.pnl30d || 0);
-                        const scoreNum =
-                          w.unifiedScore != null && Number.isFinite(Number(w.unifiedScore))
-                            ? Number(w.unifiedScore)
-                            : w.score != null && Number.isFinite(Number(w.score))
-                              ? Number(w.score)
-                              : null;
+                        const scoreNum = leaderboardUnifiedScore(w);
                         const isSel = selectedWallet === w.wallet;
                         return (
                           <tr
@@ -754,10 +759,11 @@ export function SmartMoneyLeaderboardConsole({
                       <div className="grid grid-cols-2 gap-3">
                         {[
                           [
-                            "Score",
-                            selectedRow.unifiedScore != null || selectedRow.score != null
-                              ? Number(selectedRow.unifiedScore ?? selectedRow.score).toFixed(1)
-                              : "—"
+                            "Unified score",
+                            (() => {
+                              const u = leaderboardUnifiedScore(selectedRow);
+                              return u != null ? u.toFixed(1) : "—";
+                            })()
                           ],
                           ["Win rate", `${Number(selectedRow.winRate || 0).toFixed(1)}%`],
                           [
