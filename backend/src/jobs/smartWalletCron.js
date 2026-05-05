@@ -1,3 +1,4 @@
+const cron = require("node-cron");
 const { getSupabase } = require("../lib/supabase");
 const { randomUUID } = require("crypto");
 const { getSmartWalletQueue } = require("../queues/smartWallet.queue");
@@ -8,10 +9,12 @@ const {
   BULLMQ_PRIORITY_LOW
 } = require("../lib/eventPriority");
 
-// Fase 0 (supervivencia suavizada): 6h para reducir carga Helius. Parche temporal; Fase 4 sustituirá por cron/env (p. ej. diario 2:00).
-const SMART_WALLET_CRON_INTERVAL_MS = 6 * 60 * 60 * 1000;
+/** Fase 4: por defecto 02:00 UTC diario. Rollback: SMART_WALLET_CRON_INTERVAL_MS=21600000 */
+const DEFAULT_CRON_EXPRESSION = "0 2 * * *";
+const LEGACY_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
-let intervalRef = null;
+let legacyIntervalRef = null;
+let scheduledTask = null;
 
 function getDirectLimit() {
   const raw = Number(process.env.SMART_WALLET_DIRECT_LIMIT || 20);
@@ -107,16 +110,43 @@ async function enqueueActiveWallets() {
 }
 
 function startSmartWalletCron() {
-  if (intervalRef) return;
-  console.log(
-    `[smart-wallet-cron] start interval_ms=${SMART_WALLET_CRON_INTERVAL_MS} (${SMART_WALLET_CRON_INTERVAL_MS / 3600000}h)`
+  if (legacyIntervalRef || scheduledTask) return;
+
+  const legacyMs = Number(process.env.SMART_WALLET_CRON_INTERVAL_MS || 0);
+  if (Number.isFinite(legacyMs) && legacyMs >= 60_000) {
+    console.log(
+      `[smart-wallet-cron] legacy interval_ms=${legacyMs} (${legacyMs / 3600000}h) — set SMART_WALLET_CRON_EXPRESSION for 2AM daily`
+    );
+    enqueueActiveWallets().catch((e) => console.warn("smart wallet bootstrap enqueue:", e.message));
+    legacyIntervalRef = setInterval(() => {
+      console.log(`[smart-wallet-cron] scheduled_tick at=${new Date().toISOString()}`);
+      enqueueActiveWallets().catch((e) => console.warn("smart wallet scheduled enqueue:", e.message));
+    }, legacyMs);
+    return;
+  }
+
+  const expr = String(process.env.SMART_WALLET_CRON_EXPRESSION || DEFAULT_CRON_EXPRESSION).trim();
+  const tz = String(process.env.SMART_WALLET_CRON_TZ || "UTC").trim() || "UTC";
+
+  if (typeof cron.validate === "function" && !cron.validate(expr)) {
+    console.warn(`[smart-wallet-cron] invalid CRON "${expr}", using ${LEGACY_INTERVAL_MS}ms interval`);
+    enqueueActiveWallets().catch((e) => console.warn("smart wallet bootstrap enqueue:", e.message));
+    legacyIntervalRef = setInterval(() => {
+      enqueueActiveWallets().catch((e) => console.warn("smart wallet scheduled enqueue:", e.message));
+    }, LEGACY_INTERVAL_MS);
+    return;
+  }
+
+  scheduledTask = cron.schedule(
+    expr,
+    () => {
+      console.log(`[smart-wallet-cron] cron_tick at=${new Date().toISOString()} expr=${expr}`);
+      enqueueActiveWallets().catch((e) => console.warn("smart wallet scheduled enqueue:", e.message));
+    },
+    { timezone: tz }
   );
+  console.log(`[smart-wallet-cron] node-cron expr="${expr}" timezone=${tz}`);
   enqueueActiveWallets().catch((e) => console.warn("smart wallet bootstrap enqueue:", e.message));
-  intervalRef = setInterval(() => {
-    console.log(`[smart-wallet-cron] scheduled_tick at=${new Date().toISOString()}`);
-    enqueueActiveWallets().catch((e) => console.warn("smart wallet scheduled enqueue:", e.message));
-  }, SMART_WALLET_CRON_INTERVAL_MS);
 }
 
 module.exports = { enqueueActiveWallets, startSmartWalletCron };
-

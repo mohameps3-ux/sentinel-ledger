@@ -1,4 +1,4 @@
-const { fetchWalletTransactions } = require("./heliusTransactions");
+const { fetchWalletTransactions, deltaFetchingEnabled } = require("./heliusTransactions");
 const { getSupabase } = require("../lib/supabase");
 const { getMarketData } = require("./marketData");
 const { shouldSkipWalletAnalysis } = require("../lib/walletDenylist");
@@ -105,6 +105,9 @@ async function upsertSmartWalletRow(supabase, payload) {
     last_seen: payload.last_seen,
     updated_at: payload.updated_at
   };
+  if (payload.last_signature) {
+    minimalPayload.last_signature = payload.last_signature;
+  }
   const minimal = await supabase
     .from("smart_wallets")
     .upsert(minimalPayload, { onConflict: "wallet_address" });
@@ -117,10 +120,30 @@ async function analyzeWallet(walletAddress) {
   }
 
   const supabase = getSupabase();
-  const txs = await fetchWalletTransactions(walletAddress, 100);
-  if (!txs.length) return { walletAddress, totalTrades: 0 };
 
-  let totalTrades = 0;
+  let lastSignatureRow = null;
+  try {
+    const { data, error } = await supabase
+      .from("smart_wallets")
+      .select("last_signature")
+      .eq("wallet_address", walletAddress)
+      .maybeSingle();
+    if (!error) lastSignatureRow = data;
+  } catch (_) {}
+
+  const untilSignature = lastSignatureRow?.last_signature
+    ? String(lastSignatureRow.last_signature).trim() || null
+    : null;
+
+  const fetchOpts = deltaFetchingEnabled()
+    ? { untilSignature, skipGlobalDedupe: true }
+    : { limit: 100, skipGlobalDedupe: false };
+
+  const { transactions: txs, deltaStats } = await fetchWalletTransactions(walletAddress, fetchOpts);
+
+  if (!txs.length) {
+    return { walletAddress, totalTrades: 0, deltaStats };
+  }
   let sellTrades = 0;
   let profitableTrades = 0;
   let totalUsd = 0;
@@ -237,7 +260,7 @@ async function analyzeWallet(walletAddress) {
       : null;
 
   const nowIso = new Date().toISOString();
-  await upsertSmartWalletRow(supabase, {
+  const payload = {
     wallet_address: walletAddress,
     win_rate: winRateFromSignals,
     pnl_30d: pnl30dFromSignals,
@@ -251,9 +274,21 @@ async function analyzeWallet(walletAddress) {
     smart_score: smartScore,
     last_seen: nowIso,
     updated_at: nowIso
-  });
+  };
 
-  return { walletAddress, totalTrades, sellTrades, profitableTrades };
+  if (deltaStats?.headSignature) {
+    payload.last_signature = deltaStats.headSignature;
+  }
+
+  await upsertSmartWalletRow(supabase, payload);
+
+  if (deltaStats && deltaFetchingEnabled()) {
+    console.log(
+      `[analyzeWallet] wallet ${walletAddress}: new signatures=${deltaStats.newSignatures}, cached=${deltaStats.cacheHits}, rpc=${deltaStats.rpcParsed}, saved last_signature=${payload.last_signature || "—"}`
+    );
+  }
+
+  return { walletAddress, totalTrades, sellTrades, profitableTrades, deltaStats };
 }
 
 module.exports = { analyzeWallet };
