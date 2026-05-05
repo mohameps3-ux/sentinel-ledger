@@ -3,6 +3,7 @@
 const { runClusterBackfill, buildWalletClusters } = require("../services/clusterBackfill");
 const { updateClusterRanking } = require("../services/clusterRanking");
 const { verifyLeadershipFence } = require("../services/leaderService");
+const { shouldDeferBackfillForRecentWebhook } = require("../lib/eventPriority");
 
 const INTERVAL_MS = 6 * 60 * 60 * 1000;
 let lastStats = null;
@@ -10,6 +11,10 @@ let lastStats = null;
 async function runClusterBackfillCron() {
   if (!(await verifyLeadershipFence())) {
     console.log("[cluster-backfill-cron] skip: not_leader");
+    return;
+  }
+  if (await shouldDeferBackfillForRecentWebhook()) {
+    console.log("[backfill] defer: recent webhook activity");
     return;
   }
   try {

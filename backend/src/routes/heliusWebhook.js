@@ -2,6 +2,7 @@ const express = require("express");
 const rateLimit = require("express-rate-limit");
 const redis = require("../lib/cache");
 const txDedupe = require("../lib/dedupe");
+const { recordWebhookIngestActivity } = require("../lib/eventPriority");
 const { getSupabase } = require("../lib/supabase");
 const { trackSmartBuyAndDetect } = require("../services/convergenceService");
 const { normalizeEvent } = require("../ingestion/sentinelEvent");
@@ -248,6 +249,8 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
     }
     let emitted = 0;
     let droppedByGuard = 0;
+
+    await recordWebhookIngestActivity();
 
     for (const raw of events) {
       const topSig = String(

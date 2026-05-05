@@ -19,6 +19,7 @@ const {
 const { detectInventoryRoundTrips } = require("../src/services/walletRoundTripDetector");
 const { acquireLeadership, isLeader, stopLeadershipHeartbeat } = require("../src/services/leaderService");
 const txDedupe = require("../src/lib/dedupe");
+const { shouldDeferBackfillForRecentWebhook } = require("../src/lib/eventPriority");
 
 const SIGNATURE_LIMIT = Math.max(1, Math.min(100, Number(process.env.WALLET_BACKFILL_SIGNATURE_LIMIT || 50)));
 const TX_DELAY_MS = Math.max(0, Number(process.env.WALLET_BACKFILL_TX_DELAY_MS || 500));
@@ -243,6 +244,11 @@ async function main() {
   if (!isLeader()) {
     stopLeadershipHeartbeat();
     console.log("[backfill] not leader — another holder of sentinel:leader:lock; exiting 0");
+    process.exit(0);
+  }
+  if (await shouldDeferBackfillForRecentWebhook()) {
+    stopLeadershipHeartbeat();
+    console.log("[backfill] defer: recent webhook activity");
     process.exit(0);
   }
   const wallets = await getWallets();

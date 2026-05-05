@@ -19,6 +19,7 @@ const { trackSmartBuyAndDetect } = require("./convergenceService");
 const { classifyTransaction } = require("./transactionClassifier");
 const { verifyLeadershipFence } = require("./leaderService");
 const txDedupe = require("../lib/dedupe");
+const { shouldSkipPollerForRecentWebhook } = require("../lib/eventPriority");
 
 const SOURCE = "solana_rpc_poller";
 const DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com";
@@ -424,6 +425,10 @@ async function processWallet(wallet) {
 async function runSolanaPollerTick() {
   if (!(await verifyLeadershipFence())) {
     return { skipped: true, reason: "not_leader" };
+  }
+  if (await shouldSkipPollerForRecentWebhook()) {
+    console.log("[poller] tick skipped (recent webhook activity)");
+    return { skipped: true, reason: "recent_webhook_activity" };
   }
   if (running) return { skipped: true, reason: "already_running" };
   running = true;

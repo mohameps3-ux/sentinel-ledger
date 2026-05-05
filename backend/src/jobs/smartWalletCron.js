@@ -3,6 +3,10 @@ const { randomUUID } = require("crypto");
 const { getSmartWalletQueue } = require("../queues/smartWallet.queue");
 const { analyzeWallet } = require("../services/analyzeWallet");
 const { verifyLeadershipFence } = require("../services/leaderService");
+const {
+  shouldDeferBackfillForRecentWebhook,
+  BULLMQ_PRIORITY_LOW
+} = require("../lib/eventPriority");
 
 // Fase 0 (supervivencia suavizada): 6h para reducir carga Helius. Parche temporal; Fase 4 sustituirá por cron/env (p. ej. diario 2:00).
 const SMART_WALLET_CRON_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -21,6 +25,10 @@ async function enqueueActiveWallets() {
   console.log(`[smart-wallet-cron][${requestId}] run_at=${runAt} enqueue_start`);
   if (!(await verifyLeadershipFence())) {
     console.log(`[smart-wallet-cron][${requestId}] skip: not_leader`);
+    return 0;
+  }
+  if (await shouldDeferBackfillForRecentWebhook()) {
+    console.log(`[smart-wallet-cron][${requestId}] defer: recent webhook activity`);
     return 0;
   }
   const queue = getSmartWalletQueue();
@@ -86,6 +94,7 @@ async function enqueueActiveWallets() {
       { walletAddress },
       {
         jobId: `smart-wallet_${walletAddress.replace(/:/g, "_")}`,
+        priority: BULLMQ_PRIORITY_LOW,
         removeOnComplete: 500,
         removeOnFail: 500
       }
