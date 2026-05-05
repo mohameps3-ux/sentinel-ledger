@@ -1,6 +1,7 @@
 "use strict";
 
 const { getSupabase } = require("../lib/supabase");
+const { ecoModeActive } = require("../services/budgetGuard");
 const { verifyLeadershipFence } = require("../services/leaderService");
 const { shouldDeferBackfillForRecentWebhook } = require("../lib/eventPriority");
 
@@ -46,6 +47,10 @@ async function runSmartWalletSignalBackfillTick() {
   if (!isEnabled()) return;
   if (!(await verifyLeadershipFence())) {
     console.log("[smart-signal-backfill] skip: not_leader");
+    return;
+  }
+  if (await ecoModeActive()) {
+    console.log("[smart-signal-backfill] skip: ECO_MODE");
     return;
   }
   if (await shouldDeferBackfillForRecentWebhook()) {

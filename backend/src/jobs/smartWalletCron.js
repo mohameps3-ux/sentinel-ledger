@@ -3,6 +3,7 @@ const { getSupabase } = require("../lib/supabase");
 const { randomUUID } = require("crypto");
 const { getSmartWalletQueue } = require("../queues/smartWallet.queue");
 const { analyzeWallet } = require("../services/analyzeWallet");
+const { ecoModeActive } = require("../services/budgetGuard");
 const { verifyLeadershipFence } = require("../services/leaderService");
 const {
   shouldDeferBackfillForRecentWebhook,
@@ -28,6 +29,10 @@ async function enqueueActiveWallets() {
   console.log(`[smart-wallet-cron][${requestId}] run_at=${runAt} enqueue_start`);
   if (!(await verifyLeadershipFence())) {
     console.log(`[smart-wallet-cron][${requestId}] skip: not_leader`);
+    return 0;
+  }
+  if (await ecoModeActive()) {
+    console.log(`[smart-wallet-cron][${requestId}] skip: ECO_MODE`);
     return 0;
   }
   if (await shouldDeferBackfillForRecentWebhook()) {

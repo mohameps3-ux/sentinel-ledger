@@ -107,6 +107,7 @@ const { getIngestionSnapshot } = require("./ingestion/ingestionState");
 const { getDedupeStats } = require("./ingestion/dedupe");
 const { getMarketDataCircuitStatus, getMarketDataProviderStats } = require("./services/marketData");
 const { getDataFreshnessSnapshot } = require("./services/homeTerminalApi");
+const { getBudgetHealthJson } = require("./services/budgetGuard");
 const { isVapidKeyMaterialPresent } = require("./services/tacticalRegimeWebPush");
 const { getSignalGateOpsSnapshot } = require("./services/signalEmissionGate");
 const { getClassifierStats } = require("./services/transactionClassifier");
@@ -220,6 +221,15 @@ app.get("/health/live", (_req, res) => {
 /** Transaction classifier counts (in-memory since boot); always 200 for monitors. */
 app.get("/health/classifier", (_req, res) => {
   res.json(getClassifierStats());
+});
+
+app.get("/health/budget", async (_req, res) => {
+  try {
+    const body = await getBudgetHealthJson();
+    res.json(body);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || "budget_health_failed" });
+  }
 });
 
 app.use("/api/v1/public", publicSurfaceRouter);

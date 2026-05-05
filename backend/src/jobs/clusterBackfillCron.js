@@ -2,6 +2,7 @@
 
 const { runClusterBackfill, buildWalletClusters } = require("../services/clusterBackfill");
 const { updateClusterRanking } = require("../services/clusterRanking");
+const { ecoModeActive } = require("../services/budgetGuard");
 const { verifyLeadershipFence } = require("../services/leaderService");
 const { shouldDeferBackfillForRecentWebhook } = require("../lib/eventPriority");
 
@@ -11,6 +12,10 @@ let lastStats = null;
 async function runClusterBackfillCron() {
   if (!(await verifyLeadershipFence())) {
     console.log("[cluster-backfill-cron] skip: not_leader");
+    return;
+  }
+  if (await ecoModeActive()) {
+    console.log("[cluster-backfill-cron] skip: ECO_MODE");
     return;
   }
   if (await shouldDeferBackfillForRecentWebhook()) {

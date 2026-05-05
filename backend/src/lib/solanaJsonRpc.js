@@ -1,5 +1,11 @@
 const axios = require("axios");
 const { clusterApiUrl } = require("@solana/web3.js");
+const {
+  consumeHeliusSlotOrThrow,
+  recordHeliusMetricTick,
+  isHeliusJsonRpcUrl
+} = require("./rateLimiter");
+const { budgetGuardEnabled, recordHeliusCredit, ecoModeActive } = require("../services/budgetGuard");
 
 /**
  * Ordered JSON-RPC HTTP endpoints for Solana mainnet.
@@ -46,9 +52,20 @@ function isRateLimited(status, data) {
 async function jsonRpcPost(url, body, options = {}) {
   const timeout = Number(options.timeout || 8000);
   const retries = Number(options.retries || 4);
+  const budgetCritical = Boolean(options.budgetCritical);
   let lastErr = null;
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
+      if (isHeliusJsonRpcUrl(url)) {
+        if (budgetGuardEnabled() && !budgetCritical && (await ecoModeActive())) {
+          const err = new Error("ECO_MODE: daily Helius budget exceeded");
+          err.code = "ECO_MODE";
+          err.statusCode = 503;
+          throw err;
+        }
+        await consumeHeliusSlotOrThrow();
+      }
+
       const { data, status } = await axios.post(url, body, {
         timeout,
         validateStatus: () => true
@@ -61,10 +78,18 @@ async function jsonRpcPost(url, body, options = {}) {
       if (data?.error) {
         throw new Error(data.error.message || "rpc_error");
       }
+
+      if (isHeliusJsonRpcUrl(url)) {
+        if (budgetGuardEnabled()) await recordHeliusCredit(1);
+        await recordHeliusMetricTick();
+      }
+
       return data;
     } catch (e) {
       lastErr = e;
       const msg = String(e.message || e);
+      if (e?.code === "ECO_MODE" || e?.statusCode === 503) throw e;
+      if (e?.statusCode === 429 || e?.code === "HELIUS_LOCAL_RATE_LIMIT") throw e;
       if (attempt < retries - 1 && /429|rate|ECONNRESET|ETIMEDOUT|timeout/i.test(msg)) {
         await sleep(Math.min(10_000, 350 * 2 ** attempt));
         continue;

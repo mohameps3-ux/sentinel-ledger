@@ -20,6 +20,7 @@ const { classifyTransaction } = require("./transactionClassifier");
 const { verifyLeadershipFence } = require("./leaderService");
 const txDedupe = require("../lib/dedupe");
 const { shouldSkipPollerForRecentWebhook, isPollerForceModeActive } = require("../lib/eventPriority");
+const { jsonRpcPost } = require("../lib/solanaJsonRpc");
 
 const SOURCE = "solana_rpc_poller";
 const DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com";
@@ -79,22 +80,19 @@ function batchSize() {
 }
 
 async function rpcCall(method, params) {
-  const res = await fetch(rpcUrl(), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: `${SOURCE}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
-      method,
-      params
-    })
+  const url = rpcUrl();
+  const body = {
+    jsonrpc: "2.0",
+    id: `${SOURCE}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+    method,
+    params
+  };
+  const data = await jsonRpcPost(url, body, {
+    timeout: 25_000,
+    retries: 2,
+    budgetCritical: true
   });
-  const body = await res.json().catch(() => null);
-  if (!res.ok || body?.error) {
-    const msg = body?.error?.message || `rpc_${method}_${res.status}`;
-    throw new Error(msg);
-  }
-  return body?.result ?? null;
+  return data?.result ?? null;
 }
 
 async function getTrackedWallets() {

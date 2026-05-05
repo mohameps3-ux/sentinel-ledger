@@ -1,4 +1,5 @@
 const { fetchWalletTransactions, deltaFetchingEnabled } = require("./heliusTransactions");
+const { ecoModeActive } = require("./budgetGuard");
 const { getSupabase } = require("../lib/supabase");
 const { getMarketData } = require("./marketData");
 const { shouldSkipWalletAnalysis } = require("../lib/walletDenylist");
@@ -118,6 +119,10 @@ async function analyzeWallet(walletAddress) {
   if (shouldSkipWalletAnalysis(walletAddress)) {
     return { walletAddress, totalTrades: 0, skipped: true, reason: "wallet_denylist" };
   }
+  if (await ecoModeActive()) {
+    console.log(`[analyzeWallet] skipped due to ECO_MODE (${walletAddress})`);
+    return { walletAddress, totalTrades: 0, skipped: true, reason: "eco_mode" };
+  }
 
   const supabase = getSupabase();
 
@@ -144,6 +149,7 @@ async function analyzeWallet(walletAddress) {
   if (!txs.length) {
     return { walletAddress, totalTrades: 0, deltaStats };
   }
+  let totalTrades = 0;
   let sellTrades = 0;
   let profitableTrades = 0;
   let totalUsd = 0;

@@ -1,5 +1,6 @@
 const { getSupabase } = require("../lib/supabase");
 const { randomUUID } = require("crypto");
+const { ecoModeActive } = require("../services/budgetGuard");
 const { runSignalPriceEnrichmentOnce } = require("../services/smartWalletSignalPrices");
 
 const TICK_MS_RAW = Number(process.env.SIGNAL_PRICE_TICK_MS || 5 * 60 * 1000);
@@ -15,6 +16,10 @@ async function runSignalPriceTick() {
   const requestId = randomUUID();
   lastStats = { ...lastStats, error: null };
   if (String(process.env.SIGNAL_PRICE_CRON_ENABLED || "true").toLowerCase() === "false") return;
+  if (await ecoModeActive()) {
+    console.log(`[signal-price-cron][${requestId}] skip: ECO_MODE`);
+    return;
+  }
 
   lastTickStartedAt = Date.now();
   try {
