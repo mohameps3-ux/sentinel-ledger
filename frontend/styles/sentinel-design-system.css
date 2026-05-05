@@ -2829,7 +2829,7 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   color: var(--g-label);
   border: 1px solid var(--g-border-inner);
   background: transparent;
-  cursor: default;
+  cursor: pointer;
   letter-spacing: 0.04em;
   transition: background var(--g-fast) var(--g-out), border-color var(--g-fast) var(--g-out),
     color var(--g-fast) var(--g-out);

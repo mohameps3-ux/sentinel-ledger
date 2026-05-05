@@ -2,11 +2,16 @@
 
 const { runClusterBackfill, buildWalletClusters } = require("../services/clusterBackfill");
 const { updateClusterRanking } = require("../services/clusterRanking");
+const { verifyLeadershipFence } = require("../services/leaderService");
 
 const INTERVAL_MS = 6 * 60 * 60 * 1000;
 let lastStats = null;
 
 async function runClusterBackfillCron() {
+  if (!(await verifyLeadershipFence())) {
+    console.log("[cluster-backfill-cron] skip: not_leader");
+    return;
+  }
   try {
     const r1 = await runClusterBackfill();
     const r2 = await buildWalletClusters();

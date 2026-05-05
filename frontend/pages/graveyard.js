@@ -14,6 +14,47 @@ const TRACK_RECORD_POLL_MS = (() => {
 /** Cap pages to avoid flooding the API on very large ledgers. */
 const METRICS_MAX_PAGES = 40;
 
+/** Vista temporal del track record (filtrado en cliente sobre las filas ya cargadas). */
+const HORIZON_HOURS = {
+  ALL: null,
+  "24H": 24,
+  "48H": 48,
+  "7D": 24 * 7,
+  "30D": 24 * 30
+};
+
+function rowTimestampMs(s) {
+  const t = Date.parse(String(s?.emitted_at || s?.time || s?.created_at || ""));
+  return Number.isFinite(t) ? t : NaN;
+}
+
+function filterRowsByHorizon(rows, horizonKey) {
+  const hours = HORIZON_HOURS[horizonKey];
+  if (hours == null) return rows;
+  const cutoff = Date.now() - hours * 3600 * 1000;
+  return rows.filter((s) => {
+    const t = rowTimestampMs(s);
+    if (!Number.isFinite(t)) return true;
+    return t >= cutoff;
+  });
+}
+
+function horizonTitleSuffix(horizonKey) {
+  if (horizonKey === "24H") return "Últimas 24h";
+  if (horizonKey === "48H") return "Últimas 48h";
+  if (horizonKey === "7D") return "Últimos 7 días";
+  if (horizonKey === "30D") return "Últimos 30 días";
+  return "Últimas 48h";
+}
+
+function horizonObservationLabel(horizonKey) {
+  if (horizonKey === "24H") return "24h";
+  if (horizonKey === "48H") return "48h";
+  if (horizonKey === "7D") return "7 días";
+  if (horizonKey === "30D") return "30 días";
+  return "48h";
+}
+
 /** −10% hard stop in fractional units (same as outcome_60m / result_pct). */
 const STOP_LOSS_CAP_FRAC = -0.1;
 
@@ -84,7 +125,9 @@ function sourceWeight(source) {
 }
 
 function computeInstitutionalMetrics(signals) {
-  const completed = (signals ?? []).filter((s) => outcomeRaw(s) != null);
+  const list = signals ?? [];
+  const completed = list.filter((s) => outcomeRaw(s) != null);
+  const pending = list.filter((s) => outcomeRaw(s) == null);
   const wins = completed.filter((s) => (outcomeRaw(s) ?? 0) > 0);
   const losses = completed.filter((s) => (outcomeRaw(s) ?? 0) <= 0);
   const winRate = completed.length > 0 ? wins.length / completed.length : 0;
@@ -100,6 +143,11 @@ function computeInstitutionalMetrics(signals) {
         Math.abs(losses.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0))
       : 0;
   const maxDrawdown = completed.length > 0 ? Math.min(...completed.map((s) => outcomeRaw(s) ?? 0)) : 0;
+
+  const pendingWithoutEntry = pending.filter((s) => {
+    const e = Number(s.entry_price_usd);
+    return !(Number.isFinite(e) && e > 0);
+  }).length;
 
   const CAP = STOP_LOSS_CAP_FRAC;
   const cappedSignals = completed.map((s) => ({
@@ -142,7 +190,15 @@ function computeInstitutionalMetrics(signals) {
     cappedPF,
     killedCount,
     bestCall,
-    worstCall
+    worstCall,
+    /** Con resultado a 60m (equiv. “resueltas” en el ledger). */
+    resolvedRows: completed.length,
+    pendingRows: pending.length,
+    /** Completadas con retorno ≤ 0 (incl. neutras y cortadas). */
+    failedRows: losses.length,
+    pendingWithoutEntry,
+    resolvedWithoutOutcome: 0,
+    defaultHorizon: "10 min"
   };
 }
 
@@ -502,6 +558,8 @@ function ScatterPlot({ signals, correlation }) {
 
 export default function GraveyardPage() {
   const [filter, setFilter] = useState("all");
+  /** Filtro temporal alineado con las pastillas (cliente, sobre filas ya traídas del API). */
+  const [horizonKey, setHorizonKey] = useState("48H");
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -523,8 +581,18 @@ export default function GraveyardPage() {
 
   const data = query.data || {};
   const allRows = useMemo(() => data.recent_signals || [], [data.recent_signals]);
+  const scopedRows = useMemo(
+    () => filterRowsByHorizon(allRows, horizonKey),
+    [allRows, horizonKey]
+  );
 
-  const metrics = useMemo(() => computeInstitutionalMetrics(allRows), [allRows]);
+  const metrics = useMemo(() => {
+    const base = computeInstitutionalMetrics(scopedRows);
+    return {
+      ...base,
+      sampleCapHit: (data._pagesFetched ?? 0) >= METRICS_MAX_PAGES
+    };
+  }, [scopedRows, data._pagesFetched]);
   const {
     completed,
     winRate,
@@ -604,15 +672,18 @@ export default function GraveyardPage() {
     [...completed].sort((a, b) => (outcomeRaw(a) ?? 999) - (outcomeRaw(b) ?? 999))[0] ?? null;
 
   const filteredRows = useMemo(() => {
-    if (filter === "wins") return allRows.filter((s) => outcomeRaw(s) > 0);
-    if (filter === "losses") return allRows.filter((s) => outcomeRaw(s) != null && outcomeRaw(s) <= 0);
-    if (filter === "pending") return allRows.filter((s) => outcomeRaw(s) == null);
-    return allRows;
-  }, [filter, allRows]);
+    if (filter === "wins") return scopedRows.filter((s) => outcomeRaw(s) > 0);
+    if (filter === "losses") return scopedRows.filter((s) => outcomeRaw(s) != null && outcomeRaw(s) <= 0);
+    if (filter === "pending") return scopedRows.filter((s) => outcomeRaw(s) == null);
+    return scopedRows;
+  }, [filter, scopedRows]);
 
   const isSystemBad = (avgOutcome ?? 0) < -0.08 || winRate < 0.4;
 
-  const safeProfitFactor = profitFactor && profitFactor > 0.05 ? profitFactor.toFixed(2) : "—";
+  const safeProfitFactor =
+    hasMetrics && profitFactor != null && Number.isFinite(profitFactor) && profitFactor > 0
+      ? profitFactor.toFixed(2)
+      : "—";
 
   const safeDrawdown =
     maxDrawdown != null && maxDrawdown > -0.99 ? `${(maxDrawdown * 100).toFixed(2)}%` : "—";
@@ -792,7 +863,7 @@ export default function GraveyardPage() {
               ) : null}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="grave-hd-title">Resumen operativo · Últimas 48h</div>
+              <div className="grave-hd-title">Resumen operativo · {horizonTitleSuffix(horizonKey)}</div>
               <div className="grave-hd-sub">Registro verificado on-chain · auditoría continua</div>
             </div>
 
@@ -804,9 +875,14 @@ export default function GraveyardPage() {
 
               <div className="grave-period-group">
                 {["24H", "48H", "7D", "30D"].map((t) => (
-                  <div key={t} className={t === "48H" ? "grave-period-pill grave-period-pill--active" : "grave-period-pill"}>
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setHorizonKey(t)}
+                    className={t === horizonKey ? "grave-period-pill grave-period-pill--active" : "grave-period-pill"}
+                  >
                     {t}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1141,8 +1217,8 @@ export default function GraveyardPage() {
 
             <div className="grave-insight-status-col">
               <div className="grave-mini-panel grave-mini-panel--insight-tall">
-                <div className="grave-cc-t">Estado actual (48h)</div>
-                <div className="grave-mini-lead">Ventana de observación: 48h</div>
+                <div className="grave-cc-t">Estado actual ({horizonObservationLabel(horizonKey)})</div>
+                <div className="grave-mini-lead">Ventana de observación: {horizonObservationLabel(horizonKey)}</div>
                 <div className="grave-insight-kv grave-insight-kv--grow">
                   <div className="grave-insight-kv-row">
                     <span>Resueltas</span>

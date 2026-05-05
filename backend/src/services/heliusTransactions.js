@@ -1,4 +1,5 @@
 const { getSolanaJsonRpcUrlList, jsonRpcPost } = require("../lib/solanaJsonRpc");
+const { markTransactionProcessed, releaseTransactionClaim } = require("../lib/dedupe");
 
 async function fetchWalletTransactions(walletAddress, limit = 100) {
   if (!walletAddress) return [];
@@ -29,12 +30,28 @@ async function fetchWalletTransactions(walletAddress, limit = 100) {
   }
   if (!signatures.length || !endpointUsed) return [];
 
+  const claimedSigs = [];
+  const freshSignatures = [];
+  for (const s of signatures) {
+    const ok = await markTransactionProcessed(s);
+    if (ok) {
+      freshSignatures.push(s);
+      claimedSigs.push(s);
+    }
+  }
+  if (!freshSignatures.length) return [];
+
   const txBody = {
     jsonrpc: "2.0",
     id: "smart-wallet-transactions",
     method: "getParsedTransactions",
-    params: [signatures, { maxSupportedTransactionVersion: 0, commitment: "finalized" }]
+    params: [freshSignatures, { maxSupportedTransactionVersion: 0, commitment: "finalized" }]
   };
+
+  const releaseAll = async () => {
+    for (const s of claimedSigs) await releaseTransactionClaim(s);
+  };
+
   try {
     const txJson = await jsonRpcPost(endpointUsed, txBody, { timeout: 20_000, retries: 3 });
     const rows = Array.isArray(txJson?.result) ? txJson.result : [];
@@ -50,6 +67,7 @@ async function fetchWalletTransactions(walletAddress, limit = 100) {
         /* continue */
       }
     }
+    await releaseAll();
   }
   return [];
 }

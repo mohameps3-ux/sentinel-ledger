@@ -17,6 +17,8 @@ const { evaluateSignalEmission } = require("./signalEmissionGate");
 const { buildAlphaLayer } = require("./signalAlphaLayer");
 const { trackSmartBuyAndDetect } = require("./convergenceService");
 const { classifyTransaction } = require("./transactionClassifier");
+const { verifyLeadershipFence } = require("./leaderService");
+const txDedupe = require("../lib/dedupe");
 
 const SOURCE = "solana_rpc_poller";
 const DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com";
@@ -394,23 +396,35 @@ async function processWallet(wallet) {
   let emitted = 0;
   let logIndex = 0;
   for (const signature of candidates.reverse()) {
-    const parsed = await getParsedTransaction(signature);
-    const txs = parseTokenBalanceDeltas(parsed, wallet, signature);
-    // Filter to real swaps only for scoring/alerting
-    // Non-SWAP deltas (transfers, airdrops, LP, wraps) are
-    // preserved in txs for any audit/balance tracking,
-    // but only tradeTxs feeds the scoring pipeline.
-    const tradeTxs = txs.filter((t) => t.tx_type === "SWAP");
-    for (const tx of tradeTxs) {
-      if (await emitTransaction(tx, logIndex)) emitted += 1;
-      logIndex += 1;
+    let claimedTx = false;
+    try {
+      const claimed = await txDedupe.markTransactionProcessed(signature);
+      if (!claimed) continue;
+      claimedTx = true;
+      const parsed = await getParsedTransaction(signature);
+      const txs = parseTokenBalanceDeltas(parsed, wallet, signature);
+      // Filter to real swaps only for scoring/alerting
+      // Non-SWAP deltas (transfers, airdrops, LP, wraps) are
+      // preserved in txs for any audit/balance tracking,
+      // but only tradeTxs feeds the scoring pipeline.
+      const tradeTxs = txs.filter((t) => t.tx_type === "SWAP");
+      for (const tx of tradeTxs) {
+        if (await emitTransaction(tx, logIndex)) emitted += 1;
+        logIndex += 1;
+      }
+      await redis.set(lastSignatureKey(wallet), signature);
+    } catch (e) {
+      if (claimedTx) await txDedupe.releaseTransactionClaim(signature);
+      console.warn(`[solana-poller] wallet ${wallet} signature skipped:`, e?.message || e);
     }
-    await redis.set(lastSignatureKey(wallet), signature);
   }
   return { wallet, seen: candidates.length, emitted };
 }
 
 async function runSolanaPollerTick() {
+  if (!(await verifyLeadershipFence())) {
+    return { skipped: true, reason: "not_leader" };
+  }
   if (running) return { skipped: true, reason: "already_running" };
   running = true;
   try {

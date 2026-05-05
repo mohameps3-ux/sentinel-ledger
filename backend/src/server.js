@@ -417,6 +417,8 @@ const port = Number(process.env.PORT) || 3000;
  * (sin aceptar tráfico mientras el estado no está al menos calentado de forma best-effort).
  */
 async function bootstrap() {
+  const { acquireLeadership } = require("./services/leaderService");
+  await acquireLeadership();
   console.log("[bootstrap] Hydrating signal calibrator + signal gate + coordination outcomes (best-effort)...");
   const gateRun = isSignalGateTunerCronEnabled() ? runSignalGateTunerTick() : Promise.resolve(null);
   const coordOutRun = isCoordinationResolutionActive() ? runCoordinationOutcomeResolutionOnce() : Promise.resolve(null);

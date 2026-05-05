@@ -17,6 +17,8 @@ const {
   rpcCall
 } = require("../src/services/solanaPoller");
 const { detectInventoryRoundTrips } = require("../src/services/walletRoundTripDetector");
+const { acquireLeadership, isLeader, stopLeadershipHeartbeat } = require("../src/services/leaderService");
+const txDedupe = require("../src/lib/dedupe");
 
 const SIGNATURE_LIMIT = Math.max(1, Math.min(100, Number(process.env.WALLET_BACKFILL_SIGNATURE_LIMIT || 50)));
 const TX_DELAY_MS = Math.max(0, Number(process.env.WALLET_BACKFILL_TX_DELAY_MS || 500));
@@ -198,7 +200,15 @@ async function backfillWallet(walletRow, index, total) {
 
   for (const sig of signatures.reverse()) {
     try {
-      const parsed = await getParsedTransaction(sig.signature);
+      const claimed = await txDedupe.markTransactionProcessed(sig.signature);
+      if (!claimed) continue;
+      let parsed;
+      try {
+        parsed = await getParsedTransaction(sig.signature);
+      } catch (parseErr) {
+        await txDedupe.releaseTransactionClaim(sig.signature);
+        throw parseErr;
+      }
       await sleep(TX_DELAY_MS);
       if (parsed) parsedTransactions.push({ tx: parsed, signature: sig.signature });
       const txs = parseTokenBalanceDeltas(parsed, wallet, sig.signature);
@@ -228,6 +238,13 @@ async function backfillWallet(walletRow, index, total) {
 }
 
 async function main() {
+  await acquireLeadership();
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  if (!isLeader()) {
+    stopLeadershipHeartbeat();
+    console.log("[backfill] not leader — another holder of sentinel:leader:lock; exiting 0");
+    process.exit(0);
+  }
   const wallets = await getWallets();
   console.log("[grial v5.0] SPL inventory round-trip detection active");
   console.log(`[backfill] wallets=${wallets.length} signatureLimit=${SIGNATURE_LIMIT} rpc=${process.env.SOLANA_RPC_URL ? "set" : "default"}`);
@@ -240,9 +257,11 @@ async function main() {
     await sleep(WALLET_DELAY_MS);
   }
   console.log(`[backfill] complete wallets=${wallets.length} transactions=${transactions} inserted=${inserted}`);
+  stopLeadershipHeartbeat();
 }
 
 main().catch((error) => {
+  stopLeadershipHeartbeat();
   console.error("[backfill] failed:", error?.message || error);
   process.exit(1);
 });

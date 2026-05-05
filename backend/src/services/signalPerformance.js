@@ -29,13 +29,14 @@ function toIso(ms) {
 }
 
 /**
- * Track record (`GET /api/v1/signals/track-record`) reads `signal_outcomes`. Resolution cron updates
- * `signal_performance` only; sync keeps the public ledger aligned when a matching `signal_id` exists.
- * `outcome_pct` on performance is in **percent** (e.g. 5.2 = 5.2%); `signal_outcomes.outcome_60m` is fractional (0.052).
+ * Track record reads `signal_outcomes`. Cron resolves `signal_performance`; this syncs outcomes and
+ * **inserts** a ledger row when emission-time `recordOracleSignal` missed (price/rule race).
+ * `outcome_pct` is **percent** (5.2 = 5.2%); `outcome_60m` is fractional (0.052).
  */
 async function syncSignalOutcomesFromPerformanceRow(supabase, perfRow, { outcomePriceUsd, outcomePctPercent, validatedAtIso }) {
   const eventId = perfRow?.event_id != null ? String(perfRow.event_id).trim() : "";
-  if (!eventId || !supabase) return;
+  const asset = String(perfRow?.asset || "").trim();
+  if (!eventId || !asset || !supabase) return;
 
   const pctNum = Number(outcomePctPercent);
   if (!Number.isFinite(pctNum)) return;
@@ -47,12 +48,23 @@ async function syncSignalOutcomesFromPerformanceRow(supabase, perfRow, { outcome
   const entry = Number(perfRow.entry_price_usd);
   const minObs = Number.isFinite(entry) && entry > 0 ? Math.min(entry, price60) : null;
 
+  const { asRuleId } = require("../workers/validationOracle");
+  const sigs = Array.isArray(perfRow.signals) ? perfRow.signals : [];
+  let ruleId = null;
+  for (const s of sigs) {
+    ruleId = asRuleId(s);
+    if (ruleId) break;
+  }
+  if (!ruleId) ruleId = "R03";
+
   const { data: existing, error: selErr } = await supabase
     .from("signal_outcomes")
     .select("id,rule_id")
     .eq("signal_id", eventId)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
-  if (selErr || !existing?.id) return;
+  if (selErr) return;
 
   const patch = {
     price_60m: price60,
@@ -64,16 +76,61 @@ async function syncSignalOutcomesFromPerformanceRow(supabase, perfRow, { outcome
     patch.min_price_observed = minObs;
   }
 
-  const { error: upErr } = await supabase.from("signal_outcomes").update(patch).eq("id", existing.id);
-  if (upErr) return;
+  if (!existing?.id) {
+    const priceAtSignal = Number.isFinite(entry) && entry > 0 ? entry : price60;
+    const ins = {
+      signal_id: eventId,
+      mint: asset,
+      rule_id: ruleId,
+      price_at_signal: priceAtSignal,
+      wallets_involved: 0,
+      regime: "crab",
+      rule_snapshot: { version: 1, ruleId, source: "signal_performance_resolution" },
+      ...patch
+    };
+    const { error: insErr } = await supabase.from("signal_outcomes").insert(ins);
+    if (insErr) {
+      console.warn("[signal-perf] ledger insert from resolution:", insErr.message || insErr);
+      return;
+    }
+  } else {
+    const { error: upErr } = await supabase.from("signal_outcomes").update(patch).eq("id", existing.id);
+    if (upErr) return;
+  }
 
+  const ridForRule = existing?.rule_id || ruleId;
   try {
     const { recomputeRulePerformance } = require("../workers/validationOracle");
-    if (existing.rule_id) {
-      await recomputeRulePerformance(supabase, existing.rule_id);
-    }
+    if (ridForRule) await recomputeRulePerformance(supabase, ridForRule);
   } catch (_) {
     /* best-effort — rule_performance refresh */
+  }
+}
+
+/** After `signal_performance` row is written, ensure validation-oracle ledger row exists (retries price). */
+async function reconcileTrackRecordLedgerAfterEmission(score, entryPriceUsd, assetMint) {
+  let priceUsd = Number(entryPriceUsd);
+  if (!Number.isFinite(priceUsd) || priceUsd <= 0) {
+    try {
+      const market = await getMarketData(String(assetMint || ""));
+      const p = Number(market?.price);
+      if (Number.isFinite(p) && p > 0) priceUsd = p;
+    } catch (_) {
+      /* non-fatal */
+    }
+  }
+  try {
+    const { recordOracleSignal } = require("../workers/validationOracle");
+    const out = await recordOracleSignal(score, {
+      priceUsd,
+      walletsInvolved: score?.meta?.uniqueWalletsInWindow,
+      regime: score?.meta?.emissionGate?.regime?.key
+    });
+    if (out && out.ok === false && process.env.NODE_ENV !== "production") {
+      console.warn("[signal-perf] recordOracleSignal after emission:", out.reason);
+    }
+  } catch (e) {
+    console.warn("[signal-perf] recordOracleSignal after emission failed:", e?.message || e);
   }
 }
 
@@ -193,11 +250,12 @@ async function recordSignalEmission(score, extra = {}) {
         .from("signal_performance")
         .upsert(row, { onConflict: "event_id", ignoreDuplicates: true });
       if (error) return { ok: false, reason: error.message || "insert_failed" };
-      return { ok: true, dedupe: true };
+    } else {
+      const { error } = await supabase.from("signal_performance").insert(row);
+      if (error) return { ok: false, reason: error.message || "insert_failed" };
     }
-    const { error } = await supabase.from("signal_performance").insert(row);
-    if (error) return { ok: false, reason: error.message || "insert_failed" };
-    return { ok: true, dedupe: false };
+    void reconcileTrackRecordLedgerAfterEmission(score, entryPriceUsd, payload.asset);
+    return { ok: true, dedupe: !!row.event_id };
   } catch (e) {
     return { ok: false, reason: e?.message || "insert_failed" };
   }
@@ -221,7 +279,7 @@ async function runSignalOutcomeResolutionOnce(options = {}) {
   const lookbackIso = toIso(nowMs - Math.max(1, KILL_SWEEP_LOOKBACK_HOURS) * 3600_000);
   const { data: earlyRows, error: earlyErr } = await supabase
     .from("signal_performance")
-    .select("id,asset,event_id,entry_price_usd,attempts,resolve_after,emitted_at,status")
+    .select("id,asset,event_id,signals,entry_price_usd,attempts,resolve_after,emitted_at,status")
     .eq("status", "pending")
     .gt("resolve_after", nowIso)
     .gte("emitted_at", lookbackIso)

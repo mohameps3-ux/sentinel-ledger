@@ -1,6 +1,7 @@
 "use strict";
 
 const { getSupabase } = require("../lib/supabase");
+const { verifyLeadershipFence } = require("../services/leaderService");
 
 const TICK_MS_RAW = Number(process.env.SMART_SIGNAL_BACKFILL_TICK_MS || 180_000);
 const TICK_MS = Number.isFinite(TICK_MS_RAW) && TICK_MS_RAW >= 60_000 ? TICK_MS_RAW : 180_000;
@@ -42,6 +43,10 @@ function confidenceFromWallet(wallet) {
 
 async function runSmartWalletSignalBackfillTick() {
   if (!isEnabled()) return;
+  if (!(await verifyLeadershipFence())) {
+    console.log("[smart-signal-backfill] skip: not_leader");
+    return;
+  }
   lastTickStartedAt = Date.now();
   try {
     const supabase = getSupabase();

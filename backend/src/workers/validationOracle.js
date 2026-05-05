@@ -8,6 +8,8 @@ const RULE_ID_BY_SIGNAL = {
   whale_accumulation: "R01",
   liquidity_shock: "R02",
   cluster_buy: "R03",
+  /** Cluster probe path (helius probing) — same bucket as cluster for rule_performance. */
+  cluster_probing: "R03",
   new_wallet_confidence: "R04",
   velocity_spike: "R05"
 };

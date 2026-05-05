@@ -599,7 +599,7 @@ router.get("/track-record", async (req, res) => {
   const filter = String(req.query.filter || "all").toLowerCase();
   const page = Math.max(1, Number(req.query.page || 1));
   const pageSize = Math.max(1, Math.min(50, Number(req.query.limit || 25)));
-  const cacheKey = `signals:track-record:v4:${filter}:${page}:${pageSize}`;
+  const cacheKey = `signals:track-record:v5:${filter}:${page}:${pageSize}`;
   const cacheSec = trackRecordCacheSeconds();
   try {
     const cached = await redis.get(cacheKey);
