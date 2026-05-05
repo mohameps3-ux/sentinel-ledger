@@ -12,7 +12,6 @@ const {
 } = require("../ingestion/ingestionState");
 const { evaluate: evaluateScore } = require("../scoring/engine");
 const { recordSignalEmission } = require("./signalPerformance");
-const { recordOracleSignal } = require("../workers/validationOracle");
 const { getMarketData } = require("./marketData");
 const { evaluateSignalEmission } = require("./signalEmissionGate");
 const { buildAlphaLayer } = require("./signalAlphaLayer");
@@ -21,7 +20,8 @@ const { classifyTransaction } = require("./transactionClassifier");
 
 const SOURCE = "solana_rpc_poller";
 const DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com";
-const DEFAULT_TICK_MS = 30_000;
+// Fase 0 (supervivencia): 5 min entre ticks para reducir créditos RPC. Valores de env por debajo se suben a este mínimo.
+const DEFAULT_TICK_MS = 300_000;
 const DEFAULT_BATCH_SIZE = 5;
 const SIGNATURE_LIMIT = 10;
 const LAST_SIGNATURE_PREFIX = "solana-poller:last-signature:";
@@ -31,17 +31,38 @@ const MARKET_MEMO_MAX = 500;
 let intervalRef = null;
 let running = false;
 let cursor = 0;
+let rpcRoundRobin = 0;
 const marketMemo = new Map();
+
+function rpcCandidates() {
+  const multi =
+    process.env.SOLANA_POLLER_RPC_URLS ||
+    process.env.SOLANA_RPC_URLS ||
+    process.env.SOLANA_RPC_ENDPOINTS ||
+    "";
+  if (multi && String(multi).includes(",")) {
+    return String(multi)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  const single = process.env.SOLANA_POLLER_RPC_URL || process.env.SOLANA_RPC_URL || process.env.SOLANA_RPC_ENDPOINT || "";
+  if (single) return [single.trim()].filter(Boolean);
+  return [DEFAULT_RPC_URL];
+}
+
+function rpcUrl() {
+  const list = rpcCandidates();
+  if (!list.length) return DEFAULT_RPC_URL;
+  rpcRoundRobin = (rpcRoundRobin + 1) % list.length;
+  return list[rpcRoundRobin];
+}
 
 function enabled() {
   return (
     String(process.env.HELIUS_CREDITS_EXHAUSTED || "").toLowerCase() === "true" ||
     String(process.env.SOLANA_POLLER_ALWAYS_ON || "").toLowerCase() === "true"
   );
-}
-
-function rpcUrl() {
-  return process.env.SOLANA_POLLER_RPC_URL || process.env.SOLANA_RPC_URL || DEFAULT_RPC_URL;
 }
 
 function tickMs() {
@@ -261,11 +282,6 @@ async function emitScore(tx, sentinelEvent) {
   };
   global.io.to(tx.tokenAddress).emit("sentinel:score", score);
   recordSignalEmission(score).catch(() => {});
-  recordOracleSignal(score, {
-    priceUsd: ctx?.priceUsd,
-    walletsInvolved: score?.meta?.uniqueWalletsInWindow,
-    regime: gate?.regime?.key
-  }).catch(() => {});
 }
 
 async function emitConvergence(tx) {
@@ -399,7 +415,10 @@ async function runSolanaPollerTick() {
   running = true;
   try {
     const wallets = await getTrackedWallets();
-    if (!wallets.length) return { ok: true, wallets: 0, emitted: 0 };
+    if (!wallets.length) {
+      console.log(`[solana-poller] tick at=${new Date().toISOString()} wallets=0 skipped=empty_tracked`);
+      return { ok: true, wallets: 0, emitted: 0, signaturesSeen: 0 };
+    }
     if (cursor >= wallets.length) cursor = 0;
     const size = batchSize();
     const batch = wallets.slice(cursor, cursor + size);
@@ -409,16 +428,20 @@ async function runSolanaPollerTick() {
     cursor = (cursor + size) % wallets.length;
 
     let emitted = 0;
+    let signaturesSeen = 0;
     for (const wallet of batch) {
       try {
         const result = await processWallet(wallet);
         emitted += Number(result?.emitted || 0);
+        signaturesSeen += Number(result?.seen || 0);
       } catch (e) {
         console.warn(`[solana-poller] wallet skipped ${wallet}:`, e?.message || e);
       }
     }
-    if (emitted > 0) console.log(`[solana-poller] emitted=${emitted} wallets=${batch.length}`);
-    return { ok: true, wallets: batch.length, emitted };
+    console.log(
+      `[solana-poller] tick at=${new Date().toISOString()} wallets=${batch.length} signatures_seen=${signaturesSeen} emitted=${emitted}`
+    );
+    return { ok: true, wallets: batch.length, emitted, signaturesSeen };
   } finally {
     running = false;
   }
@@ -431,7 +454,7 @@ function startSolanaPoller() {
     return;
   }
   console.log("[grial v5.0] SPL inventory round-trip detection active");
-  console.log(`[solana-poller] enabled rpc=${rpcUrl()} tickMs=${tickMs()} batchSize=${batchSize()}`);
+  console.log(`[solana-poller] enabled rpcCandidates=${rpcCandidates().length} tickMs=${tickMs()} batchSize=${batchSize()}`);
   runSolanaPollerTick().catch((e) => console.warn("[solana-poller] bootstrap tick:", e?.message || e));
   intervalRef = setInterval(() => {
     runSolanaPollerTick().catch((e) => console.warn("[solana-poller] scheduled tick:", e?.message || e));

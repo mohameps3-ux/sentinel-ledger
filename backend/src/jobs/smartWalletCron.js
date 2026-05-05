@@ -3,6 +3,9 @@ const { randomUUID } = require("crypto");
 const { getSmartWalletQueue } = require("../queues/smartWallet.queue");
 const { analyzeWallet } = require("../services/analyzeWallet");
 
+// Fase 0 (supervivencia suavizada): 6h para reducir carga Helius. Parche temporal; Fase 4 sustituirá por cron/env (p. ej. diario 2:00).
+const SMART_WALLET_CRON_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
 let intervalRef = null;
 
 function getDirectLimit() {
@@ -13,7 +16,8 @@ function getDirectLimit() {
 
 async function enqueueActiveWallets() {
   const requestId = randomUUID();
-  console.log(`[smart-wallet-cron][${requestId}] enqueue_start`);
+  const runAt = new Date().toISOString();
+  console.log(`[smart-wallet-cron][${requestId}] run_at=${runAt} enqueue_start`);
   const queue = getSmartWalletQueue();
 
   const supabase = getSupabase();
@@ -65,7 +69,9 @@ async function enqueueActiveWallets() {
         console.warn(`[smart-wallet-cron][${requestId}] direct analysis failed (${walletAddress}): ${error.message}`);
       }
     }
-    console.log(`[smart-wallet-cron][${requestId}] direct analysis complete: ${ok}/${sample.length}`);
+    console.log(
+      `[smart-wallet-cron][${requestId}] direct analysis complete at=${new Date().toISOString()} ok_wallets=${ok}/${sample.length}`
+    );
     return ok;
   }
 
@@ -80,16 +86,22 @@ async function enqueueActiveWallets() {
       }
     );
   }
-  console.log(`[smart-wallet-cron][${requestId}] enqueued: ${targetWallets.length}`);
+  console.log(
+    `[smart-wallet-cron][${requestId}] enqueued at=${new Date().toISOString()} count=${targetWallets.length}`
+  );
   return targetWallets.length;
 }
 
 function startSmartWalletCron() {
   if (intervalRef) return;
+  console.log(
+    `[smart-wallet-cron] start interval_ms=${SMART_WALLET_CRON_INTERVAL_MS} (${SMART_WALLET_CRON_INTERVAL_MS / 3600000}h)`
+  );
   enqueueActiveWallets().catch((e) => console.warn("smart wallet bootstrap enqueue:", e.message));
   intervalRef = setInterval(() => {
+    console.log(`[smart-wallet-cron] scheduled_tick at=${new Date().toISOString()}`);
     enqueueActiveWallets().catch((e) => console.warn("smart wallet scheduled enqueue:", e.message));
-  }, 60 * 60 * 1000);
+  }, SMART_WALLET_CRON_INTERVAL_MS);
 }
 
 module.exports = { enqueueActiveWallets, startSmartWalletCron };
