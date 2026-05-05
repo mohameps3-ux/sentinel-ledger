@@ -9,6 +9,7 @@
 const redis = require("./cache");
 
 const LAST_EVENT_TS_KEY = "last_event_ts:global";
+const POLLER_FORCE_MODE_KEY = "poller_force_mode";
 
 function priorityEngineEnabled() {
   return String(process.env.FF_PRIORITY_ENGINE || "true").trim().toLowerCase() !== "false";
@@ -24,6 +25,21 @@ function backfillQuietMinutes() {
   const raw = Number(process.env.BACKFILL_WEBHOOK_QUIET_MINUTES ?? 5);
   if (!Number.isFinite(raw) || raw < 0) return 5;
   return Math.min(120, raw);
+}
+
+function fallbackPollerTriggerMinutes() {
+  const raw = Number(process.env.FALLBACK_POLLER_TRIGGER_MINUTES ?? 5);
+  if (!Number.isFinite(raw) || raw <= 0) return 5;
+  return Math.min(120, raw);
+}
+
+async function isPollerForceModeActive() {
+  try {
+    const v = await redis.get(POLLER_FORCE_MODE_KEY);
+    return v != null && v !== "";
+  } catch {
+    return false;
+  }
 }
 
 /** BullMQ: mayor número = mayor prioridad (procesado antes). */
@@ -71,6 +87,7 @@ async function shouldDeferBackfillForRecentWebhook() {
 
 module.exports = {
   LAST_EVENT_TS_KEY,
+  POLLER_FORCE_MODE_KEY,
   priorityEngineEnabled,
   recordWebhookIngestActivity,
   getLastWebhookActivityMs,
@@ -78,6 +95,8 @@ module.exports = {
   shouldDeferBackfillForRecentWebhook,
   pollerSkipMinutes,
   backfillQuietMinutes,
+  fallbackPollerTriggerMinutes,
+  isPollerForceModeActive,
   BULLMQ_PRIORITY_LOW,
   BULLMQ_PRIORITY_WEBHOOK_INGEST
 };

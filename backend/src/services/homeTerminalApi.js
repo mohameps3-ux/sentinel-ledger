@@ -17,7 +17,11 @@ const { appendFreshnessEvent, getDataFreshnessSnapshotFromStore } = require("./f
 
 const CACHE_TTL_SEC = Number(process.env.HOME_TERMINAL_CACHE_TTL_SEC || 180);
 const HOT_CACHE_TTL_SEC = Math.max(30, Number(process.env.HOME_TERMINAL_HOT_CACHE_TTL_SEC || 90));
-const LATEST_SIGNALS_CACHE_TTL_SEC = Math.max(30, Number(process.env.HOME_TERMINAL_LATEST_CACHE_TTL_SEC || 90));
+/** Fase 3: default 3s para acercar home a señales recientes; override con env. */
+const LATEST_SIGNALS_CACHE_TTL_SEC = Math.max(
+  3,
+  Math.min(600, Number(process.env.HOME_TERMINAL_LATEST_CACHE_TTL_SEC ?? 3))
+);
 /** War home expanded grid (56) + headroom. Lower in prod if `getMarketData` pressure matters (each card may fetch market once per cache miss). */
 const SIGNAL_FEED_MAX_CARDS = Math.min(100, Math.max(16, Number(process.env.SIGNAL_FEED_MAX_CARDS || 64)));
 function capSignalsLatestLimit(n) {
@@ -94,6 +98,24 @@ function decisionFromScore(score, strategy = "balanced") {
   if (score >= high) return "ENTER NOW";
   if (score >= mid) return "PREPARE";
   return "STAY OUT";
+}
+
+const SIGNALS_LATEST_CACHE_KEY_PREFIX = "terminal:signals:latest:v6:";
+const SIGNALS_LATEST_STRATEGIES = ["balanced", "conservative", "aggressive"];
+const SIGNALS_LATEST_LIMITS = [8, 10, 12, 16, 24, 32, 50, 56, 64];
+
+/** Invalida caché Redis de GET /signals/latest (todas las variantes limit×strategy usadas en home). */
+async function invalidateSignalsLatestFeedCache() {
+  for (const lim of SIGNALS_LATEST_LIMITS) {
+    for (const strat of SIGNALS_LATEST_STRATEGIES) {
+      const key = `${SIGNALS_LATEST_CACHE_KEY_PREFIX}${lim}:${strat}`;
+      try {
+        await redis.del(key);
+      } catch (e) {
+        console.warn("[homeTerminalApi] invalidate signals/latest", key, e.message);
+      }
+    }
+  }
 }
 
 function walletTierLabel(winRate) {
@@ -1233,6 +1255,7 @@ module.exports = {
   getOutcomesProofCached,
   getSmartWalletsTopCached,
   getHotTokensCached,
+  invalidateSignalsLatestFeedCache,
   getLatestSignalsFallbackOpsSnapshot,
   getSignalsSupabaseSloOpsSnapshot,
   getDataFreshnessSnapshot,

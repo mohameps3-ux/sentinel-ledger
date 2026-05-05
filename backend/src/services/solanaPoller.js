@@ -19,7 +19,7 @@ const { trackSmartBuyAndDetect } = require("./convergenceService");
 const { classifyTransaction } = require("./transactionClassifier");
 const { verifyLeadershipFence } = require("./leaderService");
 const txDedupe = require("../lib/dedupe");
-const { shouldSkipPollerForRecentWebhook } = require("../lib/eventPriority");
+const { shouldSkipPollerForRecentWebhook, isPollerForceModeActive } = require("../lib/eventPriority");
 
 const SOURCE = "solana_rpc_poller";
 const DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com";
@@ -426,7 +426,10 @@ async function runSolanaPollerTick() {
   if (!(await verifyLeadershipFence())) {
     return { skipped: true, reason: "not_leader" };
   }
-  if (await shouldSkipPollerForRecentWebhook()) {
+  const pollerForce = await isPollerForceModeActive();
+  if (pollerForce) {
+    console.log("[poller] force mode due to inactivity");
+  } else if (await shouldSkipPollerForRecentWebhook()) {
     console.log("[poller] tick skipped (recent webhook activity)");
     return { skipped: true, reason: "recent_webhook_activity" };
   }

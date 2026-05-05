@@ -19,6 +19,7 @@ const alertsRouter = require("./routes/alerts");
 const { billingRouter, stripeWebhookHandler } = require("./routes/billing");
 const { startDeployerWorker } = require("./queues/deployerWorker");
 const { startSmartWalletWorker } = require("./workers/smartWallet.worker");
+const { startWebhookScoringWorker } = require("./workers/webhookScoringWorker");
 const { startSmartWalletCron } = require("./jobs/smartWalletCron");
 const { startProAlertCron, getProAlertCronStatus } = require("./jobs/proAlertCron");
 const {
@@ -116,6 +117,7 @@ const {
   runSignalGateTunerTick,
   isSignalGateTunerCronEnabled
 } = require("./jobs/signalGateTunerCron");
+const { startWebhookPollerWatchdog } = require("./jobs/watchdogWebhook");
 
 /** Stripe envía `application/json; charset=utf-8`; el matcher por string estricto a veces no aplica raw. */
 function stripeWebhookRawBody() {
@@ -368,6 +370,30 @@ app.get("/health/sync", async (_req, res) => {
   });
 });
 
+app.get("/health/webhook-queue", async (_req, res) => {
+  try {
+    const { getWebhookScoringQueue, webhookWorkerEnabled } = require("./queues/webhookScoring.queue");
+    const { getLastWebhookActivityMs, isPollerForceModeActive } = require("./lib/eventPriority");
+    const q = getWebhookScoringQueue();
+    let jobCounts = null;
+    if (q) {
+      jobCounts = await q.getJobCounts("waiting", "active", "delayed", "failed", "completed", "paused");
+    }
+    const lastMs = await getLastWebhookActivityMs();
+    res.json({
+      ok: true,
+      ffWebhookWorker: webhookWorkerEnabled(),
+      queueName: "webhook-scoring",
+      jobCounts,
+      lastWebhookActivityMs: lastMs,
+      lastWebhookActivityIso: lastMs ? new Date(lastMs).toISOString() : null,
+      pollerForceMode: await isPollerForceModeActive()
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || "webhook_queue_health_failed" });
+  }
+});
+
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/token", tokenRouter);
 app.use("/api/v1/smart-wallets", smartWalletsRouter);
@@ -439,8 +465,10 @@ async function bootstrap() {
   } else {
     console.log("Background workers disabled via SMART_WORKERS_ENABLED=false");
   }
+  startWebhookScoringWorker();
   startTelegramBot();
   startSolanaPoller();
+  startWebhookPollerWatchdog();
   startProAlertCron();
   startTacticalRegimeNotifyCron();
   startSmartWalletSignalPriceCron();
