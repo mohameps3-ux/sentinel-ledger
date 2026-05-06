@@ -40,7 +40,7 @@ function getStripe() {
 function resolvePriceId(plan) {
   if (plan === "pro") return process.env.STRIPE_PRO_PRICE_ID;
   if (plan === "super_pro") return process.env.STRIPE_SUPER_PRO_PRICE_ID;
-  if (plan === "lifetime") return process.env.STRIPE_LIFETIME_PRICE_ID;
+  if (plan === "institutional") return process.env.STRIPE_LIFETIME_PRICE_ID;
   return null;
 }
 
@@ -103,7 +103,7 @@ billingRouter.post("/create-checkout-session", authMiddleware, checkoutLimiter, 
     if (!priceId) return res.status(400).json({ ok: false, error: "invalid_plan" });
 
     const base = appBaseUrl(req);
-    const isLifetime = plan === "lifetime";
+    const isLifetime = plan === "institutional";
 
     const sessionParams = {
       mode: isLifetime ? "payment" : "subscription",
