@@ -120,53 +120,55 @@ export default function ScannerPage() {
   };
 
   const tabBase =
-    "shrink-0 border-b-2 border-transparent px-2.5 pb-2 text-[10px] font-mono uppercase tracking-[0.16em] text-zinc-500 transition-colors";
-  const tabActive = "border-zinc-400/80 text-zinc-100";
-  const tabInactive = "hover:text-zinc-400";
+    "shrink-0 rounded-md border px-2.5 py-1.5 text-[10px] font-mono uppercase tracking-[0.14em] transition-colors";
+  const tabActive = "border-cyan-300/35 bg-cyan-300/10 text-cyan-100";
+  const tabInactive = "border-white/[0.08] bg-white/[0.025] text-zinc-500 hover:border-white/15 hover:text-zinc-300";
 
   const venueTabBase =
-    "rounded-sm border px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.14em] transition-colors";
-  const venueInactive = "border-zinc-800 bg-zinc-950/40 text-zinc-500 hover:border-zinc-700 hover:text-zinc-400";
-  const venueActive = "border-white/15 bg-white/[0.06] text-zinc-200";
+    "rounded-md border px-2.5 py-1.5 text-[10px] font-mono uppercase tracking-[0.14em] transition-colors";
+  const venueInactive = "border-white/[0.08] bg-black/20 text-zinc-500 hover:border-white/15 hover:text-zinc-300";
+  const venueActive = "border-emerald-300/35 bg-emerald-300/10 text-emerald-100";
 
   return (
     <>
       <PageHead title={t("scanner.pageTitle")} description={t("scanner.pageDesc")} />
-      <div className="min-h-screen bg-[#050505] font-sans text-zinc-200 antialiased">
+      <div className="min-h-screen bg-[#05070a] font-sans text-zinc-200 antialiased">
         <ScannerStatusStrip />
-        <div className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-5">
-          <header className="mb-6">
-            <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-zinc-500">SCANNER</p>
-            <h1 className="mt-1 text-lg font-semibold tracking-tight text-zinc-50 sm:text-xl">{t("scanner.h1")}</h1>
-            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-500">{t("scanner.body")}</p>
+        <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-5">
+          <header className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-cyan-300/70">SCANNER</p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">{t("scanner.h1")}</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">{t("scanner.body")}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/")}
+              className="inline-flex h-9 w-fit items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-3 text-[10px] font-mono uppercase tracking-wide text-zinc-500 transition-colors hover:border-white/15 hover:text-zinc-300"
+            >
+              {t("scanner.backDashboard")}
+            </button>
           </header>
 
-          <div className="mb-6 rounded-sm border border-white/10 bg-white/[0.03] p-4 backdrop-blur-md sm:p-5">
+          <div className="mb-4 rounded-md border border-white/10 bg-white/[0.035] p-3 backdrop-blur-md sm:p-4">
             <form onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
               <input
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="So11111111111111111111111111111111111111112"
-                className="min-h-10 w-full rounded-sm border border-zinc-800 bg-zinc-950/60 px-3 font-mono text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-zinc-700 focus:outline-none"
+                className="min-h-10 w-full rounded-md border border-white/[0.08] bg-black/30 px-3 font-mono text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-cyan-300/35 focus:outline-none"
               />
               <button
                 type="submit"
-                className="shrink-0 rounded-sm border border-zinc-700 bg-transparent px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-zinc-400 transition-colors hover:border-zinc-600 hover:bg-zinc-900 hover:text-zinc-200"
+                className="shrink-0 rounded-md border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-cyan-100 transition-colors hover:border-cyan-300/45 hover:bg-cyan-300/15"
               >
                 {t("scanner.scanBtn")}
               </button>
             </form>
             {error ? <p className="mt-2 font-mono text-xs text-red-500">{error}</p> : null}
-            <button
-              type="button"
-              onClick={() => router.push("/")}
-              className="mt-3 text-[11px] font-mono uppercase tracking-wide text-zinc-600 transition-colors hover:text-zinc-400"
-            >
-              {t("scanner.backDashboard")}
-            </button>
           </div>
 
-          <section className="mb-4 overflow-hidden rounded-sm border border-white/10 bg-white/[0.025] backdrop-blur-md">
+          <section className="mb-4 overflow-hidden rounded-md border border-white/10 bg-white/[0.025] shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-md">
             <ScannerDecisionHeader token={focusedToken} t={t} />
             {focusedToken ? (
               <>
@@ -177,10 +179,14 @@ export default function ScannerPage() {
             <ScannerNarrativeContext token={focusedToken} t={t} />
           </section>
 
-          <section className="mb-2 px-1">
-            <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">{t("scanner.filters.heading")}</p>
-            <p className="mt-0.5 text-[11px] text-zinc-600">{t("scanner.narrativeH2")}</p>
-            <div className="mt-3 flex gap-1 overflow-x-auto border-b border-zinc-800/80 pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <section className="mb-3 rounded-md border border-white/[0.08] bg-white/[0.025] p-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">{t("scanner.filters.heading")}</p>
+                <p className="mt-0.5 text-[11px] text-zinc-600">{t("scanner.narrativeH2")}</p>
+              </div>
+            </div>
+            <div className="mt-3 flex gap-1.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {NARRATIVE_OPTIONS.map((opt) => (
                 <button
                   key={opt}
@@ -192,7 +198,7 @@ export default function ScannerPage() {
                 </button>
               ))}
             </div>
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {VENUE_FILTERS.map((id) => (
                 <button
                   key={id}
@@ -206,8 +212,8 @@ export default function ScannerPage() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-sm border border-white/10 bg-white/[0.025] backdrop-blur-md">
-            <div className="border-b border-white/10 px-4 py-3 sm:px-5">
+          <section className="overflow-hidden rounded-md border border-white/10 bg-white/[0.025] backdrop-blur-md">
+            <div className="border-b border-white/10 bg-white/[0.02] px-4 py-3 sm:px-5">
               <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">{t("scanner.universe.title")}</p>
               <p className="mt-0.5 text-xs text-zinc-600">{t("scanner.universe.sub")}</p>
             </div>
