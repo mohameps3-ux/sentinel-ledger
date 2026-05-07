@@ -790,4 +790,30 @@ router.get("/graveyard", async (req, res) => {
   }
 });
 
+
+
+router.get('/track-record/summary', async (req, res) => {
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    const sb = require('../lib/supabase');
+    const win = req.query.window || '48h';
+    const hrs = win==='24h'?24:win==='7d'?168:win==='30d'?720:48;
+    const since = new Date(Date.now()-hrs*3600000).toISOString();
+    const { data, error } = await sb.from('signal_performance').select('result,outcome_60m,confidence,action,token_name,mint,emitted_at,time,signals').gte('emitted_at',since).order('emitted_at',{ascending:false}).limit(1000);
+    if(error) throw error;
+    const resolved=(data||[]).filter(s=>s.result==='WIN'||s.result==='LOSS');
+    const wins=resolved.filter(s=>s.result==='WIN');
+    const losses=resolved.filter(s=>s.result==='LOSS');
+    const pending=(data||[]).filter(s=>!s.result||s.result==='PENDING');
+    const winRate=resolved.length?(wins.length/resolved.length*100):0;
+    const avgReturn=resolved.length?resolved.reduce((a,s)=>a+(s.outcome_60m||0),0)/resolved.length:0;
+    const grossWin=wins.reduce((a,s)=>a+Math.max(s.outcome_60m||0,0),0);
+    const grossLoss=Math.abs(losses.reduce((a,s)=>a+Math.min(s.outcome_60m||0,0),0));
+    const pf=grossLoss?grossWin/grossLoss:(grossWin?99:0);
+    const topWins=[...wins].sort((a,b)=>(b.outcome_60m||0)-(a.outcome_60m||0)).slice(0,5);
+    const worstLosses=[...losses].sort((a,b)=>(a.outcome_60m||0)-(b.outcome_60m||0)).slice(0,5);
+    return res.json({ok:true,window:win,total_signals:(data||[]).length,resolved:resolved.length,pending:pending.length,wins:wins.length,losses:losses.length,win_rate_60m:+winRate.toFixed(2),avg_return:+avgReturn.toFixed(4),profit_factor:+pf.toFixed(2),top_wins:topWins,worst_losses:worstLosses,recent_signals:(data||[]).slice(0,100),last_updated:new Date().toISOString()});
+  } catch(e) { return res.status(500).json({ok:false,error:e.message}); }
+});
+
 module.exports = router;

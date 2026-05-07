@@ -69,6 +69,27 @@ async function fetchTrackRecordPage(page, limit = 50) {
 }
 
 async function fetchTrackRecordFull() {
+  const res = await fetch(`${getPublicApiUrl()}/api/v1/signals/track-record/summary`);
+  if (!res.ok) throw new Error("track_record_fetch_failed");
+  const data = await res.json();
+  return {
+    recent_signals: data.recent_signals || [],
+    top_wins: data.top_wins || [],
+    worst_losses: data.worst_losses || [],
+    win_rate_60m: data.win_rate_60m,
+    avg_return: data.avg_return,
+    profit_factor: data.profit_factor,
+    total_signals: data.total_signals,
+    resolved: data.resolved,
+    wins: data.wins,
+    losses: data.losses,
+    pending: data.pending,
+    last_updated: data.last_updated,
+    _pagesFetched: 1
+  };
+}
+
+async function fetchTrackRecordFull_OLD() {
   const limit = 50;
   const first = await fetchTrackRecordPage(1, limit);
   const totalPagesRaw = Number(first.pagination?.total_pages || 1);
