@@ -153,7 +153,7 @@ export default function CryptoPayButton({ onSuccess, className = "" }) {
                 <div className={`flex flex-col items-center gap-2 ${className}`}>
                           <div className="text-green-400 font-semibold text-sm">
                                     ✅ Payment confirmed — PRO activated!
-                          </div>div>
+                          </div></div>
                   {txSig && (
                             <a
                                           href={`https://solscan.io/tx/${txSig}`}
@@ -162,9 +162,9 @@ export default function CryptoPayButton({ onSuccess, className = "" }) {
                                           className="text-xs text-blue-400 underline hover:text-blue-300 break-all"
                                         >
                                         View on Solscan
-                            </a>a>
+                            </a></a>
                         )}
-                </div>div>
+                </div></div>
               );
   }
   
@@ -194,15 +194,15 @@ export default function CryptoPayButton({ onSuccess, className = "" }) {
                                     <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                   )}
                   {buttonLabel}
-                </button>button>
+                </button></button>
           
             {status === "error" && errorMsg && (
-                    <p className="text-red-400 text-xs text-center max-w-xs">{errorMsg}</p>p>
+                    <p className="text-red-400 text-xs text-center max-w-xs">{errorMsg}</p></p>
                 )}
           
                 <p className="text-gray-500 text-xs">
                         Solana mainnet · USDC · Phantom required
-                </p>p>
-          </div>div>
+                </p></p>
+          </div></div>
         );
 }</div>
