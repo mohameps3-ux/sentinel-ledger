@@ -27,6 +27,11 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: "/graveyard",
+        destination: "/track-record",
+        permanent: false
+      },
+      {
         source: "/favicon.ico",
         destination: "/favicon.svg",
         permanent: true
