@@ -35,7 +35,8 @@ export default function PricingPage() {
         title: t("pricing.plan.pro.title"),
         priceLine: t("pricing.plan.pro.price"),
         blurb: t("pricing.plan.pro.blurb"),
-        points: [t("pricing.plan.pro.p1"), t("pricing.plan.pro.p2"), t("pricing.plan.pro.p3")]
+        points: [t("pricing.plan.pro.p1"), t("pricing.plan.pro.p2"), t("pricing.plan.pro.p3")],
+        checkoutEnabled: true
       },
       {
         id: "super_pro",
@@ -48,14 +49,20 @@ export default function PricingPage() {
           t("pricing.plan.super.p3"),
           t("pricing.plan.super.p4")
         ],
-        highlight: true
+        highlight: true,
+        checkoutEnabled: true
       },
       {
-        id: "lifetime",
-        title: t("pricing.plan.life.title"),
-        priceLine: t("pricing.plan.life.price"),
-        blurb: t("pricing.plan.life.blurb"),
-        points: [t("pricing.plan.life.p1"), t("pricing.plan.life.p2"), t("pricing.plan.life.p3")]
+        id: "whale",
+        title: t("pricing.plan.whale.title"),
+        priceLine: t("pricing.plan.whale.price"),
+        blurb: t("pricing.plan.whale.blurb"),
+        points: [
+          t("pricing.plan.whale.p1"),
+          t("pricing.plan.whale.p2"),
+          t("pricing.plan.whale.p3")
+        ],
+        checkoutEnabled: false
       }
     ],
     [t]
@@ -63,31 +70,31 @@ export default function PricingPage() {
 
   const featureRows = useMemo(
     () => [
-      { feature: t("pricing.feat.tg"), pro: true, superPro: true, lifetime: true },
-      { feature: t("pricing.feat.sm"), pro: true, superPro: true, lifetime: true },
+      { feature: t("pricing.feat.tg"), pro: true, superPro: true, whale: true },
+      { feature: t("pricing.feat.sm"), pro: true, superPro: true, whale: true },
       {
         feature: t("pricing.feat.depth"),
         pro: t("pricing.val.24h"),
         superPro: t("pricing.val.extended"),
-        lifetime: t("pricing.val.extended")
+        whale: t("pricing.val.full")
       },
       {
         feature: t("pricing.feat.api"),
         pro: t("pricing.val.standard"),
         superPro: t("pricing.val.priority"),
-        lifetime: t("pricing.val.priority")
+        whale: t("pricing.val.highest")
       },
       {
         feature: t("pricing.feat.quotas"),
         pro: t("pricing.val.standard"),
         superPro: t("pricing.val.higher"),
-        lifetime: t("pricing.val.higher")
+        whale: t("pricing.val.highest")
       },
       {
         feature: t("pricing.feat.billing"),
         pro: t("pricing.val.monthly"),
         superPro: t("pricing.val.monthly"),
-        lifetime: t("pricing.val.oneTime")
+        whale: t("pricing.val.monthly")
       }
     ],
     [t]
@@ -202,6 +209,13 @@ export default function PricingPage() {
           {plans.map((plan, idx) => {
             const isPrimary = Boolean(plan.highlight);
             const ctaClass = idx === 0 ? "btn-ghost mt-auto w-full" : isPrimary ? "btn-primary mt-auto w-full" : "btn-outline mt-auto w-full";
+            const disabled = !mounted || !canCheckout || !plan.checkoutEnabled || loadingPlan === plan.id;
+            const buttonLabel = plan.checkoutEnabled
+              ? loadingPlan === plan.id
+                ? t("pricing.btn.redirecting")
+                : t("pricing.btn.checkout")
+              : t("pricing.btn.comingSoon");
+
             return (
               <div
                 key={plan.id}
@@ -230,12 +244,18 @@ export default function PricingPage() {
                 </ul>
                 <button
                   type="button"
-                  onClick={() => startCheckout(plan.id)}
-                  disabled={!mounted || loadingPlan === plan.id || !canCheckout}
-                  title={!canCheckout ? t("pricing.btn.checkoutTitle") : undefined}
+                  onClick={() => plan.checkoutEnabled && startCheckout(plan.id)}
+                  disabled={disabled}
+                  title={
+                    !plan.checkoutEnabled
+                      ? t("pricing.btn.comingSoonTitle")
+                      : !canCheckout
+                        ? t("pricing.btn.checkoutTitle")
+                        : undefined
+                  }
                   className={`${ctaClass} justify-center disabled:opacity-40 disabled:cursor-not-allowed`}
                 >
-                  {loadingPlan === plan.id ? t("pricing.btn.redirecting") : t("pricing.btn.checkout")}
+                  {buttonLabel}
                 </button>
                 {plan.id === "pro" && <CryptoPayButton />}
               </div>
@@ -257,7 +277,7 @@ export default function PricingPage() {
                   <th className="data-th">{t("pricing.matrix.th.cap")}</th>
                   <th className="data-th text-center">{t("pricing.matrix.th.pro")}</th>
                   <th className="data-th text-center">{t("pricing.matrix.th.super")}</th>
-                  <th className="data-th text-center">{t("pricing.matrix.th.life")}</th>
+                  <th className="data-th text-center">{t("pricing.matrix.th.whale")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -271,7 +291,7 @@ export default function PricingPage() {
                       <Cell v={row.superPro} ariaIncluded={t("pricing.aria.included")} ariaNotIncluded={t("pricing.aria.notIncluded")} />
                     </td>
                     <td className="data-td text-center">
-                      <Cell v={row.lifetime} ariaIncluded={t("pricing.aria.included")} ariaNotIncluded={t("pricing.aria.notIncluded")} />
+                      <Cell v={row.whale} ariaIncluded={t("pricing.aria.included")} ariaNotIncluded={t("pricing.aria.notIncluded")} />
                     </td>
                   </tr>
                 ))}
