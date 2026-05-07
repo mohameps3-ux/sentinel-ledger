@@ -795,7 +795,7 @@ router.get("/graveyard", async (req, res) => {
 router.get('/track-record/summary', async (req, res) => {
   try {
     const { createClient } = require('@supabase/supabase-js');
-    const sb = require('../lib/supabase');
+    const { getSupabase } = require('../lib/supabase'); const sb = getSupabase();
     const win = req.query.window || '48h';
     const hrs = win==='24h'?24:win==='7d'?168:win==='30d'?720:48;
     const since = new Date(Date.now()-hrs*3600000).toISOString();
