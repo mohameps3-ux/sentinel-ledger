@@ -4,56 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { PageHead } from "../components/seo/PageHead";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 
-/** Client poll interval for Track Record (ms). Env NEXT_PUBLIC_TRACK_RECORD_POLL_MS; default 60s, clamp 3s–120s. */
+/** Client poll interval for Track Record (ms). Env NEXT_PUBLIC_TRACK_RECORD_POLL_MS; default 10s, clamp 3s–120s. */
 const TRACK_RECORD_POLL_MS = (() => {
   const n = Number(process.env.NEXT_PUBLIC_TRACK_RECORD_POLL_MS);
   if (Number.isFinite(n) && n >= 3000) return Math.min(n, 120000);
-  return 60000;
+  return 10000;
 })();
 
 /** Cap pages to avoid flooding the API on very large ledgers. */
 const METRICS_MAX_PAGES = 40;
-
-/** Vista temporal del track record (filtrado en cliente sobre las filas ya cargadas). */
-const HORIZON_HOURS = {
-  ALL: null,
-  "24H": 24,
-  "48H": 48,
-  "7D": 24 * 7,
-  "30D": 24 * 30
-};
-
-function rowTimestampMs(s) {
-  const t = Date.parse(String(s?.emitted_at || s?.time || s?.created_at || ""));
-  return Number.isFinite(t) ? t : NaN;
-}
-
-function filterRowsByHorizon(rows, horizonKey) {
-  const hours = HORIZON_HOURS[horizonKey];
-  if (hours == null) return rows;
-  const cutoff = Date.now() - hours * 3600 * 1000;
-  return rows.filter((s) => {
-    const t = rowTimestampMs(s);
-    if (!Number.isFinite(t)) return true;
-    return t >= cutoff;
-  });
-}
-
-function horizonTitleSuffix(horizonKey) {
-  if (horizonKey === "24H") return "Últimas 24h";
-  if (horizonKey === "48H") return "Últimas 48h";
-  if (horizonKey === "7D") return "Últimos 7 días";
-  if (horizonKey === "30D") return "Últimos 30 días";
-  return "Últimas 48h";
-}
-
-function horizonObservationLabel(horizonKey) {
-  if (horizonKey === "24H") return "24h";
-  if (horizonKey === "48H") return "48h";
-  if (horizonKey === "7D") return "7 días";
-  if (horizonKey === "30D") return "30 días";
-  return "48h";
-}
 
 /** −10% hard stop in fractional units (same as outcome_60m / result_pct). */
 const STOP_LOSS_CAP_FRAC = -0.1;
@@ -69,27 +28,6 @@ async function fetchTrackRecordPage(page, limit = 50) {
 }
 
 async function fetchTrackRecordFull() {
-  const res = await fetch(`${getPublicApiUrl()}/api/v1/signals/track-record/summary`);
-  if (!res.ok) throw new Error("track_record_fetch_failed");
-  const data = await res.json();
-  return {
-    recent_signals: data.recent_signals || [],
-    top_wins: data.top_wins || [],
-    worst_losses: data.worst_losses || [],
-    win_rate_60m: data.win_rate_60m,
-    avg_return: data.avg_return,
-    profit_factor: data.profit_factor,
-    total_signals: data.total_signals,
-    resolved: data.resolved,
-    wins: data.wins,
-    losses: data.losses,
-    pending: data.pending,
-    last_updated: data.last_updated,
-    _pagesFetched: 1
-  };
-}
-
-async function fetchTrackRecordFull_OLD() {
   const limit = 50;
   const first = await fetchTrackRecordPage(1, limit);
   const totalPagesRaw = Number(first.pagination?.total_pages || 1);
@@ -146,9 +84,7 @@ function sourceWeight(source) {
 }
 
 function computeInstitutionalMetrics(signals) {
-  const list = signals ?? [];
-  const completed = list.filter((s) => outcomeRaw(s) != null);
-  const pending = list.filter((s) => outcomeRaw(s) == null);
+  const completed = (signals ?? []).filter((s) => outcomeRaw(s) != null);
   const wins = completed.filter((s) => (outcomeRaw(s) ?? 0) > 0);
   const losses = completed.filter((s) => (outcomeRaw(s) ?? 0) <= 0);
   const winRate = completed.length > 0 ? wins.length / completed.length : 0;
@@ -164,11 +100,6 @@ function computeInstitutionalMetrics(signals) {
         Math.abs(losses.reduce((a, s) => a + (outcomeRaw(s) ?? 0), 0))
       : 0;
   const maxDrawdown = completed.length > 0 ? Math.min(...completed.map((s) => outcomeRaw(s) ?? 0)) : 0;
-
-  const pendingWithoutEntry = pending.filter((s) => {
-    const e = Number(s.entry_price_usd);
-    return !(Number.isFinite(e) && e > 0);
-  }).length;
 
   const CAP = STOP_LOSS_CAP_FRAC;
   const cappedSignals = completed.map((s) => ({
@@ -211,15 +142,7 @@ function computeInstitutionalMetrics(signals) {
     cappedPF,
     killedCount,
     bestCall,
-    worstCall,
-    /** Con resultado a 60m (equiv. “resueltas” en el ledger). */
-    resolvedRows: completed.length,
-    pendingRows: pending.length,
-    /** Completadas con retorno ≤ 0 (incl. neutras y cortadas). */
-    failedRows: losses.length,
-    pendingWithoutEntry,
-    resolvedWithoutOutcome: 0,
-    defaultHorizon: "10 min"
+    worstCall
   };
 }
 
@@ -346,11 +269,7 @@ function LineChart({ signals }) {
   const ref = useRef(null);
   const W = 520;
   const H = 206;
-  const PAD = 18;
-  const axisFs = 11;
-  const axisFill = "#cbd5e1";
-  const axisWeak = "#94a3b8";
-  const badgeFs = 11;
+  const PAD = 15;
 
   const points = useMemo(() => {
     if (!signals?.length) return "";
@@ -431,18 +350,18 @@ function LineChart({ signals }) {
         y1={H / 2}
         x2={W - PAD}
         y2={H / 2}
-        stroke="#334155"
-        strokeWidth="0.75"
-        strokeDasharray="4 4"
+        stroke="#1f2937"
+        strokeWidth="0.5"
+        strokeDasharray="3 3"
       />
-      <text x={PAD} y={16} fill={axisWeak} fontSize={axisFs} fontFamily="monospace" fontWeight="600">
+      <text x={PAD} y={12} fill="#64748b" fontSize="6" fontFamily="monospace">
         +
       </text>
-      <text x={PAD} y={H / 2 + 5} fill={axisFill} fontSize={axisFs} fontFamily="monospace" fontWeight="600">
+      <text x={PAD} y={H / 2 + 5} fill="#64748b" fontSize="6" fontFamily="monospace">
         0%
       </text>
-      <text x={PAD} y={H - PAD - 4} fill={axisWeak} fontSize={axisFs} fontFamily="monospace" fontWeight="600">
-        −
+      <text x={PAD} y={H - 6} fill="#64748b" fontSize="6" fontFamily="monospace">
+        -
       </text>
       {points ? (
         <>
@@ -467,25 +386,25 @@ function LineChart({ signals }) {
           />
         </>
       ) : (
-        <text x={W / 2} y={H / 2 + 5} textAnchor="middle" fill={axisFill} fontSize={12} fontFamily="monospace" fontWeight="500">
+        <text x={W / 2} y={H / 2 + 4} textAnchor="middle" fill="#64748b" fontSize="7" fontFamily="monospace">
           Serie en formación
         </text>
       )}
       {lastPct != null ? (
         <>
-          <rect x={W - 68} y={H - 36} width={56} height={18} rx="3" fill="rgba(92, 38, 38, 0.92)" stroke="#fca5a5" strokeWidth="0.5" />
-          <text x={W - 40} y={H - 22} textAnchor="middle" fill="#fecaca" fontSize={badgeFs} fontFamily="monospace" fontWeight="700">
+          <rect x={W - 52} y={H - 22} width={40} height={11} rx="2" fill="rgba(92, 38, 38, 0.85)" />
+          <text x={W - 50} y={H - 13} fill="#e89191" fontSize="7" fontFamily="monospace">
             {(lastPct * 100).toFixed(2)}%
           </text>
         </>
       ) : null}
-      <text x={PAD + 2} y={H - 4} fill={axisFill} fontSize={axisFs} fontFamily="monospace" fontWeight="600">
-        −48h
+      <text x={PAD} y={H} fill="#64748b" fontSize="6" fontFamily="monospace">
+        -48h
       </text>
-      <text x={W / 2} y={H - 4} textAnchor="middle" fill={axisFill} fontSize={axisFs} fontFamily="monospace" fontWeight="600">
-        −24h
+      <text x={W / 2 - 10} y={H} fill="#64748b" fontSize="6" fontFamily="monospace">
+        -24h
       </text>
-      <text x={W - PAD - 2} y={H - 4} textAnchor="end" fill={axisFill} fontSize={axisFs} fontFamily="monospace" fontWeight="600">
+      <text x={W - 28} y={H} fill="#64748b" fontSize="6" fontFamily="monospace">
         Actual
       </text>
     </svg>
@@ -579,8 +498,6 @@ function ScatterPlot({ signals, correlation }) {
 
 export default function GraveyardPage() {
   const [filter, setFilter] = useState("all");
-  /** Filtro temporal alineado con las pastillas (cliente, sobre filas ya traídas del API). */
-  const [horizonKey, setHorizonKey] = useState("48H");
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -593,27 +510,16 @@ export default function GraveyardPage() {
   const query = useQuery({
     queryKey: ["verified-track-record-full"],
     queryFn: fetchTrackRecordFull,
-    staleTime: 30_000,
+    staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: TRACK_RECORD_POLL_MS,
-    refetchIntervalInBackground: true
+    refetchInterval: TRACK_RECORD_POLL_MS
   });
 
   const data = query.data || {};
   const allRows = useMemo(() => data.recent_signals || [], [data.recent_signals]);
-  const scopedRows = useMemo(
-    () => filterRowsByHorizon(allRows, horizonKey),
-    [allRows, horizonKey]
-  );
 
-  const metrics = useMemo(() => {
-    const base = computeInstitutionalMetrics(scopedRows);
-    return {
-      ...base,
-      sampleCapHit: (data._pagesFetched ?? 0) >= METRICS_MAX_PAGES
-    };
-  }, [scopedRows, data._pagesFetched]);
+  const metrics = useMemo(() => computeInstitutionalMetrics(allRows), [allRows]);
   const {
     completed,
     winRate,
@@ -693,18 +599,15 @@ export default function GraveyardPage() {
     [...completed].sort((a, b) => (outcomeRaw(a) ?? 999) - (outcomeRaw(b) ?? 999))[0] ?? null;
 
   const filteredRows = useMemo(() => {
-    if (filter === "wins") return scopedRows.filter((s) => outcomeRaw(s) > 0);
-    if (filter === "losses") return scopedRows.filter((s) => outcomeRaw(s) != null && outcomeRaw(s) <= 0);
-    if (filter === "pending") return scopedRows.filter((s) => outcomeRaw(s) == null);
-    return scopedRows;
-  }, [filter, scopedRows]);
+    if (filter === "wins") return allRows.filter((s) => outcomeRaw(s) > 0);
+    if (filter === "losses") return allRows.filter((s) => outcomeRaw(s) != null && outcomeRaw(s) <= 0);
+    if (filter === "pending") return allRows.filter((s) => outcomeRaw(s) == null);
+    return allRows;
+  }, [filter, allRows]);
 
   const isSystemBad = (avgOutcome ?? 0) < -0.08 || winRate < 0.4;
 
-  const safeProfitFactor =
-    hasMetrics && profitFactor != null && Number.isFinite(profitFactor) && profitFactor > 0
-      ? profitFactor.toFixed(2)
-      : "—";
+  const safeProfitFactor = profitFactor && profitFactor > 0.05 ? profitFactor.toFixed(2) : "—";
 
   const safeDrawdown =
     maxDrawdown != null && maxDrawdown > -0.99 ? `${(maxDrawdown * 100).toFixed(2)}%` : "—";
@@ -884,7 +787,7 @@ export default function GraveyardPage() {
               ) : null}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="grave-hd-title">Resumen operativo · {horizonTitleSuffix(horizonKey)}</div>
+              <div className="grave-hd-title">Resumen operativo · Últimas 48h</div>
               <div className="grave-hd-sub">Registro verificado on-chain · auditoría continua</div>
             </div>
 
@@ -896,14 +799,9 @@ export default function GraveyardPage() {
 
               <div className="grave-period-group">
                 {["24H", "48H", "7D", "30D"].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setHorizonKey(t)}
-                    className={t === horizonKey ? "grave-period-pill grave-period-pill--active" : "grave-period-pill"}
-                  >
+                  <div key={t} className={t === "48H" ? "grave-period-pill grave-period-pill--active" : "grave-period-pill"}>
                     {t}
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -945,54 +843,56 @@ export default function GraveyardPage() {
               </div>
             </div>
 
-            <div className="grave-ml-panel">
-              <div className="grave-cc-t grave-cc-t--ml">Motor de señales</div>
-              <div className="grave-ml-hero">{(modelScore * 100).toFixed(1)}%</div>
-              <div className="grave-ml-caption">Confianza del modelo (R²)</div>
-              <div className="grave-ml-meta">
-                Calibración (decil superior): {(calibratedConfidence * 100).toFixed(1)}% · n={rankedML.length} · pesos{" "}
-                {weights[0].toFixed(2)}/{weights[1].toFixed(2)}/{weights[2].toFixed(2)}
-              </div>
-              <div
-                className={
-                  modelState === "HIGH_ALPHA"
-                    ? "grave-ml-state grave-ml-state--high"
+            <div className="grave-core-right">
+              <div className="grave-ml-panel">
+                <div className="grave-cc-t grave-cc-t--ml">Motor de señales</div>
+                <div className="grave-ml-hero">{(modelScore * 100).toFixed(1)}%</div>
+                <div className="grave-ml-caption">Confianza del modelo (R²)</div>
+                <div className="grave-ml-meta">
+                  Calibración (decil superior): {(calibratedConfidence * 100).toFixed(1)}% · n={rankedML.length} · pesos{" "}
+                  {weights[0].toFixed(2)}/{weights[1].toFixed(2)}/{weights[2].toFixed(2)}
+                </div>
+                <div
+                  className={
+                    modelState === "HIGH_ALPHA"
+                      ? "grave-ml-state grave-ml-state--high"
+                      : modelState === "MODERATE_ALPHA"
+                        ? "grave-ml-state grave-ml-state--mod"
+                        : modelState === "NEGATIVE_ALPHA"
+                          ? "grave-ml-state grave-ml-state--neg"
+                          : "grave-ml-state grave-ml-state--neutral"
+                  }
+                >
+                  {modelState === "HIGH_ALPHA"
+                    ? "Alfa · elevado"
                     : modelState === "MODERATE_ALPHA"
-                      ? "grave-ml-state grave-ml-state--mod"
+                      ? "Alfa · moderado"
                       : modelState === "NEGATIVE_ALPHA"
-                        ? "grave-ml-state grave-ml-state--neg"
-                        : "grave-ml-state grave-ml-state--neutral"
-                }
-              >
-                {modelState === "HIGH_ALPHA"
-                  ? "Alfa · elevado"
-                  : modelState === "MODERATE_ALPHA"
-                    ? "Alfa · moderado"
-                    : modelState === "NEGATIVE_ALPHA"
-                      ? "Alfa · negativo"
-                      : "Neutro"}
+                        ? "Alfa · negativo"
+                        : "Neutro"}
+                </div>
               </div>
-            </div>
 
-            <div className="grave-top-signals">
-              <div className="grave-cc-t grave-cc-t--signals">Señales alfa</div>
-              {rankedML.slice(0, 5).map((sig, i) => {
-                const cIdx = completed.findIndex((c, j) => {
-                  const k =
-                    c?.id != null ? String(c.id) : `ml-${j}-${String(c.emitted_at || c.time || c.mint || "")}`;
-                  return k === sig.signalKey;
-                });
-                const srcRow = cIdx >= 0 ? completed[cIdx] : null;
-                const pred = sig.score;
-                return (
-                  <div key={`${sig.signalKey}-${i}`} className="grave-top-signal-row">
-                    <span className="grave-top-signal-sym">
-                      {(srcRow?.asset || srcRow?.symbol || sig.source || "???").slice(0, 8)}
-                    </span>
-                    <span className="grave-top-signal-pct">{(pred * 100).toFixed(1)}%</span>
-                  </div>
-                );
-              })}
+              <div className="grave-top-signals">
+                <div className="grave-cc-t grave-cc-t--signals">Señales alfa</div>
+                {rankedML.slice(0, 5).map((sig, i) => {
+                  const cIdx = completed.findIndex((c, j) => {
+                    const k =
+                      c?.id != null ? String(c.id) : `ml-${j}-${String(c.emitted_at || c.time || c.mint || "")}`;
+                    return k === sig.signalKey;
+                  });
+                  const srcRow = cIdx >= 0 ? completed[cIdx] : null;
+                  const pred = sig.score;
+                  return (
+                    <div key={`${sig.signalKey}-${i}`} className="grave-top-signal-row">
+                      <span className="grave-top-signal-sym">
+                        {(srcRow?.asset || srcRow?.symbol || sig.source || "???").slice(0, 8)}
+                      </span>
+                      <span className="grave-top-signal-pct">{(pred * 100).toFixed(1)}%</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -1040,29 +940,28 @@ export default function GraveyardPage() {
             </div>
           </div>
 
-          <div className="grave-insight-row">
-            <div className="grave-insight-below-charts">
-              <div
-                className="grave-oracle-panel grave-insight-color-card"
-                style={{ padding: "12px", boxSizing: "border-box" }}
-              >
+          <div className="grave-insight-row" style={{ alignItems: "start" }}>
+            <div
+              className="grave-oracle-panel"
+              style={{ minHeight: 0, height: "auto", padding: "12px", boxSizing: "border-box" }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
                 <div
                   style={{
-                    width: "16px",
-                    height: "16px",
+                    width: "14px",
+                    height: "14px",
                     borderRadius: "50%",
                     background: "#166534",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "10px",
+                    fontSize: "8px",
                     color: "#34d399"
                   }}
                 >
                   ✓
                 </div>
-                <div className="grave-insight-head" style={{ color: "#34d399" }}>
+                <div style={{ fontSize: "9px", fontWeight: "700", color: "#34d399", letterSpacing: ".04em" }}>
                   CASOS VERIFICADOS
                 </div>
               </div>
@@ -1084,10 +983,8 @@ export default function GraveyardPage() {
                   }
                 ].map((x, idx) => (
                   <div key={idx} style={{ textAlign: "center" }}>
-                    <div className="grave-insight-metric-val" style={{ color: x.c }}>
-                      {x.v}
-                    </div>
-                    <div className="grave-insight-metric-lbl">{x.l}</div>
+                    <div style={{ fontSize: "14px", fontWeight: "700", color: x.c, lineHeight: 1.1 }}>{x.v}</div>
+                    <div style={{ fontSize: "7px", color: "#6b7280" }}>{x.l}</div>
                   </div>
                 ))}
               </div>
@@ -1097,12 +994,11 @@ export default function GraveyardPage() {
                     key={idx}
                     className="text-xs leading-none"
                     style={{
-                      padding: "3px 8px",
+                      padding: "2px 6px",
                       borderRadius: "999px",
                       color: "#34d399",
                       border: "1px solid #166534",
-                      background: "#0a1a10",
-                      fontSize: "12px"
+                      background: "#0a1a10"
                     }}
                   >
                     {s.asset || s.symbol || "?"}{" "}
@@ -1113,26 +1009,26 @@ export default function GraveyardPage() {
             </div>
 
             <div
-              className="grave-mistakes-panel grave-insight-color-card"
-              style={{ padding: "12px", boxSizing: "border-box" }}
+              className="grave-mistakes-panel"
+              style={{ minHeight: 0, height: "auto", padding: "12px", boxSizing: "border-box" }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
                 <div
                   style={{
-                    width: "16px",
-                    height: "16px",
+                    width: "14px",
+                    height: "14px",
                     borderRadius: "50%",
                     background: "#7f1d1d",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "10px",
+                    fontSize: "8px",
                     color: "#f87171"
                   }}
                 >
                   ⚠
                 </div>
-                <div className="grave-insight-head" style={{ color: "#f87171" }}>
+                <div style={{ fontSize: "9px", fontWeight: "700", color: "#f87171", letterSpacing: ".04em" }}>
                   CASOS NO FAVORABLES
                 </div>
               </div>
@@ -1154,10 +1050,8 @@ export default function GraveyardPage() {
                   }
                 ].map((x, idx) => (
                   <div key={idx} style={{ textAlign: "center" }}>
-                    <div className="grave-insight-metric-val" style={{ color: x.c }}>
-                      {x.v}
-                    </div>
-                    <div className="grave-insight-metric-lbl">{x.l}</div>
+                    <div style={{ fontSize: "14px", fontWeight: "700", color: x.c, lineHeight: 1.1 }}>{x.v}</div>
+                    <div style={{ fontSize: "7px", color: "#6b7280" }}>{x.l}</div>
                   </div>
                 ))}
               </div>
@@ -1167,12 +1061,11 @@ export default function GraveyardPage() {
                     key={idx}
                     className="text-xs leading-none"
                     style={{
-                      padding: "3px 8px",
+                      padding: "2px 6px",
                       borderRadius: "999px",
                       color: "#f87171",
                       border: "1px solid #7f1d1d",
-                      background: "#1a0808",
-                      fontSize: "12px"
+                      background: "#1a0808"
                     }}
                   >
                     {s.asset || s.symbol || "?"}{" "}
@@ -1182,27 +1075,67 @@ export default function GraveyardPage() {
               </div>
             </div>
 
-              <div className="grave-mini-panel grave-insight-subpanel">
+            <div className="grave-status-stack">
+              <div className="grave-mini-panel">
+                <div className="grave-cc-t">Estado actual (48h)</div>
+                <div className="grave-mini-lead">Ventana de observación: 48h</div>
+                <div style={{ display: "grid", gap: "6px", fontSize: "8px", lineHeight: 1.4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Resueltas</span>
+                    <b>{metrics?.resolvedRows ?? 0}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Pendientes</span>
+                    <b>{metrics?.pendingRows ?? 0}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Fallidas</span>
+                    <b>{metrics?.failedRows ?? 0}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Tasa acierto</span>
+                    <b>{hasMetrics ? `${(winRate * 100).toFixed(1)}%` : "—"}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Profit factor</span>
+                    <b>{hasMetrics ? safeProfitFactor : "—"}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Retorno medio</span>
+                    <b>{hasMetrics ? safeAvgOutcome : "—"}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Correlación conf./retorno</span>
+                    <b>{hasMetrics ? (correlationValue?.toFixed(2) ?? "—") : "—"}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Máx. drawdown</span>
+                    <b>{hasMetrics ? safeDrawdown : "—"}</b>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grave-mini-panel">
                 <div className="grave-cc-t">Simulación de control de riesgo</div>
                 <div className="grave-mini-lead">Cap de pérdida aplicado (−10%)</div>
-                <div className="grave-insight-kv">
-                  <div className="grave-insight-kv-row">
+                <div style={{ display: "grid", gap: "6px", fontSize: "8px", lineHeight: 1.4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Esperanza bruta</span>
                     <b style={{ color: "#f87171" }}>
                       {expectancy != null ? `${(expectancy * 100).toFixed(2)}%` : "—"}
                     </b>
                   </div>
-                  <div className="grave-insight-kv-row">
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Esperanza capada</span>
                     <b style={{ color: "#f87171" }}>
                       {cappedExpectancy != null ? `${(cappedExpectancy * 100).toFixed(2)}%` : "—"}
                     </b>
                   </div>
-                  <div className="grave-insight-kv-row">
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Señales cortadas</span>
                     <b className="grave-kill-stat">{killedCount ?? 0}</b>
                   </div>
-                  <div className="grave-insight-kv-row">
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>DD máx. (cap)</span>
                     <b style={{ color: "#f87171" }}>−10.00%</b>
                   </div>
@@ -1212,66 +1145,25 @@ export default function GraveyardPage() {
                 </div>
               </div>
 
-              <div className="grave-mini-panel grave-insight-subpanel">
+              <div className="grave-mini-panel">
                 <div className="grave-cc-t">Indicadores del pipeline</div>
                 <div className="grave-mini-lead">Señales de calidad operativa</div>
-                <div className="grave-insight-kv">
-                  <div className="grave-insight-kv-row">
+                <div style={{ display: "grid", gap: "6px", fontSize: "8px", lineHeight: 1.4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Tope de muestra</span>
                     <b>{metrics?.sampleCapHit ? "Sí" : "No"}</b>
                   </div>
-                  <div className="grave-insight-kv-row">
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Pendientes sin entrada</span>
                     <b>{metrics?.pendingWithoutEntry ?? 0}</b>
                   </div>
-                  <div className="grave-insight-kv-row">
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Resueltas sin resultado</span>
                     <b>{metrics?.resolvedWithoutOutcome ?? 0}</b>
                   </div>
-                  <div className="grave-insight-kv-row">
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Horizonte por defecto</span>
                     <b>{metrics?.defaultHorizon ?? "10 min"}</b>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grave-insight-status-col">
-              <div className="grave-mini-panel grave-mini-panel--insight-tall">
-                <div className="grave-cc-t">Estado actual ({horizonObservationLabel(horizonKey)})</div>
-                <div className="grave-mini-lead">Ventana de observación: {horizonObservationLabel(horizonKey)}</div>
-                <div className="grave-insight-kv grave-insight-kv--grow">
-                  <div className="grave-insight-kv-row">
-                    <span>Resueltas</span>
-                    <b>{metrics?.resolvedRows ?? 0}</b>
-                  </div>
-                  <div className="grave-insight-kv-row">
-                    <span>Pendientes</span>
-                    <b>{metrics?.pendingRows ?? 0}</b>
-                  </div>
-                  <div className="grave-insight-kv-row">
-                    <span>Fallidas</span>
-                    <b>{metrics?.failedRows ?? 0}</b>
-                  </div>
-                  <div className="grave-insight-kv-row">
-                    <span>Tasa acierto</span>
-                    <b>{hasMetrics ? `${(winRate * 100).toFixed(1)}%` : "—"}</b>
-                  </div>
-                  <div className="grave-insight-kv-row">
-                    <span>Profit factor</span>
-                    <b>{hasMetrics ? safeProfitFactor : "—"}</b>
-                  </div>
-                  <div className="grave-insight-kv-row">
-                    <span>Retorno medio</span>
-                    <b>{hasMetrics ? safeAvgOutcome : "—"}</b>
-                  </div>
-                  <div className="grave-insight-kv-row">
-                    <span>Correlación conf./retorno</span>
-                    <b>{hasMetrics ? (correlationValue?.toFixed(2) ?? "—") : "—"}</b>
-                  </div>
-                  <div className="grave-insight-kv-row">
-                    <span>Máx. drawdown</span>
-                    <b>{hasMetrics ? safeDrawdown : "—"}</b>
                   </div>
                 </div>
               </div>
@@ -1295,16 +1187,15 @@ export default function GraveyardPage() {
               </div>
             </div>
 
-            <div className="grave-tbl-scroll">
-              <div className="grave-thdr">
-                {["", "Activo", "Origen", "Conf.", "Entrada", "P&L 60m", "Estado", "Hora"].map((h, idx) => (
-                  <div key={idx} className="grave-th-cell">
-                    {h}
-                  </div>
-                ))}
-              </div>
+            <div className="grave-thdr">
+              {["", "Activo", "Origen", "Conf.", "Entrada", "P&L 60m", "Estado", "Hora"].map((h, idx) => (
+                <div key={idx} className="grave-th-cell">
+                  {h}
+                </div>
+              ))}
+            </div>
 
-              {filteredRows.slice(0, 48).map((s, i) => {
+            {filteredRows.slice(0, 12).map((s, i) => {
               const rawOriginal = outcomeRaw(s);
               const raw = rawOriginal == null ? null : Math.max(-0.1, Math.min(0.2, rawOriginal));
               const pct = raw != null ? raw * 100 : null;
@@ -1355,7 +1246,7 @@ export default function GraveyardPage() {
               return (
                 <div
                   key={s.id != null ? String(s.id) : `row-${i}`}
-                  className={`grave-trow grave-trow--${statusKey.toLowerCase()}`}
+                  className="grave-trow"
                   style={{
                     background:
                       raw != null
@@ -1365,7 +1256,7 @@ export default function GraveyardPage() {
                         : "transparent"
                   }}
                 >
-                  <div className="grave-tbl-fav">☆</div>
+                  <div style={{ fontSize: "8px", color: "#4a5568" }}>☆</div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <div
@@ -1472,9 +1363,12 @@ export default function GraveyardPage() {
                 </div>
               );
             })}
-            </div>
 
-            <div className="grave-tbl-more">↓ Cargar más historial</div>
+              <div
+                className="grave-tbl-more"
+              >
+                ↓ Cargar más historial
+              </div>
           </div>
         </main>
       </div>
