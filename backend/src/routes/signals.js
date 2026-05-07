@@ -799,9 +799,9 @@ router.get('/track-record/summary', async (req, res) => {
     const win = req.query.window || '48h';
     const hrs = win==='24h'?24:win==='7d'?168:win==='30d'?720:48;
     const since = new Date(Date.now()-hrs*3600000).toISOString();
-    const { data, error } = await sb.from('signal_performance').select('result,outcome_60m,confidence,action,token_name,mint,emitted_at,time,signals').not('result','is',null).order('emitted_at',{ascending:false}).limit(500);
+    const { data, error } = await sb.from('signal_performance').select('result,outcome_60m,confidence,action,token_name,mint,emitted_at,time,signals').not('validation_state','is',null).order('emitted_at',{ascending:false}).limit(500);
     if(error) throw error;
-    const resolved=(data||[]).filter(s=>s.result==='WIN'||s.result==='LOSS');
+    const resolved=(data||[]).filter(s=>s.validation_state==='WIN'||s.validation_state==='LOSS');
     const wins=resolved.filter(s=>s.result==='WIN');
     const losses=resolved.filter(s=>s.result==='LOSS');
     const pending=(data||[]).filter(s=>!s.result||s.result==='PENDING');
