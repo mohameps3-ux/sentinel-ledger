@@ -2,7 +2,41 @@ import Link from "next/link";
 import { clampScore } from "../../lib/scannerTerminalModel.mjs";
 import { TerminalActionIcons } from "../terminal/TerminalActionIcons";
 
-export function ScannerTokenTable({ rows, focusedMint, onFocusMint, t }) {
+function EmptyState({ status, t }) {
+  const copy =
+    status?.kind === "backend_offline"
+      ? {
+          title: "Backend offline",
+          body: "The trading API is not reachable from this frontend session. Check the backend process or API proxy target."
+        }
+      : status?.kind === "wrong_endpoint"
+        ? {
+            title: "Wrong API endpoint",
+            body: "The API route returned 404. The frontend is probably pointed at the wrong origin or proxy target."
+          }
+        : status?.kind === "backend_error"
+          ? {
+              title: "Backend error",
+              body: "The API responded, but the service returned an error while loading the scanner universe."
+            }
+          : {
+              title: "No data",
+              body: t("scanner.table.empty")
+            };
+  return (
+    <div className="px-3 py-8 text-center">
+      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-300">{copy.title}</p>
+      <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-zinc-600">{copy.body}</p>
+      {status?.status != null ? (
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-700">
+          status={status.status} kind={status.kind}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+export function ScannerTokenTable({ rows, focusedMint, onFocusMint, t, status }) {
   return (
     <div className="overflow-x-auto px-2 pb-4 pt-2 sm:px-3">
       <table className="w-full min-w-[640px] border-collapse text-left">
@@ -83,9 +117,7 @@ export function ScannerTokenTable({ rows, focusedMint, onFocusMint, t }) {
           })}
         </tbody>
       </table>
-      {rows.length === 0 ? (
-        <p className="px-3 py-6 text-center text-xs text-zinc-600">{t("scanner.table.empty")}</p>
-      ) : null}
+      {rows.length === 0 ? <EmptyState status={status} t={t} /> : null}
     </div>
   );
 }

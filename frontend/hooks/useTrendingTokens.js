@@ -1,14 +1,9 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { getPublicApiUrl } from "../lib/publicRuntime";
+import { apiJson } from "../lib/apiClient";
 
 async function fetchTrending({ limit, narrative }) {
   const q = narrative ? `&narrative=${encodeURIComponent(narrative)}` : "";
-  const res = await fetch(
-    `${getPublicApiUrl()}/api/v1/tokens/hot?limit=${encodeURIComponent(limit)}${q}`,
-    { cache: "no-store" }
-  );
-  if (!res.ok) throw new Error("Failed to fetch hot tokens");
-  return res.json();
+  return apiJson(`/api/v1/tokens/hot?limit=${encodeURIComponent(limit)}${q}`, { cache: "no-store" });
 }
 
 /**

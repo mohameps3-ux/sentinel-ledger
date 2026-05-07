@@ -27,6 +27,7 @@ const GuestTrialBanner = dynamic(() => import("../components/trial/GuestTrialBan
 import { createSolanaWalletAdapters } from "../lib/solanaWalletAdapters";
 import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
 import { getPublicWsUrl } from "../lib/publicRuntime";
+import { runApiDiagnostics, shouldRunApiDiagnostics } from "../lib/apiDiagnostics";
 import { useTtaFirstAction } from "../hooks/useTtaFirstAction";
 import io from "socket.io-client";
 import "@solana/wallet-adapter-react-ui/styles.css";
@@ -65,6 +66,11 @@ export default function App({ Component, pageProps }) {
 
   useEffect(() => {
     document.documentElement.dataset.sentinelClient = "1";
+  }, []);
+
+  useEffect(() => {
+    if (!shouldRunApiDiagnostics()) return;
+    runApiDiagnostics();
   }, []);
 
   useEffect(() => {

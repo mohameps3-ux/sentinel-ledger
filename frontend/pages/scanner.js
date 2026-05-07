@@ -107,6 +107,17 @@ export default function ScannerPage() {
   );
 
   const tableRows = useMemo(() => filteredSorted.slice(0, TABLE_ROWS_MAX), [filteredSorted]);
+  const scannerStatus = useMemo(() => {
+    if (trending.isError) {
+      const err = trending.error || {};
+      return {
+        kind: err.kind || "request_error",
+        status: err.status ?? null
+      };
+    }
+    if (!trending.isLoading && tableRows.length === 0) return { kind: "no_data", status: 200 };
+    return null;
+  }, [trending.error, trending.isError, trending.isLoading, tableRows.length]);
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -222,6 +233,7 @@ export default function ScannerPage() {
               focusedMint={focusedMint}
               onFocusMint={(mint) => setFocusedMint(mint)}
               t={t}
+              status={scannerStatus}
             />
           </section>
         </div>

@@ -1,3 +1,5 @@
+const localApiTarget = process.env.NEXT_PUBLIC_API_PROXY_TARGET || process.env.API_PROXY_TARGET || "http://localhost:3001";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   /** Baked at build; inspect `<nav data-sentinel-build="…">` in DevTools to confirm the live deploy. */
@@ -28,6 +30,22 @@ const nextConfig = {
         source: "/favicon.ico",
         destination: "/favicon.svg",
         permanent: true
+      }
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${localApiTarget}/api/:path*`
+      },
+      {
+        source: "/health/:path*",
+        destination: `${localApiTarget}/health/:path*`
+      },
+      {
+        source: "/health",
+        destination: `${localApiTarget}/health`
       }
     ];
   },
