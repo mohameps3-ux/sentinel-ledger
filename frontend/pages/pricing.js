@@ -11,6 +11,7 @@ import {
   InstitutionalCard,
   InstitutionalCallout
 } from "../components/institutional";
+import CryptoPayButton from "../components/pricing/CryptoPayButton";
 
 function Cell({ v, ariaIncluded, ariaNotIncluded }) {
   if (v === true) return <span className="text-sl-green font-bold" aria-label={ariaIncluded}>✓</span>;
@@ -236,6 +237,7 @@ export default function PricingPage() {
                 >
                   {loadingPlan === plan.id ? t("pricing.btn.redirecting") : t("pricing.btn.checkout")}
                 </button>
+                {plan.id === "pro" && <CryptoPayButton />}
               </div>
             );
           })}
