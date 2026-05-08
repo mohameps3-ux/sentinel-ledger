@@ -1,9 +1,9 @@
-/* ==========================================================================
-   APEX OBSIDIAN — Sentinel Ledger executive design layer (v2.1)
+/* ===========================================================================
+   APEX OBSIDIAN — Sentinel Ledger institutional design layer
 
-   Champagne gold accent — clean yellow gold on obsidian (no terracotta).
-   Base #FACC15 · highlight #FEF08A · depth #CA8A04 / #EAB308 — no copper.
-   ========================================================================== */
+   Cold institutional palette: obsidian, steel, cyan, blue, emerald for alpha.
+   No yellow/gold accents. No casino-premium gradients.
+   =========================================================================== */
 
 @property --apex-angle {
   syntax: '<angle>';
@@ -12,43 +12,39 @@
 }
 
 :root {
-  /* Champagne / institutional gold (same family the whole app uses) */
-  --apex-gold-pale:    #fef9c3;
-  --apex-gold-bright:  #fef08a;
-  --apex-gold:         #facc15;
-  --apex-gold-mid:     #eab308;
-  --apex-gold-dim:     #ca8a04;
+  --apex-ice-pale: #e0f2fe;
+  --apex-ice-bright: #bae6fd;
+  --apex-cyan: #22d3ee;
+  --apex-blue: #2563eb;
+  --apex-violet: #7c3aed;
+  --apex-emerald: #10b981;
 
-  /* Pearl silver */
-  --apex-silver-pale:    #f4f4f5;
-  --apex-silver-bright:  #d1d5db;
-  --apex-silver:         #9ca3af;
-  --apex-silver-deep:    #525252;
+  --apex-steel-pale: #f8fafc;
+  --apex-steel-bright: #cbd5e1;
+  --apex-steel: #94a3b8;
+  --apex-steel-deep: #475569;
 
-  /* Obsidian */
-  --apex-obsidian-deep:  #050505;
-  --apex-obsidian-base:  #0a0a0a;
-  --apex-obsidian-card:  #0d0d0e;
-  --apex-obsidian-elev:  #131316;
+  --apex-obsidian-deep: #030712;
+  --apex-obsidian-base: #071019;
+  --apex-obsidian-card: #0b1120;
+  --apex-obsidian-elev: #111827;
 
-  --apex-flow-neutral:   42s;
-  --apex-flow-active:    16s;
-  --apex-flow-critical:  6s;
+  --apex-flow-neutral: 56s;
+  --apex-flow-active: 24s;
+  --apex-flow-critical: 8s;
 }
 
-/* RGBA helpers: core accent = 250, 204, 21 (#FACC15) */
 .apex-surface {
   background:
-    radial-gradient(ellipse 60% 50% at 12% 0%, rgba(250, 204, 21, 0.04), transparent 55%),
-    radial-gradient(ellipse 60% 50% at 88% 100%, rgba(209, 213, 219, 0.025), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 12% 0%, rgba(34, 211, 238, 0.035), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 88% 100%, rgba(37, 99, 235, 0.03), transparent 55%),
     linear-gradient(180deg, var(--apex-obsidian-card) 0%, var(--apex-obsidian-deep) 100%);
 }
 
 .apex-card {
   position: relative;
   background-color: var(--apex-obsidian-card);
-  background-image:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 255, 255, 0.012), transparent 60%);
+  background-image: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,255,255,0.018), transparent 60%);
   border: 1px solid transparent;
   background-clip: padding-box;
   isolation: isolate;
@@ -62,14 +58,14 @@
   z-index: -1;
   background: linear-gradient(
     90deg,
-    rgba(209, 213, 219, 0.16),
-    rgba(156, 163, 175, 0.06) 12%,
-    rgba(250, 204, 21, 0.2) 28%,
-    rgba(254, 240, 138, 0.14) 42%,
-    rgba(209, 213, 219, 0.16) 58%,
-    rgba(156, 163, 175, 0.06) 72%,
-    rgba(250, 204, 21, 0.2) 86%,
-    rgba(209, 213, 219, 0.16)
+    rgba(148, 163, 184, 0.14),
+    rgba(34, 211, 238, 0.07) 12%,
+    rgba(37, 99, 235, 0.16) 28%,
+    rgba(124, 58, 237, 0.10) 42%,
+    rgba(148, 163, 184, 0.14) 58%,
+    rgba(34, 211, 238, 0.07) 72%,
+    rgba(37, 99, 235, 0.16) 86%,
+    rgba(148, 163, 184, 0.14)
   );
   background-size: 400% 100%;
   background-position: 0% 0%;
@@ -79,13 +75,13 @@
 .apex-card[data-apex-state="active"]::before {
   background: linear-gradient(
     90deg,
-    rgba(250, 204, 21, 0.3),
-    rgba(234, 179, 8, 0.2) 18%,
-    rgba(250, 204, 21, 0.5) 36%,
-    rgba(254, 240, 138, 0.28) 52%,
-    rgba(234, 179, 8, 0.2) 70%,
-    rgba(250, 204, 21, 0.42) 84%,
-    rgba(250, 204, 21, 0.3)
+    rgba(34, 211, 238, 0.22),
+    rgba(37, 99, 235, 0.18) 18%,
+    rgba(16, 185, 129, 0.22) 36%,
+    rgba(125, 211, 252, 0.18) 52%,
+    rgba(37, 99, 235, 0.18) 70%,
+    rgba(34, 211, 238, 0.22) 84%,
+    rgba(34, 211, 238, 0.22)
   );
   background-size: 400% 100%;
   animation-duration: var(--apex-flow-active);
@@ -98,11 +94,11 @@
 .apex-card[data-apex-state="critical"]::before {
   background: linear-gradient(
     90deg,
-    rgba(250, 204, 21, 0.5),
-    rgba(254, 240, 138, 0.6) 25%,
-    rgba(250, 204, 21, 0.85) 50%,
-    rgba(254, 240, 138, 0.6) 75%,
-    rgba(250, 204, 21, 0.5)
+    rgba(14, 165, 233, 0.32),
+    rgba(37, 99, 235, 0.32) 25%,
+    rgba(239, 68, 68, 0.36) 50%,
+    rgba(37, 99, 235, 0.32) 75%,
+    rgba(14, 165, 233, 0.32)
   );
   background-size: 400% 100%;
   animation-duration: var(--apex-flow-critical);
@@ -114,8 +110,8 @@
   inset: 1px;
   z-index: 0;
   background:
-    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(250, 204, 21, 0.1), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(250, 204, 21, 0.06), transparent 55%);
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(14, 165, 233, 0.08), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(239, 68, 68, 0.05), transparent 55%);
   pointer-events: none;
   animation: apex-halo-pulse 3.2s ease-in-out infinite;
 }
@@ -124,7 +120,6 @@
   animation: apex-pulse-critical 2.8s ease-in-out infinite;
 }
 
-/* Token terminal meta aside — institutional blue (matches globals .btn-primary #2563EB) */
 .apex-card.apex-card--terminal-blue::before {
   background: linear-gradient(
     90deg,
@@ -144,10 +139,10 @@
     90deg,
     rgba(37, 99, 235, 0.35),
     rgba(59, 130, 246, 0.22) 18%,
-    rgba(37, 99, 235, 0.5) 36%,
+    rgba(34, 211, 238, 0.32) 36%,
     rgba(147, 197, 253, 0.28) 52%,
     rgba(59, 130, 246, 0.22) 70%,
-    rgba(37, 99, 235, 0.42) 84%,
+    rgba(37, 99, 235, 0.35) 84%,
     rgba(37, 99, 235, 0.35)
   );
 }
@@ -161,7 +156,7 @@
     90deg,
     rgba(37, 99, 235, 0.55),
     rgba(147, 197, 253, 0.45) 25%,
-    rgba(37, 99, 235, 0.85) 50%,
+    rgba(14, 165, 233, 0.62) 50%,
     rgba(147, 197, 253, 0.45) 75%,
     rgba(37, 99, 235, 0.55)
   );
@@ -170,126 +165,72 @@
 .apex-card.apex-card--terminal-blue[data-apex-state="critical"]::after {
   background:
     radial-gradient(ellipse 60% 40% at 50% 0%, rgba(37, 99, 235, 0.12), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(37, 99, 235, 0.08), transparent 55%);
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(14, 165, 233, 0.08), transparent 55%);
 }
 
 .apex-card.apex-card--terminal-blue[data-apex-state="critical"] {
   animation: apex-pulse-critical-blue 2.8s ease-in-out infinite;
 }
 
+@keyframes apex-flow { to { background-position: 100% 0%; } }
+@keyframes apex-pulse-active {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+  50% { box-shadow: 0 0 22px -10px rgba(34, 211, 238, 0.24); }
+}
+@keyframes apex-pulse-critical {
+  0%, 100% { box-shadow: 0 0 26px -8px rgba(14, 165, 233, 0.20); }
+  50% { box-shadow: 0 0 38px -4px rgba(239, 68, 68, 0.28); }
+}
 @keyframes apex-pulse-active-blue {
   0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
-  50%      { box-shadow: 0 0 22px -10px rgba(37, 99, 235, 0.22); }
+  50% { box-shadow: 0 0 22px -10px rgba(37, 99, 235, 0.24); }
 }
-
 @keyframes apex-pulse-critical-blue {
-  0%, 100% { box-shadow: 0 0 26px -8px rgba(37, 99, 235, 0.28); }
-  50%      { box-shadow: 0 0 38px -4px rgba(37, 99, 235, 0.48); }
+  0%, 100% { box-shadow: 0 0 26px -8px rgba(37, 99, 235, 0.24); }
+  50% { box-shadow: 0 0 38px -4px rgba(14, 165, 233, 0.42); }
 }
-
-/* Secondary buttons + Sentinel score — sapphire inside terminal-blue panel only */
-.apex-card.apex-card--terminal-blue .apex-btn-secondary {
-  color: #93c5fd;
-  border-color: rgba(37, 99, 235, 0.42);
-  background: linear-gradient(
-    180deg,
-    rgba(37, 99, 235, 0.12) 0%,
-    rgba(37, 99, 235, 0.04) 100%
-  );
-  box-shadow:
-    inset 0 1px 0 rgba(96, 165, 250, 0.1),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
-}
-
-.apex-card.apex-card--terminal-blue .apex-btn-secondary:hover {
-  border-color: rgba(96, 165, 250, 0.55);
-  color: #dbeafe;
-  background: linear-gradient(
-    180deg,
-    rgba(37, 99, 235, 0.22) 0%,
-    rgba(37, 99, 235, 0.08) 100%
-  );
-}
-
-.apex-card.apex-card--terminal-blue .apex-iridescent {
-  background: conic-gradient(
-    from var(--apex-angle, 0deg),
-    #dbeafe,
-    #93c5fd 16%,
-    #60a5fa 32%,
-    #2563eb 48%,
-    #cbd5e1 58%,
-    #60a5fa 74%,
-    #dbeafe 88%,
-    #dbeafe
-  );
-  filter: drop-shadow(0 0 14px rgba(37, 99, 235, 0.2));
-}
-
-@keyframes apex-flow {
-  to { background-position: 100% 0%; }
-}
-
-@keyframes apex-pulse-active {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
-  50%      { box-shadow: 0 0 22px -10px rgba(250, 204, 21, 0.18); }
-}
-
-@keyframes apex-pulse-critical {
-  0%, 100% { box-shadow: 0 0 26px -8px rgba(250, 204, 21, 0.22); }
-  50%      { box-shadow: 0 0 38px -4px rgba(250, 204, 21, 0.42); }
-}
-
 @keyframes apex-halo-pulse {
-  0%, 100% { opacity: 0.65; }
-  50%      { opacity: 1; }
+  0%, 100% { opacity: 0.58; }
+  50% { opacity: 1; }
 }
 
-.apex-btn {
+.apex-btn,
+.apex-btn-secondary {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0 20px;
   height: 38px;
+  padding: 0 20px;
   font-family: var(--font-jetbrains-mono), monospace;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  color: var(--apex-obsidian-deep);
-  background: linear-gradient(
-    180deg,
-    #fef08a 0%,
-    #facc15 45%,
-    #eab308 100%
-  );
-  border: 1px solid #ca8a04;
   cursor: pointer;
   isolation: isolate;
   overflow: hidden;
-  border-radius: 1px;
+  border-radius: 8px;
   text-decoration: none;
-  transition: transform 120ms ease, box-shadow 200ms ease, filter 200ms ease;
+  transition: transform 120ms ease, box-shadow 200ms ease, border-color 200ms ease, background 200ms ease, color 200ms ease;
+}
+
+.apex-btn {
+  color: #e0f2fe;
+  background: linear-gradient(180deg, rgba(14,165,233,0.24), rgba(37,99,235,0.16));
+  border: 1px solid rgba(125, 211, 252, 0.34);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
-    0 4px 14px -2px rgba(250, 204, 21, 0.28),
-    0 1px 0 rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 -1px 0 rgba(0,0,0,0.35),
+    0 4px 16px -4px rgba(14, 165, 233, 0.22);
 }
 
 .apex-btn::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    115deg,
-    transparent 30%,
-    rgba(254, 240, 138, 0.45) 48%,
-    rgba(250, 204, 21, 0.25) 56%,
-    transparent 72%
-  );
+  background: linear-gradient(115deg, transparent 30%, rgba(125,211,252,0.22) 50%, transparent 70%);
   background-size: 220% 100%;
   background-position: 100% 0%;
   pointer-events: none;
@@ -297,29 +238,19 @@
   transition: background-position 800ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.apex-btn:hover::before {
-  background-position: 0% 0%;
-}
-
+.apex-btn:hover::before { background-position: 0% 0%; }
 .apex-btn:hover {
-  filter: brightness(1.04);
+  color: #f8fafc;
+  border-color: rgba(186, 230, 253, 0.48);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-    0 6px 20px -2px rgba(250, 204, 21, 0.38),
-    0 1px 0 rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 rgba(255,255,255,0.14),
+    inset 0 -1px 0 rgba(0,0,0,0.35),
+    0 6px 24px -6px rgba(14, 165, 233, 0.34);
 }
-
-.apex-btn:active {
-  transform: translateY(1px);
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(0, 0, 0, 0.2),
-    0 1px 4px rgba(250, 204, 21, 0.15);
-}
-
+.apex-btn:active,
+.apex-btn-secondary:active { transform: translateY(1px); }
 .apex-btn:disabled {
-  filter: grayscale(0.7) brightness(0.7);
+  filter: grayscale(0.6) brightness(0.7);
   cursor: not-allowed;
   transform: none;
 }
@@ -328,84 +259,49 @@
 .apex-btn-lg { height: 48px; padding: 0 28px; font-size: 12px; letter-spacing: 0.2em; }
 
 .apex-btn-secondary {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 0 18px;
   height: 34px;
-  font-family: var(--font-jetbrains-mono), monospace;
+  padding: 0 18px;
   font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: #facc15;
-  background: linear-gradient(
-    180deg,
-    rgba(209, 213, 219, 0.1) 0%,
-    rgba(156, 163, 175, 0.04) 100%
-  );
-  border: 1px solid rgba(209, 213, 219, 0.22);
-  cursor: pointer;
-  isolation: isolate;
-  border-radius: 1px;
-  text-decoration: none;
-  transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
+  color: #cbd5e1;
+  background: linear-gradient(180deg, rgba(148,163,184,0.10), rgba(51,65,85,0.08));
+  border: 1px solid rgba(148, 163, 184, 0.22);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(0,0,0,0.4);
 }
 
 .apex-btn-secondary:hover {
-  background: linear-gradient(
-    180deg,
-    rgba(209, 213, 219, 0.16) 0%,
-    rgba(156, 163, 175, 0.06) 100%
-  );
-  border-color: rgba(250, 204, 21, 0.45);
-  color: #fef08a;
-}
-
-.apex-btn-secondary:active {
-  transform: translateY(1px);
+  color: #e0f2fe;
+  border-color: rgba(125, 211, 252, 0.36);
+  background: linear-gradient(180deg, rgba(14,165,233,0.12), rgba(37,99,235,0.06));
 }
 
 .apex-iridescent {
   background: conic-gradient(
     from var(--apex-angle, 0deg),
-    #fef9c3,
-    #fef08a 16%,
-    #facc15 32%,
-    #eab308 48%,
-    #d1d5db 58%,
-    #fef08a 74%,
-    #fef9c3 88%,
-    #fef9c3
+    #f8fafc,
+    #bae6fd 18%,
+    #22d3ee 34%,
+    #2563eb 50%,
+    #cbd5e1 66%,
+    #7dd3fc 82%,
+    #f8fafc
   );
   -webkit-background-clip: text;
-          background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-  animation: apex-iridescent-rotate 7s linear infinite;
-  filter: drop-shadow(0 0 14px rgba(250, 204, 21, 0.1));
+  animation: apex-iridescent-rotate 12s linear infinite;
+  filter: drop-shadow(0 0 14px rgba(34, 211, 238, 0.10));
 }
 
-@keyframes apex-iridescent-rotate {
-  to { --apex-angle: 360deg; }
-}
+@keyframes apex-iridescent-rotate { to { --apex-angle: 360deg; } }
 
 .apex-divider {
   height: 1px;
   width: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(209, 213, 219, 0.14) 25%,
-    rgba(250, 204, 21, 0.28) 50%,
-    rgba(209, 213, 219, 0.14) 75%,
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(148,163,184,0.16) 25%, rgba(34,211,238,0.20) 50%, rgba(148,163,184,0.16) 75%, transparent);
 }
 
 .apex-seal-verified {
@@ -418,14 +314,10 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: var(--apex-silver-bright);
-  background: linear-gradient(
-    180deg,
-    rgba(209, 213, 219, 0.1),
-    rgba(156, 163, 175, 0.04)
-  );
-  border: 1px solid rgba(209, 213, 219, 0.28);
-  border-radius: 1px;
+  color: var(--apex-steel-bright);
+  background: linear-gradient(180deg, rgba(148,163,184,0.10), rgba(51,65,85,0.05));
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 6px;
 }
 
 .apex-seal-verified::before {
@@ -433,8 +325,8 @@
   width: 5px;
   height: 5px;
   border-radius: 999px;
-  background: radial-gradient(circle, #fef08a, #ca8a04);
-  box-shadow: 0 0 6px rgba(250, 204, 21, 0.45);
+  background: radial-gradient(circle, #22d3ee, #2563eb);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {
