@@ -107,6 +107,8 @@ router.post("/sentinel-agent", async (req, res) => {
       model,
       instructions: `You are Sentinel AI Agent.
 
+Return valid json only.
+
 You help maintain Sentinel Ledger.
 
 Goals:
@@ -118,8 +120,8 @@ Goals:
 - prioritize technical debt
 - never modify production automatically
 
-Return concise JSON only with: status, priority, findings, next_actions.`,
-      input: JSON.stringify({
+Return concise json only with: status, priority, findings, next_actions.`,
+      input: `json runtime diagnostics: ${JSON.stringify({
         health,
         errors,
         runtime: {
@@ -128,7 +130,7 @@ Return concise JSON only with: status, priority, findings, next_actions.`,
           railway: Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID),
           commit: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.COMMIT_SHA || null
         }
-      }),
+      })}`,
       text: {
         format: { type: "json_object" }
       }
