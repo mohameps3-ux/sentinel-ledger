@@ -1,9 +1,3 @@
-import OpenAI from "openai";
-
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 async function getSentinelHealth() {
   return {
     app: "Sentinel Ledger",
@@ -26,6 +20,24 @@ async function getRecentErrors() {
   };
 }
 
+async function callOpenAI(payload) {
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`OpenAI API error: ${response.status} ${text}`);
+  }
+
+  return response.json();
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -37,8 +49,26 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(500).json({
+      error: "Missing OPENAI_API_KEY",
+    });
+  }
+
   try {
-    const response = await client.responses.create({
+    const health = await getSentinelHealth();
+    const errors = await getRecentErrors();
+
+    const diagnosisInput = {
+      health,
+      errors,
+      runtime: {
+        node: process.version,
+        environment: process.env.NODE_ENV,
+      },
+    };
+
+    const response = await callOpenAI({
       model: "gpt-5.1-mini",
 
       instructions: `
@@ -54,56 +84,18 @@ Goals:
 - propose improvements
 - prioritize technical debt
 - NEVER modify production automatically
+
+Return concise JSON.
 `,
 
-      tools: [
-        {
-          type: "function",
-          name: "get_sentinel_health",
-          description: "Get Sentinel health status",
-          parameters: {
-            type: "object",
-            properties: {},
-            required: [],
-          },
-        },
-        {
-          type: "function",
-          name: "get_recent_errors",
-          description: "Get recent Sentinel errors",
-          parameters: {
-            type: "object",
-            properties: {},
-            required: [],
-          },
-        },
-      ],
-
-      input: "Analyze Sentinel Ledger current state.",
+      input: JSON.stringify(diagnosisInput),
     });
-
-    const toolCalls = response.output?.filter(
-      (item) => item.type === "function_call"
-    );
-
-    const toolResults = [];
-
-    if (toolCalls?.length) {
-      for (const tool of toolCalls) {
-        if (tool.name === "get_sentinel_health") {
-          toolResults.push(await getSentinelHealth());
-        }
-
-        if (tool.name === "get_recent_errors") {
-          toolResults.push(await getRecentErrors());
-        }
-      }
-    }
 
     return res.status(200).json({
       ok: true,
-      diagnosis: response.output_text,
-      tools: toolResults,
+      diagnosis: response.output_text || response,
+      health,
+      errors,
     });
   } catch (error) {
     console.error("Sentinel AI Agent error:", error);
