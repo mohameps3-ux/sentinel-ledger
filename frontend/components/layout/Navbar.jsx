@@ -17,7 +17,7 @@ const ALL_PAGES_SECTIONS = [
       { href: "/scanner", label: "Scanner / Token Intel" },
       { href: "/smart-money", label: "Smart Money" },
       { href: "/alerts", label: "Alerts" },
-      { href: "/graveyard", label: "Track Record" }
+      { href: "/track-record", label: "Track Record" }
     ]
   },
   {
@@ -51,22 +51,11 @@ const ALL_PAGES_SECTIONS = [
   }
 ];
 
-const showOpsInNav =
-  process.env.NEXT_PUBLIC_SHOW_OPS_NAV === "1" ||
-  process.env.NEXT_PUBLIC_SHOW_OPS_NAV?.toLowerCase() === "true";
-
 export function Navbar() {
   const { t } = useLocale();
   const router = useRouter();
-  const allPagesSections = useMemo(
-    () =>
-      ALL_PAGES_SECTIONS.map((section) => ({
-        ...section,
-        links: section.links.filter((link) => link.href !== "/ops" || showOpsInNav)
-      })),
-    []
-  );
-  const isControlRoom = ["/ops", "/pricing", "/legal", "/privacy", "/terms", "/contact"].includes(router.pathname);
+  const allPagesSections = useMemo(() => ALL_PAGES_SECTIONS, []);
+  const isControlRoom = ["/ops", "/ops-live", "/pricing", "/legal", "/privacy", "/terms", "/contact"].includes(router.pathname);
   const showTradingChrome = !isControlRoom;
   const navRef = useRef(null);
   const menuRef = useRef(null);
