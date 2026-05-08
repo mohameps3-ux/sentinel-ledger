@@ -5,11 +5,22 @@ export function toOpsBridgeUrl(apiPathAndQuery) {
   return `/api/ops-bridge/${tail}`;
 }
 
+function getBrowserOpsKey() {
+  if (typeof window === "undefined") return "";
+  try {
+    return localStorage.getItem("sentinel-ops-key") || "";
+  } catch {
+    return "";
+  }
+}
+
 export async function opsBridgeFetch(apiPathAndQuery, options = {}) {
+  const opsKey = getBrowserOpsKey();
   return fetch(toOpsBridgeUrl(apiPathAndQuery), {
     ...options,
     credentials: "include",
     headers: {
+      ...(opsKey ? { "x-ops-key": opsKey } : {}),
       ...(options.headers || {})
     }
   });
