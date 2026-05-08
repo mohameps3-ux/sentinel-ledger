@@ -3,8 +3,20 @@ import { getPublicApiUrl } from "../../../lib/publicRuntime";
 function getOpsKey(req) {
   const serverKey = String(process.env.OMNI_BOT_OPS_KEY || "").trim();
   if (serverKey) return serverKey;
+
+  const cookieHeader = String(req.headers.cookie || "");
+  const cookieMatch = cookieHeader.match(/sentinel_ops_gate=([^;]+)/);
+  if (cookieMatch?.[1]) {
+    try {
+      return decodeURIComponent(cookieMatch[1]);
+    } catch {
+      return cookieMatch[1];
+    }
+  }
+
   const headerKey = String(req.headers["x-ops-key"] || "").trim();
-  if (process.env.NODE_ENV !== "production" && headerKey) return headerKey;
+  if (headerKey) return headerKey;
+
   return "";
 }
 
@@ -23,24 +35,41 @@ export default async function handler(req, res) {
   const prefix = "/api/ops-bridge/";
   const idx = pathOnly.indexOf(prefix);
 
-  if (idx === -1) return res.status(500).json({ ok: false, error: "bridge_route" });
+  if (idx === -1) {
+    return res.status(500).json({ ok: false, error: "bridge_route" });
+  }
+
   const rest = pathOnly.slice(idx + prefix.length);
-  if (!rest) return res.status(400).json({ ok: false, error: "bad_path" });
+  if (!rest) {
+    return res.status(400).json({ ok: false, error: "bad_path" });
+  }
 
   const opsKey = getOpsKey(req);
-  if (!opsKey) return res.status(503).json({ ok: false, error: "ops_key_not_configured" });
+  if (!opsKey) {
+    return res.status(503).json({ ok: false, error: "ops_key_not_configured" });
+  }
 
   const backendUrl = `${getPublicApiUrl()}/api/${rest}${search}`;
-  const headers = { "x-ops-key": opsKey };
+  const headers = {
+    "x-ops-key": opsKey
+  };
+
   const ctIn = req.headers["content-type"];
   if (ctIn) headers["Content-Type"] = ctIn;
 
-  const init = { method: req.method, headers };
+  const init = {
+    method: req.method,
+    headers
+  };
+
   if (req.method !== "GET" && req.method !== "HEAD" && req.body != null) {
-    if (Buffer.isBuffer(req.body) || typeof req.body === "string") init.body = req.body;
-    else if (typeof req.body === "object") {
+    if (Buffer.isBuffer(req.body) || typeof req.body === "string") {
+      init.body = req.body;
+    } else if (typeof req.body === "object") {
       init.body = JSON.stringify(req.body);
-      if (!headers["Content-Type"]) headers["Content-Type"] = "application/json";
+      if (!headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json";
+      }
     }
   }
 
@@ -53,8 +82,14 @@ export default async function handler(req, res) {
 
   const outCt = upstream.headers.get("content-type") || "";
   const cd = upstream.headers.get("content-disposition");
-  if (cd) res.setHeader("Content-Disposition", cd);
-  if (outCt) res.setHeader("Content-Type", outCt);
+
+  if (cd) {
+    res.setHeader("Content-Disposition", cd);
+  }
+
+  if (outCt) {
+    res.setHeader("Content-Type", outCt);
+  }
 
   if (outCt.includes("application/json")) {
     const text = await upstream.text();
