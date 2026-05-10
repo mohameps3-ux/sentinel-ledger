@@ -710,6 +710,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             consistency: Number(row.consistency ?? Math.round(Math.min(99, Math.max(40, wr * 0.95)))),
             signalStrength: Math.min(99, Math.max(35, Math.round(ss))),
             pnl30d: Number(row.pnl30d || 0),
+            totalTrades: Number(row.totalTrades ?? row.total_trades ?? row.recentHits ?? 0),
+            recentHits: Number(row.recentHits ?? row.totalTrades ?? row.total_trades ?? 0),
+            lastSeen: row.lastSeen || row.last_seen || null,
             tooltip: String(row.lastBigWin || row.tooltip || `Win ${wr.toFixed(1)}% Â· hits ${Number(row.recentHits || 0)}`)
           };
         });

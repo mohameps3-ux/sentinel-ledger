@@ -1021,6 +1021,7 @@ async function buildSmartWalletsTopFromSignals(supabase, { limit }) {
       lastBigWin,
       smartScore,
       signalStrength: smartScore,
+      totalTrades: u.total,
       recentHits: u.total,
       tooltip: lastBigWin,
       lastSeen: u.lastAt
@@ -1063,7 +1064,8 @@ async function buildSmartWalletsTop(supabase, { limit = 20 } = {}) {
           lastBigWin,
           smartScore,
           signalStrength: smartScore,
-          recentHits: Number(r.recent_hits || 0),
+          totalTrades: Number(r.total_trades || 0),
+          recentHits: Number(r.recent_hits || r.total_trades || 0),
           tooltip: lastBigWin,
           lastSeen: r.last_seen || null
         };
