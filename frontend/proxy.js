@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 const STATIC_EXT = /\.(ico|png|jpg|jpeg|gif|webp|svg|json|js|map|css|txt|xml|woff2?|ttf|eot|wasm)$/i;
 
 const OPS_COOKIE = "sl_ops_gate";
+const OPS_KEY_COOKIE = "sentinel_ops_gate";
 
 /** Incluye buildId y, si hubiera i18n, el locale: .../ops.json */
 function isOpsNextDataJson(pathname) {
@@ -27,6 +28,10 @@ function opsPagePubliclyEnabled() {
 
 function opsGateToken() {
   return (process.env.OPS_PAGE_GATE_TOKEN || "").trim();
+}
+
+function hasBrowserOpsKey(request) {
+  return Boolean(request.cookies.get(OPS_KEY_COOKIE)?.value);
 }
 
 /**
@@ -79,15 +84,15 @@ export function proxy(request) {
         if (isOpsNextDataJson(p)) {
           return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
         }
-        return NextResponse.redirect(new URL("/", request.url));
+        return NextResponse.redirect(new URL("/ops-login", request.url));
       }
-      if (opsPagePubliclyEnabled()) {
+      if (opsPagePubliclyEnabled() || hasBrowserOpsKey(request)) {
         // producción legacy: /ops abierto (solo si NO hay OPS_PAGE_GATE_TOKEN)
       } else {
         if (isOpsNextDataJson(p)) {
           return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
         }
-        return NextResponse.redirect(new URL("/", request.url));
+        return NextResponse.redirect(new URL("/ops-login", request.url));
       }
     }
   }

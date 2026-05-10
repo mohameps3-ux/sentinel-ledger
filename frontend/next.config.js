@@ -39,20 +39,22 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${localApiTarget}/api/:path*`
-      },
-      {
-        source: "/health/:path*",
-        destination: `${localApiTarget}/health/:path*`
-      },
-      {
-        source: "/health",
-        destination: `${localApiTarget}/health`
-      }
-    ];
+    return {
+      afterFiles: [
+        {
+          source: "/api/:path((?!ops-bridge/|openai/).*)",
+          destination: `${localApiTarget}/api/:path*`
+        },
+        {
+          source: "/health/:path*",
+          destination: `${localApiTarget}/health/:path*`
+        },
+        {
+          source: "/health",
+          destination: `${localApiTarget}/health`
+        }
+      ]
+    };
   },
   /**
    * In `next dev --webpack`, a persistent Webpack cache can make it look like
