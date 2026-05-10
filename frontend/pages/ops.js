@@ -537,11 +537,6 @@ export default function OpsPage() {
                   label="Signal win rate (48h)"
                   value={perf?.metrics?.winRatePct != null ? `${perf.metrics.winRatePct}%` : "—"}
                   hint={perf ? `${formatInteger(perf.resolvedRows || 0)} resolved` : "Refresh to load"}
-
-      {/* ═══ SENTINEL ARCHITECT AGENT — ops console only ═══ */}
-      <div style={{ marginBottom: "32px" }}>
-        <ArchitectAgent />
-      </div>
                   tone="neutral"
                 />
                 <Kpi
@@ -602,6 +597,10 @@ export default function OpsPage() {
                   }
                   tone="neutral"
                 />
+              </div>
+
+              <div className="mb-8">
+                <ArchitectAgent />
               </div>
 
               <div className=" border border-white/[0.07] bg-sl-card p-4 sm:p-5">
