@@ -42,8 +42,32 @@ const nextConfig = {
     return {
       afterFiles: [
         {
-          source: "/api/:path((?!ops-bridge/|openai/).*)",
-          destination: `${localApiTarget}/api/:path*`
+          source: "/api/v1/:path*",
+          destination: `${localApiTarget}/api/v1/:path*`
+        },
+        {
+          source: "/api/bot/:path*",
+          destination: `${localApiTarget}/api/bot/:path*`
+        },
+        {
+          source: "/api/auth/:path*",
+          destination: `${localApiTarget}/api/auth/:path*`
+        },
+        {
+          source: "/api/stripe/:path*",
+          destination: `${localApiTarget}/api/stripe/:path*`
+        },
+        {
+          source: "/api/webhooks/:path*",
+          destination: `${localApiTarget}/api/webhooks/:path*`
+        },
+        {
+          source: "/api/push/:path*",
+          destination: `${localApiTarget}/api/push/:path*`
+        },
+        {
+          source: "/api/nlu/:path*",
+          destination: `${localApiTarget}/api/nlu/:path*`
         },
         {
           source: "/health/:path*",
