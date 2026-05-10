@@ -790,49 +790,56 @@ router.get("/graveyard", async (req, res) => {
   }
 });
 
-
-
-router.get('/track-record/summary', async (req, res) => {
+router.get("/track-record/summary", async (req, res) => {
   try {
-    const { createClient } = require('@supabase/supabase-js');
-    const { getSupabase } = require('../lib/supabase'); const sb = getSupabase();
-    const win = req.query.window || '48h';
-    const hrs = win==='24h'?24:win==='7d'?168:win==='30d'?720:48;
-    const since = new Date(Date.now()-hrs*3600000).toISOString();
-    const { data, error } = await sb.from('signal_performance').select('result,validation_state,outcome_60m,confidence,action,token_name,mint,emitted_at,time,signals').not('result','is',null).order('emitted_at',{ascending:false}).limit(500);
-    if(error) throw error;
-    const resolved=(data||[]).filter(s=>s.validation_state==='WIN'||s.validation_state==='LOSS');
-    const wins=resolved.filter(s=>s.result==='WIN');
-    const losses=resolved.filter(s=>s.result==='LOSS');
-    const pending=(data||[]).filter(s=>!s.result||s.result==='PENDING');
-    const winRate=resolved.length?(wins.length/resolved.length*100):0;
-    const avgReturn=resolved.length?resolved.reduce((a,s)=>a+(s.outcome_60m||0),0)/resolved.length:0;
-    const grossWin=wins.reduce((a,s)=>a+Math.max(s.outcome_60m||0,0),0);
-    const grossLoss=Math.abs(losses.reduce((a,s)=>a+Math.min(s.outcome_60m||0,0),0));
-    const pf=grossLoss?grossWin/grossLoss:(grossWin?99:0);
-    const topWins=[...wins].sort((a,b)=>(b.outcome_60m||0)-(a.outcome_60m||0)).slice(0,5);
-    const worstLosses=[...losses].sort((a,b)=>(a.outcome_60m||0)-(b.outcome_60m||0)).slice(0,5);
-    return res.json({ok:true,window:win,total_signals:(data||[]).length,resolved:resolved.length,pending:pending.length,wins:wins.length,losses:losses.length,win_rate_60m:+winRate.toFixed(2),avg_return:+avgReturn.toFixed(4),profit_factor:+pf.toFixed(2),top_wins:topWins,worst_losses:worstLosses,recent_signals:(data||[]).slice(0,100),last_updated:new Date().toISOString()});
-  } catch(e) { return res.status(500).json({ok:false,error:e.message}); }
-});
-
-
-router.get('/track-record/summary', async (req, res) => {
-  try {
-    const { getSupabase } = require('../lib/supabase');
     const sb = getSupabase();
-    const { data, error } = await sb.from('signal_performance').select('outcome_60m,confidence,action,token_name,mint,emitted_at,time,signals').not('outcome_60m','is',null).order('emitted_at',{ascending:false}).limit(500);
-    if(error) throw error;
-    const rows=data||[];
-    const wins=rows.filter(s=>s.outcome_60m>0);
-    const losses=rows.filter(s=>s.outcome_60m<0);
-    const winRate=rows.length?(wins.length/rows.length*100):0;
-    const avgReturn=rows.length?rows.reduce((a,s)=>a+(s.outcome_60m||0),0)/rows.length:0;
-    const grossWin=wins.reduce((a,s)=>a+s.outcome_60m,0);
-    const grossLoss=Math.abs(losses.reduce((a,s)=>a+s.outcome_60m,0));
-    const pf=grossLoss?grossWin/grossLoss:(grossWin?99:0);
-    return res.json({ok:true,total_signals:rows.length,wins:wins.length,losses:losses.length,win_rate_60m:+winRate.toFixed(2),avg_return:+avgReturn.toFixed(4),profit_factor:+pf.toFixed(2),top_wins:[...wins].sort((a,b)=>b.outcome_60m-a.outcome_60m).slice(0,5),worst_losses:[...losses].sort((a,b)=>a.outcome_60m-b.outcome_60m).slice(0,5),recent_signals:rows.slice(0,100),last_updated:new Date().toISOString()});
-  } catch(e){return res.status(500).json({ok:false,error:e.message});}
+    const windowParam = String(req.query.window || "48h").toLowerCase();
+    const hours =
+      windowParam === "24h" ? 24 : windowParam === "7d" ? 168 : windowParam === "30d" ? 720 : 48;
+    const sinceIso = new Date(Date.now() - hours * 3600_000).toISOString();
+
+    const { data, error } = await sb
+      .from("signal_performance")
+      .select("id,outcome_60m,confidence,action,token_name,mint,emitted_at,time,signals")
+      .not("outcome_60m", "is", null)
+      .gte("emitted_at", sinceIso)
+      .order("emitted_at", { ascending: false })
+      .limit(500);
+    if (error) throw error;
+
+    const rows = data || [];
+    const wins = rows.filter((s) => Number(s.outcome_60m) > 0);
+    const losses = rows.filter((s) => Number(s.outcome_60m) < 0);
+    const resolved = wins.length + losses.length;
+    const avgReturn = rows.length
+      ? rows.reduce((a, s) => a + (Number(s.outcome_60m) || 0), 0) / rows.length
+      : 0;
+    const grossWin = wins.reduce((a, s) => a + Math.max(Number(s.outcome_60m) || 0, 0), 0);
+    const grossLoss = Math.abs(
+      losses.reduce((a, s) => a + Math.min(Number(s.outcome_60m) || 0, 0), 0)
+    );
+    const profitFactor = grossLoss ? grossWin / grossLoss : grossWin ? 99 : 0;
+    const winRate = resolved ? (wins.length / resolved) * 100 : 0;
+
+    return res.json({
+      ok: true,
+      window: windowParam,
+      total_signals: rows.length,
+      resolved,
+      pending: 0,
+      wins: wins.length,
+      losses: losses.length,
+      win_rate_60m: Number(winRate.toFixed(2)),
+      avg_return: Number(avgReturn.toFixed(4)),
+      profit_factor: Number(profitFactor.toFixed(2)),
+      top_wins: [...wins].sort((a, b) => Number(b.outcome_60m) - Number(a.outcome_60m)).slice(0, 5),
+      worst_losses: [...losses].sort((a, b) => Number(a.outcome_60m) - Number(b.outcome_60m)).slice(0, 5),
+      recent_signals: rows.slice(0, 100),
+      last_updated: new Date().toISOString()
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 module.exports = router;
