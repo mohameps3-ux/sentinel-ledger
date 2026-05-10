@@ -30,6 +30,7 @@ const {
   getSmartWalletSignalBackfillStatus,
   runSmartWalletSignalBackfillTick
 } = require("../jobs/smartWalletSignalBackfillCron");
+const { enqueueActiveWallets, getLastSmartWalletCronRun } = require("../jobs/smartWalletCron");
 const {
   getDataFreshnessHistoryCronStatus,
   runDataFreshnessHistoryTick
@@ -264,6 +265,40 @@ router.get("/smart-signal-backfill/status", assertOpsAuth, (_req, res) => {
 router.post("/smart-signal-backfill/run", assertOpsAuth, async (_req, res) => {
   await runSmartWalletSignalBackfillTick();
   return res.json({ ok: true, data: getSmartWalletSignalBackfillStatus() });
+});
+
+/** Read-only: env + last enqueue tick (same clock as /health lastSmartWalletCronRun). */
+router.get("/smart-wallet-cron/status", assertOpsAuth, (_req, res) => {
+  const legacyRaw = Number(process.env.SMART_WALLET_CRON_INTERVAL_MS || 0);
+  return res.json({
+    ok: true,
+    data: {
+      lastEnqueueIso: getLastSmartWalletCronRun(),
+      cronExpression: String(process.env.SMART_WALLET_CRON_EXPRESSION || "0 2 * * *").trim(),
+      cronTz: String(process.env.SMART_WALLET_CRON_TZ || "UTC").trim(),
+      legacyIntervalMs: Number.isFinite(legacyRaw) && legacyRaw >= 60_000 ? legacyRaw : null,
+      directLimitWhenNoQueue: Number(process.env.SMART_WALLET_DIRECT_LIMIT || 20)
+    }
+  });
+});
+
+/**
+ * Manual tick: same entrypoint as the scheduled cron (enqueueActiveWallets).
+ * Respects verifyLeadershipFence, ECO_MODE, webhook defer — same as automatic runs.
+ */
+router.post("/smart-wallet-cron/run", assertOpsAuth, async (_req, res) => {
+  try {
+    const count = await enqueueActiveWallets();
+    return res.json({
+      ok: true,
+      data: {
+        enqueuedOrAnalyzedWalletCount: count,
+        lastEnqueueIso: getLastSmartWalletCronRun()
+      }
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || "smart_wallet_cron_run_failed" });
+  }
 });
 
 router.get("/signal-performance/summary", assertOpsAuth, async (req, res) => {
