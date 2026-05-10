@@ -53,6 +53,7 @@ const CONFIG = {
   clusterMinWallets: Number(process.env.RULE_CLUSTER_MIN_WALLETS || 3),
   clusterWindowMs: Number(process.env.RULE_CLUSTER_WINDOW_MS || 40_000),
   clusterMinUsdEach: Number(process.env.RULE_CLUSTER_MIN_USD || 250),
+  newWalletEnabled: String(process.env.RULE_NEWWALLET_ENABLED || "true").toLowerCase() !== "false",
   newWalletMaxAgeMs: Number(process.env.RULE_NEWWALLET_MAX_AGE_MS || 24 * 60 * 60 * 1000),
   newWalletMinUsd: Number(process.env.RULE_NEWWALLET_MIN_USD || 1_000),
   velocityMultiplier: Number(process.env.RULE_VELOCITY_MULT || 3),
@@ -121,6 +122,7 @@ function ruleClusterBuy(ctx) {
 
 /** 4. Brand-new wallet putting in significant size. Risk++ */
 function ruleNewWalletConfidence(ctx) {
+  if (!CONFIG.newWalletEnabled) return null;
   if (ctx.walletAgeMs == null) return null;
   if (ctx.walletAgeMs > CONFIG.newWalletMaxAgeMs) return null;
   if (!(ctx.amountUsd >= CONFIG.newWalletMinUsd)) return null;

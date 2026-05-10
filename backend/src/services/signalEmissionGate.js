@@ -180,7 +180,13 @@ function readRegimeEnvOverrides(regimeUpper) {
     if (raw == null || raw === "") continue;
     const n = Number(raw);
     if (!Number.isFinite(n)) continue;
-    out[field] = n;
+    if (field === "minConfidence" || field === "maxRiskScore") {
+      out[field] = percentThreshold(n, n);
+    } else if (field === "minUnifiedScore") {
+      out[field] = normalizedThreshold(n, n);
+    } else {
+      out[field] = n;
+    }
   }
   return out;
 }
