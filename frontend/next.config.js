@@ -1,4 +1,8 @@
-const localApiTarget = process.env.NEXT_PUBLIC_API_PROXY_TARGET || process.env.API_PROXY_TARGET || "http://localhost:3001";
+const localApiTarget =
+  process.env.NEXT_PUBLIC_API_PROXY_TARGET ||
+  process.env.API_PROXY_TARGET ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:3001";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
