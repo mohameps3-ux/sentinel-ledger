@@ -80,7 +80,7 @@ router.post("/sentinel-agent", async (req, res) => {
     });
   }
 
-  const model = process.env.SENTINEL_AGENT_MODEL || "gpt-5-mini";
+  const model = process.env.OPENAI_SENTINEL_AGENT_MODEL || "gpt-5-mini";
 
   try {
     const health = {

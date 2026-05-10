@@ -48,13 +48,14 @@ async function buildOpsContext() {
         .order("created_at", { ascending: false })
         .limit(20),
       supabase
-        .from("signal_performance")
-        .select("signal, outcome_pct_60m, win_at_60m, created_at")
+        .from("signal_outcomes")
+        .select("signal_id, mint, rule_id, outcome_60m, created_at")
+        .not("outcome_60m", "is", null)
         .order("created_at", { ascending: false })
         .limit(100),
       supabase
         .from("smart_wallets")
-        .select("wallet_address, win_rate, smart_score, total_signals")
+        .select("wallet_address, win_rate, smart_score, total_trades")
         .order("smart_score", { ascending: false })
         .limit(5),
     ]);
@@ -62,12 +63,12 @@ async function buildOpsContext() {
     recentSignals = (signalsRes.data || []).slice(0, 10);
     if (outcomesRes.data && outcomesRes.data.length > 0) {
       const total = outcomesRes.data.length;
-      const wins = outcomesRes.data.filter((o) => o.win_at_60m).length;
-      const avg = outcomesRes.data.reduce((a, o) => a + (Number(o.outcome_pct_60m) || 0), 0) / total;
+      const wins = outcomesRes.data.filter((o) => Number(o.outcome_60m) > 0).length;
+      const avg = outcomesRes.data.reduce((a, o) => a + (Number(o.outcome_60m) || 0), 0) / total;
       signalGateStats = {
         totalEvaluated: total,
         winRate: ((wins / total) * 100).toFixed(1) + "%",
-        avgOutcomePct: avg.toFixed(2) + "%",
+        avgOutcomePct: (avg * 100).toFixed(2) + "%",
       };
     }
     smartWalletStats = { topWallets: walletsRes.data || [] };
@@ -92,7 +93,7 @@ async function buildOpsContext() {
       SMART_WORKERS_ENABLED: process.env.SMART_WORKERS_ENABLED,
       SMART_SIGNAL_BACKFILL_ENABLED: process.env.SMART_SIGNAL_BACKFILL_ENABLED,
       SMART_SIGNAL_BACKFILL_MIN_WIN_RATE: process.env.SMART_SIGNAL_BACKFILL_MIN_WIN_RATE,
-      SENTINEL_AGENT_MODEL: process.env.SENTINEL_AGENT_MODEL,
+      ANTHROPIC_OPS_AGENT_MODEL: process.env.ANTHROPIC_OPS_AGENT_MODEL,
     },
   };
 }
@@ -168,7 +169,7 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
           .map((m) => ({ role: m.role, content: String(m.content).substring(0, 1000) }))
       : [];
     const messages = [...safeHistory, { role: "user", content: String(message).trim() }];
-    const model = process.env.SENTINEL_AGENT_MODEL || "claude-sonnet-4-5";
+    const model = process.env.ANTHROPIC_OPS_AGENT_MODEL || "claude-sonnet-4-5";
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {

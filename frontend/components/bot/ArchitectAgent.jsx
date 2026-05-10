@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getPublicApiUrl } from "../../lib/publicRuntime";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE = getPublicApiUrl();
 const OPS_KEY_STORAGE = "sentinel-ops-key";
 
 export default function ArchitectAgent() {
