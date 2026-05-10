@@ -139,13 +139,28 @@ export default function OpsPage() {
   const [verifyPaste, setVerifyPaste] = useState("");
   const [verifyResult, setVerifyResult] = useState(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
+  const [opsKeyDraft, setOpsKeyDraft] = useState("");
+  const [opsKeySaved, setOpsKeySaved] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      localStorage.removeItem("sentinel-ops-key");
+      setOpsKeyDraft(localStorage.getItem("sentinel-ops-key") || "");
     } catch {
       /* ignore */
+    }
+  }, []);
+
+  const clearOpsKey = useCallback(() => {
+    try {
+      localStorage.removeItem("sentinel-ops-key");
+      document.cookie = "sentinel_ops_gate=; path=/; max-age=0; SameSite=Lax";
+      setOpsKeyDraft("");
+      setOpsKeySaved(false);
+      setBridgeOk(false);
+      toast.success("OPS key cleared.");
+    } catch {
+      toast.error("Unable to clear OPS key.");
     }
   }, []);
 
@@ -226,6 +241,25 @@ export default function OpsPage() {
       setLoading(false);
     }
   }, []);
+
+  const saveOpsKey = useCallback(() => {
+    const trimmed = opsKeyDraft.trim();
+    if (!trimmed) {
+      toast.error("OPS key required.");
+      return;
+    }
+    try {
+      localStorage.setItem("sentinel-ops-key", trimmed);
+      document.cookie = `sentinel_ops_gate=${encodeURIComponent(trimmed)}; path=/; max-age=${60 * 60 * 8}; SameSite=Lax`;
+      setOpsKeySaved(true);
+      setBridgeOk(null);
+      toast.success("OPS key saved.");
+      setTimeout(() => setOpsKeySaved(false), 2000);
+      loadData();
+    } catch {
+      toast.error("Unable to save OPS key.");
+    }
+  }, [loadData, opsKeyDraft]);
 
   useEffect(() => {
     if (autoLoadedRef.current) return;
@@ -467,10 +501,41 @@ export default function OpsPage() {
           <p className="text-[10px] uppercase tracking-[0.2em] text-sl-muted font-semibold">Internal</p>
           <h1 className="text-2xl sm:text-3xl font-bold text-sl-text tracking-tight">System Health Dashboard</h1>
           <p className="text-sm text-sl-muted max-w-2xl leading-relaxed">
-            Dashboard data loads through this site&apos;s server — no ops key in localStorage. Add{" "}
-            <span className="text-sl-sub font-medium">OMNI_BOT_OPS_KEY</span> to Vercel (same value as Railway). Signed export
-            verification stays on the public API (no ops key, rate-limited).
+            Paste <span className="text-sl-sub font-medium">OMNI_BOT_OPS_KEY</span> here to unlock the ops bridge from this
+            browser. Signed export verification stays on the public API.
           </p>
+          <div className="flex flex-col gap-2 pt-3 sm:flex-row">
+            <input
+              type="password"
+              value={opsKeyDraft}
+              onChange={(e) => setOpsKeyDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  saveOpsKey();
+                }
+              }}
+              placeholder="Paste OMNI_BOT_OPS_KEY"
+              className="h-11 min-w-0 flex-1 border border-sl-border bg-black/30 px-3 text-sm text-sl-text outline-none focus:border-cyan-400/50"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={saveOpsKey}
+                className="h-11 px-4 bg-cyan-500/10 border border-cyan-400/25 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/15 transition"
+              >
+                Save key
+              </button>
+              <button
+                type="button"
+                onClick={clearOpsKey}
+                className="h-11 px-4 border border-white/[0.08] text-sm font-semibold text-sl-muted hover:text-sl-text transition"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+          {opsKeySaved ? <p className="text-xs text-emerald-300">OPS key saved. Refreshing data…</p> : null}
           <div className="grid grid-cols-2 gap-2 pt-3 md:grid-cols-4">
             <Kpi
               label="API"

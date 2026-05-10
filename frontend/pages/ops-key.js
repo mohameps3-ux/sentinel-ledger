@@ -14,7 +14,9 @@ export default function OpsKeyPage() {
 
   const save = () => {
     try {
-      localStorage.setItem("sentinel-ops-key", key.trim());
+      const trimmed = key.trim();
+      localStorage.setItem("sentinel-ops-key", trimmed);
+      document.cookie = `sentinel_ops_gate=${encodeURIComponent(trimmed)}; path=/; max-age=${60 * 60 * 8}; SameSite=Lax`;
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {}
@@ -23,6 +25,7 @@ export default function OpsKeyPage() {
   const clear = () => {
     try {
       localStorage.removeItem("sentinel-ops-key");
+      document.cookie = "sentinel_ops_gate=; path=/; max-age=0; SameSite=Lax";
       setKey("");
       setSaved(false);
     } catch {}
