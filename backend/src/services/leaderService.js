@@ -86,7 +86,46 @@ async function heartbeatTick() {
 /**
  * Start leader election + renewal. Idempotent. Uses dedicated Upstash client (no in-memory cache fallback).
  */
+function getLeadershipHealthSnapshot() {
+  const redisOk = Boolean(getLeaderRedis());
+  return {
+    fenceDisabled: leaderFeatureDisabled(),
+    redisConfigured: redisOk,
+    heartbeatSchedulerStarted: started,
+    instanceHoldsLockToken: localToken !== null,
+    lockKey: LOCK_KEY,
+    lockTtlSec: LOCK_TTL_SEC,
+    heartbeatIntervalMs: HEARTBEAT_MS
+  };
+}
+
+/**
+ * One Redis GET to compare remote lock vs this process (for /health deep probe).
+ */
+async function probeLeadershipLockRemote() {
+  if (leaderFeatureDisabled()) {
+    return { skipped: true, reason: "fence_disabled" };
+  }
+  const r = getLeaderRedis();
+  if (!r) {
+    return { skipped: true, reason: "redis_unconfigured" };
+  }
+  try {
+    const current = await r.get(LOCK_KEY);
+    const cur = current == null ? "" : typeof current === "string" ? current : String(current);
+    const lockPresent = cur.length > 0;
+    const matchesThisInstance = Boolean(localToken && cur === localToken);
+    return { lockPresent, matchesThisInstance };
+  } catch (e) {
+    return { error: e?.message || "redis_probe_failed" };
+  }
+}
+
 async function acquireLeadership() {
+  console.log("[leader] acquireLeadership starting", {
+    fenceDisabled: leaderFeatureDisabled(),
+    redisConfigured: Boolean(getLeaderRedis())
+  });
   if (leaderFeatureDisabled()) {
     console.log("[leader] FF_LEADER_ENABLED=false — all instances run heavy jobs (rollback mode)");
     return;
@@ -118,6 +157,8 @@ module.exports = {
   isLeader,
   verifyLeadershipFence,
   stopLeadershipHeartbeat,
+  getLeadershipHealthSnapshot,
+  probeLeadershipLockRemote,
   LOCK_KEY,
   HEARTBEAT_MS,
   LOCK_TTL_SEC

@@ -22,6 +22,7 @@ const { startDeployerWorker } = require("./queues/deployerWorker");
 const { startSmartWalletWorker } = require("./workers/smartWallet.worker");
 const { startWebhookScoringWorker } = require("./workers/webhookScoringWorker");
 const { startSmartWalletCron, getLastSmartWalletCronRun } = require("./jobs/smartWalletCron");
+const { getLeadershipHealthSnapshot, probeLeadershipLockRemote } = require("./services/leaderService");
 const { startProAlertCron, getProAlertCronStatus } = require("./jobs/proAlertCron");
 const {
   startTacticalRegimeNotifyCron,
@@ -267,6 +268,13 @@ app.get("/health", async (_, res) => {
     cacheOk = false;
   }
 
+  let leadershipRedisProbe = null;
+  try {
+    leadershipRedisProbe = await probeLeadershipLockRemote();
+  } catch (e) {
+    leadershipRedisProbe = { error: e?.message || "leadership_probe_exception" };
+  }
+
   const body = {
     ok: missingCritical.length === 0,
     service: "sentinel-ledger-backend",
@@ -283,6 +291,10 @@ app.get("/health", async (_, res) => {
     missingCriticalSecrets: missingCritical,
     smartWorkersEnabled: isWorkersEnabled(),
     lastSmartWalletCronRun: getLastSmartWalletCronRun(),
+    leadership: {
+      ...getLeadershipHealthSnapshot(),
+      redisProbe: leadershipRedisProbe
+    },
     proAlerts: getProAlertCronStatus(),
     tacticalRegimeNotify: getTacticalRegimeNotifyCronStatus(),
     signalPrices: getSignalPriceCronStatus(),
