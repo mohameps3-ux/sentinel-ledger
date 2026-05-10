@@ -31,6 +31,16 @@ function trackRecordCacheSeconds() {
   return Math.min(120, Math.max(5, Math.floor(n)));
 }
 
+/** Oracle decisive thresholds (fraction of return); must match oracleResult + UI. */
+const TR_DECISIVE_WIN = 0.05;
+const TR_DECISIVE_LOSS = -0.05;
+
+function trackRecordAggSampleLimit() {
+  const n = Number(process.env.TRACK_RECORD_AGG_SAMPLE_LIMIT);
+  if (!Number.isFinite(n)) return 8000;
+  return Math.min(20_000, Math.max(500, Math.floor(n)));
+}
+
 function statusFromPct(pct) {
   if (pct == null || Number.isNaN(pct)) return "PENDING";
   if (pct > 0) return "WIN";
@@ -84,8 +94,8 @@ function oracleResult(row = {}) {
     if (Number.isFinite(createdMs) && Date.now() - createdMs <= 60 * 60 * 1000) return "PENDING";
     return "MISSING";
   }
-  if (outcome > 0.05) return "WIN";
-  if (outcome < -0.05) return "LOSS";
+  if (outcome > TR_DECISIVE_WIN) return "WIN";
+  if (outcome < TR_DECISIVE_LOSS) return "LOSS";
   return "NEUTRAL";
 }
 
@@ -267,15 +277,18 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     .from("signal_outcomes")
     .select("id,signal_id,mint,rule_id,price_at_signal,wallets_involved,regime,price_5m,price_15m,price_60m,outcome_5m,outcome_15m,outcome_60m,validated,rule_snapshot,min_price_observed,validated_at,created_at")
     .order("created_at", { ascending: false });
-  if (filter === "wins") pageQuery = pageQuery.gt("outcome_60m", 0.05);
-  if (filter === "losses") pageQuery = pageQuery.lt("outcome_60m", -0.05);
+  if (filter === "wins") pageQuery = pageQuery.gt("outcome_60m", TR_DECISIVE_WIN);
+  if (filter === "losses") pageQuery = pageQuery.lt("outcome_60m", TR_DECISIVE_LOSS);
   if (filter === "pending") pageQuery = pageQuery.is("outcome_60m", null);
   pageQuery = pageQuery.range(from, to);
 
+  const aggLimit = trackRecordAggSampleLimit();
   const [
     totalRes,
     resolvedRes,
-    allResolvedRes,
+    winsCountRes,
+    lossesCountRes,
+    aggSampleRes,
     rulesRes,
     pageRes,
     winsRes,
@@ -286,22 +299,30 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     supabase.from("signal_outcomes").select("id", { count: "exact", head: true }).not("outcome_60m", "is", null),
     supabase
       .from("signal_outcomes")
-      .select("id,signal_id,mint,rule_id,outcome_60m,created_at,rule_snapshot")
+      .select("id", { count: "exact", head: true })
+      .gt("outcome_60m", TR_DECISIVE_WIN),
+    supabase
+      .from("signal_outcomes")
+      .select("id", { count: "exact", head: true })
+      .lt("outcome_60m", TR_DECISIVE_LOSS),
+    supabase
+      .from("signal_outcomes")
+      .select("outcome_60m")
       .not("outcome_60m", "is", null)
-      .order("outcome_60m", { ascending: false })
-      .limit(5000),
+      .order("created_at", { ascending: false })
+      .limit(aggLimit),
     supabase.from("rule_performance").select("*").order("confidence_score", { ascending: false, nullsFirst: false }).limit(100),
     pageQuery,
     supabase
       .from("signal_outcomes")
       .select("id,signal_id,mint,rule_id,outcome_60m,created_at,rule_snapshot")
-      .gt("outcome_60m", 0.05)
+      .gt("outcome_60m", TR_DECISIVE_WIN)
       .order("outcome_60m", { ascending: false })
       .limit(5),
     supabase
       .from("signal_outcomes")
       .select("id,signal_id,mint,rule_id,outcome_60m,created_at,rule_snapshot")
-      .lt("outcome_60m", -0.05)
+      .lt("outcome_60m", TR_DECISIVE_LOSS)
       .order("outcome_60m", { ascending: true })
       .limit(3),
     supabase
@@ -312,7 +333,7 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
       .limit(20)
   ]);
 
-  for (const r of [totalRes, resolvedRes, allResolvedRes, rulesRes, pageRes, winsRes, lossesRes]) {
+  for (const r of [totalRes, resolvedRes, winsCountRes, lossesCountRes, aggSampleRes, rulesRes, pageRes, winsRes, lossesRes]) {
     if (r.error) throw r.error;
   }
   // Auto-discovered wallets are best-effort: missing column / table degrades to empty list, never fails the page.
@@ -320,14 +341,20 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     ? Array.isArray(autoDiscoveredRes.data) ? autoDiscoveredRes.data : []
     : [];
 
-  const allResolved = allResolvedRes.data || [];
-  const wins = allResolved.filter((r) => Number(r.outcome_60m) > 0.05);
-  const losses = allResolved.filter((r) => Number(r.outcome_60m) < -0.05);
-  const decisive = wins.length + losses.length;
-  const winReturns = wins.map((r) => Number(r.outcome_60m)).filter(Number.isFinite);
-  const returns = allResolved.map((r) => Number(r.outcome_60m)).filter(Number.isFinite);
-  const best = allResolved.slice().sort((a, b) => Number(b.outcome_60m || 0) - Number(a.outcome_60m || 0))[0] || null;
-  const worst = allResolved.slice().sort((a, b) => Number(a.outcome_60m || 0) - Number(b.outcome_60m || 0))[0] || null;
+  const winsCount = Number(winsCountRes.count || 0);
+  const lossesCount = Number(lossesCountRes.count || 0);
+  const decisive = winsCount + lossesCount;
+  const resolvedTotal = Number(resolvedRes.count || 0);
+  const flatResolved = Math.max(0, resolvedTotal - winsCount - lossesCount);
+
+  const aggSample = aggSampleRes.data || [];
+  const returns = aggSample.map((r) => Number(r.outcome_60m)).filter(Number.isFinite);
+  const winReturnsFromSample = aggSample
+    .filter((r) => Number(r.outcome_60m) > TR_DECISIVE_WIN)
+    .map((r) => Number(r.outcome_60m))
+    .filter(Number.isFinite);
+  const best = winsRes.data?.[0] || null;
+  const worst = lossesRes.data?.[0] || null;
 
   const rulePerformance = (rulesRes.data || []).map((row) => {
     const total = Number(row.total_signals || 0);
@@ -455,10 +482,13 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
   return {
     ok: true,
     total_signals: Number(totalRes.count || 0),
-    resolved_signals: Number(resolvedRes.count || 0),
-    win_rate_60m: decisive ? wins.length / decisive : null,
+    resolved_signals: resolvedTotal,
+    flat_resolved_signals: flatResolved,
+    win_rate_60m: decisive ? winsCount / decisive : null,
     avg_return: returns.length ? returns.reduce((a, b) => a + b, 0) / returns.length : null,
-    avg_return_wins: winReturns.length ? winReturns.reduce((a, b) => a + b, 0) / winReturns.length : null,
+    avg_return_wins: winReturnsFromSample.length
+      ? winReturnsFromSample.reduce((a, b) => a + b, 0) / winReturnsFromSample.length
+      : null,
     max_drawdown: returns.length ? Math.min(...returns) : null,
     best_call: bestCallOut,
     worst_call: worstCallOut,
@@ -476,7 +506,13 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     meta: {
       source: "supabase:validation_oracle",
       filter,
-      cache_ttl_sec: trackRecordCacheSeconds()
+      cache_ttl_sec: trackRecordCacheSeconds(),
+      decisive_win_min_fraction: TR_DECISIVE_WIN,
+      win_rate_basis: "exact_count_decisive_60m",
+      avg_return_basis: "mean_recent_resolved_time_order",
+      avg_return_sample_rows: returns.length,
+      avg_return_sample_cap: aggLimit,
+      worst_outcome_label: "worst_single_60m_in_avg_sample"
     }
   };
 }
@@ -599,7 +635,7 @@ router.get("/track-record", async (req, res) => {
   const filter = String(req.query.filter || "all").toLowerCase();
   const page = Math.max(1, Number(req.query.page || 1));
   const pageSize = Math.max(1, Math.min(50, Number(req.query.limit || 25)));
-  const cacheKey = `signals:track-record:v5:${filter}:${page}:${pageSize}`;
+  const cacheKey = `signals:track-record:v6:${filter}:${page}:${pageSize}`;
   const cacheSec = trackRecordCacheSeconds();
   try {
     const cached = await redis.get(cacheKey);
