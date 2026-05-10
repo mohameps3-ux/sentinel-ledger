@@ -24,6 +24,20 @@ const LATEST_SIGNALS_CACHE_TTL_SEC = Math.max(
 );
 /** War home expanded grid (56) + headroom. Lower in prod if `getMarketData` pressure matters (each card may fetch market once per cache miss). */
 const SIGNAL_FEED_MAX_CARDS = Math.min(100, Math.max(16, Number(process.env.SIGNAL_FEED_MAX_CARDS || 64)));
+
+function signalFeedEnvUsd(name, defaultUsd) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return defaultUsd;
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.max(0, n) : defaultUsd;
+}
+
+function signalFeedEnvMinutes(name, defaultMin) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return defaultMin;
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.max(0, n) : defaultMin;
+}
 function capSignalsLatestLimit(n) {
   return Math.min(SIGNAL_FEED_MAX_CARDS, Math.max(1, Number(n) || 10));
 }
@@ -100,7 +114,7 @@ function decisionFromScore(score, strategy = "balanced") {
   return "STAY OUT";
 }
 
-const SIGNALS_LATEST_CACHE_KEY_PREFIX = "terminal:signals:latest:v6:";
+const SIGNALS_LATEST_CACHE_KEY_PREFIX = "terminal:signals:latest:v7:";
 const SIGNALS_LATEST_STRATEGIES = ["balanced", "conservative", "aggressive"];
 const SIGNALS_LATEST_LIMITS = [8, 10, 12, 16, 24, 32, 50, 56, 64];
 
@@ -805,9 +819,13 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
   const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
   const { rows: raw, sourceTable } = await fetchLatestSignalRowsSupabase(supabase, since, 400);
   const anomalyAbsPct = Number(process.env.SIGNAL_FEED_EXCLUDE_ABS_OUTCOME_PCT || 0);
-  const minLiquidityUsd = Number(process.env.SIGNAL_FEED_MIN_LIQUIDITY_USD || 0);
-  const minPairAgeMin = Number(process.env.SIGNAL_FEED_MIN_PAIR_AGE_MINUTES || 0);
+  /** Defaults reduce ultra-thin / instant-rug prints; set env to 0 to disable a gate. */
+  const minLiquidityUsd = signalFeedEnvUsd("SIGNAL_FEED_MIN_LIQUIDITY_USD", 20_000);
+  const minPairAgeMin = signalFeedEnvMinutes("SIGNAL_FEED_MIN_PAIR_AGE_MINUTES", 5);
   const maxPairAgeDays = Number(process.env.SIGNAL_FEED_MAX_PAIR_AGE_DAYS || 0);
+  const minVolume24hUsd = signalFeedEnvUsd("SIGNAL_FEED_MIN_VOLUME_24H_USD", 12_000);
+  const excludeDegradedMarket =
+    String(process.env.SIGNAL_FEED_EXCLUDE_DEGRADED_MARKET ?? "true").toLowerCase() !== "false";
   const weightMap = getActiveSignalWeightMap();
 
   const seen = new Set();
@@ -816,6 +834,8 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
   let excludedLowLiquidity = 0;
   let excludedPairTooYoung = 0;
   let excludedPairTooOld = 0;
+  let excludedDegradedMarket = 0;
+  let excludedLowVolume24h = 0;
   for (const row of raw || []) {
     const pctProbe =
       row.result_pct != null ? Number(row.result_pct) : pctFromPrices(row.entry_price_usd, row.price_1h_usd);
@@ -857,6 +877,10 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
     } catch (_) {
       md = {};
     }
+    if (excludeDegradedMarket && !md?.symbol) {
+      excludedDegradedMarket += 1;
+      continue;
+    }
     const liqUsd = Number(md?.liquidity);
     if (
       minLiquidityUsd > 0 &&
@@ -865,6 +889,16 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       liqUsd < minLiquidityUsd
     ) {
       excludedLowLiquidity += 1;
+      continue;
+    }
+    const vol24 = Number(md?.volume24h);
+    if (
+      minVolume24hUsd > 0 &&
+      Number.isFinite(vol24) &&
+      vol24 > 0 &&
+      vol24 < minVolume24hUsd
+    ) {
+      excludedLowVolume24h += 1;
       continue;
     }
     const pairGate = gateDexPairAge(md?.pairCreatedAt, minPairAgeMin, maxPairAgeDays);
@@ -954,12 +988,16 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       signalQuality: {
         excludedAnomalies,
         excludedLowLiquidity,
+        excludedLowVolume24h,
+        excludedDegradedMarket,
         excludedPairTooYoung,
         excludedPairTooOld,
         anomalyAbsThreshold: anomalyAbsPct > 0 ? anomalyAbsPct : null,
         minLiquidityUsd: minLiquidityUsd > 0 ? minLiquidityUsd : null,
+        minVolume24hUsd: minVolume24hUsd > 0 ? minVolume24hUsd : null,
         minPairAgeMinutes: minPairAgeMin > 0 ? minPairAgeMin : null,
-        maxPairAgeDays: maxPairAgeDays > 0 ? maxPairAgeDays : null
+        maxPairAgeDays: maxPairAgeDays > 0 ? maxPairAgeDays : null,
+        excludeDegradedMarket
       }
     }
   };

@@ -1,9 +1,12 @@
 const { getMarketData, fetchDexHotProfilesLatest, fetchBirdeyeHotCandidates } = require("./marketData");
 
-const STRICT_MIN_LIQUIDITY = 15000;
-const STRICT_MIN_VOLUME_24H = 25000;
-const RELAXED_MIN_LIQUIDITY = 2000;
-const RELAXED_MIN_VOLUME_24H = 5000;
+const STRICT_MIN_LIQUIDITY = Math.max(0, Number(process.env.TRENDING_STRICT_MIN_LIQUIDITY_USD || 15_000));
+const STRICT_MIN_VOLUME_24H = Math.max(0, Number(process.env.TRENDING_STRICT_MIN_VOLUME_24H_USD || 25_000));
+/** Raised from 2k/5k — thin pools disproportionately rug; override via env if feed runs dry. */
+const RELAXED_MIN_LIQUIDITY = Math.max(0, Number(process.env.TRENDING_RELAXED_MIN_LIQUIDITY_USD || 8_000));
+const RELAXED_MIN_VOLUME_24H = Math.max(0, Number(process.env.TRENDING_RELAXED_MIN_VOLUME_24H_USD || 12_000));
+const TRENDING_STRICT_POOL_ONLY =
+  String(process.env.TRENDING_STRICT_POOL_ONLY || "false").toLowerCase() === "true";
 
 function fmtUsdCompact(n) {
   const x = Number(n || 0);
@@ -122,12 +125,14 @@ async function fetchTrendingList(limit = 6) {
     if (strict.length >= cap) break;
   }
 
-  const out = [...strict];
-  if (out.length < cap) {
+  let out = [...strict];
+  if (!TRENDING_STRICT_POOL_ONLY && out.length < cap) {
     for (const token of relaxed) {
       out.push(token);
       if (out.length >= cap) break;
     }
+  } else if (TRENDING_STRICT_POOL_ONLY) {
+    out = strict.slice(0, cap);
   }
 
   return {
@@ -140,8 +145,10 @@ async function fetchTrendingList(limit = 6) {
       circuitState,
       count: out.length,
       strictCount: strict.length,
+      relaxedAllowed: !TRENDING_STRICT_POOL_ONLY,
       generatedAt: Date.now(),
-      minLiquidityUsd: STRICT_MIN_LIQUIDITY
+      minLiquidityUsd: STRICT_MIN_LIQUIDITY,
+      relaxedLiquidityFloorUsd: RELAXED_MIN_LIQUIDITY
     }
   };
 }
