@@ -147,6 +147,76 @@ function computedSmartScore(row) {
   return Math.min(100, Math.max(35, Math.round(wr)));
 }
 
+function laterIsoTimestamp(a, b) {
+  const ta = a ? new Date(a).getTime() : NaN;
+  const tb = b ? new Date(b).getTime() : NaN;
+  if (!Number.isFinite(ta) && !Number.isFinite(tb)) return null;
+  if (!Number.isFinite(ta)) return b;
+  if (!Number.isFinite(tb)) return a;
+  return tb >= ta ? b : a;
+}
+
+/**
+ * Merge leaderboard row with wallet_behavior_stats when it has resolved samples.
+ * Behavior stats win rate overrides stale/misleading smart_wallets.win_rate.
+ */
+function mergeSmartWalletRowWithBehavior(r, behavior) {
+  const rawWinRate = Number(r.win_rate || 0);
+  const rawTotalTrades = Number(r.total_trades || 0);
+  const rawRecentHits = Number(r.recent_hits || 0);
+  const behaviorResolved = Number(behavior?.resolved_signals || 0);
+  const behaviorWinRate = Number(behavior?.win_rate_real);
+  const behaviorHasStats = behaviorResolved > 0 && Number.isFinite(behaviorWinRate);
+
+  const wr = behaviorHasStats ? behaviorWinRate : rawWinRate;
+  const totalTrades = Math.max(rawTotalTrades, behaviorResolved);
+  let recentHits = Math.max(rawRecentHits, behaviorHasStats ? behaviorResolved : 0);
+  if (!recentHits && totalTrades) recentHits = totalTrades;
+  const lastSeen = laterIsoTimestamp(r.last_seen, behavior?.computed_at);
+
+  const earlyRaw = Number(r.early_entry_score);
+  const clusterRaw = Number(r.cluster_score);
+  const consistencyRaw = Number(r.consistency_score);
+  const early =
+    Number.isFinite(earlyRaw) && earlyRaw > 0
+      ? Math.min(99, Math.max(40, Math.round(earlyRaw)))
+      : Math.min(99, Math.max(40, Math.round(wr * 0.92)));
+  const cluster =
+    Number.isFinite(clusterRaw) && clusterRaw > 0
+      ? Math.min(99, Math.max(40, Math.round(clusterRaw)))
+      : Math.min(99, Math.max(40, Math.round(wr * 0.88)));
+  const consistency =
+    Number.isFinite(consistencyRaw) && consistencyRaw > 0
+      ? Math.min(99, Math.max(40, Math.round(consistencyRaw)))
+      : Math.min(99, Math.max(40, Math.round(wr * 0.95)));
+
+  const lastBigWin = totalTrades
+    ? `Win rate leader · ${wr.toFixed(1)}% · ${totalTrades} resolved`
+    : `Win rate leader · ${wr.toFixed(1)}% tracked`;
+
+  const smartScore = computedSmartScore({
+    ...r,
+    win_rate: wr,
+    total_trades: totalTrades,
+    early_entry_score: early,
+    cluster_score: cluster,
+    consistency_score: consistency,
+    smart_score: behaviorHasStats ? 0 : Number(r.smart_score)
+  });
+
+  return {
+    wr,
+    totalTrades,
+    recentHits,
+    lastBigWin,
+    smartScore,
+    early,
+    cluster,
+    consistency,
+    lastSeen
+  };
+}
+
 async function withCache(key, producer, ttlSec = CACHE_TTL_SEC) {
   try {
     const hit = await redis.get(key);
@@ -1057,40 +1127,28 @@ async function buildSmartWalletsTop(supabase, { limit = 20 } = {}) {
 
     const rows = sourceRows
       .map((r) => {
-        const smartScore = computedSmartScore(r);
         const addr = String(r.wallet_address || "");
         const behavior = behaviorByWallet.get(addr);
-        const behaviorResolved = Number(behavior?.resolved_signals || 0);
-        const behaviorWinRate = Number(behavior?.win_rate_real);
-        const rawWinRate = Number(r.win_rate || 0);
-        const wr = rawWinRate > 0 ? rawWinRate : Number.isFinite(behaviorWinRate) && behaviorResolved > 0 ? behaviorWinRate : 0;
-        const totalTrades = Number(r.total_trades || 0) || behaviorResolved;
-        const early = Number.isFinite(Number(r.early_entry_score)) ? Math.round(Number(r.early_entry_score)) : Math.round(wr * 0.92);
-        const cluster = Number.isFinite(Number(r.cluster_score)) ? Math.round(Number(r.cluster_score)) : Math.round(wr * 0.88);
-        const consistency = Number.isFinite(Number(r.consistency_score))
-          ? Math.round(Number(r.consistency_score))
-          : Math.round(wr * 0.95);
-        const lastBigWin = totalTrades
-          ? `Win rate leader · ${wr.toFixed(1)}% · ${totalTrades} resolved`
-          : `Win rate leader · ${wr.toFixed(1)}% tracked`;
+        const m = mergeSmartWalletRowWithBehavior(r, behavior);
+        const { wr, totalTrades, recentHits, lastBigWin, smartScore, early, cluster, consistency, lastSeen } = m;
         return {
           wallet: addr.length > 12 ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : addr,
           walletAddress: addr,
           address: addr,
           walletLabel: walletTierLabel(wr),
           winRate: Math.round(wr * 10) / 10,
-          earlyEntry: Math.min(99, Math.max(40, early)),
-          cluster: Math.min(99, Math.max(40, cluster)),
-          consistency: Math.min(99, Math.max(40, consistency)),
+          earlyEntry: early,
+          cluster,
+          consistency,
           decision: walletDecisionFromSmartScore(smartScore),
           pnl30d: Math.round(Number(r.pnl_30d || 0) * 100) / 100,
           lastBigWin,
           smartScore,
           signalStrength: smartScore,
           totalTrades,
-          recentHits: Number(r.recent_hits || 0) || totalTrades,
+          recentHits,
           tooltip: lastBigWin,
-          lastSeen: r.last_seen || behavior?.computed_at || null
+          lastSeen
         };
       })
       .sort((a, b) => b.smartScore - a.smartScore)
@@ -1253,7 +1311,7 @@ async function getOutcomesProofCached(supabase, hours, recentN) {
 
 async function getSmartWalletsTopCached(supabase, limit) {
   if (!supabase) throw new Error("supabase_unconfigured");
-  const key = `terminal:smartwallets:top:v3:${limit}`;
+  const key = `terminal:smartwallets:top:v4:${limit}`;
   const { payload, cache } = await withCache(key, () => buildSmartWalletsTop(supabase, { limit }));
   return { ...payload, meta: { ...(payload.meta || {}), cache } };
 }
