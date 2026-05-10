@@ -179,6 +179,21 @@ async function main() {
       }
     }
 
+    const { rows: trRpc } = await client.query(
+      `SELECT 1 FROM pg_proc p
+       JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'public' AND p.proname = 'signal_outcomes_track_record_stats'
+       LIMIT 1`
+    );
+    if (trRpc.length === 0) {
+      console.error(
+        "FAIL: missing function public.signal_outcomes_track_record_stats — run migration 029 (npm run db:ensure-signal-performance --prefix backend) or paste supabase/migrations/029_signal_outcomes_track_record_stats.sql"
+      );
+      failed += 1;
+    } else {
+      console.log("OK: function public.signal_outcomes_track_record_stats (migration 029)");
+    }
+
     const oracleCols = {
       rule_performance: ["regime_performance"],
       signal_outcomes: ["validated", "rule_snapshot", "min_price_observed"]
