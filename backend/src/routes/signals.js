@@ -27,7 +27,7 @@ function safeSupabase() {
 /** Redis + Cache-Control for GET /track-record. Default 15s; set TRACK_RECORD_CACHE_SECONDS (5–120). */
 function trackRecordCacheSeconds() {
   const n = Number(process.env.TRACK_RECORD_CACHE_SECONDS);
-  if (!Number.isFinite(n)) return 15;
+  if (!Number.isFinite(n)) return 8;
   return Math.min(120, Math.max(5, Math.floor(n)));
 }
 
@@ -39,6 +39,95 @@ function trackRecordAggSampleLimit() {
   const n = Number(process.env.TRACK_RECORD_AGG_SAMPLE_LIMIT);
   if (!Number.isFinite(n)) return 8000;
   return Math.min(20_000, Math.max(500, Math.floor(n)));
+}
+
+function normalizeLedgerStatsRpc(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const total_signals = Number(raw.total_signals);
+  const resolved_signals = Number(raw.resolved_signals);
+  const winsCount = Number(raw.wins_decisive);
+  const lossesCount = Number(raw.losses_decisive);
+  if (![total_signals, resolved_signals, winsCount, lossesCount].every((n) => Number.isFinite(n) && n >= 0)) {
+    return null;
+  }
+  const decisive = winsCount + lossesCount;
+  const flatResolved = Math.max(0, resolved_signals - winsCount - lossesCount);
+  const avgAll = raw.avg_outcome_60m_all;
+  const minAll = raw.min_outcome_60m_all;
+  const avgWins = raw.avg_outcome_60m_wins;
+  return {
+    total_signals,
+    resolved_signals,
+    winsCount,
+    lossesCount,
+    decisive,
+    flatResolved,
+    avg_return: avgAll != null && Number.isFinite(Number(avgAll)) ? Number(avgAll) : null,
+    max_drawdown: minAll != null && Number.isFinite(Number(minAll)) ? Number(minAll) : null,
+    avg_return_wins: avgWins != null && Number.isFinite(Number(avgWins)) ? Number(avgWins) : null,
+    stats_basis: "exact_ledger_sql"
+  };
+}
+
+/** Full-table stats via RPC when migration 029 is applied; else bounded client aggregates. */
+async function resolveSignalOutcomesLedgerAggregates(supabase) {
+  const rpcRes = await supabase.rpc("signal_outcomes_track_record_stats");
+  const fromRpc = normalizeLedgerStatsRpc(rpcRes.data);
+  if (!rpcRes.error && fromRpc) {
+    return fromRpc;
+  }
+  if (rpcRes.error && process.env.NODE_ENV !== "test") {
+    console.warn("[track-record] RPC signal_outcomes_track_record_stats unavailable:", rpcRes.error.message);
+  }
+  const aggLimit = trackRecordAggSampleLimit();
+  const [totalRes, resolvedRes, winsCountRes, lossesCountRes, aggSampleRes] = await Promise.all([
+    supabase.from("signal_outcomes").select("id", { count: "exact", head: true }),
+    supabase.from("signal_outcomes").select("id", { count: "exact", head: true }).not("outcome_60m", "is", null),
+    supabase
+      .from("signal_outcomes")
+      .select("id", { count: "exact", head: true })
+      .gt("outcome_60m", TR_DECISIVE_WIN),
+    supabase
+      .from("signal_outcomes")
+      .select("id", { count: "exact", head: true })
+      .lt("outcome_60m", TR_DECISIVE_LOSS),
+    supabase
+      .from("signal_outcomes")
+      .select("outcome_60m")
+      .not("outcome_60m", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(aggLimit)
+  ]);
+  for (const r of [totalRes, resolvedRes, winsCountRes, lossesCountRes, aggSampleRes]) {
+    if (r.error) throw r.error;
+  }
+  const winsCount = Number(winsCountRes.count || 0);
+  const lossesCount = Number(lossesCountRes.count || 0);
+  const decisive = winsCount + lossesCount;
+  const resolvedTotal = Number(resolvedRes.count || 0);
+  const flatResolved = Math.max(0, resolvedTotal - winsCount - lossesCount);
+  const aggSample = aggSampleRes.data || [];
+  const returns = aggSample.map((r) => Number(r.outcome_60m)).filter(Number.isFinite);
+  const winReturnsFromSample = aggSample
+    .filter((r) => Number(r.outcome_60m) > TR_DECISIVE_WIN)
+    .map((r) => Number(r.outcome_60m))
+    .filter(Number.isFinite);
+  return {
+    total_signals: Number(totalRes.count || 0),
+    resolved_signals: resolvedTotal,
+    winsCount,
+    lossesCount,
+    decisive,
+    flatResolved,
+    avg_return: returns.length ? returns.reduce((a, b) => a + b, 0) / returns.length : null,
+    max_drawdown: returns.length ? Math.min(...returns) : null,
+    avg_return_wins: winReturnsFromSample.length
+      ? winReturnsFromSample.reduce((a, b) => a + b, 0) / winReturnsFromSample.length
+      : null,
+    stats_basis: "fallback_client_aggregates",
+    avg_return_sample_rows: returns.length,
+    avg_return_sample_cap: aggLimit
+  };
 }
 
 function statusFromPct(pct) {
@@ -282,35 +371,9 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
   if (filter === "pending") pageQuery = pageQuery.is("outcome_60m", null);
   pageQuery = pageQuery.range(from, to);
 
-  const aggLimit = trackRecordAggSampleLimit();
-  const [
-    totalRes,
-    resolvedRes,
-    winsCountRes,
-    lossesCountRes,
-    aggSampleRes,
-    rulesRes,
-    pageRes,
-    winsRes,
-    lossesRes,
-    autoDiscoveredRes
-  ] = await Promise.all([
-    supabase.from("signal_outcomes").select("id", { count: "exact", head: true }),
-    supabase.from("signal_outcomes").select("id", { count: "exact", head: true }).not("outcome_60m", "is", null),
-    supabase
-      .from("signal_outcomes")
-      .select("id", { count: "exact", head: true })
-      .gt("outcome_60m", TR_DECISIVE_WIN),
-    supabase
-      .from("signal_outcomes")
-      .select("id", { count: "exact", head: true })
-      .lt("outcome_60m", TR_DECISIVE_LOSS),
-    supabase
-      .from("signal_outcomes")
-      .select("outcome_60m")
-      .not("outcome_60m", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(aggLimit),
+  const ledger = await resolveSignalOutcomesLedgerAggregates(supabase);
+
+  const [rulesRes, pageRes, winsRes, lossesRes, autoDiscoveredRes] = await Promise.all([
     supabase.from("rule_performance").select("*").order("confidence_score", { ascending: false, nullsFirst: false }).limit(100),
     pageQuery,
     supabase
@@ -333,7 +396,7 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
       .limit(20)
   ]);
 
-  for (const r of [totalRes, resolvedRes, winsCountRes, lossesCountRes, aggSampleRes, rulesRes, pageRes, winsRes, lossesRes]) {
+  for (const r of [rulesRes, pageRes, winsRes, lossesRes]) {
     if (r.error) throw r.error;
   }
   // Auto-discovered wallets are best-effort: missing column / table degrades to empty list, never fails the page.
@@ -341,18 +404,9 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     ? Array.isArray(autoDiscoveredRes.data) ? autoDiscoveredRes.data : []
     : [];
 
-  const winsCount = Number(winsCountRes.count || 0);
-  const lossesCount = Number(lossesCountRes.count || 0);
-  const decisive = winsCount + lossesCount;
-  const resolvedTotal = Number(resolvedRes.count || 0);
-  const flatResolved = Math.max(0, resolvedTotal - winsCount - lossesCount);
-
-  const aggSample = aggSampleRes.data || [];
-  const returns = aggSample.map((r) => Number(r.outcome_60m)).filter(Number.isFinite);
-  const winReturnsFromSample = aggSample
-    .filter((r) => Number(r.outcome_60m) > TR_DECISIVE_WIN)
-    .map((r) => Number(r.outcome_60m))
-    .filter(Number.isFinite);
+  const winsCount = ledger.winsCount;
+  const lossesCount = ledger.lossesCount;
+  const decisive = ledger.decisive;
   const best = winsRes.data?.[0] || null;
   const worst = lossesRes.data?.[0] || null;
 
@@ -481,15 +535,13 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
 
   return {
     ok: true,
-    total_signals: Number(totalRes.count || 0),
-    resolved_signals: resolvedTotal,
-    flat_resolved_signals: flatResolved,
+    total_signals: ledger.total_signals,
+    resolved_signals: ledger.resolved_signals,
+    flat_resolved_signals: ledger.flatResolved,
     win_rate_60m: decisive ? winsCount / decisive : null,
-    avg_return: returns.length ? returns.reduce((a, b) => a + b, 0) / returns.length : null,
-    avg_return_wins: winReturnsFromSample.length
-      ? winReturnsFromSample.reduce((a, b) => a + b, 0) / winReturnsFromSample.length
-      : null,
-    max_drawdown: returns.length ? Math.min(...returns) : null,
+    avg_return: ledger.avg_return,
+    avg_return_wins: ledger.avg_return_wins,
+    max_drawdown: ledger.max_drawdown,
     best_call: bestCallOut,
     worst_call: worstCallOut,
     rule_performance: rulePerformance,
@@ -501,18 +553,25 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     pagination: {
       page: safePage,
       page_size: safePageSize,
-      total_pages: Math.max(1, Math.ceil(Number(totalRes.count || 0) / safePageSize))
+      total_pages: Math.max(1, Math.ceil(Number(ledger.total_signals || 0) / safePageSize))
     },
     meta: {
       source: "supabase:validation_oracle",
       filter,
       cache_ttl_sec: trackRecordCacheSeconds(),
       decisive_win_min_fraction: TR_DECISIVE_WIN,
-      win_rate_basis: "exact_count_decisive_60m",
-      avg_return_basis: "mean_recent_resolved_time_order",
-      avg_return_sample_rows: returns.length,
-      avg_return_sample_cap: aggLimit,
-      worst_outcome_label: "worst_single_60m_in_avg_sample"
+      stats_basis: ledger.stats_basis,
+      win_rate_basis: "count_wins_div_decisive_all_ledger",
+      avg_return_basis:
+        ledger.stats_basis === "exact_ledger_sql"
+          ? "mean_all_resolved_signal_outcomes_db"
+          : "mean_recent_resolved_time_order_fallback",
+      avg_return_sample_rows: ledger.avg_return_sample_rows ?? null,
+      avg_return_sample_cap: ledger.avg_return_sample_cap ?? null,
+      worst_outcome_basis:
+        ledger.stats_basis === "exact_ledger_sql"
+          ? "min_all_resolved_signal_outcomes_db"
+          : "min_in_recent_sample_fallback"
     }
   };
 }
@@ -635,7 +694,7 @@ router.get("/track-record", async (req, res) => {
   const filter = String(req.query.filter || "all").toLowerCase();
   const page = Math.max(1, Number(req.query.page || 1));
   const pageSize = Math.max(1, Math.min(50, Number(req.query.limit || 25)));
-  const cacheKey = `signals:track-record:v6:${filter}:${page}:${pageSize}`;
+  const cacheKey = `signals:track-record:v7:${filter}:${page}:${pageSize}`;
   const cacheSec = trackRecordCacheSeconds();
   try {
     const cached = await redis.get(cacheKey);
