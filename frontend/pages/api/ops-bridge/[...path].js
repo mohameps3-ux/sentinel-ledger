@@ -1,4 +1,17 @@
-import { getPublicApiUrl } from "../../../lib/publicRuntime";
+const DEFAULT_BACKEND_API = "https://sentinel-ledger-backend-production.up.railway.app";
+
+function trimTrailingSlash(value) {
+  return String(value || "").replace(/\/+$/, "");
+}
+
+function getBackendApiUrl() {
+  return trimTrailingSlash(
+    process.env.NEXT_PUBLIC_API_URL ||
+      process.env.API_PROXY_TARGET ||
+      process.env.NEXT_PUBLIC_API_PROXY_TARGET ||
+      DEFAULT_BACKEND_API
+  );
+}
 
 function getOpsKey(req) {
   const serverKey = String(process.env.OMNI_BOT_OPS_KEY || "").trim();
@@ -49,7 +62,7 @@ export default async function handler(req, res) {
     return res.status(503).json({ ok: false, error: "ops_key_not_configured" });
   }
 
-  const backendUrl = `${getPublicApiUrl()}/api/${rest}${search}`;
+  const backendUrl = `${getBackendApiUrl()}/api/${rest}${search}`;
   const headers = {
     "x-ops-key": opsKey
   };
