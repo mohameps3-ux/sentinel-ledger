@@ -288,22 +288,6 @@ function mapHotTrendToLiveFill(row, heatContext) {
   };
 }
 
-export async function getServerSideProps() {
-  try {
-    const res = await fetch(`${getPublicApiUrl()}/api/v1/tokens/hot?limit=24`);
-    if (!res.ok) return { props: { initialTrending: [], initialTrendingMeta: {} } };
-    const json = await res.json();
-    return {
-      props: {
-        initialTrending: Array.isArray(json?.data) ? json.data : [],
-        initialTrendingMeta: json?.meta || {}
-      }
-    };
-  } catch {
-    return { props: { initialTrending: [], initialTrendingMeta: {} } };
-  }
-}
-
 export default function Home({ initialTrending = [], initialTrendingMeta = {} }) {
   const { t } = useLocale();
   const [alerts, setAlerts] = useState([]);
