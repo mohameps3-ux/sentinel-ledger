@@ -282,11 +282,8 @@ router.get("/smart-wallet-cron/status", assertOpsAuth, (_req, res) => {
   });
 });
 
-/**
- * Manual tick: same entrypoint as the scheduled cron (enqueueActiveWallets).
- * Respects verifyLeadershipFence, ECO_MODE, webhook defer — same as automatic runs.
- */
-router.post("/smart-wallet-cron/run", assertOpsAuth, async (_req, res) => {
+/** Manual tick: enqueueActiveWallets (same as scheduled cron). */
+async function postSmartWalletCronManualTick(_req, res) {
   try {
     const count = await enqueueActiveWallets();
     return res.json({
@@ -299,7 +296,14 @@ router.post("/smart-wallet-cron/run", assertOpsAuth, async (_req, res) => {
   } catch (e) {
     return res.status(500).json({ ok: false, error: e?.message || "smart_wallet_cron_run_failed" });
   }
-});
+}
+
+/**
+ * Manual tick — aliases. Same guards as cron: verifyLeadershipFence, ECO_MODE, webhook defer.
+ * Prefer POST .../trigger for ops runbooks; /run kept for backward compatibility.
+ */
+router.post("/smart-wallet-cron/run", assertOpsAuth, postSmartWalletCronManualTick);
+router.post("/smart-wallet-cron/trigger", assertOpsAuth, postSmartWalletCronManualTick);
 
 router.get("/signal-performance/summary", assertOpsAuth, async (req, res) => {
   const lookbackHours = Number(req.query.lookbackHours || 48);
