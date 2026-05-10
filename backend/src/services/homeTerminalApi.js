@@ -118,18 +118,64 @@ async function invalidateSignalsLatestFeedCache() {
   }
 }
 
-function walletTierLabel(winRate) {
-  const w = Number(winRate || 0);
-  if (w >= 88) return "🐋 Whale";
-  if (w >= 78) return "🧠 Smart";
-  return "📡 Scout";
+/** log-scale confidence in sample size (0–1). Peer formula: min(1, log10(n+1)/2). */
+function walletSampleConfidence(totalTrades) {
+  const n = Math.max(0, Number(totalTrades) || 0);
+  return Math.min(1, Math.log10(n + 1) / 2);
 }
 
-function walletDecisionFromSmartScore(score) {
+function walletEffectiveWinRateRaw(winRate, totalTrades) {
+  return Number(winRate || 0) * walletSampleConfidence(totalTrades);
+}
+
+function walletEffectiveWinRate(winRate, totalTrades) {
+  return Math.round(walletEffectiveWinRateRaw(winRate, totalTrades) * 10) / 10;
+}
+
+/** Credibility tiers by resolved sample — never label 1-trade wallets as whales. */
+function walletTierFromTrades(totalTrades) {
+  const n = Math.max(0, Math.floor(Number(totalTrades) || 0));
+  if (n < 5) return { label: "📡 Scout", tier: "scout" };
+  if (n < 20) return { label: "🌱 Emerging", tier: "emerging" };
+  if (n < 50) return { label: "📊 Tracked", tier: "tracked" };
+  return { label: "🐋 Whale", tier: "whale" };
+}
+
+function walletDecisionFromSmartScore(score, totalTrades = 0) {
   const s = Number(score || 0);
-  if (s >= 82) return "FOLLOW";
+  const n = Math.max(0, Math.floor(Number(totalTrades) || 0));
+  if (n < 3) return "IGNORE";
+  if (s >= 82 && n >= 10) return "FOLLOW";
+  if (s >= 82) return "MONITOR";
   if (s >= 65) return "MONITOR";
   return "IGNORE";
+}
+
+function finalizeSmartWalletTopRow(partial) {
+  const totalTrades = Number(partial.totalTrades || 0);
+  const winRate = Number(partial.winRate || 0);
+  const smartScore = Number(partial.smartScore || 0);
+  const tier = walletTierFromTrades(totalTrades);
+  const sampleConfidence = Math.round(walletSampleConfidence(totalTrades) * 10000) / 10000;
+  const effectiveWinRate = walletEffectiveWinRate(winRate, totalTrades);
+  return {
+    ...partial,
+    walletLabel: tier.label,
+    tier: tier.tier,
+    sampleConfidence,
+    effectiveWinRate,
+    decision: walletDecisionFromSmartScore(smartScore, totalTrades)
+  };
+}
+
+function compareSmartWalletTopRows(a, b) {
+  const diff =
+    walletEffectiveWinRateRaw(b.winRate, b.totalTrades) - walletEffectiveWinRateRaw(a.winRate, a.totalTrades);
+  if (Math.abs(diff) > 1e-9) return diff > 0 ? 1 : diff < 0 ? -1 : 0;
+  const sd = (b.smartScore || 0) - (a.smartScore || 0);
+  if (sd !== 0) return sd > 0 ? 1 : -1;
+  const td = (b.totalTrades || 0) - (a.totalTrades || 0);
+  return td > 0 ? 1 : td < 0 ? -1 : 0;
 }
 
 /** Ranking score: DB smart_score if set, else spec blend win*0.4 + early*0.3 + cluster*0.2 + consistency*0.1 */
@@ -1077,27 +1123,27 @@ async function buildSmartWalletsTopFromSignals(supabase, { limit }) {
     )));
     const pnl30d = Math.round(Math.max(0, u.sum) * 12 + u.wins * 180);
     const lastBigWin = `${u.total} resolved · best ${u.best > 0 ? u.best.toFixed(1) : "—"}% · WR ${wr.toFixed(1)}%`;
-    out.push({
-      wallet: addr.length > 12 ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : addr,
-      walletAddress: addr,
-      address: addr,
-      walletLabel: walletTierLabel(wr),
-      winRate: Math.round(wr * 10) / 10,
-      earlyEntry: early,
-      cluster: clusterV,
-      consistency: consistencyV,
-      decision: walletDecisionFromSmartScore(smartScore),
-      pnl30d,
-      lastBigWin,
-      smartScore,
-      signalStrength: smartScore,
-      totalTrades: u.total,
-      recentHits: u.total,
-      tooltip: lastBigWin,
-      lastSeen: u.lastAt
-    });
+    out.push(
+      finalizeSmartWalletTopRow({
+        wallet: addr.length > 12 ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : addr,
+        walletAddress: addr,
+        address: addr,
+        winRate: Math.round(wr * 10) / 10,
+        earlyEntry: early,
+        cluster: clusterV,
+        consistency: consistencyV,
+        pnl30d,
+        lastBigWin,
+        smartScore,
+        signalStrength: smartScore,
+        totalTrades: u.total,
+        recentHits: u.total,
+        tooltip: lastBigWin,
+        lastSeen: u.lastAt
+      })
+    );
   }
-  out.sort((a, b) => b.smartScore - a.smartScore || b.recentHits - a.recentHits);
+  out.sort(compareSmartWalletTopRows);
   return out.slice(0, limit);
 }
 
@@ -1131,16 +1177,14 @@ async function buildSmartWalletsTop(supabase, { limit = 20 } = {}) {
         const behavior = behaviorByWallet.get(addr);
         const m = mergeSmartWalletRowWithBehavior(r, behavior);
         const { wr, totalTrades, recentHits, lastBigWin, smartScore, early, cluster, consistency, lastSeen } = m;
-        return {
+        return finalizeSmartWalletTopRow({
           wallet: addr.length > 12 ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : addr,
           walletAddress: addr,
           address: addr,
-          walletLabel: walletTierLabel(wr),
           winRate: Math.round(wr * 10) / 10,
           earlyEntry: early,
           cluster,
           consistency,
-          decision: walletDecisionFromSmartScore(smartScore),
           pnl30d: Math.round(Number(r.pnl_30d || 0) * 100) / 100,
           lastBigWin,
           smartScore,
@@ -1149,9 +1193,9 @@ async function buildSmartWalletsTop(supabase, { limit = 20 } = {}) {
           recentHits,
           tooltip: lastBigWin,
           lastSeen
-        };
+        });
       })
-      .sort((a, b) => b.smartScore - a.smartScore)
+      .sort(compareSmartWalletTopRows)
       .slice(0, lim);
     return { ok: true, data: rows, rows, meta: { source: "supabase:smart_wallets", count: rows.length } };
   }
@@ -1311,7 +1355,7 @@ async function getOutcomesProofCached(supabase, hours, recentN) {
 
 async function getSmartWalletsTopCached(supabase, limit) {
   if (!supabase) throw new Error("supabase_unconfigured");
-  const key = `terminal:smartwallets:top:v4:${limit}`;
+  const key = `terminal:smartwallets:top:v5:${limit}`;
   const { payload, cache } = await withCache(key, () => buildSmartWalletsTop(supabase, { limit }));
   return { ...payload, meta: { ...(payload.meta || {}), cache } };
 }

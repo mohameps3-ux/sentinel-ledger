@@ -147,6 +147,7 @@ function SmartWalletsPreview({ wallets, labelFor, titleFor }) {
           <thead>
             <tr>
               <th className="data-th">WALLET</th>
+              <th className="data-th">TIER</th>
               <th className="data-th">WIN RATE</th>
               <th className="data-th">TRADES</th>
               <th className="data-th">LAST SEEN</th>
@@ -157,7 +158,15 @@ function SmartWalletsPreview({ wallets, labelFor, titleFor }) {
             {rows.length ? rows.map((wallet, idx) => (
               <tr key={wallet.address || wallet.wallet || idx} className="feed-row">
                 <td className="data-td-name" title={wallet.address ? titleFor(wallet.address) : wallet.tooltip}>
-                  {wallet.address ? labelFor(wallet.address) : wallet.wallet}
+                  <div>{wallet.address ? labelFor(wallet.address) : wallet.wallet}</div>
+                  {wallet.sampleConfidence != null && Number(wallet.totalTrades) > 0 ? (
+                    <div className="text-[9px] text-sl-muted mt-0.5 font-mono">
+                      adj {Number(wallet.effectiveWinRate ?? 0).toFixed(1)}% · n={wallet.totalTrades}
+                    </div>
+                  ) : null}
+                </td>
+                <td className="data-td text-[11px]" title={wallet.tier ? `tier=${wallet.tier}` : undefined}>
+                  {wallet.walletLabel || "—"}
                 </td>
                 <td className="data-td data-pos">{Number(wallet.winRate || 0).toFixed(1)}%</td>
                 <td className="data-td">{wallet.totalTrades || wallet.trades || 0}</td>
@@ -390,15 +399,35 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const feedLabel = feedStatus;
   const rankedWallets = useMemo(() => {
     const source = topWalletsApi.length ? topWalletsApi : [];
+    const sampleConf = (n) => {
+      const t = Math.max(0, Number(n) || 0);
+      return Math.min(1, Math.log10(t + 1) / 2);
+    };
+    const effWrRaw = (wr, trades) => Number(wr || 0) * sampleConf(trades);
     return source
       .slice()
-      .map((wallet) => ({
-        ...wallet,
-        smartScore: Math.round(
-          wallet.winRate * 0.35 + wallet.earlyEntry * 0.25 + wallet.cluster * 0.2 + wallet.consistency * 0.2
-        )
-      }))
-      .sort((a, b) => b.smartScore - a.smartScore);
+      .map((wallet) => {
+        const backendSs = Number(wallet.smartScore);
+        const hasBackend = Number.isFinite(backendSs) && backendSs > 0;
+        const ss = hasBackend
+          ? Math.round(backendSs)
+          : Math.round(
+              wallet.winRate * 0.35 +
+                wallet.earlyEntry * 0.25 +
+                wallet.cluster * 0.2 +
+                wallet.consistency * 0.2
+            );
+        const effectiveWinRate =
+          wallet.effectiveWinRate != null && Number.isFinite(Number(wallet.effectiveWinRate))
+            ? Number(wallet.effectiveWinRate)
+            : Math.round(wallet.winRate * sampleConf(wallet.totalTrades) * 10) / 10;
+        return { ...wallet, smartScore: ss, effectiveWinRate };
+      })
+      .sort((a, b) => {
+        const diff = effWrRaw(b.winRate, b.totalTrades) - effWrRaw(a.winRate, a.totalTrades);
+        if (Math.abs(diff) > 1e-9) return diff > 0 ? 1 : -1;
+        return (b.smartScore || 0) - (a.smartScore || 0);
+      });
   }, [topWalletsApi]);
 
   const topWalletLabelAddrs = useMemo(() => rankedWallets.map((w) => w.address).filter(Boolean), [rankedWallets]);
@@ -696,12 +725,13 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           const wr = Number(row.winRate || 0);
           const w = String(row.walletAddress || row.address || row.wallet || "");
           const ss = Number(row.smartScore ?? row.signalStrength ?? wr);
+          const totalTrades = Number(row.totalTrades ?? row.total_trades ?? row.recentHits ?? 0);
           return {
             wallet:
               row.wallet && row.wallet.length <= 14
                 ? row.wallet
                 : w.length > 10
-                  ? `${w.slice(0, 4)}â¦${w.slice(-4)}`
+                  ? `${w.slice(0, 4)}…${w.slice(-4)}`
                   : w || `Wallet ${idx + 1}`,
             address: w,
             winRate: wr,
@@ -709,11 +739,17 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             cluster: Number(row.cluster ?? Math.round(Math.min(99, Math.max(40, wr * 0.88)))),
             consistency: Number(row.consistency ?? Math.round(Math.min(99, Math.max(40, wr * 0.95)))),
             signalStrength: Math.min(99, Math.max(35, Math.round(ss))),
+            smartScore: Number.isFinite(ss) ? Math.round(ss) : undefined,
             pnl30d: Number(row.pnl30d || 0),
-            totalTrades: Number(row.totalTrades ?? row.total_trades ?? row.recentHits ?? 0),
+            totalTrades,
             recentHits: Number(row.recentHits ?? row.totalTrades ?? row.total_trades ?? 0),
             lastSeen: row.lastSeen || row.last_seen || null,
-            tooltip: String(row.lastBigWin || row.tooltip || `Win ${wr.toFixed(1)}% Â· hits ${Number(row.recentHits || 0)}`)
+            walletLabel: row.walletLabel || null,
+            tier: row.tier || null,
+            sampleConfidence: row.sampleConfidence != null ? Number(row.sampleConfidence) : null,
+            effectiveWinRate: row.effectiveWinRate != null ? Number(row.effectiveWinRate) : null,
+            decision: row.decision || null,
+            tooltip: String(row.lastBigWin || row.tooltip || `Win ${wr.toFixed(1)}% · hits ${Number(row.recentHits || 0)}`)
           };
         });
         setTopWalletsApi(mapped);
