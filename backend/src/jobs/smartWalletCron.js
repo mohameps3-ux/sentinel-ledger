@@ -16,6 +16,12 @@ const LEGACY_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 let legacyIntervalRef = null;
 let scheduledTask = null;
+/** ISO timestamp of last `enqueueActiveWallets` invocation (set before skips/defers). */
+let lastCronRun = null;
+
+function getLastSmartWalletCronRun() {
+  return lastCronRun;
+}
 
 function getDirectLimit() {
   const raw = Number(process.env.SMART_WALLET_DIRECT_LIMIT || 20);
@@ -24,6 +30,7 @@ function getDirectLimit() {
 }
 
 async function enqueueActiveWallets() {
+  lastCronRun = new Date().toISOString();
   const requestId = randomUUID();
   const runAt = new Date().toISOString();
   console.log(`[smart-wallet-cron][${requestId}] run_at=${runAt} enqueue_start`);
@@ -154,4 +161,4 @@ function startSmartWalletCron() {
   enqueueActiveWallets().catch((e) => console.warn("smart wallet bootstrap enqueue:", e.message));
 }
 
-module.exports = { enqueueActiveWallets, startSmartWalletCron };
+module.exports = { enqueueActiveWallets, startSmartWalletCron, getLastSmartWalletCronRun };

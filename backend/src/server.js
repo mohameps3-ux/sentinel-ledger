@@ -21,7 +21,7 @@ const openaiAgentRouter = require("./routes/openaiAgent");
 const { startDeployerWorker } = require("./queues/deployerWorker");
 const { startSmartWalletWorker } = require("./workers/smartWallet.worker");
 const { startWebhookScoringWorker } = require("./workers/webhookScoringWorker");
-const { startSmartWalletCron } = require("./jobs/smartWalletCron");
+const { startSmartWalletCron, getLastSmartWalletCronRun } = require("./jobs/smartWalletCron");
 const { startProAlertCron, getProAlertCronStatus } = require("./jobs/proAlertCron");
 const {
   startTacticalRegimeNotifyCron,
@@ -282,6 +282,7 @@ app.get("/health", async (_, res) => {
     webPushVapidKeysConfigured: isVapidKeyMaterialPresent(),
     missingCriticalSecrets: missingCritical,
     smartWorkersEnabled: isWorkersEnabled(),
+    lastSmartWalletCronRun: getLastSmartWalletCronRun(),
     proAlerts: getProAlertCronStatus(),
     tacticalRegimeNotify: getTacticalRegimeNotifyCronStatus(),
     signalPrices: getSignalPriceCronStatus(),
