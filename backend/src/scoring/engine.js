@@ -135,6 +135,7 @@ function ruleNewWalletConfidence(ctx) {
 
 /** 5. Tx/min currently > Nx baseline over the last 30 min. */
 function ruleVelocitySpike(ctx) {
+  if (String(process.env.VELOCITY_SPIKE_ENABLED || "true").trim().toLowerCase() === "false") return null;
   const stats = ctx.assetStats;
   if (!stats) return null;
   if (stats.baselinePerMin < CONFIG.velocityMinBaseline) return null;
