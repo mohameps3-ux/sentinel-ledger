@@ -1039,17 +1039,40 @@ async function buildSmartWalletsTop(supabase, { limit = 20 } = {}) {
     .order("win_rate", { ascending: false })
     .limit(200);
   if (!error && (data || []).length) {
-    const rows = (data || [])
+    const sourceRows = data || [];
+    const wallets = sourceRows.map((r) => String(r.wallet_address || "").trim()).filter(Boolean);
+    const behaviorByWallet = new Map();
+    if (wallets.length) {
+      const { data: behaviorRows, error: behaviorError } = await supabase
+        .from("wallet_behavior_stats")
+        .select("wallet_address,win_rate_real,resolved_signals,computed_at")
+        .in("wallet_address", wallets);
+      if (!behaviorError && Array.isArray(behaviorRows)) {
+        for (const row of behaviorRows) {
+          const addr = String(row.wallet_address || "").trim();
+          if (addr) behaviorByWallet.set(addr, row);
+        }
+      }
+    }
+
+    const rows = sourceRows
       .map((r) => {
         const smartScore = computedSmartScore(r);
-        const wr = Number(r.win_rate || 0);
         const addr = String(r.wallet_address || "");
+        const behavior = behaviorByWallet.get(addr);
+        const behaviorResolved = Number(behavior?.resolved_signals || 0);
+        const behaviorWinRate = Number(behavior?.win_rate_real);
+        const rawWinRate = Number(r.win_rate || 0);
+        const wr = rawWinRate > 0 ? rawWinRate : Number.isFinite(behaviorWinRate) && behaviorResolved > 0 ? behaviorWinRate : 0;
+        const totalTrades = Number(r.total_trades || 0) || behaviorResolved;
         const early = Number.isFinite(Number(r.early_entry_score)) ? Math.round(Number(r.early_entry_score)) : Math.round(wr * 0.92);
         const cluster = Number.isFinite(Number(r.cluster_score)) ? Math.round(Number(r.cluster_score)) : Math.round(wr * 0.88);
         const consistency = Number.isFinite(Number(r.consistency_score))
           ? Math.round(Number(r.consistency_score))
           : Math.round(wr * 0.95);
-        const lastBigWin = `Win rate leader · ${wr.toFixed(1)}% tracked`;
+        const lastBigWin = totalTrades
+          ? `Win rate leader · ${wr.toFixed(1)}% · ${totalTrades} resolved`
+          : `Win rate leader · ${wr.toFixed(1)}% tracked`;
         return {
           wallet: addr.length > 12 ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : addr,
           walletAddress: addr,
@@ -1064,10 +1087,10 @@ async function buildSmartWalletsTop(supabase, { limit = 20 } = {}) {
           lastBigWin,
           smartScore,
           signalStrength: smartScore,
-          totalTrades: Number(r.total_trades || 0),
-          recentHits: Number(r.recent_hits || r.total_trades || 0),
+          totalTrades,
+          recentHits: Number(r.recent_hits || 0) || totalTrades,
           tooltip: lastBigWin,
-          lastSeen: r.last_seen || null
+          lastSeen: r.last_seen || behavior?.computed_at || null
         };
       })
       .sort((a, b) => b.smartScore - a.smartScore)
