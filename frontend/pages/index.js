@@ -161,8 +161,7 @@ function SmartWalletsPreview({ wallets, labelFor, titleFor }) {
                   <div>{wallet.address ? labelFor(wallet.address) : wallet.wallet}</div>
                   {wallet.sampleConfidence != null && Number(wallet.totalTrades) > 0 ? (
                     <div className="text-[9px] text-sl-muted mt-0.5 font-mono">
-                      WR ponderado {Number(wallet.effectiveWinRate ?? 0).toFixed(1)}% ·{" "}
-                      {wallet.totalTrades} resueltas
+                      adj {Number(wallet.effectiveWinRate ?? 0).toFixed(1)}% · n={wallet.totalTrades}
                     </div>
                   ) : null}
                 </td>
