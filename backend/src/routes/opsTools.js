@@ -1,8 +1,9 @@
 "use strict";
 
 /**
- * Ops-only tooling (OMNI_BOT_OPS_KEY): repo file read, read-only SQL, GitHub workflow_dispatch.
- * See backend/.env.example for GITHUB_* and OPS_REPO_ROOT.
+ * Ops-only tooling (OMNI_BOT_OPS_KEY): repo file read, read-only SQL (INSERT/UPDATE/DELETE/DDL
+ * rejected by validateReadOnlySelect), GitHub workflow_dispatch (no Vercel/Railway deploy unless
+ * your workflow implements it). See backend/.env.example for GITHUB_* and OPS_REPO_ROOT.
  */
 
 const fs = require("fs");

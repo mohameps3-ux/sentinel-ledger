@@ -15,6 +15,127 @@ const router = express.Router();
 
 const SIGNAL_PERF_SUCCESS_MIN_PCT = Number(process.env.SIGNAL_PERF_SUCCESS_MIN_PCT || 1.0);
 
+/**
+ * Superficie producto (rutas Next → página → hooks/API) para el Arquitecto.
+ * El JSON de contexto no incluye HTML ni capturas; esto indica qué leer con
+ * POST /api/v1/ops/tools/repo/read cuando el operador pide UX o consumo UI.
+ */
+const FRONTEND_OPS_SURFACE = {
+  disclaimer:
+    "No hay capturas ni DOM en este contexto. Para cards, layout y copy exacto, lee los archivos `page` y componentes listados. Las URLs API son relativas a getPublicApiUrl() (NEXT_PUBLIC_API_URL; ver frontend/lib/publicRuntime.js).",
+  routes: [
+    {
+      path: "/",
+      page: "frontend/pages/index.js",
+      userFacing:
+        "Home war room: KPI strip (signals today, wallets, confidence), trending/hot tokens, live signals grid con badges de ranking, Token Desk, pestañas tácticas.",
+      components: [
+        "frontend/components/home/WarRoomLayout.jsx",
+        "frontend/components/cockpit/TokenDesk.jsx",
+        "frontend/src/features/war-home/TacticalFeed.jsx"
+      ],
+      dataLayer:
+        "useTrendingTokens→/api/v1/tokens/hot | useSignalsFeed→/api/v1/signals/latest | useDecisionFeedQuotes→/api/v1/tokens/quotes | useSortedTokens+useMarketStore | useRankDeltas (solo cliente) | useLiveFeedSocket→socket.io NEXT_PUBLIC_WS_URL (sentinel:signal) | useWebSocket si aplica"
+    },
+    {
+      path: "/scanner",
+      page: "frontend/pages/scanner.js",
+      userFacing: "Scanner: status strip, métricas, señales, tabla de tokens filtrable (narrativa/venue).",
+      components: [
+        "frontend/components/scanner/ScannerStatusStrip.jsx",
+        "frontend/components/scanner/ScannerTokenTable.jsx"
+      ],
+      dataLayer: "useTrendingTokens→/api/v1/tokens/hot (misma base que home trending)"
+    },
+    {
+      path: "/track-record",
+      page: "frontend/pages/track-record.js",
+      userFacing: "Histórico / rendimiento de señales para el usuario.",
+      dataLayer: "fetch GET /api/v1/signals/track-record (querystring en página)"
+    },
+    {
+      path: "/smart-money",
+      page: "frontend/pages/smart-money.js",
+      userFacing: "Leaderboard smart wallets, actividad, favoritos, narrativa.",
+      dataLayer:
+        "useSmartWalletsLeaderboard→/api/v1/public/smart-wallets-leaderboard | useSmartMoneyActivity→/api/v1/public/smart-money-activity | useWalletLabels→/api/v1/public/wallet-labels | useWalletFavorites (local/persistido cliente)"
+    },
+    {
+      path: "/wallet-stalker",
+      page: "frontend/pages/wallet-stalker.js",
+      userFacing: "Exploración / stalker de wallets (lista y drill-down según UI).",
+      dataLayer: "GET/POST /api/v1/wallet-stalker | GET /api/v1/wallet-stalker/:wallet (auth Bearer según página)"
+    },
+    {
+      path: "/alerts",
+      page: "frontend/pages/alerts.js",
+      userFacing: "Configuración y feed de alertas (incl. Telegram si está cableado).",
+      dataLayer:
+        "/api/v1/user/status | /api/v1/alerts/settings | /api/v1/alerts/feed | /api/v1/alerts/telegram/auth"
+    },
+    {
+      path: "/watchlist",
+      page: "frontend/pages/watchlist.js",
+      userFacing: "Watchlist de tokens del usuario.",
+      dataLayer: "useWatchlist→GET/POST/DELETE /api/v1/watchlist y /api/v1/watchlist/:mint/note (Bearer)"
+    },
+    {
+      path: "/token/[address]",
+      page: "frontend/pages/token/[address].js",
+      userFacing: "Ficha de token (score, tabs, datos de mercado).",
+      dataLayer: "useTokenData→GET /api/v1/token/:address | useScoreRoom/useScoreSocket según imports actuales"
+    },
+    {
+      path: "/wallet/[address]",
+      page: "frontend/pages/wallet/[address].js",
+      userFacing: "Perfil de wallet: narrativa, resumen, comportamiento.",
+      dataLayer:
+        "frontend/lib/api/walletSummary.js→GET /api/v1/wallets/:addr/summary | walletBehavior.js→/api/v1/wallets/:addr/behavior y .../behavior/tokens"
+    },
+    {
+      path: "/compare",
+      page: "frontend/pages/compare.js",
+      userFacing: "Comparar tokens lado a lado.",
+      dataLayer: "useTokenCompare→/api/v1/token/:address por cada mint"
+    },
+    {
+      path: "/portfolio",
+      page: "frontend/pages/portfolio.js",
+      userFacing: "Cartera con mercados de watchlist autenticada.",
+      dataLayer: "GET /api/v1/portfolio/watchlist-markets?limit=24 (Authorization Bearer)"
+    },
+    {
+      path: "/results",
+      page: "frontend/pages/results.js",
+      userFacing: "Vista pública de track record filtrable.",
+      dataLayer: "GET /api/v1/public/track-record?filter=..."
+    }
+  ]
+};
+
+/** Límites duros del stack ops (también van en JSON para que el modelo no los omita). */
+const OPS_CONSOLE_LIMITS = {
+  sqlWrite: {
+    endpoint: "POST /api/v1/ops/tools/sql",
+    blocked:
+      "INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, MERGE, CREATE, GRANT, REVOKE, COPY, EXECUTE y similares: rechazados por el servidor. Solo SELECT (sin ; ni comentarios).",
+    implication:
+      "No puedes mutar datos vía esta herramienta aunque el operador lo pida en lenguaje natural; el cambio va por migración, script revisado, Supabase/SQL fuera de ops, o workflow que tú no controlas desde aquí."
+  },
+  deploy: {
+    vercelRailway:
+      "No hay deploy automático a Vercel ni Railway desde este agente ni desde ops tools. Puedes dar checklist al operador o describir un workflow; si existe en GitHub, POST /api/v1/ops/tools/github/workflow solo dispara workflow_dispatch (no garantiza pipeline de deploy hasta que el YAML lo defina).",
+    checklistHint:
+      "Push a rama → CI → merge → deploy según proyecto; credenciales y dashboards son acción humana."
+  },
+  bulkDataEdits: {
+    rule:
+      "No edición masiva de tablas desde aquí: no hay SQL de escritura ni endpoint de batch DML. Cualquier UPDATE/DELETE masivo = propuesta de SQL explícito para que el operador lo ejecute en su entorno de confianza tras revisión.",
+    noImplicitApproval:
+      "No asumas que un 'sí' vago autoriza DML; el operador debe pegar o aprobar statements concretos fuera de /ops/tools/sql."
+  }
+};
+
 function requireOpsKey(req, res, next) {
   const key = req.headers["x-ops-key"] || req.body?.ops_key;
   if (!key || key !== process.env.OMNI_BOT_OPS_KEY) {
@@ -101,6 +222,8 @@ async function buildOpsContext() {
       interpretationDiscipline:
         "Weak confidence↔return correlation is not proof of model inversion. Large maxDrawdownPct is cumulative outcome_pct path stress, not necessarily user portfolio loss."
     },
+    frontendSurface: FRONTEND_OPS_SURFACE,
+    opsConsoleLimits: OPS_CONSOLE_LIMITS,
     envConfig: {
       GATE_MIN_CONFIDENCE: process.env.GATE_MIN_CONFIDENCE,
       GATE_MIN_SIGNALS: process.env.GATE_MIN_SIGNALS,
@@ -238,7 +361,11 @@ EJECUCIÓN AUTOMÁTICA (solo lo que este backend engancha hoy; el resto = checkl
   - calibración / pesos / weights → **runCalibrationOnce**
   - tuner / gate adaptativo → **runSignalGateTunerTick**
 - Resume resultado usando **EJECUCIÓN_EN_ESTA_PETICIÓN** si viene abajo; no inventes otras ejecuciones.
-- Git push, Vercel, Railway, SQL arbitrario, edición masiva de tablas: **no** están cableados aquí; describe el procedimiento exacto o el PR que haría falta.
+
+LO QUE ESTA CONSOLA **NO** PUEDE HACER (leyes duras; también en JSON como **opsConsoleLimits**):
+- **SQL de escritura**: \`/api/v1/ops/tools/sql\` solo acepta **SELECT**. INSERT/UPDATE/DELETE y el resto de DML/DDL están **bloqueados** en el servidor — no prometas ejecutarlos ni “simularlos”.
+- **Deploy automático Vercel/Railway**: **no** existe desde aquí. Ofrece checklist, PR, o \`github/workflow\` si el repo tiene un workflow que despliegue; el disparo no sustituye credenciales ni dashboard.
+- **Edición masiva de tablas**: no hay herramienta de batch DML. Propón SQL **explícito** para revisión humana y ejecución **fuera** de ops/sql, o migraciones; no asumas aprobación implícita del operador.
 
 ARQUITECTURA MOTOR (recordatorio):
 - Reglas: whale_accumulation, liquidity_shock, cluster_buy, new_wallet_confidence, velocity_spike.
@@ -255,13 +382,13 @@ PRECISIÓN MÉTRICA (sentinelMetricLegend en JSON):
 CIERRE: 2–4 bullets “Qué mirar ahora”.
 
 HERRAMIENTAS HTTP (misma cabecera x-ops-key que este endpoint; ver backend/src/routes/opsTools.js):
-- POST /api/v1/ops/tools/repo/read — body JSON: { "path": "backend/src/routes/ops.js" } — devuelve texto del archivo (tamaño acotado).
-- POST /api/v1/ops/tools/sql — preview: { "preview": true, "template": "ops_health_counts" } o { "preview": true, "sql": "SELECT 1" }.
-  Ejecutar lectura: { "preview": false, "confirm": true, "template": "..." } o { "preview": false, "confirm": true, "sql": "SELECT ..." } (solo SELECT, sin ; ni comentarios).
+- POST /api/v1/ops/tools/repo/read — body JSON: { "path": "frontend/pages/index.js" } — devuelve texto del archivo (tamaño acotado). Para preguntas de **home, cards o UX**, cruza **frontendSurface.routes** del JSON con repo/read (páginas + componentes listados).
+- POST /api/v1/ops/tools/sql — **solo lectura**: SELECT único; INSERT/UPDATE/DELETE y DDL están **bloqueados**. Preview: { "preview": true, "template": "ops_health_counts" } o { "preview": true, "sql": "SELECT 1" }.
+  Ejecutar lectura: { "preview": false, "confirm": true, "template": "..." } o { "preview": false, "confirm": true, "sql": "SELECT ..." } (sin ; ni comentarios).
   Plantillas: ops_health_counts | signal_performance_status_7d | outcomes_pending_sample (params opcional { "hours": 24 }).
 - POST /api/v1/ops/tools/github/workflow — body: { "confirm": true, "workflow": "nombre.yml", "ref": "main", "inputs": {} } — workflow_dispatch (GITHUB_TOKEN + GITHUB_REPOSITORY). El workflow puede hacer commit/push según lo que tú definas en GitHub Actions.
 
-CONTEXTO LIVE (JSON; es parcial — no es el repo completo):
+CONTEXTO LIVE (JSON; es parcial — no es el repo completo). Incluye **frontendSurface** (UX/rutas/API) y **opsConsoleLimits** (SQL solo SELECT, sin deploy Vercel/Railway desde aquí, sin DML masivo).
 ${ctxStr}
 ${execStr ? `\nEJECUCIÓN_EN_ESTA_PETICIÓN (solo lectura; no inventes):\n${execStr}\n` : ""}`;
 }
