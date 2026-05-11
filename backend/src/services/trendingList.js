@@ -46,6 +46,7 @@ function normalizeTrendingEntry(mint, market) {
   return {
     mint,
     symbol: market.symbol,
+    imageUrl: market.imageUrl || market.logoURI || null,
     price: Number(market.price || 0),
     change: Number(market.priceChange24h || 0),
     volume24h: Number(market.volume24h || 0),

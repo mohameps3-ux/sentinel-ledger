@@ -245,7 +245,13 @@ function buildMarketDataFromDex(address, data) {
         symbol: bestPair.baseToken?.symbol,
         websites: socials.websites || [],
         socials: [socials.twitter, socials.telegram, socials.discord].filter(Boolean)
-      })
+      }),
+      imageUrl:
+        bestPair.baseToken?.imageUrl ||
+        bestPair.baseToken?.logoURI ||
+        bestPair.info?.imageUrl ||
+        bestPair.info?.image ||
+        null
     },
     bestPair
   };
@@ -304,7 +310,8 @@ function buildMarketDataFromBirdeye(address, row) {
       symbol,
       websites,
       socials: [twitter, telegram, discord].filter(Boolean)
-    })
+    }),
+    imageUrl: row.logoURI || row.logoUri || row.image || row.imageUrl || row.icon || null
   };
   if (!marketData.symbol || (!marketData.price && !marketData.volume24h && !marketData.liquidity)) return null;
   return marketData;

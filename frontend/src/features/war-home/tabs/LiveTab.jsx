@@ -14,6 +14,7 @@ import {
 } from "@/lib/signalUtils";
 import { redFlagsForSignal } from "@/lib/redFlags";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
+import { TokenCardAvatar } from "../../../../components/home/TokenCardAvatar";
 import { RealtimeTokenCardShell } from "../../../../components/home/RealtimeTokenCardShell";
 import { RulePerformanceBadge } from "../../../../components/signals/RulePerformanceBadge";
 import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../../lib/terminalLinks";
@@ -244,13 +245,21 @@ export function LiveTab({
             const warAc = warActionBadgeClass(safeAction);
             return (
               <>
-                <div className="flex items-start justify-between gap-2">
-                  <p
-                    className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight min-w-0"
-                    title={symbolMetaTitle}
-                  >
-                    ${sig.symbol}
-                  </p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <TokenCardAvatar
+                      tokenLike={{ ...sig, ...sig._api }}
+                      mint={sig.mint}
+                      size={28}
+                      variant={isHeatFill ? "heat" : "live"}
+                    />
+                    <p
+                      className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight min-w-0"
+                      title={symbolMetaTitle}
+                    >
+                      ${sig.symbol}
+                    </p>
+                  </div>
                   <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
                     {isHeatFill ? (
                       <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-amber-500/45 bg-amber-500/15 text-amber-100/95 war-badge">
@@ -271,54 +280,67 @@ export function LiveTab({
           }
 
           return (
-          <>
-        {displayNarrative ? (
-          <div className={`sentinel-narrative ${severityClass}`}>{displayNarrative}</div>
-        ) : null}
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1 mb-0 flex-wrap">
-              <RankBadge rank={rankInfo.rank} />
-              <RankDeltaChip delta={rankInfo.delta} isNew={rankInfo.isNew} />
-              {isHeatFill ? (
-                <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-amber-500/45 bg-amber-500/15 text-amber-100/95">
-                  {t("war.live.badgeHeat")}
+            <>
+              {displayNarrative ? (
+                <div className={`sentinel-narrative ${severityClass}`}>{displayNarrative}</div>
+              ) : null}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <TokenCardAvatar
+                    tokenLike={{ ...sig, ...sig._api }}
+                    mint={sig.mint}
+                    size={32}
+                    variant={isHeatFill ? "heat" : "live"}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1 mb-0 flex-wrap">
+                      <RankBadge rank={rankInfo.rank} />
+                      <RankDeltaChip delta={rankInfo.delta} isNew={rankInfo.isNew} />
+                      {isHeatFill ? (
+                        <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-amber-500/45 bg-amber-500/15 text-amber-100/95">
+                          {t("war.live.badgeHeat")}
+                        </span>
+                      ) : (
+                        <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-emerald-500/45 bg-emerald-500/12 text-emerald-100/95">
+                          {t("war.live.badgeSignal")}
+                        </span>
+                      )}
+                    </div>
+                    <p
+                      className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight"
+                      title={symbolMetaTitle}
+                    >
+                      ${sig.symbol}
+                    </p>
+                    {hasPx || hasChg ? (
+                      <div
+                        className={`mt-0.5 flex items-baseline justify-between gap-2 text-[10px] font-mono leading-tight ${
+                          quotesPricesFetching ? "opacity-90" : ""
+                        }`}
+                      >
+                        <span className="text-sl-text/95 tabular-nums truncate min-w-0">
+                          {hasPx ? (
+                            <AnimatedNumber value={px} prefix="$" decimalPlaces={px < 0.01 ? 8 : 6} />
+                          ) : (
+                            <span className="text-sl-muted">—</span>
+                          )}
+                        </span>
+                        {hasChg ? (
+                          <span className={`shrink-0 tabular-nums ${chg >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                            <AnimatedNumber value={chg} decimalPlaces={2} prefix={chg >= 0 ? "+" : ""} suffix="%" />
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+                <span
+                  className={`shrink-0 self-start text-[8px] max-w-[4.75rem] text-right leading-tight px-1.5 py-0.5 rounded border line-clamp-1 ${confidenceTone(toneScore)}`}
+                  title={confidenceTr(toneScore)}
+                >
+                  {confidenceTr(toneScore)}
                 </span>
-              ) : (
-                <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-emerald-500/45 bg-emerald-500/12 text-emerald-100/95">
-                  {t("war.live.badgeSignal")}
-                </span>
-              )}
-            </div>
-            <p className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight" title={symbolMetaTitle}>${sig.symbol}</p>
-            {(hasPx || hasChg) ? (
-              <div
-                className={`mt-0.5 flex items-baseline justify-between gap-2 text-[10px] font-mono leading-tight ${
-                  quotesPricesFetching ? "opacity-90" : ""
-                }`}
-              >
-                <span className="text-sl-text/95 tabular-nums truncate min-w-0">
-                  {hasPx ? (
-                    <AnimatedNumber value={px} prefix="$" decimalPlaces={px < 0.01 ? 8 : 6} />
-                  ) : (
-                    <span className="text-sl-muted">—</span>
-                  )}
-                </span>
-                {hasChg ? (
-                  <span className={`shrink-0 tabular-nums ${chg >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                    <AnimatedNumber value={chg} decimalPlaces={2} prefix={chg >= 0 ? "+" : ""} suffix="%" />
-                  </span>
-                ) : null}
               </div>
-            ) : null}
-          </div>
-          <span
-            className={`shrink-0 text-[8px] max-w-[4.75rem] text-right leading-tight px-1.5 py-0.5 rounded border line-clamp-1 ${confidenceTone(toneScore)}`}
-            title={confidenceTr(toneScore)}
-          >
-            {confidenceTr(toneScore)}
-          </span>
-        </div>
 
         <div className="space-y-1">
           <div className="h-1 rounded-full bg-sl-card overflow-hidden ring-1 ring-white/8">

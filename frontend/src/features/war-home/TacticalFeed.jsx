@@ -4,6 +4,7 @@ import { HistoryTab } from "./tabs/HistoryTab";
 import { HotTab } from "./tabs/HotTab";
 import { LiveTab } from "./tabs/LiveTab";
 import { TerminalActionIcons } from "../../../components/terminal/TerminalActionIcons";
+import { TokenCardAvatar } from "../../../components/home/TokenCardAvatar";
 import { isProbableSolanaMint } from "../../../lib/solanaMint.mjs";
 import { useLocale } from "../../../contexts/LocaleContext";
 
@@ -60,7 +61,8 @@ export default function TacticalFeed({
         mint: row.mint,
         label: row.symbol || row.ticker || row.name || "TOKEN",
         source: row._liveSource === "hot_fill" || row.heatScore != null || row.change != null ? "HOT" : "LIVE",
-        score: scoreOutlier(row)
+        score: scoreOutlier(row),
+        tokenLike: { ...row, ...row._api }
       }))
       .filter((row) => {
         if (seen.has(row.mint)) return false;
@@ -117,10 +119,18 @@ export default function TacticalFeed({
                     }}
                     className="border border-white/[0.08] bg-black/25 p-3 text-left hover:border-blue-400/45 hover:bg-blue-500/[0.06] transition"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-sl-text">{row.label}</p>
-                        <p className="font-mono text-[10px] text-sl-muted">{row.mint.slice(0, 5)}…{row.mint.slice(-5)}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <TokenCardAvatar
+                          tokenLike={row.tokenLike}
+                          mint={row.mint}
+                          size={34}
+                          variant={row.source === "HOT" ? "hot" : "live"}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-sl-text">{row.label}</p>
+                          <p className="font-mono text-[10px] text-sl-muted">{row.mint.slice(0, 5)}…{row.mint.slice(-5)}</p>
+                        </div>
                       </div>
                       <span className="rounded border border-sl-border bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-mono text-sl-sub">
                         {row.source}

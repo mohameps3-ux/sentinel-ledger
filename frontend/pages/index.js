@@ -257,6 +257,7 @@ function mapHotTrendToLiveFill(row, heatContext) {
     token: {
       symbol: sym,
       mint,
+      imageUrl: row.imageUrl || null,
       price: (() => {
         const p = Number(row.price);
         return Number.isFinite(p) && p > 0 ? p : undefined;
@@ -292,7 +293,8 @@ function mapHotTrendToLiveFill(row, heatContext) {
       rulePerformance: row.rulePerformance || null,
       createdAt: row.createdAt || new Date().toISOString(),
       volume24h: Number(row.volume24h || 0),
-      change24h: Number(row.change ?? row.change24h ?? 0)
+      change24h: Number(row.change ?? row.change24h ?? 0),
+      imageUrl: row.imageUrl || null
     }
   };
 }
@@ -448,6 +450,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
           token: {
             symbol: sym,
             mint: c.tokenAddress,
+            imageUrl: c.imageUrl || null,
             price: Number.isFinite(spotPx) && spotPx > 0 ? spotPx : undefined,
             liquidity: liquidityFromApiRedFlags(c.redFlags),
             volume24h: Number(c.volume24h || 0),

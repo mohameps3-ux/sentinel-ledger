@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { ChevronsDown, ChevronsUp, Flame, TrendingUp } from "lucide-react";
 import { formatUsdWhole } from "../../../../lib/formatStable";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
+import { TokenCardAvatar } from "../../../../components/home/TokenCardAvatar";
 import { RealtimeTokenCardShell } from "../../../../components/home/RealtimeTokenCardShell";
 import { RulePerformanceBadge } from "../../../../components/signals/RulePerformanceBadge";
 import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../../lib/terminalLinks";
@@ -250,13 +251,16 @@ export function HotTab({
                     const warAc = warActionBadgeClass(safeAction);
                     return (
                       <>
-                        <div className="flex items-start justify-between gap-2">
-                          <p
-                            className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight min-w-0"
-                            title={symbolMetaTitle}
-                          >
-                            ${token?.symbol || "Loading"}
-                          </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <TokenCardAvatar tokenLike={token} mint={token?.mint} size={28} variant="hot" />
+                            <p
+                              className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight min-w-0"
+                              title={symbolMetaTitle}
+                            >
+                              ${token?.symbol || "Loading"}
+                            </p>
+                          </div>
                           <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-orange-500/45 bg-orange-500/15 text-orange-100/95 war-badge shrink-0">
                             HOT TRACKED
                           </span>
@@ -273,19 +277,27 @@ export function HotTab({
                 {displayNarrative ? (
                   <div className={`sentinel-narrative ${severityClass}`}>{displayNarrative}</div>
                 ) : null}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    {token?.mint ? (
-                      <div className="flex items-center gap-1 mb-0">
-                        <RankBadge rank={trendingRank.rank} />
-                        <RankDeltaChip delta={trendingRank.delta} isNew={trendingRank.isNew} />
-                      </div>
-                    ) : null}
-                    <p className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight" title={symbolMetaTitle}>
-                      {token?.symbol || "Loading"}
-                    </p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <TokenCardAvatar tokenLike={token} mint={token?.mint} size={32} variant="hot" />
+                    <div className="min-w-0 flex-1">
+                      {token?.mint ? (
+                        <div className="flex items-center gap-1 mb-0">
+                          <RankBadge rank={trendingRank.rank} />
+                          <RankDeltaChip delta={trendingRank.delta} isNew={trendingRank.isNew} />
+                        </div>
+                      ) : null}
+                      <p
+                        className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight"
+                        title={symbolMetaTitle}
+                      >
+                        {token?.symbol || "Loading"}
+                      </p>
+                    </div>
                   </div>
-                  <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border ${gradeClass(token?.grade || "C")}`}>
+                  <span
+                    className={`shrink-0 self-start text-[9px] font-bold px-1.5 py-0.5 rounded border ${gradeClass(token?.grade || "C")}`}
+                  >
                     {token?.grade || "…"}
                   </span>
                 </div>

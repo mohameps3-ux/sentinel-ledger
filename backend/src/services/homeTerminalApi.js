@@ -942,6 +942,7 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
     out.push({
       token: symbol.startsWith("$") ? symbol : `$${symbol}`,
       tokenAddress: mint,
+      imageUrl: md?.imageUrl || md?.logoURI || null,
       smartWallets: walletCount,
       sentinelScore,
       spotPriceUsd: Number.isFinite(spotPx) && spotPx > 0 ? spotPx : null,
@@ -1343,7 +1344,7 @@ async function getLatestSignalsFeedCached(supabase, limit, strategy) {
   if (!supabase) {
     throw new Error("supabase_unconfigured");
   }
-  const key = `terminal:signals:latest:v6:${limit}:${strategy}`;
+  const key = `${SIGNALS_LATEST_CACHE_KEY_PREFIX}${limit}:${strategy}`;
   let payload;
   let cache;
   try {
@@ -1399,7 +1400,7 @@ async function getSmartWalletsTopCached(supabase, limit) {
 }
 
 async function getHotTokensCached(limit, supabase) {
-  const key = `terminal:tokens:hot:v3:${limit}`;
+  const key = `terminal:tokens:hot:v4:${limit}`;
   const { payload, cache } = await withCache(key, () => buildHotTokens({ limit, supabase }), HOT_CACHE_TTL_SEC);
   const out = { ...payload, meta: { ...(payload.meta || {}), cache } };
   recordFreshness("tokensHot", out?.meta || {});

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useMarketStore } from "@/lib/store/marketStore";
 import { useSortedTokens } from "@/hooks/useSortedTokens";
 import { narrativeFromData } from "@/lib/narrativeFromData";
+import { TokenCardAvatar } from "./TokenCardAvatar";
 
 function SmartMoneyFlow({ tok }) {
   if (!tok) return null;
@@ -195,23 +196,6 @@ function getPatternChips(tok) {
   return chips.slice(0, 3);
 }
 
-function tokenImageUrl(tok) {
-  return (
-    tok.imageUrl ??
-    tok.image ??
-    tok.logoURI ??
-    tok.icon ??
-    tok.tokenImage ??
-    tok.token?.logoURI ??
-    tok.token?.image ??
-    tok.token?.imageUrl ??
-    tok._api?.logoURI ??
-    tok._api?.imageUrl ??
-    tok._api?.image ??
-    null
-  );
-}
-
 /** Narrative for one mint only — avoids war layout subscribing to the full narratives map. */
 const WarNarrativeSnippet = React.memo(function WarNarrativeSnippet({ tok, maxLen }) {
   const mint = tok.mint ?? tok.address;
@@ -298,7 +282,6 @@ const OpportunityRow = React.memo(function OpportunityRow({
     return line != null && line !== "" ? String(line) : "";
   })();
   const chips = getPatternChips(tok);
-  const imgUrl = tokenImageUrl(tok);
   const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
   const change = tok.priceChange24h ?? tok.change24h ?? 0;
 
@@ -352,16 +335,7 @@ const OpportunityRow = React.memo(function OpportunityRow({
       <div className="war-opp-rank">{rank}</div>
       <div className="war-opp-body">
         <div className="war-opp-top">
-          {imgUrl ? (
-            <img
-              src={imgUrl}
-              alt=""
-              className="war-token-img-sm"
-              onError={(e) => {
-                e.target.style.display = "none";
-              }}
-            />
-          ) : null}
+          <TokenCardAvatar tokenLike={tok} mint={mint} size={28} variant="neutral" />
           <span className={`war-intent-badge ${intent.cls}`}>{intent.label}</span>
           <span className="war-opp-symbol">
             ${tok.symbol ?? tok.name ?? mint.slice(0, 6)}
