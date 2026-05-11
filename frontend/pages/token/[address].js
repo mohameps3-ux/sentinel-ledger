@@ -716,7 +716,10 @@ export default function TokenPage() {
     );
   }
 
-  const { market, analysis, private: privateData } = token;
+  // Avoid `const { ..., private: x } = token` — `private` is reserved; some prod bundlers/SSR choke on it (Vercel 500).
+  const market = token.market;
+  const analysis = token.analysis;
+  const privateData = token.private;
   const tokenData = token;
   const marketDerived = tokenData?.market ?? tokenData ?? {};
   const score = tokenData?.score ?? tokenData?.sentinel ?? analysis ?? {};
