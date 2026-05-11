@@ -2,8 +2,9 @@
 
 /**
  * Ops-only tooling (OMNI_BOT_OPS_KEY): repo file read, read-only SQL (INSERT/UPDATE/DELETE/DDL
- * rejected by validateReadOnlySelect), GitHub workflow_dispatch (no Vercel/Railway deploy unless
- * your workflow implements it). See backend/.env.example for GITHUB_* and OPS_REPO_ROOT.
+ * rejected by validateReadOnlySelect), GitHub workflow_dispatch, atomic multi-file commit
+ * (POST /github/commit; path whitelist + confirm). Vercel/Railway only if your Actions workflow
+ * implements deploy. See backend/.env.example for GITHUB_* OPS_GITHUB_WRITE_ALLOW_PREFIXES OPS_REPO_ROOT.
  */
 
 const fs = require("fs");
@@ -18,6 +19,16 @@ const router = express.Router();
 const MAX_FILE_BYTES = 280_000;
 const MAX_SQL_LEN = 8000;
 const MAX_SQL_ROWS = 200;
+const GITHUB_COMMIT_MAX_FILES = 25;
+const GITHUB_COMMIT_MAX_BYTES_PER_FILE = 200_000;
+
+const writeToolsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 8,
+  message: { ok: false, error: "too_many_requests" },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 function requireOpsKey(req, res, next) {
   const expected = process.env.OMNI_BOT_OPS_KEY;
@@ -155,6 +166,109 @@ function getGithubToken() {
   return String(process.env.GITHUB_TOKEN || process.env.GH_TOKEN || process.env.OPS_GITHUB_TOKEN || "").trim();
 }
 
+function getGithubWriteAllowPrefixes() {
+  const raw = String(process.env.OPS_GITHUB_WRITE_ALLOW_PREFIXES || "").trim();
+  if (raw) {
+    return raw
+      .split(",")
+      .map((s) => s.trim().replace(/\\/g, "/").replace(/^\/+/, ""))
+      .filter(Boolean);
+  }
+  return ["frontend/", "backend/src/", "docs/", ".github/workflows/"];
+}
+
+function normalizeGithubWritePath(p) {
+  return String(p || "")
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "");
+}
+
+function isGithubWritePathAllowed(rel) {
+  const filePath = normalizeGithubWritePath(rel);
+  if (!filePath || filePath.length > 500) return { ok: false, error: "bad_path" };
+  if (filePath.includes("..") || filePath.split("/").includes("..")) return { ok: false, error: "path_traversal" };
+  const lower = filePath.toLowerCase();
+  const segments = filePath.split("/");
+  for (const seg of segments) {
+    if (seg === "node_modules" || seg === ".next" || seg === "dist" || seg === ".git") {
+      return { ok: false, error: "forbidden_segment", segment: seg };
+    }
+    if (seg.toLowerCase().startsWith(".env") || /^\.env(\.|$)/i.test(seg)) {
+      return { ok: false, error: "forbidden_env_path" };
+    }
+  }
+  if (lower.includes("/.env") || lower.startsWith(".env")) return { ok: false, error: "forbidden_env_path" };
+  if (/\.(pem|key|p12|pfx)$/i.test(filePath)) return { ok: false, error: "forbidden_secret_extension" };
+  const prefixes = getGithubWriteAllowPrefixes();
+  const allowed = prefixes.some((pre) => filePath === pre || filePath.startsWith(pre));
+  if (!allowed) return { ok: false, error: "path_not_whitelisted", allowedPrefixes: prefixes };
+  return { ok: true, path: filePath };
+}
+
+function isSafeBranchName(b) {
+  const s = String(b || "").trim();
+  if (!s || s.length > 200) return false;
+  if (s.includes("..") || /\s/.test(s)) return false;
+  return /^[\w./-]+$/.test(s);
+}
+
+async function githubRestRaw(method, pathFromApiRoot, body) {
+  const token = getGithubToken();
+  if (!token) return { ok: false, status: 0, error: "GITHUB_TOKEN_not_configured" };
+  const url = `https://api.github.com${pathFromApiRoot.startsWith("/") ? pathFromApiRoot : `/${pathFromApiRoot}`}`;
+  const headers = {
+    Accept: "application/vnd.github+json",
+    Authorization: `Bearer ${token}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "sentinel-ledger-ops-tools"
+  };
+  if (body !== undefined && body !== null) headers["Content-Type"] = "application/json";
+  const r = await fetch(url, {
+    method,
+    headers,
+    body: body !== undefined && body !== null ? JSON.stringify(body) : undefined
+  });
+  const text = await r.text();
+  let json = null;
+  if (text) {
+    try {
+      json = JSON.parse(text);
+    } catch (_) {
+      json = { _raw: text.slice(0, 1500) };
+    }
+  }
+  return { ok: r.ok, status: r.status, json, text: text.slice(0, 4000) };
+}
+
+async function githubGetDefaultBranch(repo) {
+  const path = `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}`;
+  const r = await githubRestRaw("GET", path, null);
+  if (!r.ok) return { ok: false, ...r };
+  const db = r.json?.default_branch;
+  if (!db) return { ok: false, error: "default_branch_missing", json: r.json };
+  return { ok: true, defaultBranch: db };
+}
+
+async function githubGetRefSha(repo, refName) {
+  const enc = refName.replace(/^refs\//, "");
+  const path = `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/git/ref/heads/${encodeURIComponent(enc)}`;
+  const r = await githubRestRaw("GET", path, null);
+  if (!r.ok) return { ok: false, ...r, error: "ref_not_found" };
+  const sha = r.json?.object?.sha;
+  if (!sha) return { ok: false, error: "ref_sha_missing", json: r.json };
+  return { ok: true, sha };
+}
+
+async function githubGetCommit(repo, commitSha) {
+  const path = `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/git/commits/${commitSha}`;
+  const r = await githubRestRaw("GET", path, null);
+  if (!r.ok) return { ok: false, ...r };
+  const treeSha = r.json?.tree?.sha;
+  if (!treeSha) return { ok: false, error: "commit_tree_missing", json: r.json };
+  return { ok: true, treeSha, commit: r.json };
+}
+
 router.post("/repo/read", requireOpsKey, toolsLimiter, (req, res) => {
   try {
     const rel = req.body?.path ?? req.body?.file;
@@ -280,10 +394,217 @@ router.post("/github/workflow", requireOpsKey, toolsLimiter, async (req, res) =>
       dispatched: true,
       repository: `${repo.owner}/${repo.repo}`,
       workflow,
-      ref
+      ref,
+      inputs
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e?.message || "github_dispatch_exception" });
+  }
+});
+
+router.post("/github/commit", requireOpsKey, writeToolsLimiter, async (req, res) => {
+  try {
+    if (!req.body?.confirm) {
+      return res.status(400).json({
+        ok: false,
+        error: "confirm_required",
+        hint: "Set confirm:true to create a commit on GitHub (writes remote repo)."
+      });
+    }
+    if (!getGithubToken()) return res.status(503).json({ ok: false, error: "GITHUB_TOKEN_not_configured" });
+
+    const repo = parseGithubRepo();
+    if (!repo) return res.status(503).json({ ok: false, error: "GITHUB_REPOSITORY_not_configured" });
+
+    const files = Array.isArray(req.body.files) ? req.body.files : [];
+    if (files.length === 0 || files.length > GITHUB_COMMIT_MAX_FILES) {
+      return res.status(400).json({
+        ok: false,
+        error: "files_count_invalid",
+        min: 1,
+        max: GITHUB_COMMIT_MAX_FILES
+      });
+    }
+
+    const branch = String(req.body.branch || "").trim();
+    if (!isSafeBranchName(branch)) {
+      return res.status(400).json({
+        ok: false,
+        error: "invalid_branch",
+        hint: "Use a branch name like feature/ops-auto-123 (letters, numbers, /, -, _)."
+      });
+    }
+
+    const message = String(req.body.message || "").trim();
+    if (!message || message.length > 500) {
+      return res.status(400).json({ ok: false, error: "message_required", maxLen: 500 });
+    }
+
+    const meta = await githubGetDefaultBranch(repo);
+    if (!meta.ok) return res.status(502).json({ ok: false, error: "github_repo_meta_failed", detail: meta });
+
+    const baseBranch = String(req.body.baseBranch || meta.defaultBranch).trim();
+    const updateExistingBranch = Boolean(req.body.updateExistingBranch);
+    const allowDirectPushDefault = Boolean(req.body.allowDirectPushDefault);
+
+    if (branch === baseBranch && !allowDirectPushDefault) {
+      return res.status(400).json({
+        ok: false,
+        error: "cannot_commit_directly_to_default",
+        hint: "Use a feature branch + createPR, or set allowDirectPushDefault:true only for intentional fast-forward to default."
+      });
+    }
+
+    const treeEntries = [];
+    for (const f of files) {
+      const rel = f?.path ?? f?.file;
+      const check = isGithubWritePathAllowed(rel);
+      if (!check.ok) {
+        return res.status(400).json({ ok: false, error: "path_validation_failed", path: rel, reason: check });
+      }
+      const action = String(f.action || "update").toLowerCase();
+      if (!["create", "update", "delete"].includes(action)) {
+        return res.status(400).json({ ok: false, error: "invalid_action", path: check.path, action });
+      }
+      if (action === "delete") {
+        treeEntries.push({ path: check.path, mode: "100644", type: "blob", sha: null });
+      } else {
+        const content = f.content == null ? "" : String(f.content);
+        if (content.length > GITHUB_COMMIT_MAX_BYTES_PER_FILE) {
+          return res.status(413).json({
+            ok: false,
+            error: "file_too_large",
+            path: check.path,
+            maxBytes: GITHUB_COMMIT_MAX_BYTES_PER_FILE
+          });
+        }
+        treeEntries.push({ path: check.path, mode: "100644", type: "blob", content });
+      }
+    }
+
+    const branchRefPath = `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/git/ref/heads/${encodeURIComponent(branch)}`;
+    const branchHeadRes = await githubRestRaw("GET", branchRefPath, null);
+    const branchExists = branchHeadRes.ok;
+
+    let parentSha;
+    if (branchExists) {
+      if (branch !== baseBranch && !updateExistingBranch) {
+        return res.status(409).json({
+          ok: false,
+          error: "branch_already_exists",
+          hint: "Set updateExistingBranch:true to stack a new commit on that branch."
+        });
+      }
+      parentSha = branchHeadRes.json?.object?.sha;
+      if (!parentSha) return res.status(502).json({ ok: false, error: "branch_ref_missing_sha" });
+    } else {
+      const baseRef = await githubGetRefSha(repo, baseBranch);
+      if (!baseRef.ok) {
+        return res.status(400).json({ ok: false, error: "base_branch_not_found", baseBranch, detail: baseRef });
+      }
+      parentSha = baseRef.sha;
+    }
+
+    const parentCommit = await githubGetCommit(repo, parentSha);
+    if (!parentCommit.ok) return res.status(502).json({ ok: false, error: "parent_commit_failed", detail: parentCommit });
+
+    const treeUrl = `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/git/trees`;
+    const treeRes = await githubRestRaw("POST", treeUrl, {
+      base_tree: parentCommit.treeSha,
+      tree: treeEntries
+    });
+    if (!treeRes.ok) {
+      return res.status(502).json({
+        ok: false,
+        error: "github_tree_failed",
+        status: treeRes.status,
+        message: treeRes.json?.message || treeRes.text
+      });
+    }
+    const newTreeSha = treeRes.json?.sha;
+    if (!newTreeSha) return res.status(502).json({ ok: false, error: "tree_sha_missing", json: treeRes.json });
+
+    const commitUrl = `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/git/commits`;
+    const commitRes = await githubRestRaw("POST", commitUrl, {
+      message,
+      tree: newTreeSha,
+      parents: [parentSha]
+    });
+    if (!commitRes.ok) {
+      return res.status(502).json({
+        ok: false,
+        error: "github_commit_failed",
+        status: commitRes.status,
+        message: commitRes.json?.message || commitRes.text
+      });
+    }
+    const newCommitSha = commitRes.json?.sha;
+    if (!newCommitSha) return res.status(502).json({ ok: false, error: "commit_sha_missing" });
+
+    if (branchExists) {
+      const patchUrl = `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/git/refs/heads/${encodeURIComponent(branch)}`;
+      const patchRes = await githubRestRaw("PATCH", patchUrl, { sha: newCommitSha });
+      if (!patchRes.ok) {
+        return res.status(502).json({ ok: false, error: "github_ref_update_failed", detail: patchRes });
+      }
+    } else {
+      const createUrl = `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/git/refs`;
+      const createRes = await githubRestRaw("POST", createUrl, {
+        ref: `refs/heads/${branch}`,
+        sha: newCommitSha
+      });
+      if (!createRes.ok) {
+        return res.status(502).json({ ok: false, error: "github_ref_create_failed", detail: createRes });
+      }
+    }
+
+    let pr = null;
+    let prSkipped = null;
+    const wantPr = Boolean(req.body.createPR);
+    if (wantPr) {
+      if (branch === baseBranch) {
+        prSkipped = "createPR_ignored_same_as_base";
+      } else {
+        const prTitle = String(req.body.prTitle || message).slice(0, 300);
+        const prBody = String(req.body.prBody || "").slice(0, 20000);
+        const pullsUrl = `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/pulls`;
+        const prRes = await githubRestRaw("POST", pullsUrl, {
+          title: prTitle,
+          head: branch,
+          base: baseBranch,
+          body: prBody || undefined
+        });
+        if (!prRes.ok) {
+          pr = {
+            created: false,
+            error: prRes.json?.message || prRes.text,
+            status: prRes.status
+          };
+        } else {
+          pr = {
+            created: true,
+            number: prRes.json?.number,
+            url: prRes.json?.html_url,
+            id: prRes.json?.id
+          };
+        }
+      }
+    }
+
+    return res.json({
+      ok: true,
+      committed: true,
+      repository: `${repo.owner}/${repo.repo}`,
+      branch,
+      baseBranch,
+      commitSha: newCommitSha,
+      treeSha: newTreeSha,
+      paths: treeEntries.map((e) => e.path),
+      pr,
+      prSkipped
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || "github_commit_exception" });
   }
 });
 

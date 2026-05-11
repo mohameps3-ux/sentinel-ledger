@@ -124,9 +124,17 @@ const OPS_CONSOLE_LIMITS = {
   },
   deploy: {
     vercelRailway:
-      "No hay deploy automático a Vercel ni Railway desde este agente ni desde ops tools. Puedes dar checklist al operador o describir un workflow; si existe en GitHub, POST /api/v1/ops/tools/github/workflow solo dispara workflow_dispatch (no garantiza pipeline de deploy hasta que el YAML lo defina).",
+      "No hay API dedicada Vercel/Railway en ops tools. Cadena típica: POST /api/v1/ops/tools/github/commit (rama + opcional createPR) → merge humano o automático → POST /api/v1/ops/tools/github/workflow con deploy-production.yml si existe en el repo.",
     checklistHint:
-      "Push a rama → CI → merge → deploy según proyecto; credenciales y dashboards son acción humana."
+      "workflow_dispatch no sustituye secrets en Vercel/Railway; el YAML debe definir deploy real."
+  },
+  githubCodeWrite: {
+    endpoint: "POST /api/v1/ops/tools/github/commit",
+    requires: "confirm:true, GITHUB_TOKEN (repo contents:write), GITHUB_REPOSITORY, body.branch, body.message, body.files[]",
+    whitelist:
+      "Solo rutas bajo prefijos OPS_GITHUB_WRITE_ALLOW_PREFIXES (por defecto frontend/, backend/src/, docs/, .github/workflows/). Bloqueados: .env*, segmentos node_modules/.next/.git, extensiones tipo .pem.",
+    behavior:
+      "Un commit Git atómico (árbol) sobre rama nueva desde baseBranch o encima de rama existente con updateExistingBranch. createPR abre PR hacia baseBranch. allowDirectPushDefault:true solo para fast-forward explícito a la rama por defecto."
   },
   bulkDataEdits: {
     rule:
@@ -364,8 +372,11 @@ EJECUCIÓN AUTOMÁTICA (solo lo que este backend engancha hoy; el resto = checkl
 
 LO QUE ESTA CONSOLA **NO** PUEDE HACER (leyes duras; también en JSON como **opsConsoleLimits**):
 - **SQL de escritura**: \`/api/v1/ops/tools/sql\` solo acepta **SELECT**. INSERT/UPDATE/DELETE y el resto de DML/DDL están **bloqueados** en el servidor — no prometas ejecutarlos ni “simularlos”.
-- **Deploy automático Vercel/Railway**: **no** existe desde aquí. Ofrece checklist, PR, o \`github/workflow\` si el repo tiene un workflow que despliegue; el disparo no sustituye credenciales ni dashboard.
+- **Deploy Vercel/Railway directo**: no hay token Vercel/Railway en ops; la vía es **GitHub Actions** (\`github/workflow\`) o pipelines que **tú** definas. Tras código: \`github/commit\` + PR + workflow si aplica.
 - **Edición masiva de tablas**: no hay herramienta de batch DML. Propón SQL **explícito** para revisión humana y ejecución **fuera** de ops/sql, o migraciones; no asumas aprobación implícita del operador.
+
+LO QUE **SÍ** PUEDE (GitHub, con confirmación explícita; ver **opsConsoleLimits.githubCodeWrite**):
+- **Commits remotos atómicos**: \`POST /api/v1/ops/tools/github/commit\` con \`confirm:true\`, archivos bajo whitelist, rama feature (o allowDirectPushDefault con intención explícita), opcional \`createPR\`.
 
 ARQUITECTURA MOTOR (recordatorio):
 - Reglas: whale_accumulation, liquidity_shock, cluster_buy, new_wallet_confidence, velocity_spike.
@@ -386,9 +397,10 @@ HERRAMIENTAS HTTP (misma cabecera x-ops-key que este endpoint; ver backend/src/r
 - POST /api/v1/ops/tools/sql — **solo lectura**: SELECT único; INSERT/UPDATE/DELETE y DDL están **bloqueados**. Preview: { "preview": true, "template": "ops_health_counts" } o { "preview": true, "sql": "SELECT 1" }.
   Ejecutar lectura: { "preview": false, "confirm": true, "template": "..." } o { "preview": false, "confirm": true, "sql": "SELECT ..." } (sin ; ni comentarios).
   Plantillas: ops_health_counts | signal_performance_status_7d | outcomes_pending_sample (params opcional { "hours": 24 }).
-- POST /api/v1/ops/tools/github/workflow — body: { "confirm": true, "workflow": "nombre.yml", "ref": "main", "inputs": {} } — workflow_dispatch (GITHUB_TOKEN + GITHUB_REPOSITORY). El workflow puede hacer commit/push según lo que tú definas en GitHub Actions.
+- POST /api/v1/ops/tools/github/workflow — body: { "confirm": true, "workflow": "deploy-production.yml", "ref": "main", "inputs": { "environment": "production", "service": "frontend" } } — workflow_dispatch (GITHUB_TOKEN + GITHUB_REPOSITORY). El YAML debe existir en .github/workflows/.
+- POST /api/v1/ops/tools/github/commit — body: { "confirm": true, "branch": "feature/ops-auto-123", "baseBranch": "main", "message": "feat: …", "files": [ { "path": "frontend/pages/foo.js", "content": "…", "action": "create|update|delete" } ], "createPR": true, "prTitle": "…", "prBody": "…" }. Opcional: updateExistingBranch, allowDirectPushDefault (peligro). Rutas solo bajo whitelist (env OPS_GITHUB_WRITE_ALLOW_PREFIXES).
 
-CONTEXTO LIVE (JSON; es parcial — no es el repo completo). Incluye **frontendSurface** (UX/rutas/API) y **opsConsoleLimits** (SQL solo SELECT, sin deploy Vercel/Railway desde aquí, sin DML masivo).
+CONTEXTO LIVE (JSON; es parcial — no es el repo completo). Incluye **frontendSurface**, **opsConsoleLimits** (SQL solo SELECT; github commit + workflow; sin DML; sin API Vercel/Railway nativa).
 ${ctxStr}
 ${execStr ? `\nEJECUCIÓN_EN_ESTA_PETICIÓN (solo lectura; no inventes):\n${execStr}\n` : ""}`;
 }
