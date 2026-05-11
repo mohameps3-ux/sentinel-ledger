@@ -434,7 +434,7 @@ PRECISIÓN MÉTRICA (sentinelMetricLegend en JSON):
 CIERRE: 2–4 bullets “Qué mirar ahora”.
 
 HERRAMIENTAS HTTP (misma cabecera x-ops-key que este endpoint; ver backend/src/routes/opsTools.js):
-- POST /api/v1/ops/tools/repo/read — body: { "path": "frontend/pages/index.js", "source": "local"|"github"|"auto", "ref": "main" }. `github`/`auto` usan API GitHub (mismas credenciales que commit). `auto` + env OPS_REPO_READ_FALLBACK_GITHUB=1 intenta disco y luego GitHub si 404.
+- POST /api/v1/ops/tools/repo/read — body: { "path": "frontend/pages/index.js", "source": "local"|"github"|"auto", "ref": "main" }. Valores github y auto usan API GitHub (mismas credenciales que commit). Modo auto + env OPS_REPO_READ_FALLBACK_GITHUB=1 intenta disco y luego GitHub si 404.
 - POST /api/v1/ops/tools/sql — **solo lectura**: SELECT único; INSERT/UPDATE/DELETE y DDL están **bloqueados**. Preview: { "preview": true, "template": "ops_health_counts" } o { "preview": true, "sql": "SELECT 1" }.
   Ejecutar lectura: { "preview": false, "confirm": true, "template": "..." } o { "preview": false, "confirm": true, "sql": "SELECT ..." } (sin ; ni comentarios).
   Plantillas: ops_health_counts | signal_performance_status_7d | outcomes_pending_sample (params opcional { "hours": 24 }).
