@@ -18,7 +18,7 @@ function isMintParam(s) {
   return /^[1-9A-HJ-NP-Za-km-z]+$/.test(t);
 }
 
-export async function getServerSideProps(context) {
+export function getServerSideProps(context) {
   const raw = context.params?.address;
   const mint = Array.isArray(raw) ? raw[0] : raw;
   if (typeof mint !== "string") return { notFound: true };
