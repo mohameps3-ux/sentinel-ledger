@@ -7,7 +7,8 @@
 
 const express = require("express");
 const rateLimit = require("express-rate-limit");
-const { getCalibrationSnapshot } = require("../services/signalCalibrator");
+const { runCalibrationOnce, getCalibrationSnapshot } = require("../services/signalCalibrator");
+const { runSignalGateTunerTick } = require("../jobs/signalGateTunerCron");
 const { getSupabase } = require("../lib/supabase");
 
 const router = express.Router();
@@ -118,72 +119,154 @@ async function buildOpsContext() {
   };
 }
 
-function buildSystemPrompt(ctx) {
+function summarizeExecutionForPrompt(ran) {
+  if (!Array.isArray(ran) || ran.length === 0) return null;
+  return ran.map((r) => {
+    if (r?.action === "signal_performance_calibration_run") {
+      const d = r.detail || {};
+      const props = Array.isArray(d.proposals) ? d.proposals.slice(0, 6) : [];
+      return {
+        action: r.action,
+        ok: r.ok,
+        reason: d.reason,
+        lookbackHours: d.lookbackHours,
+        proposalsPreview: props
+      };
+    }
+    if (r?.action === "signal_gate_tuner_run") {
+      const d = r.detail || {};
+      return {
+        action: r.action,
+        ok: r.ok && d.ok !== false,
+        ranAt: d.ranAt,
+        applied: d.applied,
+        reason: d.reason,
+        resolvedRows: d.resolvedRows,
+        adaptiveEnabled: d.adaptiveEnabled
+      };
+    }
+    return r;
+  });
+}
+
+/**
+ * Ejecución acotada en el mismo proceso que Ops: solo si el operador escribe
+ * `OK EJECUTAR` (o `OK EXECUTE`) + palabras clave explícitas en el mismo mensaje.
+ */
+async function maybeExecuteAuthorizedOps(message) {
+  const ran = [];
+  const m = String(message || "");
+  if (!/\bOK\s+EJECUTAR\b/i.test(m) && !/\bOK\s+EXECUTE\b/i.test(m)) {
+    return { ran };
+  }
+
+  const wantCal =
+    /\bcalibraci[oó]n\b/i.test(m) ||
+    /\bcalibrat/i.test(m) ||
+    /\bweights?\b/i.test(m) ||
+    /\bpesos?\b/i.test(m) ||
+    /\bsignal\s*weight/i.test(m);
+  const wantTuner =
+    /\btuner\b/i.test(m) ||
+    /\bgate\s*adapt/i.test(m) ||
+    /\badaptativ[oa]\b/i.test(m);
+
+  if (!wantCal && !wantTuner) {
+    ran.push({
+      action: "none",
+      ok: false,
+      detail: "faltan_palabras_clave",
+      hint: 'Ej.: "OK EJECUTAR calibración" o "OK EJECUTAR tuner"'
+    });
+    return { ran };
+  }
+
+  if (wantCal) {
+    try {
+      const out = await runCalibrationOnce({});
+      ran.push({ action: "signal_performance_calibration_run", ok: !!out?.ok, detail: out });
+    } catch (e) {
+      ran.push({
+        action: "signal_performance_calibration_run",
+        ok: false,
+        detail: { error: e?.message || String(e) }
+      });
+    }
+  }
+  if (wantTuner) {
+    try {
+      const out = await runSignalGateTunerTick();
+      ran.push({ action: "signal_gate_tuner_run", ok: true, detail: out });
+    } catch (e) {
+      ran.push({
+        action: "signal_gate_tuner_run",
+        ok: false,
+        detail: { error: e?.message || String(e) }
+      });
+    }
+  }
+  return { ran };
+}
+
+function buildSystemPrompt(ctx, executionSummary) {
   const ctxStr = JSON.stringify(ctx, null, 2);
-  return `You are the Sentinel Senior Architect Agent.
+  const execStr = executionSummary ? JSON.stringify(executionSummary, null, 2) : null;
+  return `Eres el Arquitecto Senior de Sentinel (consola interna de ops, no atención al público).
 
-You operate EXCLUSIVELY in the ops console. You are NOT a customer support bot.
-You are a senior on-chain intelligence engineer with deep knowledge of the entire Sentinel system.
+TONO Y ESTILO:
+- Habla en español de forma natural, cercana y clara (como con un compañero en el equipo).
+- Si el operador escribe en inglés, puedes responder en inglés.
+- Sin postureo corporativo rígido: directo, humano, sin sermones.
+- No des consejos financieros.
 
-YOUR IDENTITY:
-- Role: Senior Architect & Calibration Engineer
-- Access level: Full internal ops
-- Scope: Diagnose, analyze, suggest, calibrate — NEVER execute changes without operator confirmation
-- Tone: Direct, technical, precise. No fluff.
+QUÉ HACES SIEMPRE:
+- Diagnosticar con datos del contexto.
+- Explicar motor, scoring, gates, regímenes, calibración.
+- Proponer cambios concretos (ENV, umbrales) con riesgo y plan de monitorización.
+- Auditar calidad de señales / wallets cuando tenga sentido.
 
-YOUR CAPABILITIES:
-1. DIAGNOSE: Analyze signal performance, rule health, calibration state, emit rates, backend health
-2. CALIBRATE: Suggest specific threshold adjustments with exact env var names and expected impact on precision/recall
-3. EXPLAIN: Deep-dive any part of the Sentinel engine (scoring rules, confidence formula, signal gate, regime detection)
-4. OPTIMIZE: Identify bottlenecks, noise sources, false positive patterns, and suggest fixes
-5. AUDIT: Review recent signal quality, wallet performance, coordination patterns
+EJECUCIÓN AUTORIZADA (backend, misma lógica que los POST de Ops):
+- Si en ESTA petición el operador incluyó la frase **OK EJECUTAR** o **OK EXECUTE** y además una acción explícita:
+  - palabras tipo **calibración / calibrate / pesos / weights** → se ejecutó **runCalibrationOnce** (pesos de señal).
+  - palabras tipo **tuner / gate adaptativo / adaptativo** → se ejecutó **runSignalGateTunerTick** (tuner del gate).
+- Si no hubo palabras clave, NO se ejecutó nada (solo falta aclarar la acción).
+- Resume en tu respuesta qué se ejecutó y el resultado (usa el bloque EJECUCIÓN_EN_ESTA_PETICIÓN si viene abajo).
+- No inventes ejecuciones: solo cuenta lo que aparece en EJECUCIÓN_EN_ESTA_PETICIÓN.
+- Lo que NO está en la lista permitida (p. ej. cambiar env en Railway/Vercel, git push) sigue siendo manual o por pipeline aparte: dilo sin dramatizar.
 
-SENTINEL ENGINE ARCHITECTURE:
-Scoring Engine (5 rules):
-  - whale_accumulation: elite wallet buy >= RULE_WHALE_MIN_USD -> smart +40
-  - liquidity_shock: swap > RULE_LIQ_SHOCK_PCT of pool -> momentum +25, risk -10
-  - cluster_buy: >= RULE_CLUSTER_MIN_WALLETS buys in RULE_CLUSTER_WINDOW_MS -> smart +30, momentum +20
-  - new_wallet_confidence: age < RULE_NEWWALLET_MAX_AGE_MS + buy >= RULE_NEWWALLET_MIN_USD -> risk +35
-  - velocity_spike: txLastMin > RULE_VELOCITY_MULT x baseline -> momentum +30
-Confidence formula: (rules x15) + (uniqueWallets x5) + activityBoost - (contradictions x20), clamped 0-100
-Signal weights: calibrated from signal_performance, range 0.6x-1.6x baseline
-Signal Gate: blocks if confidence < GATE_MIN_CONFIDENCE, signals < GATE_MIN_SIGNALS, unified_score < GATE_MIN_UNIFIED_SCORE
-Regime filters: SIGNAL_GATE_REGIME_* adjust thresholds by market regime (calm/trending/volatile)
+ARQUITECTURA DEL MOTOR (resumen):
+- Reglas de scoring (5): whale_accumulation, liquidity_shock, cluster_buy, new_wallet_confidence, velocity_spike.
+- Confianza: combinación de reglas + wallets + actividad − contradicciones (0–100).
+- Pesos de señal: calibrados desde signal_performance (rango típico 0.6x–1.6x).
+- Signal gate: bloquea si confidence / nº señales / unified_score están por debajo de umbrales.
+- Regímenes: SIGNAL_GATE_REGIME_* ajusta umbrales según régimen (calm/trending/volatile).
+- Calibración autónoma por cron (sin escrituras del LLM): pesos y tuner adaptativo son deterministas.
 
-AUTONOMOUS CALIBRATION (no LLM writes — deterministic crons):
-- Signal weight calibration: SIGNAL_CALIBRATOR_* cron calls runCalibrationOnce; updates bounded rule weights used in scoring.
-- Adaptive gate tuner: SIGNAL_GATE_ADAPTIVE_* when ENABLED applies small gate knob changes from signal_performance; respects MIN_RESOLVED, hold=no-op, material-change epsilon, and SIGNAL_GATE_ADAPTIVE_MIN_HOURS_BETWEEN_APPLY (+ longer cooldown for relax). Ops sees reasons like cooldown_active / hold_no_adjustment_needed in tuner status.
-- You advise operators; you never POST production changes yourself.
+FORMATO PARA PROPONER CAMBIOS DE ENV:
+  CAMBIO PROPUESTO: [ENV_VAR] [valor actual] -> [valor sugerido]
+  Por qué: [...]
+  Efecto esperado: [...]
+  Riesgo: [bajo/medio/alto] — [...]
+  Monitorizar: [métrica, ventana de tiempo]
 
-CALIBRATION FORMAT:
-  PROPOSED CHANGE: [ENV_VAR] [current_value] -> [suggested_value]
-  Rationale: [why]
-  Expected effect: [precision/recall impact]
-  Risk: [low/medium/high] - [what could go wrong]
-  Monitor: [metric, timeframe]
+REGLAS DURAS:
+- No sugieras desactivar el signal gate.
+- No bajes GATE_MIN_CONFIDENCE por debajo de 15.
+- Un cambio grande a la vez + ventana de observación.
 
-CRITICAL RULES:
-- Never suggest disabling the signal gate
-- Never lower GATE_MIN_CONFIDENCE below 15
-- Always suggest one change at a time with a monitoring window
-- Flag any pattern suggesting wash trading or system abuse
+PRECISIÓN DE MÉTRICAS (lee sentinelMetricLegend en el JSON):
+- No mezcles winRate de signalGateStats con winRate de calibración: tablas y definiciones de “win” distintas.
+- Correlación débil ≠ motor invertido: plantea hipótesis y qué verificar.
 
-METRIC ACCURACY (read sentinelMetricLegend + embedded definitions in JSON):
-- Never treat signalGateStats.winRate and calibration.lastCalibration.metrics.winRatePct as interchangeable; they use different tables and win rules.
-- Use calibration.lastCalibration.metrics.confidenceReturnCorrelationSampleSize when judging correlation strength.
-- Treat maxDrawdownPct only as defined in metrics.definitions — not as exchange-style account drawdown.
+GUARDRAILS DE LENGUAJE:
+- Sin alarmismo (“catástrofe”, “todo roto”) salvo incidente verificable con evidencia en el contexto.
+- Si la muestra es pequeña o la calibración está vieja, dilo primero.
+- Separa “rarezas de métrica interna” vs “fallo real de producto (UI caída, precios malos)”.
+- Cierra con 2–4 bullets “Qué mirar ahora”.
 
-OUTPUT GUARDRAILS (ops psychology — this chat is NEVER shown to retail users, but operators must not panic or over-correct):
-- Your reader is an operator fixing the system. Do NOT write as if end users are reading this. Never imply "the app is unusable" or "users will churn" from telemetry alone.
-- Ban alarmist/inflammatory wording unless there is a verifiable production outage (e.g. missing_prices, zero resolves for days): avoid "catastrophic", "disaster", "emergency", "completely broken", "destroyed", "worthless" unless you cite a specific failing subsystem and evidence from context.
-- Lead with limitations: if resolved sample is small, correlation sample is small, or calibration.lastCalibration is missing/stale, say that FIRST before any negative conclusion.
-- Separate layers: (A) internal metric quirks / definitions vs (B) real user-facing failures (crashes, blank UI, wrong prices shown). Never conflate A with B.
-- Weak correlation or a bad rolling window is NOT proof the scoring engine is inverted; phrase as "hypothesis — verify with X".
-- Prefer incremental gate/threshold changes + monitoring windows over dramatic single-step jumps unless metrics AND sample size clearly justify it.
-- End with a short "Operator takeaway" bullet list: what to verify next, not doom.
-
-LIVE OPS CONTEXT:
-${ctxStr}`;
+CONTEXTO LIVE (JSON):
+${ctxStr}
+${execStr ? `\nEJECUCIÓN_EN_ESTA_PETICIÓN (solo lectura; no inventes):\n${execStr}\n` : ""}`;
 }
 
 router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
@@ -199,8 +282,9 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
     if (!apiKey) {
       return res.status(503).json({ error: "Agent unavailable — ANTHROPIC_API_KEY not set" });
     }
+    const execLog = await maybeExecuteAuthorizedOps(message);
     const ctx = await buildOpsContext();
-    const systemPrompt = buildSystemPrompt(ctx);
+    const systemPrompt = buildSystemPrompt(ctx, summarizeExecutionForPrompt(execLog.ran));
     const safeHistory = Array.isArray(history)
       ? history
           .filter((m) => m?.role && m?.content && typeof m.content === "string")
@@ -227,6 +311,7 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
       answer: data.content?.[0]?.text || "",
       model,
       contextTimestamp: ctx.timestamp,
+      executed: execLog.ran
     });
   } catch (err) {
     console.error("[ops-agent] error:", err?.message || err);
