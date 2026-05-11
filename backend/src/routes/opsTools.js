@@ -1,10 +1,9 @@
 "use strict";
 
 /**
- * Ops-only tooling (OMNI_BOT_OPS_KEY): repo file read, read-only SQL (INSERT/UPDATE/DELETE/DDL
- * rejected by validateReadOnlySelect), GitHub workflow_dispatch, atomic multi-file commit
- * (POST /github/commit; path whitelist + confirm). Vercel/Railway only if your Actions workflow
- * implements deploy. See backend/.env.example for GITHUB_* OPS_GITHUB_WRITE_ALLOW_PREFIXES OPS_REPO_ROOT.
+ * Ops-only tooling (OMNI_BOT_OPS_KEY): repo/read local disk or GitHub API (body.source github|auto),
+ * read-only SQL, workflow_dispatch, atomic github/commit. See .env.example: OPS_REPO_READ_*,
+ * GITHUB_*, OPS_GITHUB_WRITE_ALLOW_PREFIXES, OPS_REPO_ROOT.
  */
 
 const fs = require("fs");
@@ -269,26 +268,136 @@ async function githubGetCommit(repo, commitSha) {
   return { ok: true, treeSha, commit: r.json };
 }
 
-router.post("/repo/read", requireOpsKey, toolsLimiter, (req, res) => {
+function getGithubReadAllowPrefixes() {
+  const raw = String(process.env.OPS_REPO_READ_ALLOW_PREFIXES || "").trim();
+  if (raw) {
+    return raw
+      .split(",")
+      .map((s) => s.trim().replace(/\\/g, "/").replace(/^\/+/, ""))
+      .filter(Boolean);
+  }
+  return ["frontend/", "backend/", "docs/", ".github/"];
+}
+
+function isGithubReadPathAllowed(rel) {
+  const filePath = normalizeGithubWritePath(rel);
+  if (!filePath || filePath.length > 500) return { ok: false, error: "bad_path" };
+  if (filePath.includes("..") || filePath.split("/").includes("..")) return { ok: false, error: "path_traversal" };
+  const segments = filePath.split("/");
+  for (const seg of segments) {
+    if (seg === "node_modules" || seg === ".next" || seg === "dist" || seg === ".git") {
+      return { ok: false, error: "forbidden_segment", segment: seg };
+    }
+    if (seg.toLowerCase().startsWith(".env") || /^\.env(\.|$)/i.test(seg)) {
+      return { ok: false, error: "forbidden_env_path" };
+    }
+  }
+  if (filePath.toLowerCase().includes("/.env") || filePath.toLowerCase().startsWith(".env")) {
+    return { ok: false, error: "forbidden_env_path" };
+  }
+  if (/\.(pem|key|p12|pfx)$/i.test(filePath)) return { ok: false, error: "forbidden_secret_extension" };
+  const prefixes = getGithubReadAllowPrefixes();
+  const allowed = prefixes.some((pre) => filePath === pre || filePath.startsWith(pre));
+  if (!allowed) return { ok: false, error: "path_not_whitelisted", allowedPrefixes: prefixes };
+  return { ok: true, path: filePath };
+}
+
+async function githubReadRepoFile(repo, relPath, refMandatory) {
+  const check = isGithubReadPathAllowed(relPath);
+  if (!check.ok) return { ok: false, error: "path_validation_failed", reason: check };
+  const p = check.path;
+  const enc = p.split("/").map((s) => encodeURIComponent(s)).join("/");
+  const ref = String(refMandatory || "").trim();
+  if (!ref) return { ok: false, error: "ref_required_for_github_read" };
+  const url = `/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/contents/${enc}?ref=${encodeURIComponent(ref)}`;
+  const r = await githubRestRaw("GET", url, null);
+  if (!r.ok) {
+    return {
+      ok: false,
+      status: r.status,
+      error: "github_contents_failed",
+      message: r.json?.message || r.text
+    };
+  }
+  const data = r.json;
+  if (Array.isArray(data)) return { ok: false, error: "path_is_directory" };
+  if (data.type !== "file") return { ok: false, error: "not_a_file", type: data.type };
+  if (Number(data.size) > MAX_FILE_BYTES) return { ok: false, error: "file_too_large", size: data.size };
+  if (data.encoding !== "base64" || typeof data.content !== "string") {
+    return { ok: false, error: "unsupported_blob", hint: "GitHub returned non-base64 payload (symlink or empty)." };
+  }
+  const buf = Buffer.from(String(data.content).replace(/\n/g, ""), "base64");
+  if (buf.length > MAX_FILE_BYTES) return { ok: false, error: "file_too_large_after_decode" };
+  const content = buf.toString("utf8");
+  return { ok: true, content, bytes: buf.length, sha: data.sha, path: p };
+}
+
+router.post("/repo/read", requireOpsKey, toolsLimiter, async (req, res) => {
   try {
     const rel = req.body?.path ?? req.body?.file;
+    if (!rel || typeof rel !== "string") {
+      return res.status(400).json({ ok: false, error: "path_required" });
+    }
+
+    const sourceRaw = String(req.body?.source || "local").toLowerCase().trim();
+    const source = ["local", "github", "auto"].includes(sourceRaw) ? sourceRaw : "local";
+    const refParam = String(req.body?.ref || "").trim();
+    const fallbackGithub = process.env.OPS_REPO_READ_FALLBACK_GITHUB === "1";
+
+    const sendGithub = async () => {
+      const repo = parseGithubRepo();
+      if (!repo) return res.status(503).json({ ok: false, error: "GITHUB_REPOSITORY_not_configured" });
+      if (!getGithubToken()) return res.status(503).json({ ok: false, error: "GITHUB_TOKEN_not_configured" });
+      const meta = await githubGetDefaultBranch(repo);
+      if (!meta.ok) {
+        return res.status(502).json({ ok: false, error: "github_default_branch_failed", detail: meta });
+      }
+      const refUse = refParam || meta.defaultBranch;
+      const g = await githubReadRepoFile(repo, rel, refUse);
+      if (!g.ok) {
+        const st = Number(g.status) || 404;
+        return res.status(st >= 400 && st < 600 ? st : 404).json({ ok: false, ...g });
+      }
+      return res.json({
+        ok: true,
+        path: g.path,
+        source: "github",
+        ref: refUse,
+        bytes: g.bytes,
+        content: g.content,
+        sha: g.sha,
+        repository: `${repo.owner}/${repo.repo}`
+      });
+    };
+
+    if (source === "github") {
+      return await sendGithub();
+    }
+
     const resolved = resolveSafeRepoPath(rel);
     if (!resolved.ok) return res.status(400).json({ ok: false, error: resolved.error });
-    if (!fs.existsSync(resolved.abs) || !fs.statSync(resolved.abs).isFile()) {
-      return res.status(404).json({ ok: false, error: "not_found" });
+
+    if (fs.existsSync(resolved.abs) && fs.statSync(resolved.abs).isFile()) {
+      const st = fs.statSync(resolved.abs);
+      if (st.size > MAX_FILE_BYTES) {
+        return res.status(413).json({ ok: false, error: "file_too_large", maxBytes: MAX_FILE_BYTES, size: st.size });
+      }
+      const content = fs.readFileSync(resolved.abs, "utf8");
+      return res.json({
+        ok: true,
+        path: resolved.rel,
+        root: resolved.root,
+        bytes: st.size,
+        content,
+        source: "local"
+      });
     }
-    const st = fs.statSync(resolved.abs);
-    if (st.size > MAX_FILE_BYTES) {
-      return res.status(413).json({ ok: false, error: "file_too_large", maxBytes: MAX_FILE_BYTES, size: st.size });
+
+    if (source === "auto" && fallbackGithub) {
+      return await sendGithub();
     }
-    const content = fs.readFileSync(resolved.abs, "utf8");
-    return res.json({
-      ok: true,
-      path: resolved.rel,
-      root: resolved.root,
-      bytes: st.size,
-      content
-    });
+
+    return res.status(404).json({ ok: false, error: "not_found", source: "local" });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e?.message || "repo_read_failed" });
   }

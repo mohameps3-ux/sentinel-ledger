@@ -115,6 +115,12 @@ const FRONTEND_OPS_SURFACE = {
 
 /** Límites duros del stack ops (también van en JSON para que el modelo no los omita). */
 const OPS_CONSOLE_LIMITS = {
+  repoRead: {
+    local: "Disco bajo OPS_REPO_ROOT; resolveSafeRepoPath (sin ..).",
+    github:
+      "body.source=github o auto+fallback: Contents API; prefijos OPS_REPO_READ_ALLOW_PREFIXES (default frontend/,backend/,docs/,.github/); sin .env ni secret extensions.",
+    env: "OPS_REPO_READ_FALLBACK_GITHUB=1 para auto-fallback en hosts sin monorepo en disco."
+  },
   sqlWrite: {
     endpoint: "POST /api/v1/ops/tools/sql",
     blocked:
@@ -156,7 +162,7 @@ const SENTINEL_DIRECTOR_MAP = {
     "1_sql_escritura":
       "CERO en ops. /ops/tools/sql solo SELECT. Mutar tablas, migrar schema, backfill, fix corrupto → SQL o migración para que el operador lo ejecute en Supabase/pgAdmin (fuera del bot).",
     "2_codigo":
-      "Lectura: repo/read (disco del servidor, OPS_REPO_ROOT). Escritura remota: github/commit con confirm:true + whitelist (no .env ni rutas secretas). No escribes el disco local del operador.",
+      "Lectura: repo/read source=local (disco OPS_REPO_ROOT) o source=github|auto (API GitHub mismo árbol que remoto; auto + OPS_REPO_READ_FALLBACK_GITHUB=1 si en Railway no está el monorepo en disco). Escritura remota: github/commit + confirm + whitelist.",
     "3_deploy":
       "Sin API Vercel/Railway en ops. github/workflow = workflow_dispatch; si el YAML no tiene steps de deploy + secrets en GitHub, no hay deploy. Credenciales cloud fuera del agente.",
     "4_batch_datos":
@@ -166,8 +172,9 @@ const SENTINEL_DIRECTOR_MAP = {
     "6_monitor_proactivo":
       "Sin webhook que te despierte; solo ves snapshot cuando el operador pregunta. Alertas tipo win rate < X% → checklist o producto futuro."
   },
+  verificacionEntorno: "En el repo: cd backend && npm run ops:verify-director-stack (añade --strict en CI para fallar si falta clave).",
   herramientasQueSiExisten: [
-    "POST /api/v1/ops/tools/repo/read",
+    "POST /api/v1/ops/tools/repo/read — body: { path, source?: local|github|auto, ref? }; auto+fallback lee GitHub si falta en disco",
     "POST /api/v1/ops/tools/sql (SELECT + confirm)",
     "POST /api/v1/ops/tools/github/commit (confirm + rama + whitelist)",
     "POST /api/v1/ops/tools/github/workflow (confirm + inputs)",
@@ -427,7 +434,7 @@ PRECISIÓN MÉTRICA (sentinelMetricLegend en JSON):
 CIERRE: 2–4 bullets “Qué mirar ahora”.
 
 HERRAMIENTAS HTTP (misma cabecera x-ops-key que este endpoint; ver backend/src/routes/opsTools.js):
-- POST /api/v1/ops/tools/repo/read — body JSON: { "path": "frontend/pages/index.js" } — devuelve texto del archivo (tamaño acotado). Para preguntas de **home, cards o UX**, cruza **frontendSurface.routes** del JSON con repo/read (páginas + componentes listados).
+- POST /api/v1/ops/tools/repo/read — body: { "path": "frontend/pages/index.js", "source": "local"|"github"|"auto", "ref": "main" }. `github`/`auto` usan API GitHub (mismas credenciales que commit). `auto` + env OPS_REPO_READ_FALLBACK_GITHUB=1 intenta disco y luego GitHub si 404.
 - POST /api/v1/ops/tools/sql — **solo lectura**: SELECT único; INSERT/UPDATE/DELETE y DDL están **bloqueados**. Preview: { "preview": true, "template": "ops_health_counts" } o { "preview": true, "sql": "SELECT 1" }.
   Ejecutar lectura: { "preview": false, "confirm": true, "template": "..." } o { "preview": false, "confirm": true, "sql": "SELECT ..." } (sin ; ni comentarios).
   Plantillas: ops_health_counts | signal_performance_status_7d | outcomes_pending_sample (params opcional { "hours": 24 }).

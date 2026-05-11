@@ -1,0 +1,30 @@
+# Dispatched by POST /api/v1/ops/tools/github/workflow (confirm:true).
+# Add your real deploy steps + repository secrets (VERCEL_TOKEN, RAILWAY_TOKEN, etc.).
+name: Deploy production
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment label"
+        type: string
+        required: true
+        default: production
+      service:
+        description: "Which surface to deploy (e.g. frontend, backend)"
+        type: string
+        required: true
+        default: frontend
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Echo plan
+        run: |
+          echo "environment=${{ inputs.environment }}"
+          echo "service=${{ inputs.service }}"
+          echo "Replace this job with: Vercel CLI, Railway CLI, or API calls using GitHub Secrets."
