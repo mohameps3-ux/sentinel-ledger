@@ -571,10 +571,13 @@ function TerminalRight({ address, tokenData, recentTransactions, tokenPriceUsd, 
   );
 }
 
-export default function TokenTerminalPage() {
+export default function TokenTerminalPage({ routeMint: routeMintProp }) {
   const router = useRouter();
   const { t } = useLocale();
-  const address = normalizeAddress(router.query);
+  const fromServer = typeof routeMintProp === "string" ? routeMintProp : null;
+  const address =
+    fromServer !== null ? fromServer.trim() : normalizeAddress(router.query);
+  const routeReady = router.isReady || fromServer !== null;
   const query = useTokenData(address);
   const { transactions } = useWebSocket(address || undefined);
   const [hasToken, setHasToken] = useState(false);
@@ -642,7 +645,7 @@ export default function TokenTerminalPage() {
     return () => clearTimeout(t);
   }, [recentTransactions, soundEnabled]);
 
-  if (!router.isReady) return <TokenSkeleton />;
+  if (!routeReady) return <TokenSkeleton />;
 
   if (!address || address.length < 32) {
     return (

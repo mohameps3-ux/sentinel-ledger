@@ -24,6 +24,18 @@ function normalizeAddress(query) {
   return "";
 }
 
+export async function getServerSideProps(context) {
+  const raw = context.params?.address;
+  const addr = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof addr !== "string") return { notFound: true };
+  const trimmed = addr.trim();
+  const { isProbableSolanaMint } = await import("../../lib/solanaMint.mjs");
+  if (!isProbableSolanaMint(trimmed)) {
+    return { props: { routeAddress: "" } };
+  }
+  return { props: { routeAddress: trimmed } };
+}
+
 function behaviorWinTone(pct) {
   const n = Number(pct);
   if (!Number.isFinite(n)) return "text-sl-text font-semibold";
@@ -40,11 +52,14 @@ const STYLE_READABLE = {
   insufficient_sample: "Insufficient sample"
 };
 
-export default function WalletDetailPage() {
+export default function WalletDetailPage({ routeAddress: routeAddressProp }) {
   const router = useRouter();
   const { locale, t } = useLocale();
-  const address = normalizeAddress(router.query);
-  const narrativeLang = router.isReady
+  const fromServer = typeof routeAddressProp === "string" ? routeAddressProp : null;
+  const address =
+    fromServer !== null ? fromServer.trim() : normalizeAddress(router.query);
+  const routeReady = router.isReady || fromServer !== null;
+  const narrativeLang = routeReady
     ? resolveWalletNarrativeLang(router.query, locale)
     : walletNarrativeApiLang(locale);
 
@@ -66,7 +81,7 @@ export default function WalletDetailPage() {
     staleTime: 10 * 60 * 1000
   });
 
-  if (!router.isReady) {
+  if (!routeReady) {
     return (
       <div className="sl-container py-10">
         <div className="glass-card sl-inset inline-flex items-center gap-2 text-sl-sub">
