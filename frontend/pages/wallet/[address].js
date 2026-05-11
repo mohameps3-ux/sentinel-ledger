@@ -17,29 +17,16 @@ import {
 import { useLocale } from "../../contexts/LocaleContext";
 import { resolveWalletNarrativeLang, walletNarrativeApiLang } from "../../lib/walletNarrativeLang";
 
+/**
+ * Sin getServerSideProps: ver comentario en `pages/token/[address].js` (Vercel 500 con SSR de página).
+ * La ficha de wallet sigue cargando datos en cliente (React Query).
+ */
+
 function normalizeAddress(query) {
   const raw = query?.address;
   if (typeof raw === "string") return raw;
   if (Array.isArray(raw) && raw[0]) return raw[0];
   return "";
-}
-
-function isWalletParam(s) {
-  if (typeof s !== "string") return false;
-  const t = s.trim();
-  if (t.length < 32 || t.length > 44) return false;
-  return /^[1-9A-HJ-NP-Za-km-z]+$/.test(t);
-}
-
-export function getServerSideProps(context) {
-  const raw = context.params?.address;
-  const addr = Array.isArray(raw) ? raw[0] : raw;
-  if (typeof addr !== "string") return { notFound: true };
-  const trimmed = addr.trim();
-  if (!isWalletParam(trimmed)) {
-    return { props: { routeAddress: "" } };
-  }
-  return { props: { routeAddress: trimmed } };
 }
 
 function behaviorWinTone(pct) {
@@ -58,14 +45,11 @@ const STYLE_READABLE = {
   insufficient_sample: "Insufficient sample"
 };
 
-export default function WalletDetailPage({ routeAddress: routeAddressProp }) {
+export default function WalletDetailPage() {
   const router = useRouter();
   const { locale, t } = useLocale();
-  const fromServer = typeof routeAddressProp === "string" ? routeAddressProp : null;
-  const address =
-    fromServer !== null ? fromServer.trim() : normalizeAddress(router.query);
-  const routeReady = router.isReady || fromServer !== null;
-  const narrativeLang = routeReady
+  const address = normalizeAddress(router.query);
+  const narrativeLang = router.isReady
     ? resolveWalletNarrativeLang(router.query, locale)
     : walletNarrativeApiLang(locale);
 
@@ -87,7 +71,7 @@ export default function WalletDetailPage({ routeAddress: routeAddressProp }) {
     staleTime: 10 * 60 * 1000
   });
 
-  if (!routeReady) {
+  if (!router.isReady) {
     return (
       <div className="sl-container py-10">
         <div className="glass-card sl-inset inline-flex items-center gap-2 text-sl-sub">
