@@ -140,6 +140,11 @@ async function analyzeWallet(walletAddress) {
     ? String(lastSignatureRow.last_signature).trim() || null
     : null;
 
+  /**
+   * Fase 4 — Delta fetch (Helius/RPC): when `FF_DELTA_FETCHING` is on (default), we pass
+   * `untilSignature` into `getSignaturesForAddress` as JSON-RPC `until` (see heliusTransactions.js).
+   * First run (no `last_signature`): larger bootstrap page; subsequent runs only pull newer sigs.
+   */
   const fetchOpts = deltaFetchingEnabled()
     ? { untilSignature, skipGlobalDedupe: true }
     : { limit: 100, skipGlobalDedupe: false };

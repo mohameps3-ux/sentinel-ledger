@@ -10,6 +10,7 @@ const { getSupabase } = require("../lib/supabase");
 const { getSmartWalletQueue } = require("../queues/smartWallet.queue");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 const { BULLMQ_PRIORITY_WEBHOOK_INGEST } = require("../lib/eventPriority");
+const { ecoModeActive } = require("./budgetGuard");
 
 const MAX_WALLETS_PER_TX = 16;
 
@@ -52,6 +53,11 @@ async function wireSmartWalletsAfterSignal(opts = {}) {
     .in("wallet_address", addrs);
   if (upErr) {
     console.warn("[smart-wallet-wire] last_seen batch update:", upErr.message || upErr);
+  }
+
+  if (await ecoModeActive()) {
+    console.log("[smart-wallet-wire] ECO_MODE: last_seen touch only, skip analyze-wallet enqueue");
+    return;
   }
 
   const queue = getSmartWalletQueue();

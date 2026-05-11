@@ -26,6 +26,7 @@ import { useLocale } from "../../../../contexts/LocaleContext";
 import { deriveApexState } from "../../../../components/apex";
 import { useWarMode } from "../../../../contexts/WarModeContext";
 import { cockpitCardClickTargetIsInteractive } from "../../../../lib/cockpitCardClick.mjs";
+import { useIngestionPulse } from "../../../../hooks/useIngestionPulse";
 
 /**
  * War Home — Live tab (grid / Virtuoso). Parent `index.js` controls merge + hysteresis; this file only renders.
@@ -57,6 +58,14 @@ function warActionBadgeClass(safeAction) {
   if (a === "BUY" || a === "ENTER NOW" || a === "ENTER_NOW" || a === "SCALP") return "war-action-buy";
   if (a === "WATCH" || a === "PREPARE") return "war-action-watch";
   return "war-action-avoid";
+}
+
+/** Parsed emission time from signals/latest card (`_api` is the raw API row). */
+function signalCardEmittedMs(sig) {
+  const raw = sig?._api?.createdAt ?? sig?._api?.signalAt ?? null;
+  if (raw == null || raw === "") return null;
+  const ms = Date.parse(String(raw));
+  return Number.isFinite(ms) ? ms : null;
 }
 
 export function LiveTab({
@@ -102,6 +111,19 @@ export function LiveTab({
   }, []);
 
   const { isWarMode } = useWarMode();
+  const ingestionPulse = useIngestionPulse(isWarMode ? 8000 : 12000);
+  const lastEventAgeMs =
+    ingestionPulse.data && typeof ingestionPulse.data.lastEventAgeMs === "number"
+      ? ingestionPulse.data.lastEventAgeMs
+      : null;
+  const ingestLive = !ingestionPulse.isError && lastEventAgeMs != null && lastEventAgeMs < 5000;
+  const ingestLabel = ingestionPulse.isError
+    ? t("war.live.ingestUnknown")
+    : lastEventAgeMs == null
+      ? t("war.live.ingestUnknown")
+      : ingestLive
+        ? t("war.live.ingestLive")
+        : t("war.live.ingestQuiet");
   const getScore = (item) => item?.score ?? item?.sentinelScore ?? item?.unified_score ?? 0;
 
   const warGrid = useMemo(
@@ -156,6 +178,8 @@ export function LiveTab({
     const accentColor = accentColorForDecision(decision, sig.signalStrength);
     const timeLeft = sig._api?.entryWindowMinutesLeft != null ? Math.max(0, Math.round(Number(sig._api.entryWindowMinutesLeft) || 0)) : Math.max(0, Math.ceil(sec / 60));
     const hot = idx === signalCursor % Math.max(1, displaySignals.length);
+    const emittedMs = signalCardEmittedMs(sig);
+    const isStaleCard = !isHeatFill && emittedMs != null && Date.now() - emittedMs > 60_000;
     const coordOnCard =
       selectedMint && sig.mint === selectedMint && deskCoordination?.redSignal ? deskCoordination.redSignal : null;
     const whyLines = whyNowBulletLines(sig);
@@ -276,6 +300,14 @@ export function LiveTab({
                         {t("war.live.badgeSignal")}
                       </span>
                     )}
+                    {isStaleCard ? (
+                      <span
+                        className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-rose-500/40 bg-rose-500/12 text-rose-100/90 war-badge"
+                        title={t("war.live.staleSignal")}
+                      >
+                        {t("war.live.staleSignal")}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <span className={`war-action-badge ${warAc}`}>{safeAction}</span>
@@ -311,6 +343,14 @@ export function LiveTab({
                           {t("war.live.badgeSignal")}
                         </span>
                       )}
+                      {isStaleCard ? (
+                        <span
+                          className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-rose-500/40 bg-rose-500/12 text-rose-100/90"
+                          title={t("war.live.staleSignal")}
+                        >
+                          {t("war.live.staleSignal")}
+                        </span>
+                      ) : null}
                     </div>
                     <p
                       className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight"
@@ -505,6 +545,7 @@ export function LiveTab({
                 <span className="text-[10px] font-mono shrink-0">{stalkerUnread > 0 ? `+${stalkerUnread}` : "0"}</span>
               </Link>
             </div>
+            <div className="flex flex-wrap items-center justify-start md:justify-end gap-1">
             <span
               className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border inline-flex items-center gap-1 ${
                 signalsFeedIsError || signalsFeedIsDegraded
@@ -519,6 +560,16 @@ export function LiveTab({
               />
               {signalsFeedIsError || signalsFeedIsDegraded ? t("war.live.statusDegraded") : t("war.live.statusLive")}
             </span>
+            <span
+              className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border inline-flex items-center gap-1 ${
+                ingestLive ? "bg-emerald-950/40 text-emerald-200 border-emerald-600/35" : "bg-zinc-800/80 text-zinc-400 border-zinc-600/30"
+              }`}
+              title="Helius webhook ingestion (/health/ingestion)"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${ingestLive ? "bg-emerald-400 animate-pulse" : "bg-zinc-500"}`} />
+              {ingestLabel}
+            </span>
+            </div>
             <span className="text-[10px] text-sl-muted inline-flex items-center gap-0.5">
               <Info size={11} />
               {signalsAgeSec === null
