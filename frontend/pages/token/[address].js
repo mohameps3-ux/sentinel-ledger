@@ -576,7 +576,7 @@ function TerminalRight({ address, tokenData, recentTransactions, tokenPriceUsd, 
   );
 }
 
-export default function TokenPage() {
+function TokenPageBody() {
   const router = useRouter();
   const { t } = useLocale();
   const address = normalizeAddress(router.query);
@@ -811,4 +811,18 @@ export default function TokenPage() {
       </div>
     </>
   );
+}
+
+/**
+ * Production (Vercel) returned HTML 500 for this route while `next start` locally was 200 — likely an SSR-only
+ * incompatibility in the deep tree (query + wallet/socket deps). SSR emits the same skeleton as the loading state;
+ * full page runs only after mount (no SSR/CSR markup split: both first paint skeleton).
+ */
+export default function TokenPage() {
+  const [clientMounted, setClientMounted] = useState(false);
+  useEffect(() => {
+    setClientMounted(true);
+  }, []);
+  if (!clientMounted) return <TokenSkeleton />;
+  return <TokenPageBody />;
 }
