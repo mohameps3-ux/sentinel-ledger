@@ -43,10 +43,12 @@ function deriveWhyFacts(market) {
 }
 
 function normalizeTrendingEntry(mint, market) {
+  const ch5 = Number(market.priceChange5m);
   return {
     mint,
     symbol: market.symbol,
     imageUrl: market.imageUrl || market.logoURI || null,
+    priceChange5m: Number.isFinite(ch5) ? ch5 : null,
     price: Number(market.price || 0),
     change: Number(market.priceChange24h || 0),
     volume24h: Number(market.volume24h || 0),

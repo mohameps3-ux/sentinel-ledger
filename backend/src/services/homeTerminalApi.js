@@ -114,7 +114,7 @@ function decisionFromScore(score, strategy = "balanced") {
   return "STAY OUT";
 }
 
-const SIGNALS_LATEST_CACHE_KEY_PREFIX = "terminal:signals:latest:v7:";
+const SIGNALS_LATEST_CACHE_KEY_PREFIX = "terminal:signals:latest:v8:";
 const SIGNALS_LATEST_STRATEGIES = ["balanced", "conservative", "aggressive"];
 const SIGNALS_LATEST_LIMITS = [8, 10, 12, 16, 24, 32, 50, 56, 64];
 
@@ -939,6 +939,7 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
 
     const spotPx = Number(md?.price);
     const spotChg = Number(md?.priceChange24h);
+    const spotChg5m = Number(md?.priceChange5m);
     out.push({
       token: symbol.startsWith("$") ? symbol : `$${symbol}`,
       tokenAddress: mint,
@@ -947,6 +948,7 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       sentinelScore,
       spotPriceUsd: Number.isFinite(spotPx) && spotPx > 0 ? spotPx : null,
       spotChange24h: Number.isFinite(spotChg) ? spotChg : null,
+      priceChange5m: Number.isFinite(spotChg5m) ? spotChg5m : null,
       degraded: !md?.symbol,
       providerUsed: md?._provider || null,
       decision,
@@ -1400,7 +1402,7 @@ async function getSmartWalletsTopCached(supabase, limit) {
 }
 
 async function getHotTokensCached(limit, supabase) {
-  const key = `terminal:tokens:hot:v4:${limit}`;
+  const key = `terminal:tokens:hot:v5:${limit}`;
   const { payload, cache } = await withCache(key, () => buildHotTokens({ limit, supabase }), HOT_CACHE_TTL_SEC);
   const out = { ...payload, meta: { ...(payload.meta || {}), cache } };
   recordFreshness("tokensHot", out?.meta || {});

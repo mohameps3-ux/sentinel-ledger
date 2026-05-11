@@ -5,6 +5,7 @@ import { HotTab } from "./tabs/HotTab";
 import { LiveTab } from "./tabs/LiveTab";
 import { TerminalActionIcons } from "../../../components/terminal/TerminalActionIcons";
 import { TokenCardAvatar } from "../../../components/home/TokenCardAvatar";
+import { HomeCardSparkline } from "../../../components/home/HomeCardSparkline";
 import { isProbableSolanaMint } from "../../../lib/solanaMint.mjs";
 import { useLocale } from "../../../contexts/LocaleContext";
 
@@ -127,10 +128,16 @@ export default function TacticalFeed({
                           size={34}
                           variant={row.source === "HOT" ? "hot" : "live"}
                         />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold text-sl-text">{row.label}</p>
                           <p className="font-mono text-[10px] text-sl-muted">{row.mint.slice(0, 5)}…{row.mint.slice(-5)}</p>
                         </div>
+                        <HomeCardSparkline
+                          mint={row.mint}
+                          change24h={row.tokenLike?.change ?? row.tokenLike?.priceChange24h ?? row.tokenLike?.spotChange24h}
+                          change5m={row.tokenLike?.priceChange5m}
+                          compact
+                        />
                       </div>
                       <span className="rounded border border-sl-border bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-mono text-sl-sub">
                         {row.source}

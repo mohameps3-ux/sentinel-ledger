@@ -15,6 +15,7 @@ import {
 import { redFlagsForSignal } from "@/lib/redFlags";
 import { LiveCardOverlay } from "../../../../components/home/LiveCardOverlay";
 import { TokenCardAvatar } from "../../../../components/home/TokenCardAvatar";
+import { HomeCardSparkline } from "../../../../components/home/HomeCardSparkline";
 import { RealtimeTokenCardShell } from "../../../../components/home/RealtimeTokenCardShell";
 import { RulePerformanceBadge } from "../../../../components/signals/RulePerformanceBadge";
 import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../../lib/terminalLinks";
@@ -164,6 +165,8 @@ export function LiveTab({
     const chg = Number(tick?.priceChange24h ?? sig.token?.change);
     const hasPx = Number.isFinite(px) && px > 0;
     const hasChg = Number.isFinite(chg);
+    const sparkCh24 = Number(tick?.priceChange24h ?? sig.token?.change ?? sig._api?.spotChange24h);
+    const sparkCh5 = Number(sig._api?.priceChange5m);
     // Apex Obsidian state — gold appears only when the underlying signal carries value.
     // Heat-fill is always "active" (warm gold) to communicate "pure heat, not validated signal".
     // Live cards derive from signalStrength: >=80 critical (high conviction), >=60 active, else neutral silver.
@@ -253,12 +256,15 @@ export function LiveTab({
                       size={28}
                       variant={isHeatFill ? "heat" : "live"}
                     />
-                    <p
-                      className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight min-w-0"
-                      title={symbolMetaTitle}
-                    >
-                      ${sig.symbol}
-                    </p>
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <p
+                        className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight min-w-0 flex-1"
+                        title={symbolMetaTitle}
+                      >
+                        ${sig.symbol}
+                      </p>
+                      <HomeCardSparkline mint={sig.mint} change24h={sparkCh24} change5m={sparkCh5} compact />
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
                     {isHeatFill ? (
@@ -333,6 +339,7 @@ export function LiveTab({
                       </div>
                     ) : null}
                   </div>
+                  <HomeCardSparkline mint={sig.mint} change24h={sparkCh24} change5m={sparkCh5} />
                 </div>
                 <span
                   className={`shrink-0 self-start text-[8px] max-w-[4.75rem] text-right leading-tight px-1.5 py-0.5 rounded border line-clamp-1 ${confidenceTone(toneScore)}`}
