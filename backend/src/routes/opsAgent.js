@@ -254,6 +254,13 @@ PRECISIÓN MÉTRICA (sentinelMetricLegend en JSON):
 
 CIERRE: 2–4 bullets “Qué mirar ahora”.
 
+HERRAMIENTAS HTTP (misma cabecera x-ops-key que este endpoint; ver backend/src/routes/opsTools.js):
+- POST /api/v1/ops/tools/repo/read — body JSON: { "path": "backend/src/routes/ops.js" } — devuelve texto del archivo (tamaño acotado).
+- POST /api/v1/ops/tools/sql — preview: { "preview": true, "template": "ops_health_counts" } o { "preview": true, "sql": "SELECT 1" }.
+  Ejecutar lectura: { "preview": false, "confirm": true, "template": "..." } o { "preview": false, "confirm": true, "sql": "SELECT ..." } (solo SELECT, sin ; ni comentarios).
+  Plantillas: ops_health_counts | signal_performance_status_7d | outcomes_pending_sample (params opcional { "hours": 24 }).
+- POST /api/v1/ops/tools/github/workflow — body: { "confirm": true, "workflow": "nombre.yml", "ref": "main", "inputs": {} } — workflow_dispatch (GITHUB_TOKEN + GITHUB_REPOSITORY). El workflow puede hacer commit/push según lo que tú definas en GitHub Actions.
+
 CONTEXTO LIVE (JSON; es parcial — no es el repo completo):
 ${ctxStr}
 ${execStr ? `\nEJECUCIÓN_EN_ESTA_PETICIÓN (solo lectura; no inventes):\n${execStr}\n` : ""}`;
