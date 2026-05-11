@@ -24,9 +24,12 @@ export function GlobalStatusBar() {
           <span className="hidden sm:inline text-[var(--sl-text-muted)]">
             SOL {Number.isFinite(solPrice) ? `$${solPrice.toFixed(2)}` : "—"}
           </span>
-          <span className="sl-status-indicator">
-            <span className={ledClass(service.alchemy)} />
-            Alchemy
+          <span
+            className="sl-status-indicator"
+            title="DexScreener / Birdeye / CoinGecko circuit (from /health/sync), not Alchemy"
+          >
+            <span className={ledClass(service.marketOk)} />
+            Market
           </span>
           <span className="sl-status-indicator">
             <span className={ledClass(service.supabase)} />

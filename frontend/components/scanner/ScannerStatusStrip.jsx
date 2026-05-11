@@ -39,11 +39,11 @@ export function ScannerStatusStrip() {
           <span className="text-zinc-100">{Number.isFinite(solPrice) ? `$${solPrice.toFixed(2)}` : "—"}</span>
         </span>
         {[
-          ["Alchemy", service.alchemy],
-          ["Supabase", service.supabase],
-          ["Redis", service.redis]
-        ].map(([label, ok]) => (
-          <span key={label} className="inline-flex items-center gap-1.5 text-zinc-500">
+          ["Market", service.marketOk, "Price/liquidity providers (DexScreener, Birdeye, CoinGecko)"],
+          ["Supabase", service.supabase, "Database"],
+          ["Redis", service.redis, "Cache"]
+        ].map(([label, ok, title]) => (
+          <span key={label} className="inline-flex items-center gap-1.5 text-zinc-500" title={title}>
             <Led ok={ok} />
             <span className="text-[10px] tracking-[0.12em]">{label}</span>
           </span>

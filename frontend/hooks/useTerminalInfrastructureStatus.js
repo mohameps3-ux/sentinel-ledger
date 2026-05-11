@@ -64,7 +64,9 @@ export function useTerminalInfrastructureStatus() {
     const h = state.health || {};
     const sync = state.sync || {};
     return {
-      alchemy: sync.marketData?.degraded === false || sync.services?.market_data === "operational",
+      /** Dex/Birdeye/CoinGecko circuit via /health/sync — not Alchemy RPC */
+      marketOk:
+        sync.marketData?.degraded === false || sync.services?.market_data === "operational",
       supabase: h.ok !== false,
       redis: h.cache === true
     };
