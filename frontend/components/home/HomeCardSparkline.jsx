@@ -12,10 +12,12 @@ export function HomeCardSparkline({
   compact = false,
   className = ""
 }) {
-  const points =
+  const gradId = useId().replace(/:/g, "");
+  const raw =
     Array.isArray(pointsProp) && pointsProp.length >= 2
       ? pointsProp
       : buildHomeCardSparklinePoints({ mint, change24h, change5m });
+  const points = Array.isArray(raw) ? raw.filter((p) => Number.isFinite(Number(p))).map(Number) : [];
 
   const w = compact ? 52 : 72;
   const h = compact ? 20 : 26;
