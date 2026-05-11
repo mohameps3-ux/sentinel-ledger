@@ -10,7 +10,7 @@ const QUICK_ACTIONS = [
 
 export default function SentinelBot() {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState("support");
+  const [mode, setMode] = useState("chat");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,6 +44,7 @@ export default function SentinelBot() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
+          mode,
           language: "es",
           sessionId:
             typeof window !== "undefined" ? localStorage.getItem("sl-session") || "anonymous" : "anonymous"
@@ -130,27 +131,39 @@ export default function SentinelBot() {
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => setMode("support")}
+                onClick={() => setMode("chat")}
                 className={`px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors duration-150 border ${
-                  mode === "support"
+                  mode === "chat"
                     ? "border-sl-violet text-sl-violet bg-sl-violet/10"
                     : "border-sl-border text-sl-muted hover:text-sl-sub"
                 }`}
                 style={{ borderRadius: "2px" }}
               >
-                SOPORTE
+                CHAT
               </button>
               <button
                 type="button"
-                onClick={() => setMode("analytics")}
+                onClick={() => setMode("diagnostic")}
                 className={`px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors duration-150 border ${
-                  mode === "analytics"
+                  mode === "diagnostic"
                     ? "border-sl-violet text-sl-violet bg-sl-violet/10"
                     : "border-sl-border text-sl-muted hover:text-sl-sub"
                 }`}
                 style={{ borderRadius: "2px" }}
               >
-                ASK SENTINEL
+                DIAGNÓSTICO
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("operator")}
+                className={`px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors duration-150 border ${
+                  mode === "operator"
+                    ? "border-sl-violet text-sl-violet bg-sl-violet/10"
+                    : "border-sl-border text-sl-muted hover:text-sl-sub"
+                }`}
+                style={{ borderRadius: "2px" }}
+              >
+                OPERADOR
               </button>
             </div>
           </div>
@@ -159,9 +172,13 @@ export default function SentinelBot() {
             {messages.length === 0 && (
               <div className="space-y-3">
                 <p className="font-mono text-[10px] text-sl-muted text-center uppercase tracking-wider">
-                  {mode === "support" ? "Preguntas frecuentes" : "Pregunta sobre cualquier token o blockchain"}
+                  {mode === "chat"
+                    ? "Chat general"
+                    : mode === "diagnostic"
+                      ? "Diagnóstico del sistema"
+                      : "Operador (requiere OK explícito)"}
                 </p>
-                {mode === "support" &&
+                {mode === "chat" &&
                   QUICK_ACTIONS.map((qa) => (
                     <button
                       key={qa.label}
@@ -249,7 +266,13 @@ export default function SentinelBot() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
-              placeholder={mode === "support" ? "Escribe tu pregunta..." : "Pregunta sobre cualquier token..."}
+              placeholder={
+                mode === "chat"
+                  ? "Escribe tu mensaje..."
+                  : mode === "diagnostic"
+                    ? "Describe el problema o métrica..."
+                    : "Escribe: OK ejecutar (para autorizar acciones)"
+              }
               className="flex-1 h-8 px-3 bg-sl-root border border-sl-border font-mono text-xs text-sl-text placeholder:text-sl-muted focus:border-sl-violet focus:outline-none transition-colors duration-150"
               style={{ borderRadius: "2px" }}
               disabled={loading}

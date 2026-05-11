@@ -16,11 +16,11 @@ const botLimiter = rateLimit({
 
 router.post("/message", botLimiter, async (req, res) => {
   try {
-    const { message, language = "es", sessionId } = req.body || {};
+    const { message, language = "es", sessionId, mode = "chat" } = req.body || {};
     if (!message || typeof message !== "string" || message.length > 500) {
       return res.status(400).json({ error: "Invalid message" });
     }
-    const result = await handleBotMessage(message, language, sessionId);
+    const result = await handleBotMessage(message, language, sessionId, mode);
     return res.json(result);
   } catch (err) {
     console.error("[bot] error:", err?.message || err);

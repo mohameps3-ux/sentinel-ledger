@@ -255,6 +255,70 @@ SENTINEL FEATURES:
   }
 }
 
+function normalizeMode(mode) {
+  const m = String(mode || "").toLowerCase().trim();
+  if (m === "diagnostic" || m === "operator" || m === "chat") return m;
+  return "chat";
+}
+
+function isGreeting(message) {
+  const msg = normalize(message);
+  return /^(hola|buenas|buenos dias|buenas tardes|buenas noches|que tal|como estas|hey|hi)\b/.test(msg);
+}
+
+function isOperatorConfirmation(message) {
+  const msg = normalize(message);
+  return /\b(ok|vale|confirmo|confirmado|si|sí|adelante|ejecuta|hazlo)\b/.test(msg);
+}
+
+function buildOperatorConfirmationReply(language) {
+  if (language === "en") {
+    return "Understood. I will stay in operator planning mode. I will not execute changes, commit, push, or deploy until you explicitly confirm with: `OK ejecutar`.";
+  }
+  return "Entendido. Me quedo en modo operador-plan. No ejecutaré cambios, commit, push ni deploy hasta que confirmes explícitamente con: `OK ejecutar`.";
+}
+
+function buildChatSystemPrompt(contextPack, language) {
+  return `You are Sentinel Copilot.
+
+DEFAULT BEHAVIOR:
+- Reply in ${language === "en" ? "English" : "Spanish"}.
+- Natural, friendly, concise conversation style.
+- If user greets, greet back naturally.
+- Do NOT force diagnostics, scoring, gate metrics, or ops jargon unless the user asks.
+- Never give financial advice.
+
+WHEN USER ASKS PRODUCT/TECH:
+- Explain clearly with practical steps.
+- Only include Sentinel metrics if explicitly requested.
+
+SENTINEL CONTEXT (optional; use only when relevant):
+${JSON.stringify(contextPack, null, 2)}`;
+}
+
+function buildDiagnosticSystemPrompt(contextPack, language) {
+  return `You are Sentinel Diagnostic Assistant.
+- Reply in ${language === "en" ? "English" : "Spanish"}.
+- Focus on telemetry, score, gates, quality, and concrete diagnosis.
+- Be precise and calm (no alarmism).
+- Never give financial advice.
+
+SENTINEL CONTEXT:
+${JSON.stringify(contextPack, null, 2)}`;
+}
+
+function buildOperatorSystemPrompt(contextPack, language) {
+  return `You are Sentinel Operator Copilot.
+- Reply in ${language === "en" ? "English" : "Spanish"}.
+- You can propose implementation and ops actions.
+- You DO NOT execute changes directly.
+- Always require explicit confirmation from user before action execution.
+- Never give financial advice.
+
+SENTINEL CONTEXT:
+${JSON.stringify(contextPack, null, 2)}`;
+}
+
 // ── TEMPLATE FILLER ──────────────────────────────────────────
 function fillTemplate(template, ctx) {
   return String(template || "")
@@ -279,9 +343,120 @@ function sigmoidScore(row) {
 }
 
 // ── MAIN HANDLER ─────────────────────────────────────────────
-async function handleBotMessage(message, language = "es", _sessionId) {
+async function handleBotMessage(message, language = "es", _sessionId, mode = "chat") {
   const supabase = safeSupabase();
   const hash = hashQuestion(message);
+  const resolvedMode = normalizeMode(mode);
+  const lang = language === "en" ? "en" : "es";
+
+  if (resolvedMode === "chat" && isGreeting(message)) {
+    return {
+      answer:
+        lang === "en"
+          ? "Hey! I'm doing great. How can I help you today?"
+          : "¡Hola! Todo bien por aquí. ¿En qué te ayudo hoy?",
+      intent: "GREETING",
+      source: "chat",
+      cached: false,
+      confidence_level: "HIGH",
+      thumbsId: null
+    };
+  }
+
+  if (resolvedMode === "operator" && !isOperatorConfirmation(message)) {
+    return {
+      answer: buildOperatorConfirmationReply(lang),
+      intent: "OPERATOR_CONFIRM_REQUIRED",
+      source: "operator_guard",
+      cached: false,
+      confidence_level: "HIGH",
+      thumbsId: null
+    };
+  }
+
+  if (resolvedMode === "chat") {
+    const ctx = await buildContextPack();
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (apiKey) {
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 260,
+            system: buildChatSystemPrompt(ctx, lang),
+            messages: [{ role: "user", content: String(message) }]
+          })
+        });
+        const data = await response.json();
+        const answer = data.content?.[0]?.text;
+        if (typeof answer === "string" && answer.trim()) {
+          return {
+            answer,
+            intent: "CHAT",
+            source: "llm_chat",
+            cached: false,
+            confidence_level: "HIGH",
+            thumbsId: null
+          };
+        }
+      } catch (_) {}
+    }
+    return {
+      answer:
+        lang === "en"
+          ? "Got it. I can help with product, UI, deploys, or diagnostics when you ask."
+          : "Perfecto. Te puedo ayudar con producto, UI, deploys o diagnóstico cuando tú lo pidas.",
+      intent: "CHAT",
+      source: "chat_fallback",
+      cached: false,
+      confidence_level: "MEDIUM",
+      thumbsId: null
+    };
+  }
+
+  if (resolvedMode === "diagnostic" || resolvedMode === "operator") {
+    const ctx = await buildContextPack();
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (apiKey) {
+      const system =
+        resolvedMode === "diagnostic" ? buildDiagnosticSystemPrompt(ctx, lang) : buildOperatorSystemPrompt(ctx, lang);
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 320,
+            system,
+            messages: [{ role: "user", content: String(message) }]
+          })
+        });
+        const data = await response.json();
+        const answer = data.content?.[0]?.text;
+        if (typeof answer === "string" && answer.trim()) {
+          return {
+            answer,
+            intent: resolvedMode === "diagnostic" ? "DIAGNOSTIC" : "OPERATOR",
+            source: resolvedMode === "diagnostic" ? "llm_diag" : "llm_operator",
+            cached: false,
+            confidence_level: "HIGH",
+            thumbsId: null
+          };
+        }
+      } catch (_) {}
+    }
+  }
+
   const { best, confidenceLevel } = scoreIntent(message);
 
   // ── HIGH: support tree ─────────────────────────────────────
