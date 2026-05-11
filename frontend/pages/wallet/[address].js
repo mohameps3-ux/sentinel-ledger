@@ -24,10 +24,6 @@ function normalizeAddress(query) {
   return "";
 }
 
-export async function getServerSideProps() {
-  return { props: {} };
-}
-
 function behaviorWinTone(pct) {
   const n = Number(pct);
   if (!Number.isFinite(n)) return "text-sl-text font-semibold";
