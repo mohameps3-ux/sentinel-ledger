@@ -144,6 +144,37 @@ const OPS_CONSOLE_LIMITS = {
   }
 };
 
+/** Mapa único de límites + confirmación (español, sin relleno). Siempre va en el JSON del agente. */
+const SENTINEL_DIRECTOR_MAP = {
+  vigencia: "2026-05",
+  confirmacionOperador: [
+    "GitHub/SQL efectivos: el operador dispara HTTP con confirm:true (o equivalente en su script); tú no ejecutas sola.",
+    "Calibración/tuner: solo si el operador escribe OK EJECUTAR + palabras clave en el mismo mensaje.",
+    "Sin 'sí' ambiguo para DML, push a default, ni borrar datos; pide texto/JSON explícito o checklist."
+  ],
+  limitaciones: {
+    "1_sql_escritura":
+      "CERO en ops. /ops/tools/sql solo SELECT. Mutar tablas, migrar schema, backfill, fix corrupto → SQL o migración para que el operador lo ejecute en Supabase/pgAdmin (fuera del bot).",
+    "2_codigo":
+      "Lectura: repo/read (disco del servidor, OPS_REPO_ROOT). Escritura remota: github/commit con confirm:true + whitelist (no .env ni rutas secretas). No escribes el disco local del operador.",
+    "3_deploy":
+      "Sin API Vercel/Railway en ops. github/workflow = workflow_dispatch; si el YAML no tiene steps de deploy + secrets en GitHub, no hay deploy. Credenciales cloud fuera del agente.",
+    "4_batch_datos":
+      "Sin canal DML → sin UPDATE masivo de outcomes, dedupe, reindex vía ops. Script/SQL/workflow para humano.",
+    "5_env_produccion":
+      "No cambias ENV en dashboards. envConfig en JSON = solo algunas claves que ve el proceso; no es dump de .env; valores pueden faltar.",
+    "6_monitor_proactivo":
+      "Sin webhook que te despierte; solo ves snapshot cuando el operador pregunta. Alertas tipo win rate < X% → checklist o producto futuro."
+  },
+  herramientasQueSiExisten: [
+    "POST /api/v1/ops/tools/repo/read",
+    "POST /api/v1/ops/tools/sql (SELECT + confirm)",
+    "POST /api/v1/ops/tools/github/commit (confirm + rama + whitelist)",
+    "POST /api/v1/ops/tools/github/workflow (confirm + inputs)",
+    "OK EJECUTAR calibración | OK EJECUTAR tuner (mismo mensaje)"
+  ]
+};
+
 function requireOpsKey(req, res, next) {
   const key = req.headers["x-ops-key"] || req.body?.ops_key;
   if (!key || key !== process.env.OMNI_BOT_OPS_KEY) {
@@ -232,6 +263,7 @@ async function buildOpsContext() {
     },
     frontendSurface: FRONTEND_OPS_SURFACE,
     opsConsoleLimits: OPS_CONSOLE_LIMITS,
+    sentinelDirectorMap: SENTINEL_DIRECTOR_MAP,
     envConfig: {
       GATE_MIN_CONFIDENCE: process.env.GATE_MIN_CONFIDENCE,
       GATE_MIN_SIGNALS: process.env.GATE_MIN_SIGNALS,
@@ -344,6 +376,8 @@ function buildSystemPrompt(ctx, executionSummary) {
   const execStr = executionSummary ? JSON.stringify(executionSummary, null, 2) : null;
   return `Eres el **Director General / Arquitecto de Sentinel** (consola interna de ops). Ámbito mental: **todo el producto** — motor, ingestión, señales, smart money, wallets, track record, UI/UX, despliegues y datos — aunque aquí solo veas un subconjunto en el JSON.
 
+CONTRATO DE LÍMITES (léelo antes de prometer): en el JSON, **sentinelDirectorMap** = mapa breve (mayo 2026): qué está bloqueado, qué sí existe, y que **siempre** hace falta confirmación explícita del operador para efectos.
+
 MANDATO DEL OPERADOR (prioridad absoluta, sin discutir el “si”):
 - **Inmersión total antes de tocar nada**: primero entender flujo end-to-end, dependencias y contratos entre piezas.
 - **Cero desacoplamientos**: ningún cambio aislado que rompa ingestión → scoring → gate → persistencia → UI.
@@ -400,7 +434,7 @@ HERRAMIENTAS HTTP (misma cabecera x-ops-key que este endpoint; ver backend/src/r
 - POST /api/v1/ops/tools/github/workflow — body: { "confirm": true, "workflow": "deploy-production.yml", "ref": "main", "inputs": { "environment": "production", "service": "frontend" } } — workflow_dispatch (GITHUB_TOKEN + GITHUB_REPOSITORY). El YAML debe existir en .github/workflows/.
 - POST /api/v1/ops/tools/github/commit — body: { "confirm": true, "branch": "feature/ops-auto-123", "baseBranch": "main", "message": "feat: …", "files": [ { "path": "frontend/pages/foo.js", "content": "…", "action": "create|update|delete" } ], "createPR": true, "prTitle": "…", "prBody": "…" }. Opcional: updateExistingBranch, allowDirectPushDefault (peligro). Rutas solo bajo whitelist (env OPS_GITHUB_WRITE_ALLOW_PREFIXES).
 
-CONTEXTO LIVE (JSON; es parcial — no es el repo completo). Incluye **frontendSurface**, **opsConsoleLimits** (SQL solo SELECT; github commit + workflow; sin DML; sin API Vercel/Railway nativa).
+CONTEXTO LIVE (JSON; es parcial — no es el repo completo). Orden sugerido: **sentinelDirectorMap** → **opsConsoleLimits** → **frontendSurface** → métricas/env.
 ${ctxStr}
 ${execStr ? `\nEJECUCIÓN_EN_ESTA_PETICIÓN (solo lectura; no inventes):\n${execStr}\n` : ""}`;
 }
