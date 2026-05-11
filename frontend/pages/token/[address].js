@@ -10,13 +10,20 @@ const TokenTerminalPage = dynamic(() => import("../../components/token/TokenTerm
   loading: () => <TokenSkeleton />
 });
 
+/** Inline mint shape check — avoid `import()` inside GSSP (Vercel serverless + .mjs was 500). */
+function isMintParam(s) {
+  if (typeof s !== "string") return false;
+  const t = s.trim();
+  if (t.length < 32 || t.length > 44) return false;
+  return /^[1-9A-HJ-NP-Za-km-z]+$/.test(t);
+}
+
 export async function getServerSideProps(context) {
   const raw = context.params?.address;
   const mint = Array.isArray(raw) ? raw[0] : raw;
   if (typeof mint !== "string") return { notFound: true };
   const trimmed = mint.trim();
-  const { isProbableSolanaMint } = await import("../../lib/solanaMint.mjs");
-  if (!isProbableSolanaMint(trimmed)) {
+  if (!isMintParam(trimmed)) {
     return { props: { routeMint: "" } };
   }
   return { props: { routeMint: trimmed } };

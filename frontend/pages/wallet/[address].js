@@ -24,13 +24,19 @@ function normalizeAddress(query) {
   return "";
 }
 
+function isWalletParam(s) {
+  if (typeof s !== "string") return false;
+  const t = s.trim();
+  if (t.length < 32 || t.length > 44) return false;
+  return /^[1-9A-HJ-NP-Za-km-z]+$/.test(t);
+}
+
 export async function getServerSideProps(context) {
   const raw = context.params?.address;
   const addr = Array.isArray(raw) ? raw[0] : raw;
   if (typeof addr !== "string") return { notFound: true };
   const trimmed = addr.trim();
-  const { isProbableSolanaMint } = await import("../../lib/solanaMint.mjs");
-  if (!isProbableSolanaMint(trimmed)) {
+  if (!isWalletParam(trimmed)) {
     return { props: { routeAddress: "" } };
   }
   return { props: { routeAddress: trimmed } };
