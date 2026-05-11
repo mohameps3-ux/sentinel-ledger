@@ -97,6 +97,7 @@ async function main() {
     const profitFactor = Number(metrics?.profitFactor);
     const winRatePct = Number(metrics?.winRatePct);
     const corr = metrics?.confidenceReturnCorrelation;
+    const corrN = metrics?.confidenceReturnCorrelationSampleSize;
 
     const calibData = calib?.data || {};
     const topProposal = pickTopProposal(calibData);
@@ -132,7 +133,12 @@ async function main() {
     printLine(`- pendingRows: ${pendingRows}`);
     printLine(`- profitFactor: ${fmt(profitFactor, 4)}`);
     printLine(`- winRatePct: ${fmt(winRatePct, 2)}`);
-    printLine(`- confidenceReturnCorrelation: ${corr == null ? "n/a" : corr}`);
+    printLine(
+      `- confidenceReturnCorrelation: ${corr == null ? "n/a" : corr} (n=${corrN == null ? "n/a" : corrN})`
+    );
+    printLine(
+      `- maxDrawdownPct: ${metrics?.maxDrawdownPct == null ? "n/a" : metrics.maxDrawdownPct} (cumulative outcome_pct path; see metrics.definitions in API)`
+    );
     printLine("");
     printLine("Calibrator:");
     printLine(

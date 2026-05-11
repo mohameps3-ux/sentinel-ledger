@@ -10,7 +10,7 @@ export default function ArchitectAgent() {
     {
       role: "assistant",
       content:
-        "Sentinel Senior Architect Agent online.\n\nI can inspect engine state, calibration data, rule performance, and signal quality. What do you need to analyze?"
+        "Sentinel Senior Architect Agent online (ops-only — not shown to app users).\n\nI analyze internal telemetry: calibration, rules, and signal quality. Raw metrics can look harsh; cross-check definitions in Ops → Signals before changing production gates.\n\nWhat should we inspect?"
     }
   ]);
   const [input, setInput] = useState("");
@@ -192,6 +192,21 @@ export default function ArchitectAgent() {
               gap: "12px"
             }}
           >
+            <p
+              style={{
+                margin: 0,
+                padding: "8px 10px",
+                fontSize: "11px",
+                lineHeight: 1.45,
+                color: "#6a8a6a",
+                fontFamily: "monospace",
+                background: "rgba(0,255,100,0.04)",
+                border: "1px solid rgba(0,255,100,0.12)",
+                borderRadius: "8px"
+              }}
+            >
+              Internal ops assistant only — customers never see this. AI replies use raw backend stats; confirm KPI meanings under Signals before acting.
+            </p>
             {messages.map((message, index) => (
               <div
                 key={`${message.role}-${index}`}

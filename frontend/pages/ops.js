@@ -799,19 +799,43 @@ export default function OpsPage() {
                 ) : (
                   <>
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      <Kpi label="Win rate" value={`${perf.metrics?.winRatePct ?? 0}%`} />
-                      <Kpi label="Profit factor" value={String(perf.metrics?.profitFactor ?? 0)} />
-                      <Kpi label="Avg outcome" value={`${perf.metrics?.avgOutcomePct ?? 0}%`} />
+                      <Kpi
+                        label="Win rate"
+                        value={`${perf.metrics?.winRatePct ?? 0}%`}
+                        hint={perf.metrics?.definitions?.winRate || "Resolved signal_performance only; threshold from SIGNAL_PERF_SUCCESS_MIN_PCT"}
+                      />
+                      <Kpi
+                        label="Profit factor"
+                        value={String(perf.metrics?.profitFactor ?? 0)}
+                        hint={perf.metrics?.definitions?.profitFactor || "Wins vs losses in outcome_pct points"}
+                      />
+                      <Kpi
+                        label="Avg outcome"
+                        value={`${perf.metrics?.avgOutcomePct ?? 0}%`}
+                        hint={perf.metrics?.definitions?.outcomePctUnit || "Mean outcome_pct per resolved signal"}
+                      />
                       <Kpi
                         label="Conf ↔ return"
                         value={perf.metrics?.confidenceReturnCorrelation ?? "n/a"}
+                        hint={
+                          perf.metrics?.confidenceReturnCorrelationSampleSize != null
+                            ? `Pearson(confidence, outcome_pct); n=${formatInteger(perf.metrics.confidenceReturnCorrelationSampleSize)}`
+                            : "Pearson(confidence, outcome_pct)"
+                        }
                       />
                     </div>
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <Kpi label="Resolved rows" value={formatInteger(perf.resolvedRows ?? 0)} />
                       <Kpi label="Pending rows" value={formatInteger(perf.pendingRows ?? 0)} />
                       <Kpi label="Failed rows" value={formatInteger(perf.failedRows ?? 0)} />
-                      <Kpi label="Max drawdown" value={`${perf.metrics?.maxDrawdownPct ?? 0}%`} />
+                      <Kpi
+                        label="Max Σ-drawdown"
+                        value={`${perf.metrics?.maxDrawdownPct ?? 0}%`}
+                        hint={
+                          perf.metrics?.definitions?.maxDrawdownPct ||
+                          "Peak-to-trough of cumulative outcome_pct (time-ordered); not wallet equity DD"
+                        }
+                      />
                     </div>
                     {perf.diagnostics ? (
                       <div className=" border border-white/[0.08] bg-[#0b0f13]/80 p-4 space-y-3">

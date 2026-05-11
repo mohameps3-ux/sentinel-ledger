@@ -453,16 +453,23 @@ function computeRegimeOutcomeBlock(regimeRows) {
 function pearson(xs, ys) {
   if (!Array.isArray(xs) || !Array.isArray(ys)) return null;
   if (xs.length !== ys.length || xs.length < 2) return null;
-  const n = xs.length;
+  const pairs = [];
+  for (let i = 0; i < xs.length; i += 1) {
+    const x = Number(xs[i]);
+    const y = Number(ys[i]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    pairs.push([x, y]);
+  }
+  const n = pairs.length;
+  if (n < 2) return null;
   let sumX = 0;
   let sumY = 0;
   let sumXY = 0;
   let sumX2 = 0;
   let sumY2 = 0;
   for (let i = 0; i < n; i += 1) {
-    const x = Number(xs[i]);
-    const y = Number(ys[i]);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const x = pairs[i][0];
+    const y = pairs[i][1];
     sumX += x;
     sumY += y;
     sumXY += x * y;
@@ -634,7 +641,19 @@ async function getSignalPerformanceSummary(options = {}) {
       avgOutcomePct: Math.round(avgRet * 1e4) / 1e4,
       profitFactor: Math.round(profitFactor * 1e4) / 1e4,
       maxDrawdownPct: Math.round(maxDd * 1e4) / 1e4,
-      confidenceReturnCorrelation: corr
+      confidenceReturnCorrelation: corr,
+      confidenceReturnCorrelationSampleSize: resolved.length,
+      definitions: {
+        outcomePctUnit:
+          "outcome_pct is in percentage points (e.g. 5.2 => +5.2% vs entry at resolve horizon).",
+        winRate:
+          `win if outcome_pct >= ${SUCCESS_MIN_PCT} (SIGNAL_PERF_SUCCESS_MIN_PCT); losses are strictly below that threshold.`,
+        profitFactor: "sum(winning outcome_pct) / sum(abs(loss outcome_pct)); undefined denominator collapses to edge cases 0 or 999.",
+        maxDrawdownPct:
+          "peak-to-trough of cumulative sum(outcome_pct) in emission-time order; diagnostic stress path, not portfolio-account equity drawdown.",
+        confidenceReturnCorrelation:
+          "Pearson(emission confidence 0-100, outcome_pct). |r| < ~0.15 is weak; do not infer an inverted model from correlation alone."
+      }
     },
     signals: signalStats,
     combos: comboStats,

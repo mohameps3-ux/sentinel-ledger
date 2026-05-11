@@ -12,6 +12,8 @@ const { getSupabase } = require("../lib/supabase");
 
 const router = express.Router();
 
+const SIGNAL_PERF_SUCCESS_MIN_PCT = Number(process.env.SIGNAL_PERF_SUCCESS_MIN_PCT || 1.0);
+
 function requireOpsKey(req, res, next) {
   const key = req.headers["x-ops-key"] || req.body?.ops_key;
   if (!key || key !== process.env.OMNI_BOT_OPS_KEY) {
@@ -69,10 +71,16 @@ async function buildOpsContext() {
         totalEvaluated: total,
         winRate: ((wins / total) * 100).toFixed(1) + "%",
         avgOutcomePct: (avg * 100).toFixed(2) + "%",
+        sampleSpec:
+          "Last 100 rows from signal_outcomes with outcome_60m not null, ordered by created_at descending.",
+        winDefinition:
+          "Win counted when outcome_60m > 0 (any positive fractional move). This is NOT the same rule as signal_performance summary wins (outcome_pct >= SIGNAL_PERF_SUCCESS_MIN_PCT).",
+        successMinPctForPerformanceSummary: SIGNAL_PERF_SUCCESS_MIN_PCT
       };
     }
     smartWalletStats = { topWallets: walletsRes.data || [] };
   } catch (_) {}
+  const lc = calibration?.lastCalibration;
   return {
     timestamp: new Date().toISOString(),
     calibration,
@@ -80,6 +88,18 @@ async function buildOpsContext() {
     recentSignals,
     signalGateStats,
     smartWalletStats,
+    sentinelMetricLegend: {
+      calibrationMetricsPresence:
+        lc?.ok && lc.metrics
+          ? "calibration.lastCalibration.metrics populated from getSignalPerformanceSummary at last calibration run."
+          : "calibration.lastCalibration.metrics may be absent until a successful calibration run (cron or POST /signal-performance/calibration/run).",
+      calibrationMetricsDefinitions:
+        "When present, read calibration.lastCalibration.metrics.definitions for exact win rate, drawdown, and correlation semantics.",
+      signalGateStatsVersusCalibration:
+        "signalGateStats uses signal_outcomes (ledger); calibration metrics use signal_performance resolves — do not merge win rates without reconciling definitions.",
+      interpretationDiscipline:
+        "Weak confidence↔return correlation is not proof of model inversion. Large maxDrawdownPct is cumulative outcome_pct path stress, not necessarily user portfolio loss."
+    },
     envConfig: {
       GATE_MIN_CONFIDENCE: process.env.GATE_MIN_CONFIDENCE,
       GATE_MIN_SIGNALS: process.env.GATE_MIN_SIGNALS,
@@ -130,6 +150,11 @@ Signal weights: calibrated from signal_performance, range 0.6x-1.6x baseline
 Signal Gate: blocks if confidence < GATE_MIN_CONFIDENCE, signals < GATE_MIN_SIGNALS, unified_score < GATE_MIN_UNIFIED_SCORE
 Regime filters: SIGNAL_GATE_REGIME_* adjust thresholds by market regime (calm/trending/volatile)
 
+AUTONOMOUS CALIBRATION (no LLM writes — deterministic crons):
+- Signal weight calibration: SIGNAL_CALIBRATOR_* cron calls runCalibrationOnce; updates bounded rule weights used in scoring.
+- Adaptive gate tuner: SIGNAL_GATE_ADAPTIVE_* when ENABLED applies small gate knob changes from signal_performance; respects MIN_RESOLVED, hold=no-op, material-change epsilon, and SIGNAL_GATE_ADAPTIVE_MIN_HOURS_BETWEEN_APPLY (+ longer cooldown for relax). Ops sees reasons like cooldown_active / hold_no_adjustment_needed in tuner status.
+- You advise operators; you never POST production changes yourself.
+
 CALIBRATION FORMAT:
   PROPOSED CHANGE: [ENV_VAR] [current_value] -> [suggested_value]
   Rationale: [why]
@@ -142,6 +167,20 @@ CRITICAL RULES:
 - Never lower GATE_MIN_CONFIDENCE below 15
 - Always suggest one change at a time with a monitoring window
 - Flag any pattern suggesting wash trading or system abuse
+
+METRIC ACCURACY (read sentinelMetricLegend + embedded definitions in JSON):
+- Never treat signalGateStats.winRate and calibration.lastCalibration.metrics.winRatePct as interchangeable; they use different tables and win rules.
+- Use calibration.lastCalibration.metrics.confidenceReturnCorrelationSampleSize when judging correlation strength.
+- Treat maxDrawdownPct only as defined in metrics.definitions — not as exchange-style account drawdown.
+
+OUTPUT GUARDRAILS (ops psychology — this chat is NEVER shown to retail users, but operators must not panic or over-correct):
+- Your reader is an operator fixing the system. Do NOT write as if end users are reading this. Never imply "the app is unusable" or "users will churn" from telemetry alone.
+- Ban alarmist/inflammatory wording unless there is a verifiable production outage (e.g. missing_prices, zero resolves for days): avoid "catastrophic", "disaster", "emergency", "completely broken", "destroyed", "worthless" unless you cite a specific failing subsystem and evidence from context.
+- Lead with limitations: if resolved sample is small, correlation sample is small, or calibration.lastCalibration is missing/stale, say that FIRST before any negative conclusion.
+- Separate layers: (A) internal metric quirks / definitions vs (B) real user-facing failures (crashes, blank UI, wrong prices shown). Never conflate A with B.
+- Weak correlation or a bad rolling window is NOT proof the scoring engine is inverted; phrase as "hypothesis — verify with X".
+- Prefer incremental gate/threshold changes + monitoring windows over dramatic single-step jumps unless metrics AND sample size clearly justify it.
+- End with a short "Operator takeaway" bullet list: what to verify next, not doom.
 
 LIVE OPS CONTEXT:
 ${ctxStr}`;

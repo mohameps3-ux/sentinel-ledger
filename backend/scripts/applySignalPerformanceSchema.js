@@ -6,7 +6,7 @@
  *   This URI is for running this script only; API runtime uses SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY.
  * - Once: from repo root: `node backend/scripts/applySignalPerformanceSchema.js`
  *   or: `npm run db:ensure-signal-performance` with cwd backend (see package.json).
- * - Order: 002 → 002_validation_oracle → 003 → 011 → 010 → 012 → 013 → 014 → 015 → 016 → 017 → 018 → 019 → 029.
+ * - Order: 002 → 002_validation_oracle → 003 → 011 → 010 → 012 → 013 → 014 → 015 → 016 → 017 → 018 → 019 → 029 → 030.
  * - Optional tunables: see backend/.env.example (COORD_OUTCOME_HORIZON_MIN, COORD_OUTCOME_PUMP_MIN_PCT, COORD_OUTCOME_CRON_ENABLED, …).
  * - If 012 is not applied: app remains tolerant; “verified” recurrence uses signal_performance fallback when
  *   coordination_outcomes has no row; if the table is missing, the outcome map is empty and the same fallback applies.
@@ -59,7 +59,8 @@ async function main() {
     "017_stalker_double_down_baselines.sql",
     "018_pro_alert_feed_items.sql",
     "019_flipside_smart_wallet_source.sql",
-    "029_signal_outcomes_track_record_stats.sql"
+    "029_signal_outcomes_track_record_stats.sql",
+    "030_signal_dashboard_created_at_indexes.sql"
   ];
 
   let lastErr;
@@ -84,7 +85,7 @@ async function main() {
           console.log(`OK: ${name}`);
         }
         console.log(
-          "OK: wallet_stalks (002), validation oracle, signal_performance, coordination tables, RLS, web_push (015), window extrema (016), stalker F4 (017), PRO alert feed (018), flipside source (019), track-record RPC (029) applied."
+          "OK: wallet_stalks (002), validation oracle, signal_performance, coordination tables, RLS, web_push (015), window extrema (016), stalker F4 (017), PRO alert feed (018), flipside source (019), track-record RPC (029), dashboard created_at index (030) applied."
         );
         console.log(`(connected with ${redactUrlForLog(url)})`);
       } finally {

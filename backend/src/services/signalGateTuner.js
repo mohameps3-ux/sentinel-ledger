@@ -11,6 +11,17 @@ const REGIME_AWARE =
   String(process.env.SIGNAL_GATE_ADAPTIVE_REGIME_AWARE || "false").toLowerCase() === "true";
 const MIN_PER_REGIME = Math.max(5, Number(process.env.SIGNAL_GATE_ADAPTIVE_MIN_PER_REGIME || 20));
 
+/** Minimum hours between adaptive applies (0 = off). Relax uses × RELAX_COOLDOWN_MULT. */
+const MIN_HOURS_BETWEEN_APPLY = Math.max(
+  0,
+  Number(process.env.SIGNAL_GATE_ADAPTIVE_MIN_HOURS_BETWEEN_APPLY ?? 48)
+);
+const RELAX_COOLDOWN_MULT = Math.max(1, Number(process.env.SIGNAL_GATE_ADAPTIVE_RELAX_COOLDOWN_MULT ?? 2));
+const COOLDOWN_BYPASS_ON_TIGHTEN =
+  String(process.env.SIGNAL_GATE_ADAPTIVE_COOLDOWN_BYPASS_ON_TIGHTEN ?? "true").toLowerCase() !== "false";
+const ALLOW_RELAX =
+  String(process.env.SIGNAL_GATE_ADAPTIVE_ALLOW_RELAX ?? "true").toLowerCase() !== "false";
+
 const state = {
   lastRunAt: null,
   lastSuggestion: null,
@@ -22,6 +33,87 @@ function clamp(n, lo, hi) {
   const v = Number(n);
   if (!Number.isFinite(v)) return lo;
   return Math.min(hi, Math.max(lo, v));
+}
+
+function hoursSinceIso(iso) {
+  const t = Date.parse(String(iso || ""));
+  if (!Number.isFinite(t)) return Infinity;
+  return (Date.now() - t) / 3600000;
+}
+
+/**
+ * Skip pointless applies when suggested knobs match effective gate within epsilon.
+ */
+function overridesMaterialChange(suggested, current) {
+  if (!suggested || !current) return true;
+  const mc = Number(suggested.minConfidence);
+  const cc = Number(current.minConfidence);
+  const mu = Number(suggested.minUnifiedScore);
+  const cu = Number(current.minUnifiedScore);
+  const mr = Number(suggested.maxRiskScore);
+  const cr = Number(current.maxRiskScore);
+  if (
+    !Number.isFinite(mc) ||
+    !Number.isFinite(cc) ||
+    !Number.isFinite(mu) ||
+    !Number.isFinite(cu) ||
+    !Number.isFinite(mr) ||
+    !Number.isFinite(cr)
+  ) {
+    return true;
+  }
+  const epsConf = Math.max(0, Number(process.env.SIGNAL_GATE_ADAPTIVE_MATERIAL_EPS_CONFIDENCE ?? 0.08));
+  const epsUni = Math.max(0, Number(process.env.SIGNAL_GATE_ADAPTIVE_MATERIAL_EPS_UNIFIED ?? 0.003));
+  const epsRisk = Math.max(0, Number(process.env.SIGNAL_GATE_ADAPTIVE_MATERIAL_EPS_RISK ?? 0.08));
+  return (
+    Math.abs(mc - cc) > epsConf ||
+    Math.abs(mu - cu) > epsUni ||
+    Math.abs(mr - cr) > epsRisk
+  );
+}
+
+/**
+ * Conservative gates: avoid oscillation, pointless writes, and rapid relax cycles.
+ */
+function adaptiveApplyGuardReason({ suggestion, gateSnap, lastApplied }) {
+  if (suggestion.mode === "hold") {
+    return { skip: true, reason: "hold_no_adjustment_needed" };
+  }
+  if (suggestion.mode === "relax" && !ALLOW_RELAX) {
+    return { skip: true, reason: "relax_disabled_by_env" };
+  }
+
+  const cur = gateSnap?.config || {};
+  const o = suggestion.overrides || {};
+  if (!overridesMaterialChange(o, cur)) {
+    return { skip: true, reason: "no_material_change_vs_effective_gate" };
+  }
+
+  if (MIN_HOURS_BETWEEN_APPLY <= 0 || !lastApplied?.at) {
+    return { skip: false };
+  }
+
+  const elapsed = hoursSinceIso(lastApplied.at);
+  const needRelax = suggestion.mode === "relax";
+  const requiredHours = MIN_HOURS_BETWEEN_APPLY * (needRelax ? RELAX_COOLDOWN_MULT : 1);
+
+  if (COOLDOWN_BYPASS_ON_TIGHTEN && suggestion.mode === "tighten") {
+    return { skip: false };
+  }
+
+  if (elapsed < requiredHours) {
+    return {
+      skip: true,
+      reason: "cooldown_active",
+      cooldown: {
+        elapsedHours: Math.round(elapsed * 100) / 100,
+        requiredHours,
+        mode: suggestion.mode
+      }
+    };
+  }
+
+  return { skip: false };
 }
 
 function suggestFromMetrics(metrics = {}, gate = {}) {
@@ -235,6 +327,23 @@ async function runSignalGateTunerOnce() {
       return out;
     }
 
+    const guard = adaptiveApplyGuardReason({
+      suggestion,
+      gateSnap,
+      lastApplied: state.lastApplied
+    });
+    if (guard.skip) {
+      out.applied = false;
+      out.reason = guard.reason;
+      out.applySkipped = guard.cooldown
+        ? { reason: guard.reason, cooldown: guard.cooldown }
+        : { reason: guard.reason };
+      state.lastSuggestion = out;
+      state.lastRunAt = startedAt;
+      state.lastError = null;
+      return out;
+    }
+
     const applied = applySignalGateOverrides(suggestion.overrides, {
       reason: `adaptive_${suggestion.mode}_${suggestion.evidence?.regimeBranch || "na"}`
     });
@@ -266,6 +375,12 @@ function getSignalGateTunerStatus() {
     lookbackHours: LOOKBACK_HOURS,
     maxRows: MAX_ROWS,
     minResolvedRows: MIN_RESOLVED,
+    applyGuardrails: {
+      minHoursBetweenApply: MIN_HOURS_BETWEEN_APPLY,
+      relaxCooldownMult: RELAX_COOLDOWN_MULT,
+      cooldownBypassOnTighten: COOLDOWN_BYPASS_ON_TIGHTEN,
+      allowRelax: ALLOW_RELAX
+    },
     lastRunAt: state.lastRunAt,
     lastApplied: state.lastApplied,
     lastSuggestion: state.lastSuggestion,
@@ -327,6 +442,21 @@ async function previewSignalGateTuner(options = {}) {
     out.reason = "adaptive_disabled";
     return out;
   }
+
+  const guard = adaptiveApplyGuardReason({
+    suggestion,
+    gateSnap,
+    lastApplied: state.lastApplied
+  });
+  if (guard.skip) {
+    out.wouldApply = false;
+    out.reason = guard.reason;
+    out.applySkipped = guard.cooldown
+      ? { reason: guard.reason, cooldown: guard.cooldown }
+      : { reason: guard.reason };
+    return out;
+  }
+
   out.wouldApply = true;
   out.reason = `adaptive_${suggestion.mode}_preview`;
   return out;
