@@ -29,7 +29,6 @@ import { getPublicSolanaRpcUrl } from "../lib/publicRuntime";
 import { getPublicWsUrl } from "../lib/publicRuntime";
 import { runApiDiagnostics, shouldRunApiDiagnostics } from "../lib/apiDiagnostics";
 import { useTtaFirstAction } from "../hooks/useTtaFirstAction";
-import io from "socket.io-client";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 const inter = Inter({
@@ -77,25 +76,33 @@ export default function App({ Component, pageProps }) {
     if (typeof window === "undefined") return;
     const token = localStorage.getItem("token");
     if (!token) return;
-    const sock = io(getPublicWsUrl(), {
-      transports: ["websocket", "polling"],
-      reconnection: true
-    });
-    sock.on("connect", () => {
-      sock.emit("join-user", { token });
-    });
-    sock.on("wallet-stalk", (event) => {
-      try {
-        const prev = Number(localStorage.getItem("walletStalkerUnread") || 0);
-        localStorage.setItem("walletStalkerUnread", String(prev + 1));
-        const existing = JSON.parse(localStorage.getItem("walletStalkerEvents") || "[]");
-        const next = [event, ...existing].slice(0, 40);
-        localStorage.setItem("walletStalkerEvents", JSON.stringify(next));
-        window.dispatchEvent(new Event("wallet-stalker-update"));
-      } catch (_) {}
-    });
+    let sock = null;
+    let cancelled = false;
+    import("socket.io-client")
+      .then(({ default: io }) => {
+        if (cancelled) return;
+        sock = io(getPublicWsUrl(), {
+          transports: ["websocket", "polling"],
+          reconnection: true
+        });
+        sock.on("connect", () => {
+          sock.emit("join-user", { token });
+        });
+        sock.on("wallet-stalk", (event) => {
+          try {
+            const prev = Number(localStorage.getItem("walletStalkerUnread") || 0);
+            localStorage.setItem("walletStalkerUnread", String(prev + 1));
+            const existing = JSON.parse(localStorage.getItem("walletStalkerEvents") || "[]");
+            const next = [event, ...existing].slice(0, 40);
+            localStorage.setItem("walletStalkerEvents", JSON.stringify(next));
+            window.dispatchEvent(new Event("wallet-stalker-update"));
+          } catch (_) {}
+        });
+      })
+      .catch((e) => console.warn("[app] wallet-stalk socket load failed:", e?.message || e));
     return () => {
-      sock.close();
+      cancelled = true;
+      if (sock) sock.close();
     };
   }, []);
 
