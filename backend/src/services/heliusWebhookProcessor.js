@@ -28,6 +28,7 @@ const {
   buildStalkerEnrichmentFallback,
   buildStalkerEnrichmentFromMarket
 } = require("../lib/stalkerImpact");
+const { wireSmartWalletsAfterSignal } = require("./smartWalletWebhookWire");
 
 const SENTINEL_SOURCE = "helius_webhook";
 const DEDUPE_TTL_SEC = 120;
@@ -150,7 +151,8 @@ async function processHeliusWebhookRaw(raw) {
 
   for (let i = 0; i < txs.length; i += 1) {
     const tx = txs[i];
-    if (!tx.tokenAddress || !global.io) continue;
+    // Persistencia (signal_performance, convergence, etc.) no debe depender de Socket.IO.
+    if (!tx.tokenAddress) continue;
     const gate = shouldAllowMint(tx.tokenAddress);
     if (!gate.allowed) {
       droppedByGuard += 1;
@@ -196,7 +198,9 @@ async function processHeliusWebhookRaw(raw) {
       if (!first) continue;
     }
 
-    global.io.to(tx.tokenAddress).emit("transaction", tx);
+    if (global.io) {
+      global.io.to(tx.tokenAddress).emit("transaction", tx);
+    }
 
     if (tx.type === "buy" || tx.type === "BUY") {
       try {
@@ -250,13 +254,22 @@ async function processHeliusWebhookRaw(raw) {
             if (global.io) {
               global.io.to(probingResult.mint).emit("sentinel:score", probingScore);
             }
-            await recordSignalEmission(probingScore, {
+            const perfProbe = await recordSignalEmission(probingScore, {
               source: "cluster_probing",
               emission_regime: "cluster_activation",
               priority: "HIGH"
             });
-            signalEmitted = true;
-            console.log(`[probing] signal emitted for ${tx.tokenAddress}`);
+            if (perfProbe && perfProbe.ok === false) {
+              console.warn(
+                `[helius-webhook] signal_performance skip (cluster) asset=${probingScore.asset} reason=${perfProbe.reason || "unknown"}`
+              );
+            } else {
+              signalEmitted = true;
+              console.log(`[probing] signal emitted for ${tx.tokenAddress}`);
+              void wireSmartWalletsAfterSignal({ wallets: ctx.wallets, signature: sig }).catch((e) =>
+                console.warn("[smart-wallet-wire] cluster:", e?.message || e)
+              );
+            }
           }
         }
       } catch (_) {
@@ -265,14 +278,16 @@ async function processHeliusWebhookRaw(raw) {
     }
 
     if (sentinelEvent) {
-      global.io.to(tx.tokenAddress).emit("sentinel:event", sentinelEvent);
+      if (global.io) {
+        global.io.to(tx.tokenAddress).emit("sentinel:event", sentinelEvent);
+      }
       recordEventEmitted(sentinelEvent, Date.now() - startedAt);
       try {
         const market = await getMarketDataMemoized(tx.tokenAddress);
         const ctx = buildScoringContext(market, tx.amount);
         ctx.wallets = [String(tx.wallet || "").trim()].filter(Boolean);
         const score = await evaluateScore(sentinelEvent, ctx);
-        if (score && global.io) {
+        if (score) {
           const alphaLayer = buildAlphaLayer(score, ctx);
           if (alphaLayer) {
             score.meta = { ...(score.meta || {}), alphaLayer };
@@ -298,9 +313,20 @@ async function processHeliusWebhookRaw(raw) {
                 alphaLayer: score.meta?.alphaLayer || null
               }
             };
-            global.io.to(tx.tokenAddress).emit("sentinel:score", score);
-            await recordSignalEmission(score);
-            signalEmitted = true;
+            if (global.io) {
+              global.io.to(tx.tokenAddress).emit("sentinel:score", score);
+            }
+            const perf = await recordSignalEmission(score);
+            if (perf && perf.ok === false) {
+              console.warn(
+                `[helius-webhook] signal_performance skip asset=${score.asset} reason=${perf.reason || "unknown"}`
+              );
+            } else if (perf?.ok) {
+              signalEmitted = true;
+              void wireSmartWalletsAfterSignal({ wallets: ctx.wallets, signature: sig }).catch((e) =>
+                console.warn("[smart-wallet-wire] scoring path:", e?.message || e)
+              );
+            }
             if (score.confidence > 70 || (score.signals && score.signals.length > 2)) {
               console.log(
                 `[SCORING_SIGNAL] ${score.asset} - ${score.confidence}% - ${(score.signals || []).join(",")}`
@@ -308,12 +334,14 @@ async function processHeliusWebhookRaw(raw) {
             }
           }
         }
-      } catch (_) {}
+      } catch (err) {
+        console.warn("[helius-webhook] scoring/signal_performance path failed:", err?.message || err);
+      }
     }
 
     if (tx.type === "buy" || tx.type === "swap") {
       const conv = await trackSmartBuyAndDetect(tx.tokenAddress, tx.wallet, tx.timestamp, tx.type);
-      if (conv?.detected) {
+      if (conv?.detected && global.io) {
         global.io.to(tx.tokenAddress).emit("convergence", {
           tokenAddress: tx.tokenAddress,
           wallets: conv.wallets,
@@ -321,7 +349,7 @@ async function processHeliusWebhookRaw(raw) {
           windowMinutes: conv.windowMinutes
         });
       }
-      if (conv?.redPrepare) {
+      if (conv?.redPrepare && global.io) {
         global.io.to(tx.tokenAddress).emit("coordination:red-signal", {
           redSignal: "RED_PREPARE",
           tokenAddress: tx.tokenAddress,
@@ -334,7 +362,7 @@ async function processHeliusWebhookRaw(raw) {
           meta: conv.redPrepare.meta || {}
         });
       }
-      if (conv?.redAbort) {
+      if (conv?.redAbort && global.io) {
         global.io.to(tx.tokenAddress).emit("coordination:red-signal", {
           redSignal: "RED_ABORT",
           tokenAddress: tx.tokenAddress,
@@ -344,7 +372,7 @@ async function processHeliusWebhookRaw(raw) {
           detectedAt: conv.redAbort.detectedAt
         });
       }
-      if (conv?.redAlert) {
+      if (conv?.redAlert && global.io) {
         const confirmPayload = {
           redSignal: "RED_CONFIRM",
           tokenAddress: tx.tokenAddress,
@@ -403,8 +431,10 @@ async function processHeliusWebhookRaw(raw) {
           enrichment: { ...enrichment, ...f4 }
         };
 
-        for (const w of watchers) {
-          global.io.to(`user:${w.user_id}`).emit("wallet-stalk", stalkPayload);
+        if (global.io) {
+          for (const w of watchers) {
+            global.io.to(`user:${w.user_id}`).emit("wallet-stalk", stalkPayload);
+          }
         }
       }
     } catch (_) {}

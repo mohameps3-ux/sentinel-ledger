@@ -58,7 +58,7 @@ const FRONTEND_OPS_SURFACE = {
       page: "frontend/pages/smart-money.js",
       userFacing: "Leaderboard smart wallets, actividad, favoritos, narrativa.",
       dataLayer:
-        "useSmartWalletsLeaderboard→/api/v1/public/smart-wallets-leaderboard | useSmartMoneyActivity→/api/v1/public/smart-money-activity | useWalletLabels→/api/v1/public/wallet-labels | useWalletFavorites (local/persistido cliente)"
+        "useSmartWalletsLeaderboard→/api/v1/public/smart-wallets-leaderboard (por defecto excluye total_trades=0; ?includeZeroTrade=1 para radar vacío) | useSmartMoneyActivity→/api/v1/public/smart-money-activity | useWalletLabels→/api/v1/public/wallet-labels | useWalletFavorites (local/persistido cliente)"
     },
     {
       path: "/wallet-stalker",

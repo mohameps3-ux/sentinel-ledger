@@ -371,12 +371,22 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
     const minTrades = Math.min(100000, Math.max(0, Number(req.query.minTrades || 0)));
     const chain = String(req.query.chain || "solana").toLowerCase();
     const pageLimit = Math.min(100, Math.max(1, Number(req.query.limit ?? 50)));
+    const includeZeroTrade =
+      String(req.query.includeZeroTrade || "")
+        .trim()
+        .toLowerCase() === "1" ||
+      String(req.query.includeZeroTrade || "")
+        .trim()
+        .toLowerCase() === "true";
 
     let q = supabase
       .from("smart_wallets")
       .select("*")
       .order("total_trades", { ascending: false })
       .limit(240);
+    if (!includeZeroTrade) {
+      q = q.gt("total_trades", 0);
+    }
     if (minWr > 0) q = q.gte("win_rate", minWr);
     const { data, error } = await q;
     if (error) throw error;
@@ -507,7 +517,7 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
         count: sorted.length,
         limit: pageLimit,
         chain: chain === "all" ? "all" : "solana",
-        filters: { minWinRate: minWr, minTrades }
+        filters: { minWinRate: minWr, minTrades, includeZeroTradeRows: includeZeroTrade }
       }
     });
   } catch (e) {
