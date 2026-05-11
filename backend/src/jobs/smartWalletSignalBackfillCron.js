@@ -19,6 +19,14 @@ const DEDUPE_MINUTES = Number.isFinite(DEDUPE_MIN_RAW)
   : 120;
 const MIN_WIN_RATE = Number(process.env.SMART_SIGNAL_BACKFILL_MIN_WIN_RATE || 70);
 
+/** Cap rows read from wallet_tokens per tick (egress control). No pagination — newest-first via order+bought_at. */
+function walletTokensSelectLimit() {
+  const fallback = BATCH * 8;
+  const raw = Number(process.env.SMART_SIGNAL_BACKFILL_WALLET_TOKENS_LIMIT);
+  if (!Number.isFinite(raw) || raw < 1) return Math.min(2000, Math.max(50, fallback));
+  return Math.min(5000, Math.max(50, Math.floor(raw)));
+}
+
 let intervalRef = null;
 let lastTickStartedAt = null;
 let lastTickFinishedAt = null;
@@ -63,12 +71,13 @@ async function runSmartWalletSignalBackfillTick() {
     const sinceIso = new Date(Date.now() - LOOKBACK_HOURS * 60 * 60 * 1000).toISOString();
     const dedupeSinceIso = new Date(Date.now() - DEDUPE_MINUTES * 60 * 1000).toISOString();
 
+    const wtLimit = walletTokensSelectLimit();
     const { data: rows, error: rowsError } = await supabase
       .from("wallet_tokens")
       .select("wallet_address, token_address, bought_at")
       .gte("bought_at", sinceIso)
       .order("bought_at", { ascending: false })
-      .limit(BATCH * 8);
+      .limit(wtLimit);
     if (rowsError) throw rowsError;
 
     const walletSet = new Set();
@@ -183,6 +192,7 @@ function getSmartWalletSignalBackfillStatus() {
     cronEnabled: isEnabled(),
     tickIntervalMs: TICK_MS,
     batch: BATCH,
+    walletTokensSelectLimit: walletTokensSelectLimit(),
     lookbackHours: LOOKBACK_HOURS,
     dedupeMinutes: DEDUPE_MINUTES,
     minWinRate: MIN_WIN_RATE,
