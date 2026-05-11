@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import io from "socket.io-client";
 import { getPublicWsUrl } from "../lib/publicRuntime";
 import { isProbableSolanaPubkey } from "../lib/solanaAddress";
 
+/** Shared client socket (browser only — never import `socket.io-client` at module top-level: breaks some SSR/serverless eval). */
 let socket = null;
 
 export function useWebSocket(tokenAddress) {
@@ -44,10 +44,13 @@ export function useWebSocket(tokenAddress) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    let dispose = () => {};
+
     if (!tokenAddress || !isProbableSolanaPubkey(String(tokenAddress))) {
       setConnectionState("disconnected");
       setIsConnected(false);
-      return;
+      return undefined;
     }
 
     setConnectionState("reconnecting");
@@ -57,66 +60,96 @@ export function useWebSocket(tokenAddress) {
     setCoordination(null);
     dedupeRef.current = new Set();
 
-    if (!socket) {
-      socket = io(getPublicWsUrl(), {
-        transports: ["websocket", "polling"],
-        reconnection: true,
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 10000
-      });
-    }
+    import("socket.io-client")
+      .then((mod) => {
+        if (cancelled) return;
+        const io = mod.default;
+        if (typeof io !== "function") {
+          console.warn("[useWebSocket] socket.io-client default export missing");
+          setConnectionState("disconnected");
+          return;
+        }
 
-    const onConnect = () => {
-      setIsConnected(true);
-      setConnectionState("connected");
-    };
-    const onDisconnect = () => {
-      setIsConnected(false);
-      setConnectionState("disconnected");
-    };
-    const onReconnectAttempt = () => {
-      setIsConnected(false);
-      setConnectionState("reconnecting");
-    };
-    const handleTx = (tx) => pushTransaction(tx, false);
-    const handleConvergence = (evt) => {
-      if (!evt) return;
-      setConvergence({
-        detected: true,
-        wallets: Array.isArray(evt.wallets) ? evt.wallets : [],
-        detectedAt: evt.detectedAt || new Date().toISOString(),
-        windowMinutes: Number(evt.windowMinutes || 10)
-      });
-    };
-    const handleRedSignal = (payload) => {
-      if (!payload) return;
-      setCoordination((prev) => ({
-        ...payload,
-        receivedAt: new Date().toISOString(),
-        _seq: (prev?._seq || 0) + 1
-      }));
-    };
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("reconnect_attempt", onReconnectAttempt);
-    socket.on("transaction", handleTx);
-    socket.on("convergence", handleConvergence);
-    socket.on("coordination:red-signal", handleRedSignal);
+        if (!socket) {
+          socket = io(getPublicWsUrl(), {
+            transports: ["websocket", "polling"],
+            reconnection: true,
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 10000
+          });
+        }
 
-    socket.emit("join-token", tokenAddress);
+        const onConnect = () => {
+          setIsConnected(true);
+          setConnectionState("connected");
+        };
+        const onDisconnect = () => {
+          setIsConnected(false);
+          setConnectionState("disconnected");
+        };
+        const onReconnectAttempt = () => {
+          setIsConnected(false);
+          setConnectionState("reconnecting");
+        };
+        const handleTx = (tx) => pushTransaction(tx, false);
+        const handleConvergence = (evt) => {
+          if (!evt) return;
+          setConvergence({
+            detected: true,
+            wallets: Array.isArray(evt.wallets) ? evt.wallets : [],
+            detectedAt: evt.detectedAt || new Date().toISOString(),
+            windowMinutes: Number(evt.windowMinutes || 10)
+          });
+        };
+        const handleRedSignal = (payload) => {
+          if (!payload) return;
+          setCoordination((prev) => ({
+            ...payload,
+            receivedAt: new Date().toISOString(),
+            _seq: (prev?._seq || 0) + 1
+          }));
+        };
+
+        socket.on("connect", onConnect);
+        socket.on("disconnect", onDisconnect);
+        socket.on("reconnect_attempt", onReconnectAttempt);
+        socket.on("transaction", handleTx);
+        socket.on("convergence", handleConvergence);
+        socket.on("coordination:red-signal", handleRedSignal);
+
+        socket.emit("join-token", tokenAddress);
+
+        dispose = () => {
+          try {
+            socket.emit("leave-token", tokenAddress);
+          } catch (_) {
+            /* ignore */
+          }
+          socket.off("connect", onConnect);
+          socket.off("disconnect", onDisconnect);
+          socket.off("reconnect_attempt", onReconnectAttempt);
+          socket.off("transaction", handleTx);
+          socket.off("convergence", handleConvergence);
+          socket.off("coordination:red-signal", handleRedSignal);
+        };
+
+        if (socket.connected) {
+          setIsConnected(true);
+          setConnectionState("connected");
+        }
+      })
+      .catch((e) => {
+        console.warn("[useWebSocket] socket.io-client load failed:", e?.message || e);
+        setConnectionState("disconnected");
+        setIsConnected(false);
+      });
 
     return () => {
-      socket.emit("leave-token", tokenAddress);
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("reconnect_attempt", onReconnectAttempt);
-      socket.off("transaction", handleTx);
-      socket.off("convergence", handleConvergence);
-      socket.off("coordination:red-signal", handleRedSignal);
+      cancelled = true;
+      dispose();
     };
   }, [tokenAddress, pushTransaction]);
 
   return { transactions, isConnected, connectionState, convergence, coordination };
 }
-
