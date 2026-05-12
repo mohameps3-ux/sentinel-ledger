@@ -10,6 +10,7 @@ const rateLimit = require("express-rate-limit");
 const { runCalibrationOnce, getCalibrationSnapshot } = require("../services/signalCalibrator");
 const { runSignalGateTunerTick } = require("../jobs/signalGateTunerCron");
 const { getSupabase } = require("../lib/supabase");
+const opsToolsRouter = require("./opsTools");
 
 const router = express.Router();
 
@@ -484,8 +485,27 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
       console.error("[ops-agent] Claude error:", data.error);
       return res.status(502).json({ error: "Agent error: " + (data.error?.message || "unknown") });
     }
+    let assistantMessage = data.content?.[0]?.text || "";
+
+    const sqlAutoExecRegex = /```sql\s+--\s*autoExecuteSQL\s*\n([\s\S]+?)```/g;
+    let match;
+    const autoResults = [];
+    while ((match = sqlAutoExecRegex.exec(assistantMessage)) !== null) {
+      const sql = match[1].trim();
+      try {
+        const execRes = await opsToolsRouter.runOpsReadOnlySelect(sql);
+        if (!execRes.ok) throw new Error(execRes.error || "sql_exec_failed");
+        autoResults.push({ sql, rows: execRes.rows, rowCount: execRes.rowCount });
+      } catch (err) {
+        autoResults.push({ sql, error: err?.message || String(err) });
+      }
+    }
+    if (autoResults.length > 0) {
+      assistantMessage += "\n\n**RESULTADOS AUTO-EJECUTADOS:**\n" + JSON.stringify(autoResults, null, 2);
+    }
+
     return res.json({
-      answer: data.content?.[0]?.text || "",
+      answer: assistantMessage,
       model,
       contextTimestamp: ctx.timestamp,
       executed: execLog.ran
