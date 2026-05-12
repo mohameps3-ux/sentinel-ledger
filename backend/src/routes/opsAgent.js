@@ -490,7 +490,7 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
     const model =
       process.env.OPENAI_OPS_AGENT_MODEL ||
       process.env.OPENAI_SENTINEL_AGENT_MODEL ||
-      "gpt-5-mini";
+      "gpt-4o-mini";
     const openaiHistory = safeHistory
       .map((m) => {
         const role = m.role === "assistant" ? "assistant" : m.role === "user" ? "user" : null;
