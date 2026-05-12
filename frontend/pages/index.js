@@ -39,12 +39,37 @@ import { useWebSocket } from "../hooks/useWebSocket";
 import { useLastGoodArray } from "../hooks/useLastGoodArray";
 import { motion, AnimatePresence } from "framer-motion";
 
-function HomeMetricStrip({ signalsToday, activeWallets, avgConfidence, bestSignal }) {
+/** Start of current UTC calendar day (ms). */
+function utcDayStartMs() {
+  const d = new Date();
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+/**
+ * DB-backed live feed cards (excl. heat fill) whose emission timestamp is on or after UTC midnight today.
+ * Uses `createdAt` / `signalAt` from the signals/latest row (`_api`).
+ */
+function countDbSignalsEmittedUtcToday(signals) {
+  const t0 = utcDayStartMs();
+  let n = 0;
+  for (const s of signals || []) {
+    if (s._liveSource === "hot_fill") continue;
+    const raw = s._api?.createdAt ?? s._api?.signalAt;
+    if (!raw) continue;
+    const ms = Date.parse(String(raw));
+    if (!Number.isFinite(ms) || ms < t0) continue;
+    n += 1;
+  }
+  return n;
+}
+
+function HomeMetricStrip({ t, signalsToday, activeWallets, avgConfidence, bestSignal }) {
+  const dash = t("home.metricStrip.dash");
   const metrics = [
-    ["SIGNALS TODAY", signalsToday],
-    ["ACTIVE WALLETS", activeWallets],
-    ["AVG CONFIDENCE", avgConfidence != null ? `${Math.round(avgConfidence)}%` : "â"],
-    ["BEST SIGNAL", bestSignal != null ? `${Math.round(bestSignal)}%` : "â"]
+    [t("home.metricStrip.signalsToday"), signalsToday],
+    [t("home.metricStrip.activeWallets"), activeWallets],
+    [t("home.metricStrip.avgConfidence"), avgConfidence != null ? `${Math.round(avgConfidence)}%` : dash],
+    [t("home.metricStrip.bestSignal"), bestSignal != null ? `${Math.round(bestSignal)}%` : dash]
   ];
   return (
     <div className="kpi-strip w-full">
@@ -309,7 +334,6 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const setStrategyMode = useMarketStore((s) => s.setStrategy);
   const [tacticalTab, setTacticalTab] = useState("live");
   const [historyRows, setHistoryRows] = useState([]);
-  const [outcomesSummary, setOutcomesSummary] = useState(null);
   const [topWalletsApi, setTopWalletsApi] = useState([]);
   const [entryCountdownByMint, setEntryCountdownByMint] = useState({});
   const [liveExpanded, setLiveExpanded] = useState(false);
@@ -693,33 +717,6 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${getPublicApiUrl()}/api/v1/signals/outcomes?hours=168`)
-      .then((r) => r.json())
-      .then((j) => {
-        if (cancelled) return;
-        const summary = j?.summary && typeof j.summary === "object" ? { ...j.summary } : {};
-        if (j?.wins != null) summary.wins = j.wins;
-        if (j?.losses != null) summary.losses = j.losses;
-        if (j?.avgWin != null) summary.avgWinPct = j.avgWin;
-        if (j?.avgLoss != null) summary.avgLossPct = j.avgLoss;
-        if (j?.netReturn != null) summary.netReturnPct = j.netReturn;
-        if (summary.wins != null && summary.losses != null) {
-          summary.resolved = (Number(summary.wins) || 0) + (Number(summary.losses) || 0);
-        }
-        setOutcomesSummary(Object.keys(summary).length ? summary : null);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setOutcomesSummary(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
     fetch(`${getPublicApiUrl()}/api/v1/smart-wallets/top?limit=50`)
       .then((r) => r.json())
       .then((j) => {
@@ -799,12 +796,12 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     const bestSignal = scores.length ? Math.max(...scores) : null;
     const activeWallets = rankedWallets.length || topWalletsApi.length || 0;
     return {
-      signalsToday: outcomesSummary?.resolved ?? interpretedSignals.length,
+      signalsToday: countDbSignalsEmittedUtcToday(interpretedSignals),
       activeWallets,
       avgConfidence,
       bestSignal
     };
-  }, [interpretedSignals, outcomesSummary?.resolved, rankedWallets.length, topWalletsApi.length]);
+  }, [interpretedSignals, rankedWallets.length, topWalletsApi.length]);
 
   const warRoomKpis = useMemo(
     () => ({
@@ -839,6 +836,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               />
             </div>
             <HomeMetricStrip
+              t={t}
               signalsToday={homeMetrics.signalsToday}
               activeWallets={homeMetrics.activeWallets}
               avgConfidence={homeMetrics.avgConfidence}

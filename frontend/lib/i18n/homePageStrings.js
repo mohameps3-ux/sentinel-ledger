@@ -21,5 +21,12 @@ export const HOME_PAGE_STRINGS = {
     {
       es: "Paso 1 — Mira LIVE, HOT o HISTORY arriba. Buscador y wallet fijos. En pantalla ancha, «Más»; en móvil, el menú ☰."
     }
-  )
+  ),
+  "home.metricStrip.signalsToday": S("Signals today (UTC)", {
+    es: "Señales hoy (UTC)"
+  }),
+  "home.metricStrip.activeWallets": S("Active wallets", { es: "Wallets activas" }),
+  "home.metricStrip.avgConfidence": S("Avg confidence", { es: "Conf. media" }),
+  "home.metricStrip.bestSignal": S("Best signal", { es: "Mejor señal" }),
+  "home.metricStrip.dash": S("—", { es: "—" })
 };
