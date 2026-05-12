@@ -12,6 +12,10 @@ const { isMissingColumnError } = require("../lib/columnMissingError");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 const { asRuleId } = require("../workers/validationOracle");
 const redis = require("../lib/cache");
+const {
+  TRACK_RECORD_LEDGER_STATS_KEY: LEDGER_STATS_CACHE_KEY,
+  getTrackRecordCacheGen
+} = require("../services/trackRecordLive");
 
 const router = express.Router();
 
@@ -41,8 +45,6 @@ function trackRecordLedgerStatsCacheSeconds() {
   if (!Number.isFinite(n)) return 90;
   return Math.min(600, Math.max(30, Math.floor(n)));
 }
-
-const LEDGER_STATS_CACHE_KEY = "signals:track-record:ledger-stats:v3:outcomes";
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -785,9 +787,10 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
       page_size: safePageSize,
       total_pages: Math.max(1, Math.ceil(Number(ledger.total_signals || 0) / safePageSize))
     },
-    meta: {
-      source: "supabase:validation_oracle",
-      track_record_row_source: rowSource,
+      meta: {
+        source: "supabase:validation_oracle",
+        track_record_row_source: rowSource,
+        track_record_cache_gen: cacheGen,
       filter,
       cache_ttl_sec: trackRecordCacheSeconds(),
       ledger_stats_cache_ttl_sec: trackRecordLedgerStatsCacheSeconds(),
@@ -926,7 +929,13 @@ router.get("/track-record", async (req, res) => {
   const filter = String(req.query.filter || "all").toLowerCase();
   const page = Math.max(1, Number(req.query.page || 1));
   const pageSize = Math.max(1, Math.min(50, Number(req.query.limit || 25)));
-  const cacheKey = `signals:track-record:v8:${filter}:${page}:${pageSize}`;
+  let cacheGen = 0;
+  try {
+    cacheGen = await getTrackRecordCacheGen();
+  } catch (error) {
+    console.warn("[track-record] cache gen read failed:", error?.message || error);
+  }
+  const cacheKey = `signals:track-record:v9:g${cacheGen}:${filter}:${page}:${pageSize}`;
   const cacheSec = trackRecordCacheSeconds();
   try {
     const cached = await redis.get(cacheKey);

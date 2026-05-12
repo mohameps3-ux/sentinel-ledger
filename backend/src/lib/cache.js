@@ -99,9 +99,34 @@ async function safeDel(key) {
   }
 }
 
+async function safeIncr(key) {
+  if (disabledUntil > nowMs()) {
+    const cur = Number(readMemory(key));
+    const base = Number.isFinite(cur) ? cur : 0;
+    const next = base + 1;
+    writeMemory(key, String(next), { ex: 86_400 });
+    return next;
+  }
+  try {
+    return await redis.incr(key);
+  } catch (error) {
+    if (shouldUseMemoryFallback(error)) {
+      disabledUntil = nowMs() + 15 * 60 * 1000;
+      console.warn("Redis REST unavailable; incr handled by in-memory fallback.");
+      const cur = Number(readMemory(key));
+      const base = Number.isFinite(cur) ? cur : 0;
+      const next = base + 1;
+      writeMemory(key, String(next), { ex: 86_400 });
+      return next;
+    }
+    throw error;
+  }
+}
+
 module.exports = {
   get: safeGet,
   set: safeSet,
-  del: safeDel
+  del: safeDel,
+  incr: safeIncr
 };
 

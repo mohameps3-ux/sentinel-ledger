@@ -454,6 +454,12 @@ io.on("connection", (socket) => {
     if (typeof address !== "string" || !isProbableSolanaPubkey(address)) return;
     socket.leave(address);
   });
+  socket.on("join-track-record", () => {
+    socket.join("track-record");
+  });
+  socket.on("leave-track-record", () => {
+    socket.leave("track-record");
+  });
   socket.on("join-user", (payload) => {
     const token = typeof payload?.token === "string" ? payload.token : "";
     if (!token || !process.env.JWT_SECRET) return;

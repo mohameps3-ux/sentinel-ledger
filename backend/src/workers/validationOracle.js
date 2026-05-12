@@ -194,6 +194,12 @@ async function recordOracleSignal(score, ctx = {}) {
     }
     const { error } = await supabase.from("signal_outcomes").insert(row);
     if (error) return { ok: false, reason: error.message || "insert_failed" };
+    try {
+      const { scheduleTrackRecordLedgerLive } = require("../services/trackRecordLive");
+      scheduleTrackRecordLedgerLive("oracle_signal_insert");
+    } catch (_) {
+      /* non-fatal */
+    }
     return { ok: true, ruleId };
   } catch (error) {
     return { ok: false, reason: error?.message || "insert_failed" };
@@ -340,6 +346,16 @@ async function runValidationOracleTick() {
       performanceUpdated,
       error: r5.error || r15.error || r60.error || null
     };
+    const tickUpdates =
+      Number(r5.updated || 0) + Number(r15.updated || 0) + Number(r60.updated || 0);
+    if (tickUpdates > 0) {
+      try {
+        const { scheduleTrackRecordLedgerLive } = require("../services/trackRecordLive");
+        scheduleTrackRecordLedgerLive("validation_oracle_horizon");
+      } catch (_) {
+        /* non-fatal */
+      }
+    }
   } catch (error) {
     lastStats = { ...lastStats, error: error?.message || "tick_failed" };
   } finally {

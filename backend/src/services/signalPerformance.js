@@ -98,6 +98,13 @@ async function syncSignalOutcomesFromPerformanceRow(supabase, perfRow, { outcome
     if (upErr) return;
   }
 
+  try {
+    const { scheduleTrackRecordLedgerLive } = require("./trackRecordLive");
+    scheduleTrackRecordLedgerLive("signal_performance_sync");
+  } catch (_) {
+    /* non-fatal */
+  }
+
   const ridForRule = existing?.rule_id || ruleId;
   try {
     const { recomputeRulePerformance } = require("../workers/validationOracle");
