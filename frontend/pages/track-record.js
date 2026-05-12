@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import Link from "next/link";
-import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHead } from "../components/seo/PageHead";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useTrackRecordLive, TRACK_RECORD_QUERY_KEY } from "../hooks/useTrackRecordLive";
@@ -28,13 +28,50 @@ function outcomeState(v) {
   return "flat";
 }
 
+const FETCH_MS = 35_000;
+
 async function fetchTrackRecordPage(page) {
   const qs = new URLSearchParams({ filter: "all", limit: "50", page: String(page) });
-  const res = await fetch(`${getPublicApiUrl()}/api/v1/signals/track-record?${qs}`, { headers: { Accept: "application/json" } });
-  const body = await res.json().catch(() => null);
-  if (!res.ok || !body?.ok) throw new Error(body?.error || `track_record_http_${res.status}`);
-  return body;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_MS);
+  try {
+    const res = await fetch(`${getPublicApiUrl()}/api/v1/signals/track-record?${qs}`, {
+      headers: { Accept: "application/json" },
+      signal: ctrl.signal
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body?.ok) throw new Error(body?.error || `track_record_http_${res.status}`);
+    return body;
+  } finally {
+    clearTimeout(timer);
+  }
 }
+
+function dedupeChartRows(rows) {
+  const seen = new Set();
+  const out = [];
+  for (const r of rows) {
+    if (!r || typeof r !== "object") continue;
+    if (!r.id && !r.created_at) continue;
+    const k = String(r.id || `${r.mint}-${r.rule_id}-${r.created_at}`);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(r);
+  }
+  return out.sort((a, b) => Date.parse(a.created_at || 0) - Date.parse(b.created_at || 0));
+}
+
+/** Recent pages can be all pending; merge strips from page 1 so charts match headline KPIs. */
+function mergeChartRowsFromPayload(first, pagedRecent) {
+  const extra = [
+    first?.best_call,
+    first?.worst_call,
+    ...(Array.isArray(first?.top_wins) ? first.top_wins : []),
+    ...(Array.isArray(first?.worst_losses) ? first.worst_losses : [])
+  ].filter(Boolean);
+  return dedupeChartRows([...pagedRecent, ...extra]);
+}
+
 async function fetchTrackRecord() {
   const first = await fetchTrackRecordPage(1);
   const maxPages = Math.min(CHART_PAGES, Number(first?.pagination?.total_pages || CHART_PAGES));
@@ -42,11 +79,7 @@ async function fetchTrackRecord() {
   const settled = await Promise.allSettled(extraPages.map((p) => fetchTrackRecordPage(p)));
   const rest = settled.filter((s) => s.status === "fulfilled").map((s) => s.value);
   const allRows = [first, ...rest].flatMap((p) => (Array.isArray(p?.recent_signals) ? p.recent_signals : []));
-  const seen = new Set();
-  const chartRows = allRows
-    .filter((r) => r?.id || r?.created_at)
-    .filter((r) => { const k = String(r.id || `${r.mint}-${r.rule_id}-${r.created_at}`); if (seen.has(k)) return false; seen.add(k); return true; })
-    .sort((a, b) => Date.parse(a.created_at || 0) - Date.parse(b.created_at || 0));
+  const chartRows = mergeChartRowsFromPayload(first, allRows);
   const resolvedRows = chartRows.filter((r) => Number.isFinite(Number(r?.outcome_60m)));
   const wins = resolvedRows.filter((r) => outcomeState(r.outcome_60m) === "win").length;
   const losses = resolvedRows.filter((r) => outcomeState(r.outcome_60m) === "loss").length;
@@ -60,7 +93,7 @@ function Kpi({ label, value, detail, tone = "default" }) { const color = tone ==
 
 function makeSeries(rows, mode) {
   const resolved = [...(rows || [])].filter((r) => Number.isFinite(Number(r?.outcome_60m))).slice(-160);
-  if (resolved.length < 2) return [];
+  if (resolved.length < 1) return [];
   let acc = 0;
   let wins = 0;
   let decisive = 0;
@@ -76,9 +109,22 @@ function makeSeries(rows, mode) {
     return acc;
   });
 }
-function pathFrom(values, w = 420, h = 150, pad = 18) { if (!values.length) return ""; const min = Math.min(...values, 0); const max = Math.max(...values, 0.001); const range = max - min || 1; return values.map((v, i) => { const x = pad + (i / Math.max(values.length - 1, 1)) * (w - pad * 2); const y = h - pad - ((v - min) / range) * (h - pad * 2); return `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`; }).join(" "); }
+function pathFrom(values, w = 420, h = 150, pad = 18) {
+  if (!values.length) return "";
+  const vals = values.length === 1 ? [values[0], values[0]] : values;
+  const min = Math.min(...vals, 0);
+  const max = Math.max(...vals, 0.001);
+  const range = max - min || 1;
+  return vals
+    .map((v, i) => {
+      const x = pad + (i / Math.max(vals.length - 1, 1)) * (w - pad * 2);
+      const y = h - pad - ((v - min) / range) * (h - pad * 2);
+      return `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+}
 function LineChart({ title, subtitle, value, rows, mode = "equity", color = "#22d3ee" }) { const values = useMemo(() => makeSeries(rows, mode), [rows, mode]); const d = pathFrom(values); return <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4"><div className="mb-3 flex items-start justify-between gap-3"><div><div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-300">{title}</div><div className="text-sm text-slate-500">{subtitle}</div></div><div className="rounded-lg border border-cyan-400/20 bg-cyan-400/5 px-2.5 py-1 font-mono text-sm text-cyan-200">{value}</div></div><svg viewBox="0 0 420 150" className="h-[150px] w-full overflow-visible">{[0,1,2,3].map((i)=><line key={i} x1="18" x2="402" y1={22+i*34} y2={22+i*34} stroke="rgba(148,163,184,.12)" />)}{d ? <path d={d} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" /> : <text x="210" y="80" textAnchor="middle" fill="rgba(148,163,184,.55)" fontSize="12">insufficient real series</text>}</svg></div>; }
-function Donut({ distribution }) { const r = 54, c = 2 * Math.PI * r; const wins = Number(distribution?.wins || 0), losses = Number(distribution?.losses || 0), flats = Number(distribution?.flats || 0); const total = Math.max(1, wins + losses + flats); const w = wins / total, l = losses / total, f = flats / total; return <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4"><div className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-300">Resolved Outcomes</div><div className="grid grid-cols-[150px_1fr] items-center gap-4"><svg viewBox="0 0 150 150" className="h-[150px] w-[150px] -rotate-90"><circle cx="75" cy="75" r={r} fill="none" stroke="rgba(148,163,184,.18)" strokeWidth="22" /><circle cx="75" cy="75" r={r} fill="none" stroke="#10b981" strokeWidth="22" strokeDasharray={`${c*w} ${c}`} /><circle cx="75" cy="75" r={r} fill="none" stroke="#fb7185" strokeWidth="22" strokeDasharray={`${c*l} ${c}`} strokeDashoffset={-c*w} /><circle cx="75" cy="75" r={r} fill="none" stroke="#64748b" strokeWidth="22" strokeDasharray={`${c*f} ${c}`} strokeDashoffset={-c*(w+l)} /></svg><div className="space-y-3 text-sm"><div className="font-mono text-2xl font-black text-white">{(wins+losses+flats).toLocaleString()}</div><div className="text-slate-500">Real chart sample</div><div className="flex justify-between"><span className="text-emerald-300">Wins</span><span className="font-mono">{wins.toLocaleString()}</span></div><div className="flex justify-between"><span className="text-rose-300">Losses</span><span className="font-mono">{losses.toLocaleString()}</span></div><div className="flex justify-between"><span className="text-slate-400">Flat</span><span className="font-mono">{flats.toLocaleString()}</span></div></div></div></div>; }
+function Donut({ distribution }) { const r = 54, c = 2 * Math.PI * r; const wins = Number(distribution?.wins || 0), losses = Number(distribution?.losses || 0), flats = Number(distribution?.flats || 0); const total = Math.max(1, wins + losses + flats); const w = wins / total, l = losses / total, f = flats / total; return <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4"><div className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-300">Resolved Outcomes</div><div className="grid grid-cols-[150px_1fr] items-center gap-4"><svg viewBox="0 0 150 150" className="h-[150px] w-[150px] -rotate-90"><circle cx="75" cy="75" r={r} fill="none" stroke="rgba(148,163,184,.18)" strokeWidth="22" /><circle cx="75" cy="75" r={r} fill="none" stroke="#10b981" strokeWidth="22" strokeDasharray={`${c*w} ${c}`} /><circle cx="75" cy="75" r={r} fill="none" stroke="#fb7185" strokeWidth="22" strokeDasharray={`${c*l} ${c}`} strokeDashoffset={-c*w} /><circle cx="75" cy="75" r={r} fill="none" stroke="#64748b" strokeWidth="22" strokeDasharray={`${c*f} ${c}`} strokeDashoffset={-c*(w+l)} /></svg><div className="space-y-3 text-sm"><div className="font-mono text-2xl font-black text-white">{(wins+losses+flats).toLocaleString()}</div><div className="text-slate-500">{distribution?.fromLedger ? "Ledger (±5%)" : "Chart sample"}</div><div className="flex justify-between"><span className="text-emerald-300">Wins</span><span className="font-mono">{wins.toLocaleString()}</span></div><div className="flex justify-between"><span className="text-rose-300">Losses</span><span className="font-mono">{losses.toLocaleString()}</span></div><div className="flex justify-between"><span className="text-slate-400">Flat</span><span className="font-mono">{flats.toLocaleString()}</span></div></div></div></div>; }
 function SignalRow({ row }) {
   const outcome = Number(row?.outcome_60m);
   const status = !Number.isFinite(outcome)
@@ -126,22 +172,24 @@ function TrackRecordPage() {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    retry: 2,
-    placeholderData: keepPreviousData
+    retry: 2
   });
-  const data = query.data || {};
-  const meta = data.meta || {};
+  const data = query.isSuccess ? query.data : null;
+  const showSkeleton = !query.isSuccess && !query.isError;
+  const emptyLedger =
+    Boolean(query.isSuccess && data && Number(data.total_signals || 0) === 0 && Number(data.resolved_signals || 0) === 0);
+  const meta = (data && data.meta) || {};
   const loadFailed = query.isError;
   const errMsg = query.error instanceof Error ? query.error.message : String(query.error || "request_failed");
   const perfMirror = meta.track_record_row_source === "signal_performance";
-  const rows = Array.isArray(data.recent_signals) ? data.recent_signals : [];
-  const chartRows = Array.isArray(data.chart_rows) ? data.chart_rows : rows;
-  const resolved = Number(data.resolved_signals || 0);
-  const total = Number(data.total_signals || 0);
+  const rows = data && Array.isArray(data.recent_signals) ? data.recent_signals : [];
+  const chartRows = data && Array.isArray(data.chart_rows) ? data.chart_rows : rows;
+  const resolved = data ? Number(data.resolved_signals || 0) : 0;
+  const total = data ? Number(data.total_signals || 0) : 0;
   const pending = Math.max(0, total - resolved);
-  const winRate = Number(data.win_rate_60m || 0);
-  const avgReturn = Number(data.avg_return || 0);
-  const flatNeutral = Number(data.flat_resolved_signals);
+  const winRate = data && data.win_rate_60m != null && Number.isFinite(Number(data.win_rate_60m)) ? Number(data.win_rate_60m) : 0;
+  const avgReturn = data && data.avg_return != null && Number.isFinite(Number(data.avg_return)) ? Number(data.avg_return) : 0;
+  const flatNeutral = data && Number.isFinite(Number(data.flat_resolved_signals)) ? Number(data.flat_resolved_signals) : NaN;
   const avgRows = Number(meta.avg_return_sample_rows || 0);
   const exactLedger = meta.stats_basis === "exact_ledger_sql";
   const perfMirrorAgg = meta.stats_basis === "signal_performance_mirror";
@@ -154,6 +202,25 @@ function TrackRecordPage() {
         ? `fallback: last ${avgRows.toLocaleString()} resolved (apply migration 029)`
         : "aggregate oracle";
   const ddDetail = exactLedger ? "worst 60m among all resolved (Postgres)" : "fallback: min in recent sample";
+  const apiBase = getPublicApiUrl();
+  const donutDistribution = useMemo(() => {
+    if (!data) return { wins: 0, losses: 0, flats: 0, resolved: 0 };
+    const sample = data.real_distribution || {};
+    const resN = Number(data.resolved_signals || 0);
+    const flatN = Number(data.flat_resolved_signals ?? 0);
+    const wr =
+      data.win_rate_60m != null && Number.isFinite(Number(data.win_rate_60m))
+        ? Number(data.win_rate_60m)
+        : null;
+    if ((sample.resolved || 0) > 0) return { ...sample, fromLedger: false };
+    if (resN > 0 && wr != null && Number.isFinite(flatN) && !Number.isNaN(flatN)) {
+      const decisive = Math.max(0, resN - flatN);
+      const winC = Math.round(wr * decisive);
+      const lossC = Math.max(0, decisive - winC);
+      return { wins: winC, losses: lossC, flats: flatN, resolved: resN, fromLedger: true };
+    }
+    return { ...sample, fromLedger: false };
+  }, [data]);
   return (
     <Shell>
       {loadFailed ? (
@@ -170,6 +237,20 @@ function TrackRecordPage() {
           </button>
         </div>
       ) : null}
+      {showSkeleton ? (
+        <div className="border-b border-cyan-500/35 bg-[#06101a] px-6 py-3 text-sm text-cyan-100 xl:px-8">
+          <b className="text-cyan-200">Cargando ledger…</b>{" "}
+          <span className="font-mono text-slate-400">conectando con {apiBase}</span>
+        </div>
+      ) : null}
+      {emptyLedger ? (
+        <div className="border-b border-amber-500/35 bg-amber-950/40 px-6 py-3 text-sm text-amber-50 xl:px-8">
+          <b className="text-amber-200">El API devolvió cero filas en el ledger.</b> Si en Supabase sí hay datos en{" "}
+          <code className="text-amber-100/90">signal_outcomes</code>, en Vercel revisa{" "}
+          <code className="text-amber-100/90">NEXT_PUBLIC_API_URL</code> (debe ser el Railway donde corre el oráculo). Base
+          usada: <span className="font-mono text-amber-100/80">{apiBase}</span>
+        </div>
+      ) : null}
       {perfMirror ? (
         <div className="border-b border-sky-500/35 bg-sky-950/35 px-6 py-3 text-sm text-sky-100 xl:px-8">
           KPIs and tape are mirrored from <code className="text-sky-200">signal_performance</code> because{" "}
@@ -178,7 +259,7 @@ function TrackRecordPage() {
         </div>
       ) : null}
       <div className="border-b border-slate-800 bg-[#030712]/85 px-6 py-4 backdrop-blur-xl xl:px-8"><div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400"><span>YOU ARE HERE&nbsp;&nbsp; <b className="text-slate-200">Sentinel</b> › <b className="text-slate-200">Track Record</b></span><span>
-            Oracle · KPIs {exactLedger ? "full-table SQL" : perfMirror ? "perf mirror" : "fallback sample"} · chart {chartRows.length} paged rows ·{" "}
+            Oracle · KPIs {showSkeleton ? "…" : exactLedger ? "full-table SQL" : perfMirror ? "perf mirror" : "fallback sample"} · chart {showSkeleton ? "—" : chartRows.length} paged rows ·{" "}
             <span className="text-emerald-300">●</span> Supabase
           </span></div></div><div className="space-y-4 p-6 xl:p-8"><section className="grid gap-6 xl:grid-cols-[1fr_360px]"><div><span className="rounded border border-cyan-400/30 bg-cyan-400/5 px-3 py-1 font-mono text-xs uppercase tracking-[0.16em] text-cyan-300">Oracle Verified</span><h1 className="mt-4 text-4xl font-black tracking-tight text-white">Sentinel Validation Engine</h1><h2 className="mt-2 text-2xl font-black text-cyan-300">Track Record Institutional</h2><p className="mt-3 max-w-2xl text-slate-400">
             {perfMirror ? (
@@ -196,7 +277,13 @@ function TrackRecordPage() {
                 applied.
               </>
             )}
-          </p></div><div className="flex items-center justify-end gap-3"><button onClick={() => query.refetch()} className="rounded border border-cyan-400/40 bg-cyan-400/5 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-cyan-200 hover:bg-cyan-400/10">↻ Refresh</button><Link href="/scanner" className="rounded border border-slate-700 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-slate-200 hover:border-cyan-400/40">Alpha Radar</Link></div></section><section className="rounded-2xl border border-slate-800 bg-[#06101a]/80 p-4"><div className="mb-4 flex flex-wrap items-center gap-3 text-sm"><b className="text-cyan-300">LIVE ORACLE</b><span>Validation Engine · Real Chart Series</span>{wsConnected ? (<span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-300">Real-time stream</span>) : (<span className="rounded-full border border-slate-600 bg-slate-800/60 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Stream idle · poll only</span>)}{lastLivePushAt ? (<span className={`font-mono text-[11px] uppercase tracking-[0.12em] ${Date.now() - lastLivePushAt < 15000 ? "animate-pulse text-emerald-300" : "text-slate-500"}`}>Ledger push {new Date(lastLivePushAt).toLocaleTimeString()}</span>) : null}<span className="font-mono text-slate-500">HTTP {data.last_updated ? new Date(data.last_updated).toLocaleTimeString() : "—"}</span></div><div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6"><Kpi label="Total Signals" value={total.toLocaleString()} detail={perfMirror ? "signal_performance mirror" : "validation ledger"} /><Kpi label="Resolved" value={resolved.toLocaleString()} detail={Number.isFinite(flatNeutral) ? `oracle closed · ±5% neutral: ${flatNeutral.toLocaleString()}` : "oracle closed"} tone="blue" /><Kpi label="Pending" value={pending.toLocaleString()} detail="awaiting horizon" /><Kpi label="Win Rate 60m" value={pct(winRate,1)} detail={winDetail} tone="good" /><Kpi label="Avg Return" value={pct(avgReturn,2)} detail={avgDetail} tone="good" /><Kpi label="Worst 60m" value={pct(data.max_drawdown,2)} detail={ddDetail} tone="bad" /></div><div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_360px]"><LineChart title="Win Rate Over Time (60m)" subtitle={`${chartRows.length} real paged oracle rows`} value={pct(winRate,1)} rows={chartRows} mode="win" color="#22d3ee" /><LineChart title="Avg Return Over Time" subtitle="rolling average from real outcomes" value={pct(avgReturn,2)} rows={chartRows} mode="avg" color="#3b82f6" /><Donut distribution={data.real_distribution} /></div></section><section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#06101a]/80"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 p-4"><div><h3 className="text-lg font-bold">Live Signal Tape</h3><p className="text-sm text-slate-500">Recent validated signals</p></div><div className="flex gap-2 text-sm"><span className="rounded-full bg-slate-800 px-3 py-1">{rows.length} visible</span><span className="rounded-full bg-cyan-400/10 px-3 py-1 text-cyan-300">{chartRows.length} chart rows</span><span className="rounded-full bg-sky-400/10 px-3 py-1 text-sky-300">{pending} pending</span></div></div><div className="overflow-x-auto"><table className="w-full min-w-[1040px] text-left text-sm"><thead className="border-b border-slate-800 text-[11px] uppercase tracking-[0.16em] text-slate-500"><tr><th className="px-4 py-3">Token</th><th className="px-4 py-3">Mint</th><th className="px-4 py-3">Regime</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Confidence</th><th className="px-4 py-3">State</th><th className="px-4 py-3">Outcome 60m</th><th className="px-4 py-3">Timestamp</th></tr></thead><tbody>{rows.length ? rows.map((r) => <SignalRow key={r.id || `${r.mint}-${r.created_at}`} row={r} />) : <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">{loadFailed ? "Fix the error above — zeros here are not a real ledger read." : !total ? "No rows in signal_outcomes and no resolved signal_performance to mirror — check workers, RLS, and Supabase." : "No rows on this page."}</td></tr>}</tbody></table></div></section></div>
+          </p></div><div className="flex items-center justify-end gap-3"><button onClick={() => query.refetch()} className="rounded border border-cyan-400/40 bg-cyan-400/5 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-cyan-200 hover:bg-cyan-400/10">↻ Refresh</button><Link href="/scanner" className="rounded border border-slate-700 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-slate-200 hover:border-cyan-400/40">Alpha Radar</Link></div></section><section className="rounded-2xl border border-slate-800 bg-[#06101a]/80 p-4"><div className="mb-4 flex flex-wrap items-center gap-3 text-sm"><b className="text-cyan-300">LIVE ORACLE</b><span>Validation Engine · Real Chart Series</span>{wsConnected ? (<span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-300">Real-time stream</span>) : (<span className="rounded-full border border-slate-600 bg-slate-800/60 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Stream idle · poll only</span>)}{lastLivePushAt ? (<span className={`font-mono text-[11px] uppercase tracking-[0.12em] ${Date.now() - lastLivePushAt < 15000 ? "animate-pulse text-emerald-300" : "text-slate-500"}`}>Ledger push {new Date(lastLivePushAt).toLocaleTimeString()}</span>) : null}<span className="font-mono text-slate-500">HTTP {data?.last_updated ? new Date(data.last_updated).toLocaleTimeString() : "—"}</span></div><div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6"><Kpi label="Total Signals" value={showSkeleton ? "…" : total.toLocaleString()} detail={perfMirror ? "signal_performance mirror" : "validation ledger"} /><Kpi label="Resolved" value={showSkeleton ? "…" : resolved.toLocaleString()} detail={showSkeleton ? "—" : Number.isFinite(flatNeutral) ? `oracle closed · ±5% neutral: ${flatNeutral.toLocaleString()}` : "oracle closed"} tone="blue" /><Kpi label="Pending" value={showSkeleton ? "…" : pending.toLocaleString()} detail="awaiting horizon" /><Kpi label="Win Rate 60m" value={showSkeleton ? "…" : pct(winRate, 1)} detail={winDetail} tone="good" /><Kpi label="Avg Return" value={showSkeleton ? "…" : pct(avgReturn, 2)} detail={avgDetail} tone="good" /><Kpi label="Worst 60m" value={showSkeleton ? "…" : pct(data?.max_drawdown, 2)} detail={ddDetail} tone="bad" /></div><div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_360px]"><LineChart title="Win Rate Over Time (60m)" subtitle={showSkeleton ? "cargando…" : `${chartRows.length} oracle rows (tape + top wins)`} value={showSkeleton ? "…" : pct(winRate, 1)} rows={chartRows} mode="win" color="#22d3ee" /><LineChart title="Avg Return Over Time" subtitle="rolling average from real outcomes" value={showSkeleton ? "…" : pct(avgReturn, 2)} rows={chartRows} mode="avg" color="#3b82f6" />{showSkeleton ? (
+                <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4 flex min-h-[170px] items-center justify-center font-mono text-slate-500">
+                  …
+                </div>
+              ) : (
+                <Donut distribution={donutDistribution} />
+              )}</div></section><section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#06101a]/80"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 p-4"><div><h3 className="text-lg font-bold">Live Signal Tape</h3><p className="text-sm text-slate-500">Recent validated signals</p></div><div className="flex gap-2 text-sm"><span className="rounded-full bg-slate-800 px-3 py-1">{rows.length} visible</span><span className="rounded-full bg-cyan-400/10 px-3 py-1 text-cyan-300">{chartRows.length} chart rows</span><span className="rounded-full bg-sky-400/10 px-3 py-1 text-sky-300">{showSkeleton ? "…" : pending} pending</span></div></div><div className="overflow-x-auto"><table className="w-full min-w-[1040px] text-left text-sm"><thead className="border-b border-slate-800 text-[11px] uppercase tracking-[0.16em] text-slate-500"><tr><th className="px-4 py-3">Token</th><th className="px-4 py-3">Mint</th><th className="px-4 py-3">Regime</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Confidence</th><th className="px-4 py-3">State</th><th className="px-4 py-3">Outcome 60m</th><th className="px-4 py-3">Timestamp</th></tr></thead><tbody>{rows.length ? rows.map((r) => <SignalRow key={r.id || `${r.mint}-${r.created_at}`} row={r} />) : <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">{loadFailed ? "Fix the error above — zeros here are not a real ledger read." : showSkeleton ? "Cargando señales…" : emptyLedger ? "Ledger vacío en este API — revisa NEXT_PUBLIC_API_URL en Vercel y el backend Railway." : !total ? "No rows in signal_outcomes and no resolved signal_performance to mirror — check workers, RLS, and Supabase." : "No rows on this page."}</td></tr>}</tbody></table></div></section></div>
     </Shell>
   );
 }

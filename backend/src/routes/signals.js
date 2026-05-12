@@ -522,7 +522,10 @@ async function enrichOracleRows(supabase, rows = []) {
   return rows.map((row) => mapOracleSignal(row, signalById, snapshotByMint));
 }
 
-async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pageSize = 25 } = {}) {
+async function buildTrackRecordPayload(
+  supabase,
+  { filter = "all", page = 1, pageSize = 25, cacheGen = 0 } = {}
+) {
   const safePage = Math.max(1, Math.floor(Number(page) || 1));
   const safePageSize = Math.max(1, Math.min(50, Math.floor(Number(pageSize) || 25)));
   const from = (safePage - 1) * safePageSize;
@@ -947,7 +950,7 @@ router.get("/track-record", async (req, res) => {
     console.warn("[track-record] cache read failed:", error?.message || error);
   }
   try {
-    const body = await buildTrackRecordPayload(supabase, { filter, page, pageSize });
+    const body = await buildTrackRecordPayload(supabase, { filter, page, pageSize, cacheGen });
     try {
       await redis.set(cacheKey, body, { ex: cacheSec });
     } catch (error) {
