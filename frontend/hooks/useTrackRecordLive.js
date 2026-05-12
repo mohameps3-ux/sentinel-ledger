@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 /** Match `useQuery` on Track Record page so socket pushes invalidate the same cache. */
-export const TRACK_RECORD_QUERY_KEY = ["track-record-real-data-v9"];
+export const TRACK_RECORD_QUERY_KEY = ["track-record-real-data-v10"];
 
 /**
  * Subscribes to backend `sentinel:track-record` (room `track-record`) and invalidates React Query

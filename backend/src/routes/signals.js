@@ -524,12 +524,13 @@ async function enrichOracleRows(supabase, rows = []) {
 
 async function buildTrackRecordPayload(
   supabase,
-  { filter = "all", page = 1, pageSize = 25, cacheGen = 0 } = {}
+  { filter = "all", page = 1, pageSize = 25, cacheGen = 0, chartPageSpan = 1 } = {}
 ) {
   const safePage = Math.max(1, Math.floor(Number(page) || 1));
   const safePageSize = Math.max(1, Math.min(50, Math.floor(Number(pageSize) || 25)));
   const from = (safePage - 1) * safePageSize;
   const to = from + safePageSize - 1;
+  const chartSpan = Math.min(6, Math.max(1, Math.floor(Number(chartPageSpan) || 1)));
 
   let ledger = await resolveSignalOutcomesLedgerAggregates(supabase);
   let rowSource = "signal_outcomes";
@@ -635,6 +636,43 @@ async function buildTrackRecordPayload(
     rowSource === "signal_performance"
       ? (pageRes.data || []).map(mapPerfRowToOutcomeLedgerRow)
       : pageRes.data || [];
+
+  let extraPageRowsRaw = [];
+  if (chartSpan > 1) {
+    const extraReqs = [];
+    for (let p = 2; p <= chartSpan; p += 1) {
+      const fromN = (p - 1) * safePageSize;
+      const toN = fromN + safePageSize - 1;
+      if (rowSource === "signal_performance") {
+        let q2 = supabase.from("signal_performance").select(perfSelect).order("emitted_at", { ascending: false });
+        if (filter === "wins") q2 = q2.eq("status", "resolved").gt("outcome_pct", TR_DECISIVE_WIN * 100);
+        if (filter === "losses") q2 = q2.eq("status", "resolved").lt("outcome_pct", TR_DECISIVE_LOSS * 100);
+        if (filter === "pending") q2 = q2.eq("status", "pending");
+        extraReqs.push(q2.range(fromN, toN));
+      } else {
+        let q2 = supabase
+          .from("signal_outcomes")
+          .select(
+            "id,signal_id,mint,rule_id,price_at_signal,wallets_involved,regime,price_5m,price_15m,price_60m,outcome_5m,outcome_15m,outcome_60m,validated,rule_snapshot,min_price_observed,validated_at,created_at"
+          )
+          .order("created_at", { ascending: false });
+        if (filter === "wins") q2 = q2.gt("outcome_60m", TR_DECISIVE_WIN);
+        if (filter === "losses") q2 = q2.lt("outcome_60m", TR_DECISIVE_LOSS);
+        if (filter === "pending") q2 = q2.is("outcome_60m", null);
+        extraReqs.push(q2.range(fromN, toN));
+      }
+    }
+    const extraRes = await Promise.all(extraReqs);
+    for (const er of extraRes) {
+      if (er.error) throw er.error;
+      const chunk =
+        rowSource === "signal_performance"
+          ? (er.data || []).map(mapPerfRowToOutcomeLedgerRow)
+          : er.data || [];
+      extraPageRowsRaw.push(...chunk);
+    }
+  }
+
   const winsRowsRaw =
     rowSource === "signal_performance" ? (winsRes.data || []).map(mapPerfRowToOutcomeLedgerRow) : winsRes.data || [];
   const lossesRowsRaw =
@@ -768,6 +806,26 @@ async function buildTrackRecordPayload(
     })
     .filter((row) => row.wallet);
 
+  const chartTapeRaw = [...pageRowsRaw, ...extraPageRowsRaw];
+  let chart_rows = [];
+  if (chartTapeRaw.length > 0) {
+    const tapeEnriched = await enrichOracleRows(supabase, chartTapeRaw.slice(0, 500));
+    const chartPack = dedupeTrackRecordSignals([
+      ...tapeEnriched,
+      ...topWins,
+      ...worstLosses,
+      ...(bestCallOut ? [bestCallOut] : []),
+      ...(worstCallOut ? [worstCallOut] : [])
+    ]);
+    chart_rows = chartPack.rows.slice().sort((a, b) => {
+      const ta = Date.parse(a.created_at || a.time || 0);
+      const tb = Date.parse(b.created_at || b.time || 0);
+      const sa = Number.isFinite(ta) ? ta : 0;
+      const sb = Number.isFinite(tb) ? tb : 0;
+      return sa - sb;
+    });
+  }
+
   return {
     ok: true,
     total_signals: ledger.total_signals,
@@ -781,6 +839,7 @@ async function buildTrackRecordPayload(
     worst_call: worstCallOut,
     rule_performance: rulePerformance,
     recent_signals: recent,
+    chart_rows,
     top_wins: topWins,
     worst_losses: worstLosses,
     auto_discovered_wallets: autoDiscoveredWallets,
@@ -794,6 +853,7 @@ async function buildTrackRecordPayload(
         source: "supabase:validation_oracle",
         track_record_row_source: rowSource,
         track_record_cache_gen: cacheGen,
+        chart_page_span: chartSpan,
       filter,
       cache_ttl_sec: trackRecordCacheSeconds(),
       ledger_stats_cache_ttl_sec: trackRecordLedgerStatsCacheSeconds(),
@@ -932,13 +992,14 @@ router.get("/track-record", async (req, res) => {
   const filter = String(req.query.filter || "all").toLowerCase();
   const page = Math.max(1, Number(req.query.page || 1));
   const pageSize = Math.max(1, Math.min(50, Number(req.query.limit || 25)));
+  const chartPages = Math.min(6, Math.max(1, Math.floor(Number(req.query.chart_pages || req.query.chart_page_span || 1))));
   let cacheGen = 0;
   try {
     cacheGen = await getTrackRecordCacheGen();
   } catch (error) {
     console.warn("[track-record] cache gen read failed:", error?.message || error);
   }
-  const cacheKey = `signals:track-record:v9:g${cacheGen}:${filter}:${page}:${pageSize}`;
+  const cacheKey = `signals:track-record:v11:g${cacheGen}:${filter}:${page}:${pageSize}:cp${chartPages}`;
   const cacheSec = trackRecordCacheSeconds();
   try {
     const cached = await redis.get(cacheKey);
@@ -950,7 +1011,7 @@ router.get("/track-record", async (req, res) => {
     console.warn("[track-record] cache read failed:", error?.message || error);
   }
   try {
-    const body = await buildTrackRecordPayload(supabase, { filter, page, pageSize, cacheGen });
+    const body = await buildTrackRecordPayload(supabase, { filter, page, pageSize, cacheGen, chartPageSpan: chartPages });
     try {
       await redis.set(cacheKey, body, { ex: cacheSec });
     } catch (error) {

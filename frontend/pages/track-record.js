@@ -5,8 +5,8 @@ import { PageHead } from "../components/seo/PageHead";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useTrackRecordLive, TRACK_RECORD_QUERY_KEY } from "../hooks/useTrackRecordLive";
 
-const REFRESH_MS = 60_000;
-const CHART_PAGES = 3;
+const REFRESH_MS = 30_000;
+const CHART_PAGES = 6;
 /** Aligned with backend signal_outcomes / oracle decisive (fraction of return). */
 const TR_DECISIVE_WIN = 0.05;
 const TR_DECISIVE_LOSS = -0.05;
@@ -30,23 +30,6 @@ function outcomeState(v) {
 
 const FETCH_MS = 35_000;
 
-async function fetchTrackRecordPage(page) {
-  const qs = new URLSearchParams({ filter: "all", limit: "50", page: String(page) });
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FETCH_MS);
-  try {
-    const res = await fetch(`${getPublicApiUrl()}/api/v1/signals/track-record?${qs}`, {
-      headers: { Accept: "application/json" },
-      signal: ctrl.signal
-    });
-    const body = await res.json().catch(() => null);
-    if (!res.ok || !body?.ok) throw new Error(body?.error || `track_record_http_${res.status}`);
-    return body;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 function dedupeChartRows(rows) {
   const seen = new Set();
   const out = [];
@@ -61,7 +44,7 @@ function dedupeChartRows(rows) {
   return out.sort((a, b) => Date.parse(a.created_at || 0) - Date.parse(b.created_at || 0));
 }
 
-/** Recent pages can be all pending; merge strips from page 1 so charts match headline KPIs. */
+/** Fallback when API is older than chart_rows field (single-page clients). */
 function mergeChartRowsFromPayload(first, pagedRecent) {
   const extra = [
     first?.best_call,
@@ -73,18 +56,33 @@ function mergeChartRowsFromPayload(first, pagedRecent) {
 }
 
 async function fetchTrackRecord() {
-  const first = await fetchTrackRecordPage(1);
-  const maxPages = Math.min(CHART_PAGES, Number(first?.pagination?.total_pages || CHART_PAGES));
-  const extraPages = maxPages > 1 ? Array.from({ length: maxPages - 1 }, (_, i) => i + 2) : [];
-  const settled = await Promise.allSettled(extraPages.map((p) => fetchTrackRecordPage(p)));
-  const rest = settled.filter((s) => s.status === "fulfilled").map((s) => s.value);
-  const allRows = [first, ...rest].flatMap((p) => (Array.isArray(p?.recent_signals) ? p.recent_signals : []));
-  const chartRows = mergeChartRowsFromPayload(first, allRows);
-  const resolvedRows = chartRows.filter((r) => Number.isFinite(Number(r?.outcome_60m)));
-  const wins = resolvedRows.filter((r) => outcomeState(r.outcome_60m) === "win").length;
-  const losses = resolvedRows.filter((r) => outcomeState(r.outcome_60m) === "loss").length;
-  const flats = resolvedRows.filter((r) => outcomeState(r.outcome_60m) === "flat").length;
-  return { ...first, chart_rows: chartRows, real_distribution: { wins, losses, flats, resolved: resolvedRows.length } };
+  const qs = new URLSearchParams({
+    filter: "all",
+    limit: "50",
+    page: "1",
+    chart_pages: String(CHART_PAGES)
+  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_MS);
+  try {
+    const res = await fetch(`${getPublicApiUrl()}/api/v1/signals/track-record?${qs}`, {
+      headers: { Accept: "application/json" },
+      signal: ctrl.signal
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body?.ok) throw new Error(body?.error || `track_record_http_${res.status}`);
+    const chartRows =
+      Array.isArray(body.chart_rows) && body.chart_rows.length > 0
+        ? body.chart_rows
+        : mergeChartRowsFromPayload(body, body.recent_signals || []);
+    const resolvedRows = chartRows.filter((r) => Number.isFinite(Number(r?.outcome_60m)));
+    const wins = resolvedRows.filter((r) => outcomeState(r.outcome_60m) === "win").length;
+    const losses = resolvedRows.filter((r) => outcomeState(r.outcome_60m) === "loss").length;
+    const flats = resolvedRows.filter((r) => outcomeState(r.outcome_60m) === "flat").length;
+    return { ...body, chart_rows: chartRows, real_distribution: { wins, losses, flats, resolved: resolvedRows.length } };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function Shell({ children }) { return <div className="min-h-screen bg-[#030712] text-slate-100"><PageHead title="Track Record — Sentinel Ledger" description="Institutional Sentinel validation terminal." /><aside className="fixed inset-y-0 left-0 z-30 hidden w-[276px] border-r border-slate-800/80 bg-[#050b12]/95 backdrop-blur-xl xl:block"><div className="flex h-20 items-center gap-3 border-b border-slate-800/70 px-7"><div className="grid h-10 w-10 place-items-center rounded-full border border-cyan-400/40 bg-cyan-400/5 text-cyan-300">◎</div><div className="leading-tight"><div className="text-sm font-black tracking-[0.22em]">SENTINEL</div><div className="text-sm font-black tracking-[0.22em]">LEDGER</div></div></div><div className="space-y-7 px-5 py-6"><NavGroup title="MAIN" items={nav.slice(0, 8)} /><NavGroup title="INTELLIGENCE" items={nav.slice(8, 10)} /><NavGroup title="SYSTEM" items={nav.slice(10)} /></div><div className="absolute bottom-0 left-0 right-0 border-t border-slate-800/70 p-6"><div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">System Status</div><div className="mt-3 text-2xl font-black text-emerald-300">LIVE</div><div className="mt-2 flex items-center justify-between text-xs text-slate-400"><span>All systems operational</span><span className="h-2 w-2 rounded-full bg-emerald-400" /></div></div></aside><main className="xl:pl-[276px]">{children}</main></div>; }
