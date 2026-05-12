@@ -10,6 +10,7 @@ const { pctFromPrices } = require("../services/smartWalletSignalPrices");
 const { buildDeskProofOfEdge } = require("../services/deskProofOfEdge");
 const { isMissingColumnError } = require("../lib/columnMissingError");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
+const { asRuleId } = require("../workers/validationOracle");
 const redis = require("../lib/cache");
 
 const router = express.Router();
@@ -127,6 +128,108 @@ async function resolveSignalOutcomesLedgerAggregates(supabase) {
     stats_basis: "fallback_client_aggregates",
     avg_return_sample_rows: returns.length,
     avg_return_sample_cap: aggLimit
+  };
+}
+
+/**
+ * Same shape as the non-RPC branch of `resolveSignalOutcomesLedgerAggregates`, but sourced from
+ * `signal_performance` when `signal_outcomes` is empty (e.g. ledger insert/sync failed after resolve).
+ * Thresholds: `outcome_pct` is percent points; decisive bands match ±5% fractional oracle rules.
+ */
+async function resolveSignalPerformanceLedgerAggregates(supabase) {
+  const winPctThresh = TR_DECISIVE_WIN * 100;
+  const lossPctThresh = TR_DECISIVE_LOSS * 100;
+  const aggLimit = trackRecordAggSampleLimit();
+  const [totalRes, resolvedRes, winsCountRes, lossesCountRes, aggSampleRes] = await Promise.all([
+    supabase.from("signal_performance").select("id", { count: "exact", head: true }),
+    supabase
+      .from("signal_performance")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "resolved")
+      .not("outcome_pct", "is", null),
+    supabase
+      .from("signal_performance")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "resolved")
+      .gt("outcome_pct", winPctThresh),
+    supabase
+      .from("signal_performance")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "resolved")
+      .lt("outcome_pct", lossPctThresh),
+    supabase
+      .from("signal_performance")
+      .select("outcome_pct")
+      .eq("status", "resolved")
+      .not("outcome_pct", "is", null)
+      .order("emitted_at", { ascending: false })
+      .limit(aggLimit)
+  ]);
+  for (const r of [totalRes, resolvedRes, winsCountRes, lossesCountRes, aggSampleRes]) {
+    if (r.error) throw r.error;
+  }
+  const winsCount = Number(winsCountRes.count || 0);
+  const lossesCount = Number(lossesCountRes.count || 0);
+  const decisive = winsCount + lossesCount;
+  const resolvedTotal = Number(resolvedRes.count || 0);
+  const flatResolved = Math.max(0, resolvedTotal - winsCount - lossesCount);
+  const aggSample = aggSampleRes.data || [];
+  const returns = aggSample.map((row) => Number(row.outcome_pct) / 100).filter(Number.isFinite);
+  const winReturnsFromSample = aggSample
+    .filter((row) => Number(row.outcome_pct) > winPctThresh)
+    .map((row) => Number(row.outcome_pct) / 100)
+    .filter(Number.isFinite);
+  return {
+    total_signals: Number(totalRes.count || 0),
+    resolved_signals: resolvedTotal,
+    winsCount,
+    lossesCount,
+    decisive,
+    flatResolved,
+    avg_return: returns.length ? returns.reduce((a, b) => a + b, 0) / returns.length : null,
+    max_drawdown: returns.length ? Math.min(...returns) : null,
+    avg_return_wins: winReturnsFromSample.length
+      ? winReturnsFromSample.reduce((a, b) => a + b, 0) / winReturnsFromSample.length
+      : null,
+    stats_basis: "signal_performance_mirror",
+    avg_return_sample_rows: returns.length,
+    avg_return_sample_cap: aggLimit
+  };
+}
+
+/** Map a `signal_performance` row into the `signal_outcomes` shape expected by `mapOracleSignal` / enrich. */
+function mapPerfRowToOutcomeLedgerRow(perfRow) {
+  const pct = perfRow.outcome_pct != null ? Number(perfRow.outcome_pct) : null;
+  const status = String(perfRow.status || "").toLowerCase();
+  const resolved = status === "resolved";
+  const outcomeFrac = resolved && Number.isFinite(pct) ? pct / 100 : null;
+  const sigs = Array.isArray(perfRow.signals) ? perfRow.signals : [];
+  let ruleId = "R03";
+  for (const s of sigs) {
+    const rid = asRuleId(s);
+    if (rid) {
+      ruleId = rid;
+      break;
+    }
+  }
+  return {
+    id: perfRow.id,
+    signal_id: perfRow.event_id,
+    mint: perfRow.asset,
+    rule_id: ruleId,
+    price_at_signal: perfRow.entry_price_usd != null ? Number(perfRow.entry_price_usd) : null,
+    wallets_involved: 0,
+    regime: perfRow.emission_regime || null,
+    outcome_60m: outcomeFrac,
+    rule_snapshot: {
+      version: 1,
+      ruleId,
+      source: "signal_performance_mirror",
+      confidence: perfRow.confidence
+    },
+    created_at: perfRow.emitted_at,
+    validated: outcomeFrac != null,
+    validated_at: outcomeFrac != null ? perfRow.emitted_at : null
   };
 }
 
@@ -362,32 +465,87 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
   const safePageSize = Math.max(1, Math.min(50, Math.floor(Number(pageSize) || 25)));
   const from = (safePage - 1) * safePageSize;
   const to = from + safePageSize - 1;
-  let pageQuery = supabase
-    .from("signal_outcomes")
-    .select("id,signal_id,mint,rule_id,price_at_signal,wallets_involved,regime,price_5m,price_15m,price_60m,outcome_5m,outcome_15m,outcome_60m,validated,rule_snapshot,min_price_observed,validated_at,created_at")
-    .order("created_at", { ascending: false });
-  if (filter === "wins") pageQuery = pageQuery.gt("outcome_60m", TR_DECISIVE_WIN);
-  if (filter === "losses") pageQuery = pageQuery.lt("outcome_60m", TR_DECISIVE_LOSS);
-  if (filter === "pending") pageQuery = pageQuery.is("outcome_60m", null);
-  pageQuery = pageQuery.range(from, to);
 
-  const ledger = await resolveSignalOutcomesLedgerAggregates(supabase);
+  let ledger = await resolveSignalOutcomesLedgerAggregates(supabase);
+  let rowSource = "signal_outcomes";
+  if (Number(ledger.total_signals || 0) === 0) {
+    try {
+      const perfLedger = await resolveSignalPerformanceLedgerAggregates(supabase);
+      if (Number(perfLedger.total_signals || 0) > 0) {
+        ledger = perfLedger;
+        rowSource = "signal_performance";
+        if (process.env.NODE_ENV !== "test") {
+          console.warn("[track-record] using signal_performance mirror (signal_outcomes ledger empty)");
+        }
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV !== "test") {
+        console.warn("[track-record] signal_performance mirror unavailable:", err?.message || err);
+      }
+    }
+  }
 
-  const [rulesRes, pageRes, winsRes, lossesRes, autoDiscoveredRes] = await Promise.all([
-    supabase.from("rule_performance").select("*").order("confidence_score", { ascending: false, nullsFirst: false }).limit(100),
-    pageQuery,
-    supabase
+  const perfSelect =
+    "id,event_id,asset,emitted_at,confidence,signals,entry_price_usd,outcome_pct,status,emission_regime";
+  let pageQuery;
+  let winsQuery;
+  let lossesQuery;
+  if (rowSource === "signal_performance") {
+    pageQuery = supabase.from("signal_performance").select(perfSelect).order("emitted_at", { ascending: false });
+    if (filter === "wins") {
+      pageQuery = pageQuery.eq("status", "resolved").gt("outcome_pct", TR_DECISIVE_WIN * 100);
+    }
+    if (filter === "losses") {
+      pageQuery = pageQuery.eq("status", "resolved").lt("outcome_pct", TR_DECISIVE_LOSS * 100);
+    }
+    if (filter === "pending") {
+      pageQuery = pageQuery.eq("status", "pending");
+    }
+    pageQuery = pageQuery.range(from, to);
+    winsQuery = supabase
+      .from("signal_performance")
+      .select(perfSelect)
+      .eq("status", "resolved")
+      .gt("outcome_pct", TR_DECISIVE_WIN * 100)
+      .order("outcome_pct", { ascending: false })
+      .limit(5);
+    lossesQuery = supabase
+      .from("signal_performance")
+      .select(perfSelect)
+      .eq("status", "resolved")
+      .lt("outcome_pct", TR_DECISIVE_LOSS * 100)
+      .order("outcome_pct", { ascending: true })
+      .limit(3);
+  } else {
+    pageQuery = supabase
+      .from("signal_outcomes")
+      .select(
+        "id,signal_id,mint,rule_id,price_at_signal,wallets_involved,regime,price_5m,price_15m,price_60m,outcome_5m,outcome_15m,outcome_60m,validated,rule_snapshot,min_price_observed,validated_at,created_at"
+      )
+      .order("created_at", { ascending: false });
+    if (filter === "wins") pageQuery = pageQuery.gt("outcome_60m", TR_DECISIVE_WIN);
+    if (filter === "losses") pageQuery = pageQuery.lt("outcome_60m", TR_DECISIVE_LOSS);
+    if (filter === "pending") pageQuery = pageQuery.is("outcome_60m", null);
+    pageQuery = pageQuery.range(from, to);
+    winsQuery = supabase
       .from("signal_outcomes")
       .select("id,signal_id,mint,rule_id,outcome_60m,created_at,rule_snapshot")
       .gt("outcome_60m", TR_DECISIVE_WIN)
       .order("outcome_60m", { ascending: false })
-      .limit(5),
-    supabase
+      .limit(5);
+    lossesQuery = supabase
       .from("signal_outcomes")
       .select("id,signal_id,mint,rule_id,outcome_60m,created_at,rule_snapshot")
       .lt("outcome_60m", TR_DECISIVE_LOSS)
       .order("outcome_60m", { ascending: true })
-      .limit(3),
+      .limit(3);
+  }
+
+  const [rulesRes, pageRes, winsRes, lossesRes, autoDiscoveredRes] = await Promise.all([
+    supabase.from("rule_performance").select("*").order("confidence_score", { ascending: false, nullsFirst: false }).limit(100),
+    pageQuery,
+    winsQuery,
+    lossesQuery,
     supabase
       .from("smart_wallets")
       .select("wallet_address,win_rate,total_trades,promoted_at,source")
@@ -407,8 +565,20 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
   const winsCount = ledger.winsCount;
   const lossesCount = ledger.lossesCount;
   const decisive = ledger.decisive;
-  const best = winsRes.data?.[0] || null;
-  const worst = lossesRes.data?.[0] || null;
+
+  const pageRowsRaw =
+    rowSource === "signal_performance"
+      ? (pageRes.data || []).map(mapPerfRowToOutcomeLedgerRow)
+      : pageRes.data || [];
+  const winsRowsRaw =
+    rowSource === "signal_performance" ? (winsRes.data || []).map(mapPerfRowToOutcomeLedgerRow) : winsRes.data || [];
+  const lossesRowsRaw =
+    rowSource === "signal_performance"
+      ? (lossesRes.data || []).map(mapPerfRowToOutcomeLedgerRow)
+      : lossesRes.data || [];
+
+  const best = winsRowsRaw[0] || null;
+  const worst = lossesRowsRaw[0] || null;
 
   const rulePerformance = (rulesRes.data || []).map((row) => {
     const total = Number(row.total_signals || 0);
@@ -425,9 +595,9 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     };
   });
 
-  const recentRaw = await enrichOracleRows(supabase, pageRes.data || []);
-  const topWinsRaw = await enrichOracleRows(supabase, winsRes.data || []);
-  const worstLossesRaw = await enrichOracleRows(supabase, lossesRes.data || []);
+  const recentRaw = await enrichOracleRows(supabase, pageRowsRaw);
+  const topWinsRaw = await enrichOracleRows(supabase, winsRowsRaw);
+  const worstLossesRaw = await enrichOracleRows(supabase, lossesRowsRaw);
   const [bestCall] = best ? await enrichOracleRows(supabase, [best]) : [null];
   const [worstCall] = worst ? await enrichOracleRows(supabase, [worst]) : [null];
 
@@ -557,6 +727,7 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
     },
     meta: {
       source: "supabase:validation_oracle",
+      track_record_row_source: rowSource,
       filter,
       cache_ttl_sec: trackRecordCacheSeconds(),
       decisive_win_min_fraction: TR_DECISIVE_WIN,
