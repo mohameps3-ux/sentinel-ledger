@@ -1,6 +1,11 @@
 "use strict";
 
-const { runCalibrationOnce, getCalibrationSnapshot } = require("../services/signalCalibrator");
+const {
+  runCalibrationOnce,
+  getCalibrationSnapshot,
+  hydratePublishedWeightsFromRedis,
+  startSignalWeightsRedisPoll
+} = require("../services/signalCalibrator");
 
 const TICK_MS_RAW = Number(process.env.SIGNAL_CALIBRATOR_TICK_MS || 6 * 60 * 60 * 1000);
 const TICK_MS = Number.isFinite(TICK_MS_RAW) && TICK_MS_RAW >= 60_000 ? TICK_MS_RAW : 6 * 60 * 60 * 1000;
@@ -18,6 +23,7 @@ async function runSignalCalibratorTick() {
   if (!isEnabled()) return;
   lastTickStartedAt = Date.now();
   try {
+    await hydratePublishedWeightsFromRedis();
     const res = await runCalibrationOnce();
     lastStats = {
       ok: Boolean(res?.ok),
@@ -54,6 +60,7 @@ function getSignalCalibratorCronStatus() {
 
 function startSignalCalibratorCron(options = {}) {
   const { skipInitialTick = false } = options;
+  startSignalWeightsRedisPoll();
   if (intervalRef) return;
   if (!isEnabled()) {
     console.log("Signal calibrator cron disabled via SIGNAL_CALIBRATOR_ENABLED=false");

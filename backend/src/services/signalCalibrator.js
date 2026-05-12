@@ -1,5 +1,6 @@
 "use strict";
 
+const redis = require("../lib/cache");
 const { getSignalPerformanceSummary } = require("./signalPerformance");
 
 const CONFIG = {
@@ -10,6 +11,16 @@ const CONFIG = {
   maxWeight: Number(process.env.SIGNAL_CALIBRATOR_MAX_WEIGHT || 1.6)
 };
 
+/** Shared active weights across Railway replicas; rollback = DEL key in Upstash. */
+const SIGNAL_WEIGHTS_REDIS_KEY =
+  String(process.env.SIGNAL_WEIGHTS_REDIS_KEY || "").trim() || "sentinel:signal_weights:v1";
+
+const SIGNAL_WEIGHTS_REDIS_TTL_SEC = (() => {
+  const n = Number(process.env.SIGNAL_WEIGHTS_REDIS_TTL_SEC);
+  if (!Number.isFinite(n) || n < 300) return 60 * 60 * 24 * 90;
+  return Math.min(60 * 60 * 24 * 365, Math.floor(n));
+})();
+
 const BASELINE_WEIGHTS = {
   whale_accumulation: 1.0,
   cluster_buy: 1.0,
@@ -19,6 +30,11 @@ const BASELINE_WEIGHTS = {
 };
 
 let lastCalibration = null;
+/** Full map merged from baseline + eligible proposals; updated after each successful calib + Redis hydrate. */
+let publishedWeights = null;
+let lastRedisHydrateAt = null;
+let lastRedisPersistAt = null;
+let pollIntervalRef = null;
 
 function clamp(n, lo, hi) {
   if (!Number.isFinite(n)) return lo;
@@ -83,21 +99,12 @@ async function runCalibrationOnce(options = {}) {
     proposals,
     topCombos: (summary.combos || []).slice(0, 10)
   };
+  await persistPublishedWeightsToRedis(lastCalibration);
   return lastCalibration;
 }
 
-function getCalibrationSnapshot() {
-  return {
-    config: { ...CONFIG },
-    baselineWeights: { ...BASELINE_WEIGHTS },
-    lastCalibration
-  };
-}
-
-/** Merged baseline + last eligible calibration weights (for live signal feed). */
-function getActiveSignalWeightMap() {
+function buildActiveWeightMapFromCalibration(lc) {
   const out = { ...BASELINE_WEIGHTS };
-  const lc = lastCalibration;
   if (!lc?.ok || !Array.isArray(lc.proposals)) return out;
   for (const p of lc.proposals) {
     if (!p?.signal || !p.eligible) continue;
@@ -107,6 +114,97 @@ function getActiveSignalWeightMap() {
     }
   }
   return out;
+}
+
+async function persistPublishedWeightsToRedis(lc) {
+  const merged = buildActiveWeightMapFromCalibration(lc);
+  publishedWeights = merged;
+  const payload = {
+    v: 1,
+    savedAt: new Date().toISOString(),
+    weights: merged,
+    lookbackHours: lc.lookbackHours,
+    minSamplesPerSignal: lc.minSamplesPerSignal
+  };
+  try {
+    await redis.set(SIGNAL_WEIGHTS_REDIS_KEY, JSON.stringify(payload), { ex: SIGNAL_WEIGHTS_REDIS_TTL_SEC });
+    lastRedisPersistAt = Date.now();
+  } catch (e) {
+    console.warn("[signal-calibrator] redis persist failed:", e?.message || e);
+  }
+}
+
+/**
+ * Load published weights from Upstash so all replicas share the same map after cold start / leader change.
+ */
+async function hydratePublishedWeightsFromRedis() {
+  try {
+    const raw = await redis.get(SIGNAL_WEIGHTS_REDIS_KEY);
+    if (raw == null) {
+      publishedWeights = null;
+      lastRedisHydrateAt = Date.now();
+      return false;
+    }
+    const doc = typeof raw === "string" ? JSON.parse(raw) : raw;
+    const w = doc?.weights;
+    if (!w || typeof w !== "object") {
+      lastRedisHydrateAt = Date.now();
+      return false;
+    }
+    const next = { ...BASELINE_WEIGHTS };
+    for (const key of Object.keys(BASELINE_WEIGHTS)) {
+      const n = Number(w[key]);
+      if (Number.isFinite(n)) {
+        next[key] = clamp(n, CONFIG.minWeight, CONFIG.maxWeight);
+      }
+    }
+    publishedWeights = next;
+    lastRedisHydrateAt = Date.now();
+    return true;
+  } catch (e) {
+    console.warn("[signal-calibrator] redis hydrate failed:", e?.message || e);
+    return false;
+  }
+}
+
+function startSignalWeightsRedisPoll() {
+  if (pollIntervalRef) return;
+  const msRaw = Number(process.env.SIGNAL_WEIGHTS_REDIS_POLL_MS);
+  const ms = Number.isFinite(msRaw) && msRaw >= 5000 ? Math.floor(msRaw) : 60_000;
+  pollIntervalRef = setInterval(() => {
+    hydratePublishedWeightsFromRedis().catch(() => {});
+  }, ms);
+  if (pollIntervalRef && typeof pollIntervalRef.unref === "function") pollIntervalRef.unref();
+}
+
+function getCalibrationSnapshot() {
+  return {
+    config: { ...CONFIG },
+    baselineWeights: { ...BASELINE_WEIGHTS },
+    lastCalibration,
+    publishedWeights: publishedWeights ? { ...publishedWeights } : null,
+    redis: {
+      key: SIGNAL_WEIGHTS_REDIS_KEY,
+      lastHydrateAt: lastRedisHydrateAt,
+      lastPersistAt: lastRedisPersistAt,
+      ttlSec: SIGNAL_WEIGHTS_REDIS_TTL_SEC
+    }
+  };
+}
+
+/** Merged baseline + eligible calibration; prefers Redis-backed snapshot when present. */
+function getActiveSignalWeightMap() {
+  if (publishedWeights && typeof publishedWeights === "object") {
+    const out = { ...BASELINE_WEIGHTS };
+    for (const key of Object.keys(BASELINE_WEIGHTS)) {
+      const w = publishedWeights[key];
+      if (Number.isFinite(Number(w))) {
+        out[key] = clamp(Number(w), CONFIG.minWeight, CONFIG.maxWeight);
+      }
+    }
+    return out;
+  }
+  return buildActiveWeightMapFromCalibration(lastCalibration);
 }
 
 /**
@@ -168,6 +266,8 @@ module.exports = {
   runCalibrationOnce,
   getCalibrationSnapshot,
   getActiveSignalWeightMap,
-  getHistoricalEdgeForSignals
+  getHistoricalEdgeForSignals,
+  hydratePublishedWeightsFromRedis,
+  startSignalWeightsRedisPoll
 };
 

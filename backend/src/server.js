@@ -47,6 +47,7 @@ const {
   getSignalCalibratorCronStatus,
   runSignalCalibratorTick
 } = require("./jobs/signalCalibratorCron");
+const { hydratePublishedWeightsFromRedis, startSignalWeightsRedisPoll } = require("./services/signalCalibrator");
 const {
   startOpsHeartbeatCron,
   getOpsHeartbeatCronStatus
@@ -480,6 +481,10 @@ const port = Number(process.env.PORT) || 3000;
 async function bootstrap() {
   const { acquireLeadership } = require("./services/leaderService");
   await acquireLeadership();
+  await hydratePublishedWeightsFromRedis().catch((e) =>
+    console.warn("[bootstrap] signal weight hydrate:", e?.message || e)
+  );
+  startSignalWeightsRedisPoll();
   console.log("[bootstrap] Hydrating signal calibrator + signal gate + coordination outcomes (best-effort)...");
   const gateRun = isSignalGateTunerCronEnabled() ? runSignalGateTunerTick() : Promise.resolve(null);
   const coordOutRun = isCoordinationResolutionActive() ? runCoordinationOutcomeResolutionOnce() : Promise.resolve(null);
