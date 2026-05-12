@@ -1137,20 +1137,41 @@ async function buildOutcomesProof(supabase, { hours = 168, recentN = 10 } = {}) 
 }
 
 const SMART_WALLETS_TOP_SIGNAL_MIN = Math.min(100, Math.max(1, Number(process.env.SMART_WALLETS_TOP_SIGNAL_MIN || 2)));
-const SIGNAL_AGG_LOOKBACK_LIMIT = 8000;
+/** Max rows scanned to infer top wallets from signals when smart_wallets is empty. Lower = less DB load (default 2000, was 8000). */
+const SIGNAL_AGG_LOOKBACK_LIMIT = Math.min(
+  5000,
+  Math.max(400, Math.floor(Number(process.env.SMART_WALLETS_TOP_SIGNAL_LOOKBACK || 2000)))
+);
 
 /**
  * Ranks wallets from recent resolved `smart_wallet_signals` when `smart_wallets` has no rows
  * (common before the cron has populated the leaderboard table).
  */
 async function buildSmartWalletsTopFromSignals(supabase, { limit }) {
-  const { data, error } = await supabase
+  let builder = supabase
     .from("smart_wallet_signals")
     .select("wallet_address, result_pct, created_at")
     .not("result_pct", "is", null)
     .not("wallet_address", "is", null)
     .order("created_at", { ascending: false })
     .limit(SIGNAL_AGG_LOOKBACK_LIMIT);
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+    try {
+      builder = builder.abortSignal(AbortSignal.timeout(14_000));
+    } catch (_) {
+      /* ignore */
+    }
+  }
+  let data;
+  let error;
+  try {
+    const res = await builder;
+    data = res.data;
+    error = res.error;
+  } catch (e) {
+    console.warn("[homeTerminalApi] buildSmartWalletsTopFromSignals query failed", e?.message || e);
+    return [];
+  }
   if (error) {
     console.warn("[homeTerminalApi] buildSmartWalletsTopFromSignals query failed", error.message);
     return [];
@@ -1212,7 +1233,7 @@ async function buildSmartWalletsTop(supabase, { limit = 20 } = {}) {
     .from("smart_wallets")
     .select("*")
     .order("win_rate", { ascending: false })
-    .limit(200);
+    .limit(80);
   if (!error && (data || []).length) {
     const sourceRows = data || [];
     const wallets = sourceRows.map((r) => String(r.wallet_address || "").trim()).filter(Boolean);
