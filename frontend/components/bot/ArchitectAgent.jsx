@@ -17,7 +17,7 @@ export default function ArchitectAgent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isOpen, setIsOpen] = useState(true);
-  const bottomRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -37,7 +37,11 @@ export default function ArchitectAgent() {
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
   }, [messages, loading]);
 
   const clearHistory = () => {
@@ -87,7 +91,9 @@ export default function ArchitectAgent() {
       setMessages((prev) => prev.slice(0, -1));
     } finally {
       setLoading(false);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setTimeout(() => {
+        inputRef.current?.focus({ preventScroll: true });
+      }, 50);
     }
   }, [input, loading, messages, opsKey]);
 
@@ -107,6 +113,7 @@ export default function ArchitectAgent() {
         border: "1px solid #1a2a1a",
         borderRadius: "12px",
         overflow: "hidden",
+        overscrollBehavior: "contain",
         display: "flex",
         flexDirection: "column",
         height: isOpen ? "520px" : "48px",
@@ -183,9 +190,11 @@ export default function ArchitectAgent() {
       {isOpen && (
         <>
           <div
+            ref={scrollContainerRef}
             style={{
               flex: 1,
               overflowY: "auto",
+              overscrollBehavior: "contain",
               padding: "12px 16px",
               display: "flex",
               flexDirection: "column",
@@ -288,7 +297,6 @@ export default function ArchitectAgent() {
                 {error}
               </div>
             )}
-            <div ref={bottomRef} />
           </div>
 
           <div
