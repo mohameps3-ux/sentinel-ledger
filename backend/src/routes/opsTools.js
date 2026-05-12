@@ -103,6 +103,46 @@ function validateReadOnlySelect(sqlRaw) {
   return { ok: true, sql };
 }
 
+/** Single-statement DML/DDL guard (no comments, one `;` forbidden = no multi-stmt). */
+function validateAuditedMutatingSql(sqlRaw) {
+  const sql = String(sqlRaw || "").trim();
+  if (!sql) return { ok: false, error: "empty_sql" };
+  if (sql.length > MAX_SQL_LEN) return { ok: false, error: "sql_too_long" };
+  if (/--|\/\*|\*\//.test(sql)) return { ok: false, error: "comments_not_allowed" };
+  if (/;/g.test(sql)) return { ok: false, error: "semicolon_not_allowed" };
+  const bad =
+    /\b(pg_sleep|pg_read_file|lo_import|lo_export|dblink_|copy\s+\(|into\s+outfile|execute\s+immediate)\b/i;
+  if (bad.test(sql)) return { ok: false, error: "forbidden_keyword" };
+  return { ok: true, sql };
+}
+
+function classifySqlKind(sqlRaw) {
+  const sql = String(sqlRaw || "").trim();
+  if (!sql) return "unknown";
+  if (/^\s*(drop|truncate|alter|create|grant|revoke)\b/i.test(sql)) return "dangerous";
+  if (/^\s*(insert|update|delete|merge)\b/i.test(sql)) return "write";
+  if (/^\s*select\b/i.test(sql)) return "read";
+  return "unknown";
+}
+
+async function tryInsertOpsAudit(client, row) {
+  try {
+    await client.query(
+      `INSERT INTO public.ops_audit_log (operation, sql_statement, affected_rows, executed_by, error)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        row.operation,
+        String(row.sql_statement || "").slice(0, 120_000),
+        Number.isFinite(row.affected_rows) ? Math.max(0, Math.floor(row.affected_rows)) : 0,
+        String(row.executed_by || "ops-console").slice(0, 256),
+        row.error == null ? null : String(row.error).slice(0, 8000)
+      ]
+    );
+  } catch (e) {
+    console.error("[ops-tools] ops_audit_log insert failed:", e?.message || e);
+  }
+}
+
 /**
  * Same guardrails as POST /api/v1/ops/tools/sql (read-only). Used by ops agent auto-SQL blocks.
  * @returns {Promise<{ ok: true, rows: object[], rowCount: number } | { ok: false, error: string }>}
@@ -433,49 +473,116 @@ router.post("/sql", requireOpsKey, toolsLimiter, async (req, res) => {
   try {
     const preview = Boolean(req.body?.preview);
     const confirm = Boolean(req.body?.confirm);
+    const allowWrite = Boolean(req.body?.allowWrite);
+    const allowDangerous = Boolean(req.body?.allowDangerous);
     const templateId = req.body?.template;
     const params = req.body?.params && typeof req.body.params === "object" ? req.body.params : {};
 
     let sql = null;
+    let kind = "read";
+
     if (templateId) {
       sql = buildTemplateSql(String(templateId), params);
       if (!sql) return res.status(400).json({ ok: false, error: "unknown_template" });
-    } else if (req.body?.sql) {
-      const v = validateReadOnlySelect(req.body.sql);
+      const v = validateReadOnlySelect(sql);
       if (!v.ok) return res.status(400).json({ ok: false, error: v.error });
       sql = v.sql;
+      kind = "read";
+    } else if (req.body?.sql) {
+      const raw = String(req.body.sql);
+      kind = classifySqlKind(raw);
+      if (kind === "unknown") {
+        return res.status(400).json({
+          ok: false,
+          error: "unsupported_sql_kind",
+          hint: "Use a single SELECT, or INSERT/UPDATE/DELETE/MERGE with allowWrite, or DDL with allowDangerous."
+        });
+      }
+      if (kind === "read") {
+        const v = validateReadOnlySelect(raw);
+        if (!v.ok) return res.status(400).json({ ok: false, error: v.error });
+        sql = v.sql;
+      } else {
+        const v = validateAuditedMutatingSql(raw);
+        if (!v.ok) return res.status(400).json({ ok: false, error: v.error });
+        sql = v.sql;
+      }
     } else {
       return res.status(400).json({ ok: false, error: "template_or_sql_required" });
     }
 
     if (preview) {
-      return res.json({ ok: true, preview: true, sql });
+      return res.json({ ok: true, preview: true, sql, kind });
     }
 
     if (!confirm) {
       return res.status(400).json({
         ok: false,
         error: "confirm_required",
-        hint: "Set preview:true to inspect SQL, then confirm:true to execute read."
+        hint: "Set preview:true to inspect SQL, then confirm:true to execute."
+      });
+    }
+
+    if (kind === "write" && !allowWrite) {
+      return res.status(403).json({
+        ok: false,
+        error: "sql_write_requires_allowWrite",
+        hint: "Set allowWrite:true in the JSON body together with confirm:true."
+      });
+    }
+    if (kind === "dangerous" && !allowDangerous) {
+      return res.status(403).json({
+        ok: false,
+        error: "sql_dangerous_requires_allowDangerous",
+        hint: "DDL and similar ops require allowDangerous:true with confirm:true."
       });
     }
 
     const pool = getReadOnlyPool();
     if (!pool) return res.status(503).json({ ok: false, error: "database_url_not_configured" });
 
+    const timeoutMs = kind === "read" ? 60_000 : 30_000;
     const client = await pool.connect();
     try {
-      await client.query("SET statement_timeout = 15000");
+      await client.query(`SET statement_timeout = ${timeoutMs}`);
       const r = await client.query(sql);
       const rows = (r.rows || []).slice(0, MAX_SQL_ROWS);
+      const rowCount = r.rowCount != null ? r.rowCount : rows.length;
+
+      if (kind === "write" || kind === "dangerous") {
+        await tryInsertOpsAudit(client, {
+          operation: kind === "dangerous" ? "sql_dangerous" : "sql_write",
+          sql_statement: sql,
+          affected_rows: rowCount,
+          executed_by: "ops-console",
+          error: null
+        });
+      }
+
       return res.json({
         ok: true,
         preview: false,
+        kind,
+        isWrite: kind !== "read",
         sql,
-        rowCount: r.rowCount,
+        rowCount,
         fields: r.fields?.map((f) => f.name) || [],
         rows
       });
+    } catch (e) {
+      const msg = e?.message || String(e);
+      if ((kind === "write" || kind === "dangerous") && client) {
+        try {
+          await tryInsertOpsAudit(client, {
+            operation: kind === "dangerous" ? "sql_dangerous" : "sql_write",
+            sql_statement: sql,
+            affected_rows: 0,
+            executed_by: "ops-console",
+            error: msg
+          });
+        } catch (_) {}
+      }
+      return res.status(500).json({ ok: false, error: msg });
     } finally {
       client.release();
     }

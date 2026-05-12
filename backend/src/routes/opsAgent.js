@@ -136,10 +136,14 @@ const OPS_CONSOLE_LIMITS = {
   },
   sqlWrite: {
     endpoint: "POST /api/v1/ops/tools/sql",
-    blocked:
-      "INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, MERGE, CREATE, GRANT, REVOKE, COPY, EXECUTE y similares: rechazados por el servidor. Solo SELECT (sin ; ni comentarios).",
+    read:
+      "SELECT único (sin ; ni comentarios). preview:true luego confirm:true.",
+    write:
+      "DML (INSERT/UPDATE/DELETE/MERGE): requiere confirm:true + allowWrite:true; timeout 30s; se registra en public.ops_audit_log (aplicar migración 030).",
+    dangerous:
+      "DDL (DROP/TRUNCATE/ALTER/CREATE/GRANT/REVOKE): requiere confirm:true + allowDangerous:true (+ audita). Riesgo alto — no asumas rollback.",
     implication:
-      "No puedes mutar datos vía esta herramienta aunque el operador lo pida en lenguaje natural; el cambio va por migración, script revisado, Supabase/SQL fuera de ops, o workflow que tú no controlas desde aquí."
+      "Sin flags explícitos el servidor sigue rechazando mutaciones; con flags el operador asume responsabilidad y debe usar preview antes."
   },
   deploy: {
     vercelRailway:
@@ -425,9 +429,9 @@ EJECUCIÓN AUTOMÁTICA (solo lo que este backend engancha hoy; el resto = checkl
 - Resume resultado usando **EJECUCIÓN_EN_ESTA_PETICIÓN** si viene abajo; no inventes otras ejecuciones.
 
 LO QUE ESTA CONSOLA **NO** PUEDE HACER (leyes duras; también en JSON como **opsConsoleLimits**):
-- **SQL de escritura**: \`/api/v1/ops/tools/sql\` solo acepta **SELECT**. INSERT/UPDATE/DELETE y el resto de DML/DDL están **bloqueados** en el servidor — no prometas ejecutarlos ni “simularlos”.
+- **SQL mutante**: \`/api/v1/ops/tools/sql\` — por defecto solo **SELECT**. **DML** con \`confirm:true\` + \`allowWrite:true\`; **DDL** también \`allowDangerous:true\`; auditoría en \`ops_audit_log\`. Sin flags, el servidor rechaza la mutación.
 - **Deploy Vercel/Railway directo**: no hay token Vercel/Railway en ops; la vía es **GitHub Actions** (\`github/workflow\`) o pipelines que **tú** definas. Tras código: \`github/commit\` + PR + workflow si aplica.
-- **Edición masiva de tablas**: no hay herramienta de batch DML. Propón SQL **explícito** para revisión humana y ejecución **fuera** de ops/sql, o migraciones; no asumas aprobación implícita del operador.
+- **Edición masiva / batch DML**: no hay herramienta dedicada de batch; usa SQL explícito vía \`/sql\` con flags y preview, o migraciones revisadas.
 
 LO QUE **SÍ** PUEDE (GitHub, con confirmación explícita; ver **opsConsoleLimits.githubCodeWrite**):
 - **Commits remotos atómicos**: \`POST /api/v1/ops/tools/github/commit\` con \`confirm:true\`, archivos bajo whitelist, rama feature (o allowDirectPushDefault con intención explícita), opcional \`createPR\`.
@@ -448,8 +452,7 @@ CIERRE: 2–4 bullets “Qué mirar ahora”.
 
 HERRAMIENTAS HTTP (misma cabecera x-ops-key que este endpoint; ver backend/src/routes/opsTools.js):
 - POST /api/v1/ops/tools/repo/read — body: { "path": "frontend/pages/index.js", "source": "local"|"github"|"auto", "ref": "main" }. Valores github y auto usan API GitHub (mismas credenciales que commit). Modo auto + env OPS_REPO_READ_FALLBACK_GITHUB=1 intenta disco y luego GitHub si 404.
-- POST /api/v1/ops/tools/sql — **solo lectura**: SELECT único; INSERT/UPDATE/DELETE y DDL están **bloqueados**. Preview: { "preview": true, "template": "ops_health_counts" } o { "preview": true, "sql": "SELECT 1" }.
-  Ejecutar lectura: { "preview": false, "confirm": true, "template": "..." } o { "preview": false, "confirm": true, "sql": "SELECT ..." } (sin ; ni comentarios).
+- POST /api/v1/ops/tools/sql — **lectura**: SELECT único; \`{ "preview": true, "sql": "SELECT 1" }\` luego \`{ "confirm": true, "sql": "..." }\`. **Escritura (DML)**: mismo flujo + \`allowWrite:true\`. **DDL peligroso**: + \`allowDangerous:true\`. Sin \`;\` ni comentarios. Auditoría: tabla \`public.ops_audit_log\` (migración 030).
   Plantillas: ops_health_counts | signal_performance_status_7d | outcomes_pending_sample (params opcional { "hours": 24 }).
 - POST /api/v1/ops/tools/github/workflow — body: { "confirm": true, "workflow": "deploy-production.yml", "ref": "main", "inputs": { "environment": "production", "service": "frontend" } } — workflow_dispatch (GITHUB_TOKEN + GITHUB_REPOSITORY). El YAML debe existir en .github/workflows/.
 - POST /api/v1/ops/tools/github/commit — body: { "confirm": true, "branch": "feature/ops-auto-123", "baseBranch": "main", "message": "feat: …", "files": [ { "path": "frontend/pages/foo.js", "content": "…", "action": "create|update|delete" } ], "createPR": true, "prTitle": "…", "prBody": "…" }. Opcional: updateExistingBranch, allowDirectPushDefault (peligro). Rutas solo bajo whitelist (env OPS_GITHUB_WRITE_ALLOW_PREFIXES).
