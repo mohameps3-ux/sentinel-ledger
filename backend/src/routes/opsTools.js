@@ -103,6 +103,32 @@ function validateReadOnlySelect(sqlRaw) {
   return { ok: true, sql };
 }
 
+/**
+ * Same guardrails as POST /api/v1/ops/tools/sql (read-only). Used by ops agent auto-SQL blocks.
+ * @returns {Promise<{ ok: true, rows: object[], rowCount: number } | { ok: false, error: string }>}
+ */
+async function runOpsReadOnlySelect(sqlRaw) {
+  const v = validateReadOnlySelect(sqlRaw);
+  if (!v.ok) return { ok: false, error: v.error };
+  const pool = getReadOnlyPool();
+  if (!pool) return { ok: false, error: "database_url_not_configured" };
+  const client = await pool.connect();
+  try {
+    await client.query("SET statement_timeout = 15000");
+    const r = await client.query(v.sql);
+    const rows = r.rows || [];
+    return {
+      ok: true,
+      rows: rows.slice(0, 10),
+      rowCount: rows.length
+    };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  } finally {
+    client.release();
+  }
+}
+
 function buildTemplateSql(templateId, params = {}) {
   const id = String(templateId || "").trim();
   if (id === "ops_health_counts") {
@@ -717,4 +743,5 @@ router.post("/github/commit", requireOpsKey, writeToolsLimiter, async (req, res)
   }
 });
 
+router.runOpsReadOnlySelect = runOpsReadOnlySelect;
 module.exports = router;
