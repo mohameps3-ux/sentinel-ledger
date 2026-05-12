@@ -10,13 +10,18 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 const rateLimit = require("express-rate-limit");
-const { Pool } = require("pg");
-const { tryResolvePostgresUrlFromSupabaseEnv } = require("../lib/resolvePostgresUrlFromSupabase");
+const { getOpsPostgresPool } = require("../lib/opsPostgresPool");
+const { insertOpsAuditLog } = require("../lib/opsAuditLog");
+const {
+  MAX_SQL_LEN,
+  validateReadOnlySelect,
+  validateAuditedMutatingSql,
+  classifySqlKind
+} = require("../lib/opsSqlGuards");
 
 const router = express.Router();
 
 const MAX_FILE_BYTES = 280_000;
-const MAX_SQL_LEN = 8000;
 const MAX_SQL_ROWS = 200;
 const GITHUB_COMMIT_MAX_FILES = 25;
 const GITHUB_COMMIT_MAX_BYTES_PER_FILE = 200_000;
@@ -71,76 +76,12 @@ function resolveSafeRepoPath(rel) {
   return { ok: true, abs: target, root: rootResolved, rel: raw };
 }
 
-/** @type {import("pg").Pool | null} */
-let pgPool = null;
-
 function getReadOnlyPool() {
-  if (pgPool) return pgPool;
-  const url =
-    String(process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL || "").trim() ||
-    tryResolvePostgresUrlFromSupabaseEnv(process.env);
-  if (!url) return null;
-  pgPool = new Pool({
-    connectionString: url,
-    max: 2,
-    idleTimeoutMillis: 8000,
-    connectionTimeoutMillis: 20000
-  });
-  return pgPool;
-}
-
-function validateReadOnlySelect(sqlRaw) {
-  const sql = String(sqlRaw || "").trim();
-  if (!sql) return { ok: false, error: "empty_sql" };
-  if (sql.length > MAX_SQL_LEN) return { ok: false, error: "sql_too_long" };
-  if (/--|\/\*|\*\//.test(sql)) return { ok: false, error: "comments_not_allowed" };
-  if (/;/g.test(sql)) return { ok: false, error: "semicolon_not_allowed" };
-  const lower = sql.toLowerCase();
-  if (!/^\s*select\b/.test(lower)) return { ok: false, error: "select_only" };
-  const forbidden =
-    /\b(insert|update|delete|drop|alter|truncate|grant|revoke|copy|into\s+pg_|create\s+table|create\s+index|merge|replace|call|execute|set\s+role|set\s+session)\b/i;
-  if (forbidden.test(sql)) return { ok: false, error: "forbidden_keyword" };
-  return { ok: true, sql };
-}
-
-/** Single-statement DML/DDL guard (no comments, one `;` forbidden = no multi-stmt). */
-function validateAuditedMutatingSql(sqlRaw) {
-  const sql = String(sqlRaw || "").trim();
-  if (!sql) return { ok: false, error: "empty_sql" };
-  if (sql.length > MAX_SQL_LEN) return { ok: false, error: "sql_too_long" };
-  if (/--|\/\*|\*\//.test(sql)) return { ok: false, error: "comments_not_allowed" };
-  if (/;/g.test(sql)) return { ok: false, error: "semicolon_not_allowed" };
-  const bad =
-    /\b(pg_sleep|pg_read_file|lo_import|lo_export|dblink_|copy\s+\(|into\s+outfile|execute\s+immediate)\b/i;
-  if (bad.test(sql)) return { ok: false, error: "forbidden_keyword" };
-  return { ok: true, sql };
-}
-
-function classifySqlKind(sqlRaw) {
-  const sql = String(sqlRaw || "").trim();
-  if (!sql) return "unknown";
-  if (/^\s*(drop|truncate|alter|create|grant|revoke)\b/i.test(sql)) return "dangerous";
-  if (/^\s*(insert|update|delete|merge)\b/i.test(sql)) return "write";
-  if (/^\s*select\b/i.test(sql)) return "read";
-  return "unknown";
+  return getOpsPostgresPool();
 }
 
 async function tryInsertOpsAudit(client, row) {
-  try {
-    await client.query(
-      `INSERT INTO public.ops_audit_log (operation, sql_statement, affected_rows, executed_by, error)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [
-        row.operation,
-        String(row.sql_statement || "").slice(0, 120_000),
-        Number.isFinite(row.affected_rows) ? Math.max(0, Math.floor(row.affected_rows)) : 0,
-        String(row.executed_by || "ops-console").slice(0, 256),
-        row.error == null ? null : String(row.error).slice(0, 8000)
-      ]
-    );
-  } catch (e) {
-    console.error("[ops-tools] ops_audit_log insert failed:", e?.message || e);
-  }
+  await insertOpsAuditLog(client, row);
 }
 
 /**
@@ -849,6 +790,13 @@ router.post("/github/commit", requireOpsKey, writeToolsLimiter, async (req, res)
     return res.status(500).json({ ok: false, error: e?.message || "github_commit_exception" });
   }
 });
+
+const { mountOpsAutonomyStack } = require("./opsAutonomyStack");
+try {
+  mountOpsAutonomyStack(router, { requireOpsKey, writeToolsLimiter });
+} catch (e) {
+  console.error("[ops-tools] opsAutonomyStack mount failed (continuing without autonomy routes):", e?.message || e);
+}
 
 router.runOpsReadOnlySelect = runOpsReadOnlySelect;
 module.exports = router;

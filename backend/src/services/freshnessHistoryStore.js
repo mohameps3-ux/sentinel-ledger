@@ -197,11 +197,11 @@ async function getFreshnessHistory({ endpoint = null, hours = 24, limit = 2000 }
   };
 }
 
-async function getDataFreshnessSnapshotFromStore({ hours = 24, limit = 50000, targetSupabaseRate = 0.8 } = {}) {
+async function getDataFreshnessSnapshotFromStore({ hours = 24, limit = 12_000, targetSupabaseRate = 0.8 } = {}) {
   const supabase = safeSupabase();
   if (!supabase) return { ok: false, reason: "supabase_unconfigured", data: null };
   const safeHours = clampHours(hours);
-  const safeLimit = Math.min(50000, Math.max(500, Math.floor(Number(limit) || 50000)));
+  const safeLimit = Math.min(25_000, Math.max(500, Math.floor(Number(limit) || 12_000)));
   const sinceIso = new Date(Date.now() - safeHours * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from("ops_data_freshness_events")

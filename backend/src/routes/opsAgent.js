@@ -10,6 +10,8 @@ const rateLimit = require("express-rate-limit");
 const { runCalibrationOnce, getCalibrationSnapshot } = require("../services/signalCalibrator");
 const { runSignalGateTunerTick } = require("../jobs/signalGateTunerCron");
 const { getSupabase } = require("../lib/supabase");
+const { getOpsPostgresPool } = require("../lib/opsPostgresPool");
+const { insertOpsAuditLog } = require("../lib/opsAuditLog");
 const opsToolsRouter = require("./opsTools");
 
 const router = express.Router();
@@ -147,9 +149,15 @@ const OPS_CONSOLE_LIMITS = {
   },
   deploy: {
     vercelRailway:
-      "No hay API dedicada Vercel/Railway en ops tools. Cadena típica: POST /api/v1/ops/tools/github/commit (rama + opcional createPR) → merge humano o automático → POST /api/v1/ops/tools/github/workflow con deploy-production.yml si existe en el repo.",
+      "POST /api/v1/ops/tools/deploy con confirm:true (VERCEL_TOKEN, VERCEL_PROJECT_ID, VERCEL_ORG_ID, RAILWAY_TOKEN, RAILWAY_PROJECT_ID, RAILWAY_SERVICE_ID, GITHUB_REPOSITORY para Vercel gitSource). Polling best-effort hasta READY.",
     checklistHint:
-      "workflow_dispatch no sustituye secrets en Vercel/Railway; el YAML debe definir deploy real."
+      "workflow_dispatch sigue disponible en /ops/tools/github/workflow; env/update puede disparar autoRedeploy (flag) pero redeploy real depende de integración."
+  },
+  bulkDataEdits: {
+    rule:
+      "POST /api/v1/ops/tools/bulk-update — tablas whitelist (signal_outcomes, signal_performance, smart_wallet_signals, rule_performance), dryRun + confirm, chunks 500.",
+    noImplicitApproval:
+      "Sin 'sí' vago para DML masivo; dryRun primero luego confirm:true."
   },
   githubCodeWrite: {
     endpoint: "POST /api/v1/ops/tools/github/commit",
@@ -158,12 +166,6 @@ const OPS_CONSOLE_LIMITS = {
       "Solo rutas bajo prefijos OPS_GITHUB_WRITE_ALLOW_PREFIXES (por defecto frontend/, backend/src/, docs/, .github/workflows/). Bloqueados: .env*, segmentos node_modules/.next/.git, extensiones tipo .pem.",
     behavior:
       "Un commit Git atómico (árbol) sobre rama nueva desde baseBranch o encima de rama existente con updateExistingBranch. createPR abre PR hacia baseBranch. allowDirectPushDefault:true solo para fast-forward explícito a la rama por defecto."
-  },
-  bulkDataEdits: {
-    rule:
-      "No edición masiva de tablas desde aquí: no hay SQL de escritura ni endpoint de batch DML. Cualquier UPDATE/DELETE masivo = propuesta de SQL explícito para que el operador lo ejecute en su entorno de confianza tras revisión.",
-    noImplicitApproval:
-      "No asumas que un 'sí' vago autoriza DML; el operador debe pegar o aprobar statements concretos fuera de /ops/tools/sql."
   }
 };
 
@@ -172,30 +174,36 @@ const SENTINEL_DIRECTOR_MAP = {
   vigencia: "2026-05",
   confirmacionOperador: [
     "GitHub/SQL efectivos: el operador dispara HTTP con confirm:true (o equivalente en su script); tú no ejecutas sola.",
-    "Calibración/tuner: solo si el operador escribe OK EJECUTAR + palabras clave en el mismo mensaje.",
+    "Calibración manual: OK EJECUTAR + palabras clave. Auto: solo si OPS_AUTO_EXECUTE_CALIBRATION=true y sin veto del operador.",
     "Sin 'sí' ambiguo para DML, push a default, ni borrar datos; pide texto/JSON explícito o checklist."
   ],
   limitaciones: {
     "1_sql_escritura":
-      "CERO en ops. /ops/tools/sql solo SELECT. Mutar tablas, migrar schema, backfill, fix corrupto → SQL o migración para que el operador lo ejecute en Supabase/pgAdmin (fuera del bot).",
+      "POST /api/v1/ops/tools/sql (DML/DDL con confirm + allowWrite/allowDangerous) y POST /api/v1/ops/tools/sql/auto para DML/DDL auditado (auto_executed). Sin flags el servidor rechaza mutaciones.",
     "2_codigo":
       "Lectura: repo/read source=local (disco OPS_REPO_ROOT) o source=github|auto (API GitHub mismo árbol que remoto; auto + OPS_REPO_READ_FALLBACK_GITHUB=1 si en Railway no está el monorepo en disco). Escritura remota: github/commit + confirm + whitelist.",
     "3_deploy":
-      "Sin API Vercel/Railway en ops. github/workflow = workflow_dispatch; si el YAML no tiene steps de deploy + secrets en GitHub, no hay deploy. Credenciales cloud fuera del agente.",
+      "POST /api/v1/ops/tools/deploy (Vercel/Railway tokens en env) o github/workflow workflow_dispatch.",
     "4_batch_datos":
-      "Sin canal DML → sin UPDATE masivo de outcomes, dedupe, reindex vía ops. Script/SQL/workflow para humano.",
+      "POST /api/v1/ops/tools/bulk-update con tablas whitelist, dryRun y confirm.",
     "5_env_produccion":
-      "No cambias ENV en dashboards. envConfig en JSON = solo algunas claves que ve el proceso; no es dump de .env; valores pueden faltar.",
+      "POST /api/v1/ops/tools/env/update (Vercel/Railway) con confirm; envConfig en JSON del agente sigue siendo vista parcial del proceso.",
     "6_monitor_proactivo":
-      "Sin webhook que te despierte; solo ves snapshot cuando el operador pregunta. Alertas tipo win rate < X% → checklist o producto futuro."
+      "POST /api/v1/ops/alerts/inbound (HMAC WEBHOOK_SECRET) escala a ops_alerts y opcionalmente agente/Telegram."
   },
   verificacionEntorno: "En el repo: cd backend && npm run ops:verify-director-stack (añade --strict en CI para fallar si falta clave).",
   herramientasQueSiExisten: [
     "POST /api/v1/ops/tools/repo/read — body: { path, source?: local|github|auto, ref? }; auto+fallback lee GitHub si falta en disco",
-    "POST /api/v1/ops/tools/sql (SELECT + confirm)",
+    "POST /api/v1/ops/tools/sql (SELECT + confirm; DML/DDL con flags)",
+    "POST /api/v1/ops/tools/sql/auto — DML/DDL auditado (intent, estimatedRows, dangerConfirm si >1000 filas)",
+    "POST /api/v1/ops/tools/bulk-update — batch whitelist dryRun+confirm",
+    "POST /api/v1/ops/tools/deploy — Vercel/Railway (env tokens)",
+    "POST /api/v1/ops/tools/env/update — variables cloud + audit",
+    "POST /api/v1/ops/tools/rollback — calibration Redis backup (target previous|timestamp:...)",
+    "POST /api/v1/ops/alerts/inbound — webhooks firmados",
     "POST /api/v1/ops/tools/github/commit (confirm + rama + whitelist)",
     "POST /api/v1/ops/tools/github/workflow (confirm + inputs)",
-    "OK EJECUTAR calibración | OK EJECUTAR tuner (mismo mensaje)"
+    "OK EJECUTAR calibración | OK EJECUTAR tuner (mismo mensaje); OPS_AUTO_EXECUTE_CALIBRATION=true puede disparar calibración si >24h sin éxito y sin veto"
   ]
 };
 
@@ -309,6 +317,10 @@ async function buildOpsContext() {
 function summarizeExecutionForPrompt(ran) {
   if (!Array.isArray(ran) || ran.length === 0) return null;
   return ran.map((r) => {
+    if (r?.action === "auto_calibration" || r?.action === "auto_calibration_skipped") {
+      const d = r.detail || {};
+      return { action: r.action, ok: r.ok, detail: d };
+    }
     if (r?.action === "signal_performance_calibration_run") {
       const d = r.detail || {};
       const props = Array.isArray(d.proposals) ? d.proposals.slice(0, 6) : [];
@@ -334,6 +346,104 @@ function summarizeExecutionForPrompt(ran) {
     }
     return r;
   });
+}
+
+/**
+ * Regex/keyword intent for autonomy (no external LLM).
+ * @returns {{ autoApproveLowRisk: boolean, requiresLiteralProdDeploy: boolean, destructiveBlocked: boolean, ambiguous: boolean, detail: string }}
+ */
+function classifyOperatorIntent(userMessage) {
+  const m = String(userMessage || "");
+  const out = {
+    autoApproveLowRisk: false,
+    requiresLiteralProdDeploy: false,
+    destructiveBlocked: false,
+    ambiguous: false,
+    detail: ""
+  };
+  if (/(borra|delete|drop|truncate)/i.test(m)) {
+    out.destructiveBlocked = true;
+    out.detail = "destructive_keywords_require_explicit_confirm_json";
+    return out;
+  }
+  if (/(deploy|push).*(prod|production)/i.test(m)) {
+    out.requiresLiteralProdDeploy = true;
+    out.detail = "prod_deploy_requires_literal_CONFIRM_DEPLOY_PROD";
+  }
+  if (/(hazlo|ejecuta|run|go)\s+(ya|now|ahora)\b/i.test(m)) {
+    out.autoApproveLowRisk = true;
+    out.detail = out.detail || "auto_approve_low_risk_phrase";
+  }
+  const t = m.trim();
+  if (/^(s[ií]|y(es)?)\s*$/i.test(t)) {
+    out.ambiguous = true;
+    out.detail = "yes_only_ambiguous";
+  }
+  return out;
+}
+
+async function logIntentClassification(classification, rawMessage) {
+  const pool = getOpsPostgresPool();
+  if (!pool) return;
+  const client = await pool.connect();
+  try {
+    await insertOpsAuditLog(client, {
+      operation: "intent_classification",
+      sql_statement: String(rawMessage || "").slice(0, 12_000),
+      affected_rows: 0,
+      executed_by: "ops-agent",
+      error: null,
+      metadata: { classification },
+      auto_executed: false
+    });
+  } catch (_) {
+    /* ignore audit failures */
+  } finally {
+    client.release();
+  }
+}
+
+async function maybeAutoCalibration(message) {
+  const ran = [];
+  if (String(process.env.OPS_AUTO_EXECUTE_CALIBRATION || "").toLowerCase() !== "true") {
+    return { ran };
+  }
+  const m = String(message || "");
+  const veto =
+    /\bno\s+toques\b/i.test(m) && (/\bpesos\b/i.test(m) || /\bweights?\b/i.test(m));
+  if (veto) {
+    ran.push({ action: "auto_calibration_skipped", ok: true, detail: "operator_veto" });
+    return { ran };
+  }
+  const snap = getCalibrationSnapshot();
+  const last = snap?.lastCalibration;
+  const lastAt = last?.ok ? last.at : null;
+  const stale = !Number.isFinite(lastAt) || Date.now() - lastAt > 24 * 3600 * 1000;
+  if (!stale) return { ran };
+  try {
+    const out = await runCalibrationOnce({});
+    ran.push({ action: "auto_calibration", ok: !!out?.ok, detail: out });
+    const pool = getOpsPostgresPool();
+    if (pool) {
+      const client = await pool.connect();
+      try {
+        await insertOpsAuditLog(client, {
+          operation: "auto_calibration",
+          sql_statement: JSON.stringify(out || {}).slice(0, 50_000),
+          affected_rows: 0,
+          executed_by: "ops-agent",
+          error: out?.ok === false ? String(out?.reason || "calibration_failed") : null,
+          metadata: { lookbackHours: out?.lookbackHours },
+          auto_executed: true
+        });
+      } finally {
+        client.release();
+      }
+    }
+  } catch (e) {
+    ran.push({ action: "auto_calibration", ok: false, detail: { error: e?.message || String(e) } });
+  }
+  return { ran };
 }
 
 /**
@@ -422,19 +532,22 @@ FASE 2 — PROPUESTA:
 - Cambios en **pasos pequeños**, reversibles, con plan de monitorización.
 - Para ENV: formato CAMBIO PROPUESTO / por qué / riesgo / qué vigilar.
 
-EJECUCIÓN AUTOMÁTICA (solo lo que este backend engancha hoy; el resto = checklist para humano/CI):
-- Con **OK EJECUTAR** o **OK EXECUTE** + palabras clave en el **mismo mensaje**:
-  - calibración / pesos / weights → **runCalibrationOnce**
-  - tuner / gate adaptativo → **runSignalGateTunerTick**
-- Resume resultado usando **EJECUCIÓN_EN_ESTA_PETICIÓN** si viene abajo; no inventes otras ejecuciones.
+EJECUCIÓN AUTOMÁTICA (enganchada en este backend):
+- **OK EJECUTAR** / **OK EXECUTE** + palabras clave en el **mismo mensaje**: calibración/pesos → **runCalibrationOnce**; tuner → **runSignalGateTunerTick**.
+- Si \`OPS_AUTO_EXECUTE_CALIBRATION=true\` y la última calibración **exitosa** tiene >24h y el operador **no** vetó ("no toques pesos/weights"), puede ejecutarse **auto_calibration** antes del LLM (ver **EJECUCIÓN_EN_ESTA_PETICIÓN**).
+- Resume solo lo que venga en **EJECUCIÓN_EN_ESTA_PETICIÓN**; no inventes otras ejecuciones.
 
-LO QUE ESTA CONSOLA **NO** PUEDE HACER (leyes duras; también en JSON como **opsConsoleLimits**):
-- **SQL mutante**: \`/api/v1/ops/tools/sql\` — por defecto solo **SELECT**. **DML** con \`confirm:true\` + \`allowWrite:true\`; **DDL** también \`allowDangerous:true\`; auditoría en \`ops_audit_log\`. Sin flags, el servidor rechaza la mutación.
-- **Deploy Vercel/Railway directo**: no hay token Vercel/Railway en ops; la vía es **GitHub Actions** (\`github/workflow\`) o pipelines que **tú** definas. Tras código: \`github/commit\` + PR + workflow si aplica.
-- **Edición masiva / batch DML**: no hay herramienta dedicada de batch; usa SQL explícito vía \`/sql\` con flags y preview, o migraciones revisadas.
+CAPACIDADES OPS (HTTP + \`x-ops-key\`; ver JSON **opsConsoleLimits** y **herramientasQueSiExisten**):
+- **SQL**: \`/ops/tools/sql\` (SELECT / DML / DDL con flags) y \`/ops/tools/sql/auto\` (DML/DDL auditado \`auto_executed\`, \`dangerConfirm\` si \`estimatedRows\`>1000).
+- **Batch**: \`/ops/tools/bulk-update\` (tablas whitelist, \`dryRun\` + \`confirm\`, chunks).
+- **Deploy**: \`/ops/tools/deploy\` (Vercel/Railway; tokens en env del backend).
+- **ENV remoto**: \`/ops/tools/env/update\` (Vercel/Railway).
+- **Rollback calibración**: \`/ops/tools/rollback\` \`type=calibration\`, \`target=previous\` (Redis backup 72h).
+- **Alertas**: \`/ops/alerts/inbound\` (HMAC \`WEBHOOK_SECRET\` / \`OPS_WEBHOOK_SECRET\`).
 
-LO QUE **SÍ** PUEDE (GitHub, con confirmación explícita; ver **opsConsoleLimits.githubCodeWrite**):
-- **Commits remotos atómicos**: \`POST /api/v1/ops/tools/github/commit\` con \`confirm:true\`, archivos bajo whitelist, rama feature (o allowDirectPushDefault con intención explícita), opcional \`createPR\`.
+LÍNEAS ROJAS (no prometer fuera de esto):
+- Sin tokens/credenciales en el chat; sin asumir \`confirm:true\` del operador salvo mensaje/JSON explícito.
+- Rollback SQL inverso automático y redeploy env **no** están completos: guía al operador o usa GitHub/workflow.
 
 ARQUITECTURA MOTOR (recordatorio):
 - Reglas: whale_accumulation, liquidity_shock, cluster_buy, new_wallet_confidence, velocity_spike.
@@ -452,8 +565,14 @@ CIERRE: 2–4 bullets “Qué mirar ahora”.
 
 HERRAMIENTAS HTTP (misma cabecera x-ops-key que este endpoint; ver backend/src/routes/opsTools.js):
 - POST /api/v1/ops/tools/repo/read — body: { "path": "frontend/pages/index.js", "source": "local"|"github"|"auto", "ref": "main" }. Valores github y auto usan API GitHub (mismas credenciales que commit). Modo auto + env OPS_REPO_READ_FALLBACK_GITHUB=1 intenta disco y luego GitHub si 404.
-- POST /api/v1/ops/tools/sql — **lectura**: SELECT único; \`{ "preview": true, "sql": "SELECT 1" }\` luego \`{ "confirm": true, "sql": "..." }\`. **Escritura (DML)**: mismo flujo + \`allowWrite:true\`. **DDL peligroso**: + \`allowDangerous:true\`. Sin \`;\` ni comentarios. Auditoría: tabla \`public.ops_audit_log\` (migración 030).
+- POST /api/v1/ops/tools/sql — **lectura**: SELECT único; \`{ "preview": true, "sql": "SELECT 1" }\` luego \`{ "confirm": true, "sql": "..." }\`. **Escritura (DML)**: mismo flujo + \`allowWrite:true\`. **DDL peligroso**: + \`allowDangerous:true\`. Sin \`;\` ni comentarios. Auditoría: tabla \`public.ops_audit_log\` (migración 030+031).
   Plantillas: ops_health_counts | signal_performance_status_7d | outcomes_pending_sample (params opcional { "hours": 24 }).
+- POST /api/v1/ops/tools/sql/auto — DML/DDL sin preview intermedio: \`{ "sql": "UPDATE …", "intent": "fix_null_outcomes", "estimatedRows": 150, "dangerConfirm": true }\` si \`estimatedRows\`>1000; opcional \`allowDangerous\` para DDL. Respuesta: \`affected_rows\`, \`execution_time_ms\`, \`audit_log_id\`.
+- POST /api/v1/ops/tools/bulk-update — \`{ "table": "signal_outcomes", "where": {...}, "set": {...}, "dryRun": true }\` luego \`confirm:true\` y \`dryRun:false\`.
+- POST /api/v1/ops/tools/deploy — \`{ "confirm": true, "service": "frontend"|"backend", "environment": "production"|"preview", "trigger": "immediate", "gitRef": "main" }\` (tokens Vercel/Railway en env).
+- POST /api/v1/ops/tools/env/update — variables Vercel/Railway + \`confirm\`; \`autoRedeploy\` opcional (marca intento).
+- POST /api/v1/ops/tools/rollback — \`type: calibration\`, \`target: previous\` (Redis backup).
+- POST /api/v1/ops/alerts/inbound — JSON firmado (HMAC-SHA256 hex de \`source|severity|event|sortedStringify(metadata)\` en header \`x-ops-signature\` o campo \`signature\` con prefijo \`sha256=\`); requiere \`WEBHOOK_SECRET\` / \`OPS_WEBHOOK_SECRET\`.
 - POST /api/v1/ops/tools/github/workflow — body: { "confirm": true, "workflow": "deploy-production.yml", "ref": "main", "inputs": { "environment": "production", "service": "frontend" } } — workflow_dispatch (GITHUB_TOKEN + GITHUB_REPOSITORY). El YAML debe existir en .github/workflows/.
 - POST /api/v1/ops/tools/github/commit — body: { "confirm": true, "branch": "feature/ops-auto-123", "baseBranch": "main", "message": "feat: …", "files": [ { "path": "frontend/pages/foo.js", "content": "…", "action": "create|update|delete" } ], "createPR": true, "prTitle": "…", "prBody": "…" }. Opcional: updateExistingBranch, allowDirectPushDefault (peligro). Rutas solo bajo whitelist (env OPS_GITHUB_WRITE_ALLOW_PREFIXES).
 
@@ -477,9 +596,32 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
     if (!apiKey) {
       return res.status(503).json({ error: "Agent unavailable — ANTHROPIC_API_KEY not set" });
     }
+    const intent = classifyOperatorIntent(message);
+    logIntentClassification(intent, message).catch(() => {});
+    const autoCal = await maybeAutoCalibration(message);
     const execLog = await maybeExecuteAuthorizedOps(message);
+    const ran = [...(autoCal.ran || []), ...(execLog.ran || [])];
+
+    let userMsg = String(message).trim();
+    if (intent.ambiguous) {
+      userMsg =
+        'AUTONOMÍA: Si pedías confirmación, responde en texto explícito p. ej. "CONFIRM deploy" o pega el JSON con confirm:true; un "sí" solo es ambiguo.\n\n' +
+        userMsg;
+    }
+    if (intent.destructiveBlocked) {
+      userMsg =
+        "AUTONOMÍA: Hay lenguaje destructivo; DML/DDL requiere POST /api/v1/ops/tools/sql o /sql/auto con flags y confirm explícitos — no ejecutes por inferencia.\n\n" +
+        userMsg;
+    }
+    if (intent.requiresLiteralProdDeploy && !/\bCONFIRM\s+DEPLOY\s+PROD\b/i.test(message)) {
+      userMsg =
+        "AUTONOMÍA: Deploy a producción requiere la frase literal CONFIRM DEPLOY PROD en el mensaje del operador si vas a disparar /ops/tools/deploy.\n\n" +
+        userMsg;
+    }
+
     const ctx = await buildOpsContext();
-    const systemPrompt = buildSystemPrompt(ctx, summarizeExecutionForPrompt(execLog.ran));
+    ctx.operatorIntent = intent;
+    const systemPrompt = buildSystemPrompt(ctx, summarizeExecutionForPrompt(ran));
     const safeHistory = Array.isArray(history)
       ? history
           .filter((m) => m?.role && m?.content && typeof m.content === "string")
@@ -489,7 +631,7 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
             content: String(m.content).substring(0, OPS_AGENT_HISTORY_CONTENT_CHARS)
           }))
       : [];
-    const messages = [...safeHistory, { role: "user", content: String(message).trim() }];
+    const messages = [...safeHistory, { role: "user", content: userMsg }];
     const model = process.env.ANTHROPIC_OPS_AGENT_MODEL || "claude-sonnet-4-5";
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -530,7 +672,7 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
       answer: assistantMessage,
       model,
       contextTimestamp: ctx.timestamp,
-      executed: execLog.ran
+      executed: ran
     });
   } catch (err) {
     console.error("[ops-agent] error:", err?.message || err);

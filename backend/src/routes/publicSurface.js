@@ -2,8 +2,17 @@ const express = require("express");
 const rateLimit = require("express-rate-limit");
 const { getSupabase } = require("../lib/supabase");
 const { getFreshnessExportEd25519PublicKeyBytes } = require("../lib/freshnessSignedExport");
+const redis = require("../lib/cache");
 
 const router = express.Router();
+
+const PUBLIC_STATS_CACHE_KEY = "public:sentinel:stats:v1";
+
+function publicStatsCacheSeconds() {
+  const n = Number(process.env.PUBLIC_STATS_CACHE_SECONDS);
+  if (!Number.isFinite(n)) return 30;
+  return Math.min(120, Math.max(10, Math.floor(n)));
+}
 
 const freshnessExportKeyLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -80,8 +89,17 @@ function formatRuleRow(row = {}) {
   };
 }
 
-/** GET /api/v1/public/stats — onboarding strip */
+/** GET /api/v1/public/stats — onboarding strip (short Redis cache to dedupe browser pollers). */
 router.get("/stats", async (_req, res) => {
+  const ttl = publicStatsCacheSeconds();
+  try {
+    const cached = await redis.get(PUBLIC_STATS_CACHE_KEY);
+    if (cached && typeof cached === "object" && cached.ok === true) {
+      return res.json(cached);
+    }
+  } catch (_) {
+    /* ignore cache read */
+  }
   const supabase = safeSupabase();
   if (!supabase) {
     return res.status(503).json({ ok: false, error: "supabase_unconfigured" });
@@ -102,13 +120,19 @@ router.get("/stats", async (_req, res) => {
       .maybeSingle();
 
     const win = Number(topWallet?.win_rate || 0);
-    return res.json({
+    const body = {
       ok: true,
       signalsToday: signalsToday ?? 0,
       topWalletPct30d: Number.isFinite(win) ? win : null,
       avgEntryWindowMins: 4,
       source: "supabase"
-    });
+    };
+    try {
+      await redis.set(PUBLIC_STATS_CACHE_KEY, body, { ex: ttl });
+    } catch (_) {
+      /* ignore cache write */
+    }
+    return res.json(body);
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || "public_stats_failed" });
   }

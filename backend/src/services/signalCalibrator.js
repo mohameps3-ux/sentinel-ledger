@@ -127,6 +127,15 @@ async function persistPublishedWeightsToRedis(lc) {
     minSamplesPerSignal: lc.minSamplesPerSignal
   };
   try {
+    let oldRaw = null;
+    try {
+      oldRaw = await redis.get(SIGNAL_WEIGHTS_REDIS_KEY);
+    } catch (_) {}
+    if (oldRaw != null) {
+      const backupKey = `${SIGNAL_WEIGHTS_REDIS_KEY}:backup:${Date.now()}`;
+      await redis.set(backupKey, oldRaw, { ex: 72 * 3600 });
+      await redis.set(`${SIGNAL_WEIGHTS_REDIS_KEY}:last_backup`, backupKey, { ex: 72 * 3600 });
+    }
     await redis.set(SIGNAL_WEIGHTS_REDIS_KEY, JSON.stringify(payload), { ex: SIGNAL_WEIGHTS_REDIS_TTL_SEC });
     lastRedisPersistAt = Date.now();
   } catch (e) {

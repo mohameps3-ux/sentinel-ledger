@@ -29,10 +29,10 @@ function safeSupabase() {
   }
 }
 
-/** Redis + Cache-Control for GET /track-record. Default 15s; set TRACK_RECORD_CACHE_SECONDS (5–120). */
+/** Redis + Cache-Control for GET /track-record. Default 20s; set TRACK_RECORD_CACHE_SECONDS (5–120). */
 function trackRecordCacheSeconds() {
   const n = Number(process.env.TRACK_RECORD_CACHE_SECONDS);
-  if (!Number.isFinite(n)) return 8;
+  if (!Number.isFinite(n)) return 20;
   return Math.min(120, Math.max(5, Math.floor(n)));
 }
 
@@ -42,7 +42,7 @@ function trackRecordCacheSeconds() {
  */
 function trackRecordLedgerStatsCacheSeconds() {
   const n = Number(process.env.TRACK_RECORD_LEDGER_STATS_CACHE_SECONDS);
-  if (!Number.isFinite(n)) return 90;
+  if (!Number.isFinite(n)) return 180;
   return Math.min(600, Math.max(30, Math.floor(n)));
 }
 

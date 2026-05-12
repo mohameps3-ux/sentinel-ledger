@@ -11,7 +11,8 @@ const HISTORICAL_MIN_SAMPLES = Math.max(
   Number(process.env.SENTINEL_NARRATIVE_HIST_MIN_SAMPLES || 30)
 );
 
-const POLL_MS = Math.max(10_000, Number(process.env.SENTINEL_ORCHESTRATOR_POLL_MS || 30_000));
+/** Default 60s (was 30s) to reduce Supabase read load under webhook pressure. Min 25s. */
+const POLL_MS = Math.max(25_000, Number(process.env.SENTINEL_ORCHESTRATOR_POLL_MS || 60_000));
 const STALE_MS = 120_000;
 const DEDUPE_MS = 5 * 60_000;
 const RATE_LIMIT_PER_MIN = 10;
@@ -439,7 +440,7 @@ async function pollSmartWalletSignals() {
     .select("id, token_address, wallet_address, last_action, confidence, result_pct, created_at")
     .gt("created_at", state.lastSignalSeenAt)
     .order("created_at", { ascending: false })
-    .limit(80);
+    .limit(50);
   const { data, error } = await query;
   if (error) {
     console.warn("[sentinel-orchestrator] smart_wallet_signals poll:", error.message);

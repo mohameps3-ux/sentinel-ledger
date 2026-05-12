@@ -63,9 +63,10 @@ const SIGNALS_SUPABASE_SLO_ALERT_MIN_REQUESTS_24H = Math.max(
   1,
   Math.floor(Number(process.env.SIGNALS_SUPABASE_SLO_ALERT_MIN_REQUESTS_24H || 25))
 );
+/** Default 60s (was 30s): fewer reads of ops_data_freshness_events. Min 20s. */
 const SIGNALS_SUPABASE_SLO_EVAL_MS = Math.max(
-  5_000,
-  Math.floor(Number(process.env.SIGNALS_SUPABASE_SLO_EVAL_MS || 30_000))
+  20_000,
+  Math.floor(Number(process.env.SIGNALS_SUPABASE_SLO_EVAL_MS || 60_000))
 );
 const OPS_ALERT_WEBHOOK_URL = String(process.env.OPS_ALERT_WEBHOOK_URL || "").trim();
 const latestSignalsFallbackState = {
@@ -382,15 +383,32 @@ function summarizeFreshness(events, endpoint) {
   };
 }
 
+const FRESHNESS_DB_SNAPSHOT_CACHE_MS = Math.max(
+  30_000,
+  Math.min(180_000, Math.floor(Number(process.env.FRESHNESS_DB_SNAPSHOT_CACHE_MS || 45_000)))
+);
+let freshnessDbSnapshotCache = { at: 0, data: null };
+
 async function getDataFreshnessSnapshot() {
+  const now = Date.now();
+  if (freshnessDbSnapshotCache.data && now - freshnessDbSnapshotCache.at < FRESHNESS_DB_SNAPSHOT_CACHE_MS) {
+    return freshnessDbSnapshotCache.data;
+  }
   const dbSnapshot = await getDataFreshnessSnapshotFromStore({
     hours: 24,
-    targetSupabaseRate: SIGNALS_SUPABASE_SLO_TARGET
+    targetSupabaseRate: SIGNALS_SUPABASE_SLO_TARGET,
+    limit: Math.min(
+      25_000,
+      Math.max(2000, Math.floor(Number(process.env.FRESHNESS_EVENTS_QUERY_LIMIT || 12_000)))
+    )
   });
   if (dbSnapshot?.ok && dbSnapshot.data) {
+    freshnessDbSnapshotCache = { at: now, data: dbSnapshot.data };
     return dbSnapshot.data;
   }
-  const now = Date.now();
+  if (freshnessDbSnapshotCache.data) {
+    return freshnessDbSnapshotCache.data;
+  }
   trimFreshnessWindow(freshnessState.signalsLatest, now);
   trimFreshnessWindow(freshnessState.tokensHot, now);
   return {
