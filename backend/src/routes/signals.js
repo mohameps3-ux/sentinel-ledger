@@ -32,6 +32,31 @@ function trackRecordCacheSeconds() {
   return Math.min(120, Math.max(5, Math.floor(n)));
 }
 
+/**
+ * Longer TTL for `signal_outcomes` aggregate block (RPC vs fallback). Stops UI flip-flop when the RPC
+ * intermittently times out while counts stay identical. Env: TRACK_RECORD_LEDGER_STATS_CACHE_SECONDS (30–600).
+ */
+function trackRecordLedgerStatsCacheSeconds() {
+  const n = Number(process.env.TRACK_RECORD_LEDGER_STATS_CACHE_SECONDS);
+  if (!Number.isFinite(n)) return 90;
+  return Math.min(600, Math.max(30, Math.floor(n)));
+}
+
+const LEDGER_STATS_CACHE_KEY = "signals:track-record:ledger-stats:v3:outcomes";
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isValidCachedOutcomesLedger(cached) {
+  if (!cached || typeof cached !== "object") return false;
+  const L = cached.ledger;
+  if (!L || typeof L !== "object") return false;
+  return ["total_signals", "resolved_signals", "winsCount", "lossesCount", "decisive", "stats_basis"].every(
+    (k) => L[k] !== undefined
+  );
+}
+
 /** Oracle decisive thresholds (fraction of return); must match oracleResult + UI. */
 const TR_DECISIVE_WIN = 0.05;
 const TR_DECISIVE_LOSS = -0.05;
@@ -70,16 +95,8 @@ function normalizeLedgerStatsRpc(raw) {
   };
 }
 
-/** Full-table stats via RPC when migration 029 is applied; else bounded client aggregates. */
-async function resolveSignalOutcomesLedgerAggregates(supabase) {
-  const rpcRes = await supabase.rpc("signal_outcomes_track_record_stats");
-  const fromRpc = normalizeLedgerStatsRpc(rpcRes.data);
-  if (!rpcRes.error && fromRpc) {
-    return fromRpc;
-  }
-  if (rpcRes.error && process.env.NODE_ENV !== "test") {
-    console.warn("[track-record] RPC signal_outcomes_track_record_stats unavailable:", rpcRes.error.message);
-  }
+/** Bounded client aggregates when RPC is unavailable or still warming. */
+async function computeSignalOutcomesLedgerAggregatesFallback(supabase) {
   const aggLimit = trackRecordAggSampleLimit();
   const [totalRes, resolvedRes, winsCountRes, lossesCountRes, aggSampleRes] = await Promise.all([
     supabase.from("signal_outcomes").select("id", { count: "exact", head: true }),
@@ -108,10 +125,10 @@ async function resolveSignalOutcomesLedgerAggregates(supabase) {
   const resolvedTotal = Number(resolvedRes.count || 0);
   const flatResolved = Math.max(0, resolvedTotal - winsCount - lossesCount);
   const aggSample = aggSampleRes.data || [];
-  const returns = aggSample.map((r) => Number(r.outcome_60m)).filter(Number.isFinite);
+  const returns = aggSample.map((row) => Number(row.outcome_60m)).filter(Number.isFinite);
   const winReturnsFromSample = aggSample
-    .filter((r) => Number(r.outcome_60m) > TR_DECISIVE_WIN)
-    .map((r) => Number(r.outcome_60m))
+    .filter((row) => Number(row.outcome_60m) > TR_DECISIVE_WIN)
+    .map((row) => Number(row.outcome_60m))
     .filter(Number.isFinite);
   return {
     total_signals: Number(totalRes.count || 0),
@@ -129,6 +146,49 @@ async function resolveSignalOutcomesLedgerAggregates(supabase) {
     avg_return_sample_rows: returns.length,
     avg_return_sample_cap: aggLimit
   };
+}
+
+/**
+ * Full-table stats via RPC when migration 029 is applied; else bounded client aggregates.
+ * Cached separately from the HTML JSON page so intermittent RPC timeouts do not alternate KPI definitions.
+ */
+async function resolveSignalOutcomesLedgerAggregates(supabase) {
+  const cacheSec = trackRecordLedgerStatsCacheSeconds();
+  try {
+    const cached = await redis.get(LEDGER_STATS_CACHE_KEY);
+    if (isValidCachedOutcomesLedger(cached)) {
+      return cached.ledger;
+    }
+  } catch (error) {
+    console.warn("[track-record] ledger stats cache read failed:", error?.message || error);
+  }
+
+  let fromRpc = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (attempt > 0) await delay(100 * attempt);
+    const rpcRes = await supabase.rpc("signal_outcomes_track_record_stats");
+    fromRpc = normalizeLedgerStatsRpc(rpcRes.data);
+    if (!rpcRes.error && fromRpc) {
+      break;
+    }
+    if (rpcRes.error && process.env.NODE_ENV !== "test") {
+      console.warn(
+        `[track-record] RPC signal_outcomes_track_record_stats attempt ${attempt + 1}/3:`,
+        rpcRes.error.message
+      );
+    }
+    fromRpc = null;
+  }
+
+  const ledger = fromRpc || (await computeSignalOutcomesLedgerAggregatesFallback(supabase));
+
+  try {
+    await redis.set(LEDGER_STATS_CACHE_KEY, { v: 3, ledger, cached_at: new Date().toISOString() }, { ex: cacheSec });
+  } catch (error) {
+    console.warn("[track-record] ledger stats cache write failed:", error?.message || error);
+  }
+
+  return ledger;
 }
 
 /**
@@ -730,6 +790,7 @@ async function buildTrackRecordPayload(supabase, { filter = "all", page = 1, pag
       track_record_row_source: rowSource,
       filter,
       cache_ttl_sec: trackRecordCacheSeconds(),
+      ledger_stats_cache_ttl_sec: trackRecordLedgerStatsCacheSeconds(),
       decisive_win_min_fraction: TR_DECISIVE_WIN,
       stats_basis: ledger.stats_basis,
       win_rate_basis: "count_wins_div_decisive_all_ledger",
@@ -865,7 +926,7 @@ router.get("/track-record", async (req, res) => {
   const filter = String(req.query.filter || "all").toLowerCase();
   const page = Math.max(1, Number(req.query.page || 1));
   const pageSize = Math.max(1, Math.min(50, Number(req.query.limit || 25)));
-  const cacheKey = `signals:track-record:v7:${filter}:${page}:${pageSize}`;
+  const cacheKey = `signals:track-record:v8:${filter}:${page}:${pageSize}`;
   const cacheSec = trackRecordCacheSeconds();
   try {
     const cached = await redis.get(cacheKey);

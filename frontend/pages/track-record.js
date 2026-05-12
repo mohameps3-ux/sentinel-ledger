@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { PageHead } from "../components/seo/PageHead";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 
-const REFRESH_MS = 15_000;
+const REFRESH_MS = 30_000;
 const CHART_PAGES = 6;
 /** Aligned with backend signal_outcomes / oracle decisive (fraction of return). */
 const TR_DECISIVE_WIN = 0.05;
@@ -37,11 +37,10 @@ async function fetchTrackRecordPage(page) {
 async function fetchTrackRecord() {
   const first = await fetchTrackRecordPage(1);
   const maxPages = Math.min(CHART_PAGES, Number(first?.pagination?.total_pages || CHART_PAGES));
-  const rest = [];
-  for (let page = 2; page <= maxPages; page += 1) {
-    try { rest.push(await fetchTrackRecordPage(page)); } catch (_) { break; }
-  }
-  const allRows = [first, ...rest].flatMap((p) => Array.isArray(p?.recent_signals) ? p.recent_signals : []);
+  const extraPages = maxPages > 1 ? Array.from({ length: maxPages - 1 }, (_, i) => i + 2) : [];
+  const settled = await Promise.allSettled(extraPages.map((p) => fetchTrackRecordPage(p)));
+  const rest = settled.filter((s) => s.status === "fulfilled").map((s) => s.value);
+  const allRows = [first, ...rest].flatMap((p) => (Array.isArray(p?.recent_signals) ? p.recent_signals : []));
   const seen = new Set();
   const chartRows = allRows
     .filter((r) => r?.id || r?.created_at)
@@ -117,13 +116,14 @@ function SignalRow({ row }) {
 
 function TrackRecordPage() {
   const query = useQuery({
-    queryKey: ["track-record-real-data-v5"],
+    queryKey: ["track-record-real-data-v6"],
     queryFn: fetchTrackRecord,
-    staleTime: 15_000,
+    staleTime: 25_000,
     refetchInterval: REFRESH_MS,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    retry: 2
+    retry: 2,
+    placeholderData: keepPreviousData
   });
   const data = query.data || {};
   const meta = data.meta || {};
