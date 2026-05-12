@@ -2,7 +2,7 @@
 "use strict";
 
 /**
- * Check env vars for Ops architect (OpenAI) + tools. Run: cd backend && node scripts/verifyOpsDirectorStack.js
+ * Check env vars for Ops architect (Anthropic) + tools. Run: cd backend && node scripts/verifyOpsDirectorStack.js
  * Optional: --strict → exit 1 if agent + SQL + GitHub bundle incomplete.
  */
 
@@ -40,7 +40,7 @@ function githubToken() {
 
 const report = {
   agent: {
-    OPENAI_API_KEY: has("OPENAI_API_KEY"),
+    ANTHROPIC_API_KEY: has("ANTHROPIC_API_KEY"),
     OMNI_BOT_OPS_KEY: has("OMNI_BOT_OPS_KEY")
   },
   sqlRead: {
@@ -64,13 +64,13 @@ const report = {
 };
 
 const strict = process.argv.includes("--strict");
-const agentOk = report.agent.OPENAI_API_KEY && report.agent.OMNI_BOT_OPS_KEY;
+const agentOk = report.agent.ANTHROPIC_API_KEY && report.agent.OMNI_BOT_OPS_KEY;
 const exitCode = strict && (!agentOk || !report.sqlRead.ok || !report.github.ok) ? 1 : 0;
 
 console.log(JSON.stringify(report, null, 2));
 if (strict && exitCode) {
   console.error(
-    "[verifyOpsDirectorStack] --strict: need OPENAI_API_KEY + OMNI_BOT_OPS_KEY + Postgres env + GitHub token + repo id."
+    "[verifyOpsDirectorStack] --strict: need ANTHROPIC_API_KEY + OMNI_BOT_OPS_KEY + Postgres env + GitHub token + repo id."
   );
 }
 process.exit(exitCode);

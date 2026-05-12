@@ -272,42 +272,11 @@ SENTINEL FEATURES:
 - Telegram: @sentinelledger_intel_bot
 - Track Record: /graveyard`;
 
-  const openai = await callOpenAIChatCompletion({
+  return callOpenAIChatCompletion({
     system: systemPrompt,
     user: String(question),
     maxTokens: 300
   });
-  if (openai) return openai;
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 300,
-        system: systemPrompt,
-        messages: [{ role: "user", content: String(question) }]
-      })
-    });
-
-    const data = await response.json();
-    if (data.error) {
-      console.error("[bot] Claude error:", data.error);
-      return null;
-    }
-    return data.content?.[0]?.text || null;
-  } catch (err) {
-    console.error("[bot] Claude fetch error:", err.message);
-    return null;
-  }
 }
 
 function normalizeMode(mode) {
@@ -448,37 +417,6 @@ async function handleBotMessage(message, language = "es", _sessionId, mode = "ch
         };
       }
     }
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (apiKey) {
-      try {
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01"
-          },
-          body: JSON.stringify({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 260,
-            system: buildChatSystemPrompt(ctx, lang),
-            messages: [{ role: "user", content: String(message) }]
-          })
-        });
-        const data = await response.json();
-        const answer = data.content?.[0]?.text;
-        if (typeof answer === "string" && answer.trim()) {
-          return {
-            answer,
-            intent: "CHAT",
-            source: "llm_chat",
-            cached: false,
-            confidence_level: "HIGH",
-            thumbsId: null
-          };
-        }
-      } catch (_) {}
-    }
     return {
       answer:
         lang === "en"
@@ -512,37 +450,6 @@ async function handleBotMessage(message, language = "es", _sessionId, mode = "ch
           thumbsId: null
         };
       }
-    }
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (apiKey) {
-      try {
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01"
-          },
-          body: JSON.stringify({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 320,
-            system,
-            messages: [{ role: "user", content: String(message) }]
-          })
-        });
-        const data = await response.json();
-        const answer = data.content?.[0]?.text;
-        if (typeof answer === "string" && answer.trim()) {
-          return {
-            answer,
-            intent: resolvedMode === "diagnostic" ? "DIAGNOSTIC" : "OPERATOR",
-            source: resolvedMode === "diagnostic" ? "llm_diag" : "llm_operator",
-            cached: false,
-            confidence_level: "HIGH",
-            thumbsId: null
-          };
-        }
-      } catch (_) {}
     }
   }
 
@@ -655,7 +562,7 @@ async function handleBotMessage(message, language = "es", _sessionId, mode = "ch
     };
   }
 
-  // ── LOW: Claude API, then structured fallback ─────────────
+  // ── LOW: OpenAI, then structured fallback ─────────────
   const ctx = await buildContextPack();
   const claudeAnswer = await callClaudeAPI(message, "GENERAL", ctx, language);
 
