@@ -53,6 +53,29 @@ async function fetchTrackRecordFull() {
   };
 }
 
+/**
+ * Tape pages are ordered by recency; the head can be all pending while the ledger has thousands of resolves.
+ * Merge top wins / worst losses (always returned on page 1) so KPIs and charts see real outcomes.
+ */
+function mergeTrackRecordRowsForMetrics(payload) {
+  const recent = Array.isArray(payload?.recent_signals) ? payload.recent_signals : [];
+  const tops = Array.isArray(payload?.top_wins) ? payload.top_wins : [];
+  const worsts = Array.isArray(payload?.worst_losses) ? payload.worst_losses : [];
+  const byId = new Map();
+  const add = (r) => {
+    if (!r || typeof r !== "object") return;
+    const k =
+      r.id != null
+        ? String(r.id)
+        : `${String(r.mint || "")}|${String(r.created_at || r.time || r.emitted_at || "")}|${String(r.signal_id || "")}`;
+    if (!byId.has(k)) byId.set(k, r);
+  };
+  for (const r of recent) add(r);
+  for (const r of tops) add(r);
+  for (const r of worsts) add(r);
+  return [...byId.values()];
+}
+
 function outcomeRaw(s) {
   if (s?.result_pct != null && Number.isFinite(Number(s.result_pct))) return Number(s.result_pct);
   if (s?.outcome_60m != null && Number.isFinite(Number(s.outcome_60m))) return Number(s.outcome_60m);
@@ -518,8 +541,9 @@ export default function GraveyardPage() {
 
   const data = query.data || {};
   const allRows = useMemo(() => data.recent_signals || [], [data.recent_signals]);
+  const rowsForMetrics = useMemo(() => mergeTrackRecordRowsForMetrics(data), [data]);
 
-  const metrics = useMemo(() => computeInstitutionalMetrics(allRows), [allRows]);
+  const metrics = useMemo(() => computeInstitutionalMetrics(rowsForMetrics), [rowsForMetrics]);
   const {
     completed,
     winRate,
@@ -531,6 +555,17 @@ export default function GraveyardPage() {
   } = metrics;
 
   const hasMetrics = completed.length > 0;
+  const serverResolved = Number(data.resolved_signals || 0);
+  const serverWinRate =
+    data.win_rate_60m != null && Number.isFinite(Number(data.win_rate_60m))
+      ? Number(data.win_rate_60m)
+      : null;
+  const serverAvgReturn =
+    data.avg_return != null && Number.isFinite(Number(data.avg_return)) ? Number(data.avg_return) : null;
+  const serverMaxDd =
+    data.max_drawdown != null && Number.isFinite(Number(data.max_drawdown)) ? Number(data.max_drawdown) : null;
+  const hasLedgerHeadline = serverResolved > 0 && serverWinRate != null;
+  const showHeadlineFallback = !hasMetrics && hasLedgerHeadline;
 
   const wins = completed.filter((s) => (outcomeRaw(s) ?? 0) > 0);
   const losses = completed.filter((s) => (outcomeRaw(s) ?? 0) <= 0);
@@ -605,7 +640,9 @@ export default function GraveyardPage() {
     return allRows;
   }, [filter, allRows]);
 
-  const isSystemBad = (avgOutcome ?? 0) < -0.08 || winRate < 0.4;
+  const isSystemBad = showHeadlineFallback
+    ? (serverAvgReturn ?? 0) < -0.08 || (serverWinRate ?? 0) < 0.4
+    : (avgOutcome ?? 0) < -0.08 || winRate < 0.4;
 
   const safeProfitFactor = profitFactor && profitFactor > 0.05 ? profitFactor.toFixed(2) : "—";
 
@@ -613,6 +650,10 @@ export default function GraveyardPage() {
     maxDrawdown != null && maxDrawdown > -0.99 ? `${(maxDrawdown * 100).toFixed(2)}%` : "—";
 
   const safeAvgOutcome = avgOutcome != null ? `${(avgOutcome * 100).toFixed(2)}%` : "—";
+  const safeDrawdownLedger =
+    serverMaxDd != null && serverMaxDd > -0.99 ? `${(serverMaxDd * 100).toFixed(2)}%` : "—";
+  const safeAvgOutcomeLedger =
+    serverAvgReturn != null ? `${(serverAvgReturn * 100).toFixed(2)}%` : "—";
 
   const features = useMemo(() => {
     return completed.map((s, idx) => {
@@ -696,11 +737,12 @@ export default function GraveyardPage() {
   }, [rankedSignals]);
 
   const modelState = useMemo(() => {
+    if (!hasMetrics) return "NEUTRAL";
     if (predictedAlpha > 0.65) return "HIGH_ALPHA";
     if (predictedAlpha > 0.55) return "MODERATE_ALPHA";
     if (predictedAlpha < 0.45) return "NEGATIVE_ALPHA";
     return "NEUTRAL";
-  }, [predictedAlpha]);
+  }, [hasMetrics, predictedAlpha]);
 
   const modelScore = predictedAlpha;
   const rankedML = rankedSignals;
@@ -809,16 +851,40 @@ export default function GraveyardPage() {
 
           <div className="grave-mrow">
             {[
-              { label: "Señales", val: completed.length || "—", color: "#e2e8f0" },
-              { label: "Win rate", val: hasMetrics ? `${(winRate * 100).toFixed(1)}%` : "—", color: "#e2e8f0" },
-              { label: "Profit factor", val: hasMetrics ? safeProfitFactor : "—", color: "#e2e8f0" },
-              { label: "Rendimiento medio", val: hasMetrics ? safeAvgOutcome : "—", color: (avgOutcome ?? 0) < 0 ? "#f87171" : "#34d399" },
+              {
+                label: "Señales",
+                val: hasMetrics ? completed.length : showHeadlineFallback ? serverResolved.toLocaleString() : "—",
+                color: "#e2e8f0"
+              },
+              {
+                label: "Win rate",
+                val: hasMetrics
+                  ? `${(winRate * 100).toFixed(1)}%`
+                  : showHeadlineFallback
+                    ? `${(serverWinRate * 100).toFixed(1)}%`
+                    : "—",
+                color: "#e2e8f0"
+              },
+              {
+                label: "Profit factor",
+                val: hasMetrics ? safeProfitFactor : showHeadlineFallback ? "— (ledger)" : "—",
+                color: "#e2e8f0"
+              },
+              {
+                label: "Rendimiento medio",
+                val: hasMetrics ? safeAvgOutcome : showHeadlineFallback ? safeAvgOutcomeLedger : "—",
+                color: (hasMetrics ? avgOutcome ?? 0 : serverAvgReturn ?? 0) < 0 ? "#f87171" : "#34d399"
+              },
               {
                 label: "Conf. ↔ retorno",
-                val: hasMetrics ? (correlationValue?.toFixed(2) ?? "—") : "—",
+                val: hasMetrics ? (correlationValue?.toFixed(2) ?? "—") : showHeadlineFallback ? "—" : "—",
                 color: "#f87171"
               },
-              { label: "Máx. drawdown", val: hasMetrics ? safeDrawdown : "—", color: "#f87171" },
+              {
+                label: "Máx. drawdown",
+                val: hasMetrics ? safeDrawdown : showHeadlineFallback ? safeDrawdownLedger : "—",
+                color: "#f87171"
+              },
               {
                 label: "Estado del sistema",
                 val: isSystemBad ? "DEGRADADO" : "OPERATIVO",
@@ -846,11 +912,15 @@ export default function GraveyardPage() {
             <div className="grave-core-right">
               <div className="grave-ml-panel">
                 <div className="grave-cc-t grave-cc-t--ml">Motor de señales</div>
-                <div className="grave-ml-hero">{(modelScore * 100).toFixed(1)}%</div>
+                <div className="grave-ml-hero">{hasMetrics ? `${(modelScore * 100).toFixed(1)}%` : "—"}</div>
                 <div className="grave-ml-caption">Confianza del modelo (R²)</div>
                 <div className="grave-ml-meta">
-                  Calibración (decil superior): {(calibratedConfidence * 100).toFixed(1)}% · n={rankedML.length} · pesos{" "}
-                  {weights[0].toFixed(2)}/{weights[1].toFixed(2)}/{weights[2].toFixed(2)}
+                  Calibración (decil superior):{" "}
+                  {hasMetrics ? `${(calibratedConfidence * 100).toFixed(1)}%` : "—"} · n=
+                  {hasMetrics ? rankedML.length : "—"} · pesos{" "}
+                  {hasMetrics
+                    ? `${weights[0].toFixed(2)}/${weights[1].toFixed(2)}/${weights[2].toFixed(2)}`
+                    : "—/—/—"}
                 </div>
                 <div
                   className={
@@ -902,12 +972,27 @@ export default function GraveyardPage() {
               <div className="grave-box-chart-host">
                 <AnimatedDonut
                   size={108}
-                  pct={hasMetrics ? winRate * 100 : 0}
-                  label="tasa acierto"
-                  segments={[
-                    { pct: hasMetrics ? winRate * 100 : 40, color: "#34d399", label: "Acierto" },
-                    { pct: hasMetrics ? (1 - winRate) * 100 : 60, color: "#ef4444", label: "Fallo" }
-                  ]}
+                  pct={
+                    hasMetrics
+                      ? winRate * 100
+                      : showHeadlineFallback
+                        ? serverWinRate * 100
+                        : 0
+                  }
+                  label={hasMetrics || showHeadlineFallback ? "tasa acierto" : "sin muestra"}
+                  segments={
+                    hasMetrics
+                      ? [
+                          { pct: winRate * 100, color: "#34d399", label: "Acierto" },
+                          { pct: (1 - winRate) * 100, color: "#ef4444", label: "Fallo" }
+                        ]
+                      : showHeadlineFallback
+                        ? [
+                            { pct: serverWinRate * 100, color: "#34d399", label: "Acierto" },
+                            { pct: (1 - serverWinRate) * 100, color: "#ef4444", label: "Fallo" }
+                          ]
+                        : [{ pct: 100, color: "#4b5563", label: "Sin datos" }]
+                  }
                 />
               </div>
             </div>
@@ -1002,7 +1087,9 @@ export default function GraveyardPage() {
                     }}
                   >
                     {s.asset || s.symbol || "?"}{" "}
-                    {s.result_pct ? `+${(s.result_pct * 100).toFixed(1)}%` : ""}
+                    {outcomeRaw(s) != null
+                      ? `${outcomeRaw(s) >= 0 ? "+" : ""}${(outcomeRaw(s) * 100).toFixed(1)}%`
+                      : ""}
                   </div>
                 ))}
               </div>
