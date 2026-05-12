@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * /ops/agent — Sentinel Senior Architect Agent.
+ * /ops/agent — Sentinel Senior Architect Agent (OpenAI Chat Completions).
  * Ops console only. Protected by OMNI_BOT_OPS_KEY.
  */
 
@@ -22,7 +22,7 @@ const OPS_AGENT_MAX_MESSAGE_CHARS = (() => {
   return Number.isFinite(n) ? Math.min(100_000, Math.max(2_000, Math.floor(n))) : 20_000;
 })();
 
-/** Per history turn content sent to Claude (default 8k; cap 32k). */
+/** Per history turn content sent to the ops LLM (default 8k; cap 32k). */
 const OPS_AGENT_HISTORY_CONTENT_CHARS = (() => {
   const n = Number(process.env.OPS_AGENT_HISTORY_CONTENT_CHARS || 8_000);
   return Number.isFinite(n) ? Math.min(32_000, Math.max(500, Math.floor(n))) : 8_000;
@@ -297,7 +297,8 @@ async function buildOpsContext() {
       SMART_WORKERS_ENABLED: process.env.SMART_WORKERS_ENABLED,
       SMART_SIGNAL_BACKFILL_ENABLED: process.env.SMART_SIGNAL_BACKFILL_ENABLED,
       SMART_SIGNAL_BACKFILL_MIN_WIN_RATE: process.env.SMART_SIGNAL_BACKFILL_MIN_WIN_RATE,
-      ANTHROPIC_OPS_AGENT_MODEL: process.env.ANTHROPIC_OPS_AGENT_MODEL,
+      OPENAI_OPS_AGENT_MODEL: process.env.OPENAI_OPS_AGENT_MODEL,
+      OPENAI_SENTINEL_AGENT_MODEL: process.env.OPENAI_SENTINEL_AGENT_MODEL,
     },
   };
 }
@@ -470,9 +471,9 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
         error: `Message too long (max ${OPS_AGENT_MAX_MESSAGE_CHARS} chars; set OPS_AGENT_MAX_MESSAGE_CHARS)`
       });
     }
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return res.status(503).json({ error: "Agent unavailable — ANTHROPIC_API_KEY not set" });
+      return res.status(503).json({ error: "Agent unavailable — OPENAI_API_KEY not set" });
     }
     const execLog = await maybeExecuteAuthorizedOps(message);
     const ctx = await buildOpsContext();
@@ -486,23 +487,55 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
             content: String(m.content).substring(0, OPS_AGENT_HISTORY_CONTENT_CHARS)
           }))
       : [];
-    const messages = [...safeHistory, { role: "user", content: String(message).trim() }];
-    const model = process.env.ANTHROPIC_OPS_AGENT_MODEL || "claude-sonnet-4-5";
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const model =
+      process.env.OPENAI_OPS_AGENT_MODEL ||
+      process.env.OPENAI_SENTINEL_AGENT_MODEL ||
+      "gpt-5-mini";
+    const openaiHistory = safeHistory
+      .map((m) => {
+        const role = m.role === "assistant" ? "assistant" : m.role === "user" ? "user" : null;
+        if (!role) return null;
+        return { role, content: m.content };
+      })
+      .filter(Boolean);
+    const reasoningish = /^(o\d|gpt-5)/i.test(model);
+    const tokenBody =
+      reasoningish || String(process.env.OPENAI_OPS_USE_MAX_COMPLETION_TOKENS || "") === "1"
+        ? { max_completion_tokens: 2200 }
+        : { max_tokens: 2200 };
+    const chatPayload = {
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...openaiHistory,
+        { role: "user", content: String(message).trim() },
+      ],
+      ...tokenBody,
+    };
+    if (!reasoningish) {
+      chatPayload.temperature = 0.2;
+    }
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model, max_tokens: 2200, system: systemPrompt, messages }),
+      body: JSON.stringify(chatPayload),
     });
-    const data = await response.json();
-    if (data.error) {
-      console.error("[ops-agent] Claude error:", data.error);
-      return res.status(502).json({ error: "Agent error: " + (data.error?.message || "unknown") });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.error) {
+      console.error("[ops-agent] OpenAI error:", data.error || response.status);
+      return res.status(502).json({
+        error:
+          "Agent error: " +
+          (data.error?.message ||
+            data.error?.code ||
+            (typeof data.error === "string" ? data.error : null) ||
+            `HTTP ${response.status}`),
+      });
     }
-    let assistantMessage = data.content?.[0]?.text || "";
+    let assistantMessage = data.choices?.[0]?.message?.content?.trim() || "";
 
     const sqlAutoExecRegex = /```sql\s+--\s*autoExecuteSQL\s*\n([\s\S]+?)```/g;
     let match;

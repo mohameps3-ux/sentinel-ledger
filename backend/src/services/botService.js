@@ -203,10 +203,55 @@ async function buildContextPack() {
   }
 }
 
-async function callClaudeAPI(question, intent, contextPack, language) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+function openaiBotModel() {
+  return (
+    process.env.OPENAI_BOT_MODEL ||
+    process.env.OPENAI_SENTINEL_AGENT_MODEL ||
+    "gpt-4o-mini"
+  );
+}
 
+async function callOpenAIChatCompletion({ system, user, maxTokens }) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  const model = openaiBotModel();
+  const reasoningish = /^(o\d|gpt-5)/i.test(model);
+  const payload = {
+    model,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: String(user) }
+    ],
+    ...(reasoningish || String(process.env.OPENAI_BOT_USE_MAX_COMPLETION_TOKENS || "") === "1"
+      ? { max_completion_tokens: maxTokens }
+      : { max_tokens: maxTokens })
+  };
+  if (!reasoningish) {
+    payload.temperature = 0.3;
+  }
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.error) {
+      console.error("[bot] OpenAI error:", data.error || response.status);
+      return null;
+    }
+    const text = data.choices?.[0]?.message?.content?.trim();
+    return typeof text === "string" && text ? text : null;
+  } catch (err) {
+    console.error("[bot] OpenAI fetch error:", err.message);
+    return null;
+  }
+}
+
+async function callClaudeAPI(question, intent, contextPack, language) {
   const systemPrompt = `You are Sentinel Assistant, the AI for Sentinel Ledger — a Solana on-chain intelligence terminal.
 
 RULES:
@@ -226,6 +271,16 @@ SENTINEL FEATURES:
 - Auto-Discovery (finds new smart wallets)
 - Telegram: @sentinelledger_intel_bot
 - Track Record: /graveyard`;
+
+  const openai = await callOpenAIChatCompletion({
+    system: systemPrompt,
+    user: String(question),
+    maxTokens: 300
+  });
+  if (openai) return openai;
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -376,6 +431,23 @@ async function handleBotMessage(message, language = "es", _sessionId, mode = "ch
 
   if (resolvedMode === "chat") {
     const ctx = await buildContextPack();
+    if (process.env.OPENAI_API_KEY) {
+      const answer = await callOpenAIChatCompletion({
+        system: buildChatSystemPrompt(ctx, lang),
+        user: String(message),
+        maxTokens: 260
+      });
+      if (typeof answer === "string" && answer.trim()) {
+        return {
+          answer,
+          intent: "CHAT",
+          source: "llm_chat",
+          cached: false,
+          confidence_level: "HIGH",
+          thumbsId: null
+        };
+      }
+    }
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (apiKey) {
       try {
@@ -422,10 +494,27 @@ async function handleBotMessage(message, language = "es", _sessionId, mode = "ch
 
   if (resolvedMode === "diagnostic" || resolvedMode === "operator") {
     const ctx = await buildContextPack();
+    const system =
+      resolvedMode === "diagnostic" ? buildDiagnosticSystemPrompt(ctx, lang) : buildOperatorSystemPrompt(ctx, lang);
+    if (process.env.OPENAI_API_KEY) {
+      const answer = await callOpenAIChatCompletion({
+        system,
+        user: String(message),
+        maxTokens: 320
+      });
+      if (typeof answer === "string" && answer.trim()) {
+        return {
+          answer,
+          intent: resolvedMode === "diagnostic" ? "DIAGNOSTIC" : "OPERATOR",
+          source: resolvedMode === "diagnostic" ? "llm_diag" : "llm_operator",
+          cached: false,
+          confidence_level: "HIGH",
+          thumbsId: null
+        };
+      }
+    }
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (apiKey) {
-      const system =
-        resolvedMode === "diagnostic" ? buildDiagnosticSystemPrompt(ctx, lang) : buildOperatorSystemPrompt(ctx, lang);
       try {
         const response = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
@@ -580,7 +669,7 @@ async function handleBotMessage(message, language = "es", _sessionId, mode = "ch
             intent: "GENERAL",
             answer_type: "llm",
             best_answer: claudeAnswer,
-            source: "claude",
+            source: "llm",
             confidence: 0.5,
             language: String(language).slice(0, 5),
             updated_at: new Date().toISOString()
