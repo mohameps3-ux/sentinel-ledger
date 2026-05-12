@@ -16,6 +16,18 @@ const router = express.Router();
 
 const SIGNAL_PERF_SUCCESS_MIN_PCT = Number(process.env.SIGNAL_PERF_SUCCESS_MIN_PCT || 1.0);
 
+/** Single user message to POST /ops/agent/message (default 20k; cap 100k). */
+const OPS_AGENT_MAX_MESSAGE_CHARS = (() => {
+  const n = Number(process.env.OPS_AGENT_MAX_MESSAGE_CHARS || 20_000);
+  return Number.isFinite(n) ? Math.min(100_000, Math.max(2_000, Math.floor(n))) : 20_000;
+})();
+
+/** Per history turn content sent to Claude (default 8k; cap 32k). */
+const OPS_AGENT_HISTORY_CONTENT_CHARS = (() => {
+  const n = Number(process.env.OPS_AGENT_HISTORY_CONTENT_CHARS || 8_000);
+  return Number.isFinite(n) ? Math.min(32_000, Math.max(500, Math.floor(n))) : 8_000;
+})();
+
 /**
  * Superficie producto (rutas Next → página → hooks/API) para el Arquitecto.
  * El JSON de contexto no incluye HTML ni capturas; esto indica qué leer con
@@ -453,8 +465,10 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
     if (!message || typeof message !== "string" || message.trim().length === 0) {
       return res.status(400).json({ error: "Invalid message" });
     }
-    if (message.length > 2000) {
-      return res.status(400).json({ error: "Message too long (max 2000 chars)" });
+    if (message.length > OPS_AGENT_MAX_MESSAGE_CHARS) {
+      return res.status(400).json({
+        error: `Message too long (max ${OPS_AGENT_MAX_MESSAGE_CHARS} chars; set OPS_AGENT_MAX_MESSAGE_CHARS)`
+      });
     }
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
@@ -467,7 +481,10 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
       ? history
           .filter((m) => m?.role && m?.content && typeof m.content === "string")
           .slice(-10)
-          .map((m) => ({ role: m.role, content: String(m.content).substring(0, 1000) }))
+          .map((m) => ({
+            role: m.role,
+            content: String(m.content).substring(0, OPS_AGENT_HISTORY_CONTENT_CHARS)
+          }))
       : [];
     const messages = [...safeHistory, { role: "user", content: String(message).trim() }];
     const model = process.env.ANTHROPIC_OPS_AGENT_MODEL || "claude-sonnet-4-5";
