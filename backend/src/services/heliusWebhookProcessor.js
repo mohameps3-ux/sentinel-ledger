@@ -29,6 +29,7 @@ const {
   buildStalkerEnrichmentFromMarket
 } = require("../lib/stalkerImpact");
 const { wireSmartWalletsAfterSignal } = require("./smartWalletWebhookWire");
+const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 
 const SENTINEL_SOURCE = "helius_webhook";
 const DEDUPE_TTL_SEC = 120;
@@ -147,6 +148,42 @@ async function processHeliusWebhookRaw(raw) {
   let signalEmitted = false;
 
   recordRawReceived(SENTINEL_SOURCE);
+
+  // Extract signer and seed smart_wallets pool (fire-and-forget; do not block webhook pipeline).
+  try {
+    const accountKeys = raw?.transaction?.message?.accountKeys;
+    const k0 = accountKeys?.[0];
+    const signerAddress = String(
+      typeof k0 === "string" ? k0 : k0?.pubkey != null ? k0.pubkey : ""
+    ).trim();
+    const hasSwap = Array.isArray(raw.tokenTransfers) && raw.tokenTransfers.length > 0;
+    if (signerAddress && hasSwap && isProbableSolanaPubkey(signerAddress)) {
+      let supabase;
+      try {
+        supabase = getSupabase();
+      } catch {
+        supabase = null;
+      }
+      if (supabase) {
+        const nowIso = new Date().toISOString();
+        void supabase
+          .from("smart_wallets")
+          .upsert(
+            {
+              wallet_address: signerAddress,
+              last_seen: nowIso,
+              smart_score: 50
+            },
+            { onConflict: "wallet_address", ignoreDuplicates: false }
+          )
+          .then(() => {})
+          .catch(() => {});
+      }
+    }
+  } catch {
+    /* non-fatal */
+  }
+
   const txs = expandHeliusPayload(raw);
 
   for (let i = 0; i < txs.length; i += 1) {
