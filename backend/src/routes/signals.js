@@ -1247,12 +1247,12 @@ router.get("/track-record-fast", async (req, res) => {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("signal_outcomes")
-      .select("id, token_address, signal_type, confidence, outcome_60m, outcome_pct, created_at")
+      .select("id, mint, source, confidence_score, outcome_60m, result_pct, created_at")
       .not("outcome_60m", "is", null)
       .order("created_at", { ascending: false })
       .limit(1000);
     if (error) throw error;
-    return res.json({ ok: true, recent_signals: data || [], count: Array.isArray(data) ? data.length : 0 });
+    return res.json({ ok: true, recent_signals: data, count: Array.isArray(data) ? data.length : 0 });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
   }
