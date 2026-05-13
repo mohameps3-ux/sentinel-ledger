@@ -221,6 +221,7 @@ async function analyzeWallet(walletAddress) {
           wallet_address: walletAddress,
           timestamp: ev.boughtAtIso
         });
+        console.log(`[analyzeWallet] upserting wallet_tokens for ${walletAddress} token ${ev.tokenAddress}`);
         await supabase.from("wallet_tokens").upsert(
           {
             wallet_address: walletAddress,
@@ -248,6 +249,7 @@ async function analyzeWallet(walletAddress) {
         totalUsd += Number.isFinite(amountUsd) ? amountUsd : 0;
 
         if (currentPrice > 0 && Number.isFinite(amountUsd)) {
+          console.log(`[analyzeWallet] upserting wallet_tokens for ${walletAddress} token ${ev.tokenAddress}`);
           await supabase.from("wallet_tokens").upsert(
             {
               wallet_address: walletAddress,
