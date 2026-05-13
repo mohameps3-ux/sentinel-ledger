@@ -1247,7 +1247,7 @@ router.get("/track-record-fast", async (req, res) => {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("signal_outcomes")
-      .select("id, mint, source, confidence_score, outcome_60m, result_pct, created_at")
+      .select("id, mint, rule_id, regime, outcome_60m, outcome_5m, outcome_15m, created_at, validated")
       .not("outcome_60m", "is", null)
       .order("created_at", { ascending: false })
       .limit(1000);
