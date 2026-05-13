@@ -11,45 +11,19 @@ const TRACK_RECORD_POLL_MS = (() => {
   return 10000;
 })();
 
-/** Cap pages to avoid flooding the API on very large ledgers. */
-const METRICS_MAX_PAGES = 40;
-
 /** −10% hard stop in fractional units (same as outcome_60m / result_pct). */
 const STOP_LOSS_CAP_FRAC = -0.1;
 
-async function fetchTrackRecordPage(page, limit = 50) {
-  const qs = new URLSearchParams();
-  qs.set("filter", "all");
-  qs.set("limit", String(limit));
-  qs.set("page", String(page));
-  const res = await fetch(`${getPublicApiUrl()}/api/v1/signals/track-record?${qs.toString()}`);
-  if (!res.ok) throw new Error("track_record_fetch_failed");
-  return res.json();
-}
-
 async function fetchTrackRecordFull() {
-  const limit = 50;
-  const first = await fetchTrackRecordPage(1, limit);
-  const totalPagesRaw = Number(first.pagination?.total_pages || 1);
-  const totalPages = Math.min(Math.max(1, totalPagesRaw), METRICS_MAX_PAGES);
-  const merged = [...(first.recent_signals || [])];
-  if (totalPages > 1) {
-    const rest = await Promise.all(
-      Array.from({ length: totalPages - 1 }, (_, i) => fetchTrackRecordPage(i + 2, limit))
-    );
-    for (const body of rest) {
-      merged.push(...(body.recent_signals || []));
-    }
-  }
-  const byId = new Map();
-  merged.forEach((s, idx) => {
-    const k = s?.id != null ? s.id : `row-${idx}-${String(s?.time || s?.token || "")}`;
-    if (!byId.has(k)) byId.set(k, s);
-  });
+  const res = await fetch(`${getPublicApiUrl()}/api/v1/signals/track-record-fast`);
+  if (!res.ok) throw new Error("track_record_fetch_failed");
+  const body = await res.json();
+  const recent = Array.isArray(body.recent_signals) ? body.recent_signals : [];
   return {
-    ...first,
-    recent_signals: [...byId.values()],
-    _pagesFetched: totalPages
+    ok: body.ok !== false,
+    recent_signals: recent.map((s) => ({ ...s, mint: s.mint || s.token_address })),
+    count: Number(body.count ?? recent.length),
+    _pagesFetched: 1
   };
 }
 
