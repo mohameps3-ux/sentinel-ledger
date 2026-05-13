@@ -143,12 +143,6 @@ function expandHeliusPayload(raw) {
  * @returns {{ emitted: number, droppedByGuard: number, signalEmitted: boolean }}
  */
 async function processHeliusWebhookRaw(raw) {
-  console.log(
-    "[webhook_debug] processHeliusWebhookRaw called, tokenTransfers:",
-    (raw.tokenTransfers || []).length,
-    "signature:",
-    raw.signature || raw.transaction?.signatures?.[0] || "none"
-  );
   let emitted = 0;
   let droppedByGuard = 0;
   let signalEmitted = false;
@@ -165,23 +159,7 @@ async function processHeliusWebhookRaw(raw) {
         raw.accountData?.[0]?.account ||
         ""
     ).trim();
-    console.log(
-      "[signer_debug]",
-      JSON.stringify({
-        feePayer: raw.feePayer,
-        signerResult: signerAddress,
-        topKeys: Object.keys(raw).join(",")
-      })
-    );
     const hasSwap = Array.isArray(raw.tokenTransfers) && raw.tokenTransfers.length > 0;
-    console.log(
-      "[wallet_tokens_debug2] checking signer:",
-      signerAddress,
-      "in pool:",
-      typeof monitoredWallets !== "undefined"
-        ? monitoredWallets?.size || monitoredWallets?.length || "unknown"
-        : "unknown"
-    );
     if (signerAddress && hasSwap && isProbableSolanaPubkey(signerAddress)) {
       let supabase;
       try {
@@ -208,14 +186,8 @@ async function processHeliusWebhookRaw(raw) {
           for (const t of raw.tokenTransfers || []) {
             const mint = t?.mint && String(t.mint).trim();
             if (!mint || !isProbableSolanaPubkey(mint)) continue;
-            console.log("[wallet_tokens_debug] attempting upsert", {
-              wallet: signerAddress,
-              mint,
-              txSig,
-              boughtAt
-            });
             try {
-              const { error } = await supabase.from("wallet_tokens").upsert(
+              await supabase.from("wallet_tokens").upsert(
                 {
                   wallet_address: signerAddress,
                   token_address: mint,
@@ -225,15 +197,10 @@ async function processHeliusWebhookRaw(raw) {
                 },
                 { onConflict: "wallet_address,token_address,tx_signature" }
               );
-              if (error) console.error("[wallet_tokens_debug] upsert error:", error);
-            } catch (e) {
-              console.error("[wallet_tokens_debug] upsert exception:", e?.message || e);
-            }
+            } catch (_) {}
           }
         }
       }
-    } else {
-      console.log("[wallet_tokens_debug2] signer not in pool, skipping");
     }
   } catch {
     /* non-fatal */
