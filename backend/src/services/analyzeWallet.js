@@ -10,9 +10,59 @@ const {
 } = require("./smartWalletScoring");
 const { isRealTrade } = require("./transactionClassifier");
 
-function pickTokenTransfers(tx) {
+const BALANCE_DELTA_EPS = 1e-9;
+
+/** Human-readable SPL balance (Helius: uiAmount often set; when null use amount + decimals). */
+function splBalanceUiAmount(balanceEntry) {
+  if (!balanceEntry?.uiTokenAmount) return 0;
+  const ut = balanceEntry.uiTokenAmount;
+  const ui = ut.uiAmount;
+  if (ui != null && Number.isFinite(Number(ui))) return Number(ui);
+  const raw = ut.amount;
+  if (raw == null || raw === "") return 0;
+  const n = typeof raw === "string" ? Number(raw) : Number(raw);
+  if (!Number.isFinite(n)) return 0;
+  const d = Number(ut.decimals);
+  if (!Number.isFinite(d) || d < 0) return n;
+  return n / 10 ** d;
+}
+
+/**
+ * Token legs useful for buy inference: prefer on-chain meta balances (Jupiter v6, Pump.fun, etc.)
+ * over top-level parsed instructions. When `walletAddress` is set, that owner's post rows are ordered first.
+ */
+function pickTokenTransfers(tx, walletAddress) {
   const meta = tx?.meta;
   const transferCandidates = [];
+  const post = meta?.postTokenBalances || [];
+  const pre = meta?.preTokenBalances || [];
+
+  const postOrdered =
+    walletAddress && String(walletAddress).trim()
+      ? [...post].sort((a, b) => {
+          const w = String(walletAddress).trim();
+          const aw = a?.owner === w ? 0 : 1;
+          const bw = b?.owner === w ? 0 : 1;
+          return aw - bw;
+        })
+      : [...post];
+
+  for (const pb of postOrdered) {
+    const mint = pb?.mint;
+    if (!mint) continue;
+    const postAmt = splBalanceUiAmount(pb);
+    const matchingPre = pre.find((x) => x?.accountIndex === pb?.accountIndex);
+    const preAmt = matchingPre ? splBalanceUiAmount(matchingPre) : 0;
+    const delta = postAmt - preAmt;
+    if (delta > BALANCE_DELTA_EPS) {
+      transferCandidates.push({
+        mint,
+        destination: pb?.owner || null,
+        amount: delta
+      });
+    }
+  }
+
   const parsedInstructions = tx?.transaction?.message?.instructions || [];
   for (const ix of parsedInstructions) {
     const info = ix?.parsed?.info;
@@ -28,27 +78,12 @@ function pickTokenTransfers(tx) {
     }
   }
 
-  const post = meta?.postTokenBalances || [];
-  const pre = meta?.preTokenBalances || [];
-  for (const pb of post) {
-    const mint = pb?.mint;
-    if (!mint) continue;
-    const postAmount = Number(pb?.uiTokenAmount?.uiAmount || 0);
-    const matchingPre = pre.find((x) => x?.accountIndex === pb?.accountIndex);
-    const preAmount = Number(matchingPre?.uiTokenAmount?.uiAmount || 0);
-    const delta = postAmount - preAmount;
-    transferCandidates.push({
-      mint,
-      destination: pb?.owner || null,
-      amount: delta
-    });
-  }
   return transferCandidates;
 }
 
 function inferBuyEvents(walletAddress, tx) {
   if (!isRealTrade(tx)) return [];
-  const tokenTransfers = pickTokenTransfers(tx);
+  const tokenTransfers = pickTokenTransfers(tx, walletAddress);
   const slotTime = tx?.blockTime ? new Date(tx.blockTime * 1000).toISOString() : new Date().toISOString();
   return tokenTransfers
     .filter((t) => t?.mint && Number(t.amount || 0) > 0 && (!t.destination || t.destination === walletAddress))
@@ -181,6 +216,22 @@ async function analyzeWallet(walletAddress) {
     console.log(`[analyzeWallet] ${walletAddress} — tx ${txSig?.slice(0, 8)} buyEvents=${buyEvents.length}`);
     for (const ev of buyEvents) {
       try {
+        await supabase.from("token_activity_logs").insert({
+          token_address: ev.tokenAddress,
+          wallet_address: walletAddress,
+          timestamp: ev.boughtAtIso
+        });
+        await supabase.from("wallet_tokens").upsert(
+          {
+            wallet_address: walletAddress,
+            token_address: ev.tokenAddress,
+            tx_signature: ev.signature,
+            amount_usd: null,
+            bought_at: ev.boughtAtIso
+          },
+          { onConflict: "wallet_address,token_address,tx_signature" }
+        );
+
         const market = await getMarketData(ev.tokenAddress);
         const currentPrice = Number(market?.price || 0);
         const maxPrice24h = currentPrice * 1.5;
@@ -196,21 +247,18 @@ async function analyzeWallet(walletAddress) {
         const amountUsd = Number(ev.amount || 0) * currentPrice;
         totalUsd += Number.isFinite(amountUsd) ? amountUsd : 0;
 
-        await supabase.from("token_activity_logs").insert({
-          token_address: ev.tokenAddress,
-          wallet_address: walletAddress,
-          timestamp: ev.boughtAtIso
-        });
-        await supabase.from("wallet_tokens").upsert(
-          {
-            wallet_address: walletAddress,
-            token_address: ev.tokenAddress,
-            tx_signature: ev.signature,
-            amount_usd: Number.isFinite(amountUsd) ? amountUsd : null,
-            bought_at: ev.boughtAtIso
-          },
-          { onConflict: "wallet_address,token_address,tx_signature" }
-        );
+        if (currentPrice > 0 && Number.isFinite(amountUsd)) {
+          await supabase.from("wallet_tokens").upsert(
+            {
+              wallet_address: walletAddress,
+              token_address: ev.tokenAddress,
+              tx_signature: ev.signature,
+              amount_usd: amountUsd,
+              bought_at: ev.boughtAtIso
+            },
+            { onConflict: "wallet_address,token_address,tx_signature" }
+          );
+        }
       } catch (err) {
         console.warn("analyze wallet tx skipped:", err.message);
       }
