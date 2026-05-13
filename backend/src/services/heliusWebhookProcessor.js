@@ -149,7 +149,7 @@ async function processHeliusWebhookRaw(raw) {
 
   recordRawReceived(SENTINEL_SOURCE);
 
-  // Extract signer and seed smart_wallets pool (fire-and-forget; do not block webhook pipeline).
+  // Extract signer and seed smart_wallets pool: await smart_wallets first (FK for wallet_tokens), then fire-and-forget wallet_tokens.
   try {
     const accountKeys = raw?.transaction?.message?.accountKeys;
     const k0 = accountKeys?.[0];
@@ -165,19 +165,12 @@ async function processHeliusWebhookRaw(raw) {
         supabase = null;
       }
       if (supabase) {
-        const nowIso = new Date().toISOString();
-        void supabase
-          .from("smart_wallets")
-          .upsert(
-            {
-              wallet_address: signerAddress,
-              last_seen: nowIso,
-              smart_score: 50
-            },
-            { onConflict: "wallet_address", ignoreDuplicates: false }
-          )
-          .then(() => {})
-          .catch(() => {});
+        try {
+          await supabase.from("smart_wallets").upsert(
+            { wallet_address: signerAddress, smart_score: 1 },
+            { onConflict: "wallet_address", ignoreDuplicates: true }
+          );
+        } catch (_) {}
 
         const txSig = String(
           raw.signature || raw.transaction?.signatures?.[0] || raw.transactionSignature || ""
