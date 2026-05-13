@@ -149,7 +149,7 @@ async function processHeliusWebhookRaw(raw) {
 
   recordRawReceived(SENTINEL_SOURCE);
 
-  // Extract signer and seed smart_wallets pool: await smart_wallets first (FK for wallet_tokens), then fire-and-forget wallet_tokens.
+  // Extract signer and seed smart_wallets pool: await smart_wallets first (FK for wallet_tokens), then wallet_tokens upserts (awaited for debug visibility).
   try {
     const accountKeys = raw?.transaction?.message?.accountKeys;
     const k0 = accountKeys?.[0];
@@ -183,9 +183,14 @@ async function processHeliusWebhookRaw(raw) {
           for (const t of raw.tokenTransfers || []) {
             const mint = t?.mint && String(t.mint).trim();
             if (!mint || !isProbableSolanaPubkey(mint)) continue;
-            void supabase
-              .from("wallet_tokens")
-              .upsert(
+            console.log("[wallet_tokens_debug] attempting upsert", {
+              wallet: signerAddress,
+              mint,
+              txSig,
+              boughtAt
+            });
+            try {
+              const { error } = await supabase.from("wallet_tokens").upsert(
                 {
                   wallet_address: signerAddress,
                   token_address: mint,
@@ -194,9 +199,11 @@ async function processHeliusWebhookRaw(raw) {
                   amount_usd: null
                 },
                 { onConflict: "wallet_address,token_address,tx_signature" }
-              )
-              .then(() => {})
-              .catch(() => {});
+              );
+              if (error) console.error("[wallet_tokens_debug] upsert error:", error);
+            } catch (e) {
+              console.error("[wallet_tokens_debug] upsert exception:", e?.message || e);
+            }
           }
         }
       }
