@@ -178,6 +178,34 @@ async function processHeliusWebhookRaw(raw) {
           )
           .then(() => {})
           .catch(() => {});
+
+        const txSig = String(
+          raw.signature || raw.transaction?.signatures?.[0] || raw.transactionSignature || ""
+        ).trim();
+        if (txSig) {
+          const tsSec = Number(raw.timestamp);
+          const boughtAt = new Date(
+            (Number.isFinite(tsSec) && tsSec > 0 ? tsSec : Date.now() / 1000) * 1000
+          ).toISOString();
+          for (const t of raw.tokenTransfers || []) {
+            const mint = t?.mint && String(t.mint).trim();
+            if (!mint || !isProbableSolanaPubkey(mint)) continue;
+            void supabase
+              .from("wallet_tokens")
+              .upsert(
+                {
+                  wallet_address: signerAddress,
+                  token_address: mint,
+                  tx_signature: txSig,
+                  bought_at: boughtAt,
+                  amount_usd: null
+                },
+                { onConflict: "wallet_address,token_address,tx_signature" }
+              )
+              .then(() => {})
+              .catch(() => {});
+          }
+        }
       }
     }
   } catch {
