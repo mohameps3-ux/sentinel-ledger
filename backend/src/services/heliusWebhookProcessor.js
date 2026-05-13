@@ -143,6 +143,12 @@ function expandHeliusPayload(raw) {
  * @returns {{ emitted: number, droppedByGuard: number, signalEmitted: boolean }}
  */
 async function processHeliusWebhookRaw(raw) {
+  console.log(
+    "[webhook_debug] processHeliusWebhookRaw called, tokenTransfers:",
+    (raw.tokenTransfers || []).length,
+    "signature:",
+    raw.signature || raw.transaction?.signatures?.[0] || "none"
+  );
   let emitted = 0;
   let droppedByGuard = 0;
   let signalEmitted = false;
