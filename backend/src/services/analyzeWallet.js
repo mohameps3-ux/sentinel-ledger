@@ -152,6 +152,7 @@ async function analyzeWallet(walletAddress) {
   const { transactions: txs, deltaStats } = await fetchWalletTransactions(walletAddress, fetchOpts);
 
   if (!txs.length) {
+    console.log(`[analyzeWallet] ${walletAddress} — no txs found, skipping upsert`);
     return { walletAddress, totalTrades: 0, deltaStats };
   }
   let totalTrades = 0;
@@ -176,6 +177,8 @@ async function analyzeWallet(walletAddress) {
     }
 
     const buyEvents = inferBuyEvents(walletAddress, tx).slice(0, 2);
+    const txSig = tx?.transaction?.signatures?.[0] || tx?.signature;
+    console.log(`[analyzeWallet] ${walletAddress} — tx ${txSig?.slice(0, 8)} buyEvents=${buyEvents.length}`);
     for (const ev of buyEvents) {
       try {
         const market = await getMarketData(ev.tokenAddress);
