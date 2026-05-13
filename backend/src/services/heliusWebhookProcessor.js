@@ -166,12 +166,12 @@ async function processHeliusWebhookRaw(raw) {
         ""
     ).trim();
     console.log(
-      "[signer_debug] raw keys:",
-      Object.keys(raw).slice(0, 10),
-      "feePayer:",
-      raw.feePayer,
-      "signerAddress result:",
-      signerAddress
+      "[signer_debug]",
+      JSON.stringify({
+        feePayer: raw.feePayer,
+        signerResult: signerAddress,
+        topKeys: Object.keys(raw).join(",")
+      })
     );
     const hasSwap = Array.isArray(raw.tokenTransfers) && raw.tokenTransfers.length > 0;
     console.log(
