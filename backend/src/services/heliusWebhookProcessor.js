@@ -163,6 +163,14 @@ async function processHeliusWebhookRaw(raw) {
       typeof k0 === "string" ? k0 : k0?.pubkey != null ? k0.pubkey : ""
     ).trim();
     const hasSwap = Array.isArray(raw.tokenTransfers) && raw.tokenTransfers.length > 0;
+    console.log(
+      "[wallet_tokens_debug2] checking signer:",
+      signerAddress,
+      "in pool:",
+      typeof monitoredWallets !== "undefined"
+        ? monitoredWallets?.size || monitoredWallets?.length || "unknown"
+        : "unknown"
+    );
     if (signerAddress && hasSwap && isProbableSolanaPubkey(signerAddress)) {
       let supabase;
       try {
@@ -213,6 +221,8 @@ async function processHeliusWebhookRaw(raw) {
           }
         }
       }
+    } else {
+      console.log("[wallet_tokens_debug2] signer not in pool, skipping");
     }
   } catch {
     /* non-fatal */
