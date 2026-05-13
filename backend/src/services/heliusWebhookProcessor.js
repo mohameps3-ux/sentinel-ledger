@@ -157,11 +157,22 @@ async function processHeliusWebhookRaw(raw) {
 
   // Extract signer and seed smart_wallets pool: await smart_wallets first (FK for wallet_tokens), then wallet_tokens upserts (awaited for debug visibility).
   try {
-    const accountKeys = raw?.transaction?.message?.accountKeys;
-    const k0 = accountKeys?.[0];
     const signerAddress = String(
-      typeof k0 === "string" ? k0 : k0?.pubkey != null ? k0.pubkey : ""
+      raw.feePayer ||
+        raw.transaction?.feePayer ||
+        raw.transaction?.message?.accountKeys?.[0]?.pubkey ||
+        raw.transaction?.message?.accountKeys?.[0] ||
+        raw.accountData?.[0]?.account ||
+        ""
     ).trim();
+    console.log(
+      "[signer_debug] raw keys:",
+      Object.keys(raw).slice(0, 10),
+      "feePayer:",
+      raw.feePayer,
+      "signerAddress result:",
+      signerAddress
+    );
     const hasSwap = Array.isArray(raw.tokenTransfers) && raw.tokenTransfers.length > 0;
     console.log(
       "[wallet_tokens_debug2] checking signer:",
