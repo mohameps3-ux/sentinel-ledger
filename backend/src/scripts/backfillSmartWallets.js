@@ -13,6 +13,7 @@ const { analyzeWallet } = require("../services/analyzeWallet");
 const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 2000;
 const PAGE_SIZE = 1000;
+const MAX_ERROR_SAMPLES = 30;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -53,19 +54,24 @@ async function fetchWalletAddressesZeroTrades(supabase) {
   return [...new Set(addresses)];
 }
 
-async function main() {
+/**
+ * @returns {Promise<{ ok: boolean, walletCount: number, batchCount: number, errors: number, errorSamples: Array<{ wallet: string, error: string }> }>}
+ */
+async function runBackfillSmartWallets() {
   const supabase = getSupabase();
   const wallets = await fetchWalletAddressesZeroTrades(supabase);
 
   if (!wallets.length) {
     console.log("[backfillSmartWallets] No wallets with total_trades = 0.");
-    return;
+    return { ok: true, walletCount: 0, batchCount: 0, errors: 0, errorSamples: [] };
   }
 
   console.log(`[backfillSmartWallets] Found ${wallets.length} wallet(s) with total_trades = 0.`);
 
   const batches = chunk(wallets, BATCH_SIZE);
   const totalBatches = batches.length;
+  let errors = 0;
+  const errorSamples = [];
 
   for (let i = 0; i < batches.length; i += 1) {
     const batch = batches[i];
@@ -76,10 +82,12 @@ async function main() {
       try {
         await analyzeWallet(wallet);
       } catch (err) {
-        console.error(
-          `[backfillSmartWallets] error wallet=${wallet}:`,
-          err?.message || err
-        );
+        errors += 1;
+        const msg = err?.message || String(err);
+        console.error(`[backfillSmartWallets] error wallet=${wallet}:`, msg);
+        if (errorSamples.length < MAX_ERROR_SAMPLES) {
+          errorSamples.push({ wallet, error: msg });
+        }
       }
     }
 
@@ -89,9 +97,22 @@ async function main() {
   }
 
   console.log("[backfillSmartWallets] Done.");
+  return {
+    ok: true,
+    walletCount: wallets.length,
+    batchCount: totalBatches,
+    errors,
+    errorSamples
+  };
 }
 
-main().catch((e) => {
-  console.error("[backfillSmartWallets] fatal:", e?.message || e);
-  process.exit(1);
-});
+if (require.main === module) {
+  runBackfillSmartWallets()
+    .then(() => process.exit(0))
+    .catch((e) => {
+      console.error("[backfillSmartWallets] fatal:", e?.message || e);
+      process.exit(1);
+    });
+}
+
+module.exports = { runBackfillSmartWallets };

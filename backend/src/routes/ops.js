@@ -31,6 +31,7 @@ const {
   runSmartWalletSignalBackfillTick
 } = require("../jobs/smartWalletSignalBackfillCron");
 const { enqueueActiveWallets, getLastSmartWalletCronRun } = require("../jobs/smartWalletCron");
+const { runBackfillSmartWallets } = require("../scripts/backfillSmartWallets");
 const {
   getDataFreshnessHistoryCronStatus,
   runDataFreshnessHistoryTick
@@ -304,6 +305,16 @@ async function postSmartWalletCronManualTick(_req, res) {
  */
 router.post("/smart-wallet-cron/run", assertOpsAuth, postSmartWalletCronManualTick);
 router.post("/smart-wallet-cron/trigger", assertOpsAuth, postSmartWalletCronManualTick);
+
+/** Re-run analyzeWallet for smart_wallets with total_trades = 0 (batched; can take a long time). */
+router.post("/backfill-wallets", assertOpsAuth, async (_req, res) => {
+  try {
+    const data = await runBackfillSmartWallets();
+    return res.json({ ok: true, data });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || "backfill_wallets_failed" });
+  }
+});
 
 router.get("/signal-performance/summary", assertOpsAuth, async (req, res) => {
   const lookbackHours = Number(req.query.lookbackHours || 48);
