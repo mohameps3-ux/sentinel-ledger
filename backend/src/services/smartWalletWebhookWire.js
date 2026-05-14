@@ -73,8 +73,8 @@ async function wireSmartWalletsAfterSignal(opts = {}) {
         {
           jobId,
           priority: BULLMQ_PRIORITY_WEBHOOK_INGEST,
-          removeOnComplete: 500,
-          removeOnFail: 200
+          removeOnComplete: true,
+          removeOnFail: 100
         }
       );
     } catch (e) {
