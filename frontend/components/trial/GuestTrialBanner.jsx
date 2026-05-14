@@ -1,10 +1,34 @@
 import { useState } from "react";
 import { useGuestTrial } from "../../hooks/useGuestTrial";
 
+const DISMISS_KEY = "sl_guest_trial_banner_dismissed";
+
+function readDismissed() {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(DISMISS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function persistDismissed() {
+  try {
+    sessionStorage.setItem(DISMISS_KEY, "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 export default function GuestTrialBanner() {
   const { trial, startTrial, isTrialActive, canStartTrial, isCritical } = useGuestTrial();
   const [starting, setStarting] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(readDismissed);
+
+  function dismissBanner() {
+    persistDismissed();
+    setDismissed(true);
+  }
 
   if (trial.status === "loading") return null;
   if (dismissed) return null;
@@ -51,21 +75,35 @@ export default function GuestTrialBanner() {
           )}
         </div>
 
-        <a
-          href="/pricing"
-          className="font-mono text-[10px] font-semibold uppercase tracking-wider
-                     px-3 flex items-center flex-shrink-0
-                     transition-colors duration-150"
-          style={{
-            height: "24px",
-            borderRadius: "2px",
-            background: isCritical ? "#2563EB" : "var(--sl-violet, #8B5CF6)",
-            color: "#fff",
-            border: "none"
-          }}
-        >
-          SECURE PRO ACCESS
-        </a>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <a
+            href="/pricing"
+            className="font-mono text-[10px] font-semibold uppercase tracking-wider
+                       px-3 flex items-center flex-shrink-0
+                       transition-colors duration-150"
+            style={{
+              height: "24px",
+              borderRadius: "2px",
+              background: isCritical ? "#2563EB" : "var(--sl-violet, #8B5CF6)",
+              color: "#fff",
+              border: "none"
+            }}
+          >
+            SECURE PRO ACCESS
+          </a>
+          <button
+            type="button"
+            onClick={dismissBanner}
+            className={`font-mono text-xs px-1 transition-colors duration-150 ${
+              isCritical
+                ? "text-[#2563EB]/80 hover:text-[#2563EB]"
+                : "text-sl-muted hover:text-sl-sub"
+            }`}
+            aria-label="Dismiss trial banner"
+          >
+            ✕
+          </button>
+        </div>
       </div>
     );
   }
@@ -101,7 +139,7 @@ export default function GuestTrialBanner() {
           </button>
           <button
             type="button"
-            onClick={() => setDismissed(true)}
+            onClick={dismissBanner}
             className="font-mono text-xs text-sl-muted hover:text-sl-sub
                        transition-colors duration-150 px-1"
             aria-label="Dismiss"
