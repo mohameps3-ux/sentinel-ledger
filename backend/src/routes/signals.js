@@ -1253,15 +1253,26 @@ router.get("/track-record-fast", async (req, res) => {
       .limit(1000);
     if (error) throw error;
     const rows = data || [];
+    const mappedData = rows.map((s) => ({
+      ...s,
+      outcome_pct: s.outcome_60m,
+      confidence: 65,
+      signal_type: "cluster_buy",
+    }));
     return res.json({
       ok: true,
-      recent_signals: rows.map((s) => ({
-        ...s,
-        outcome_pct: s.outcome_60m,
-        confidence: 65,
-        signal_type: "cluster_buy",
-      })),
       count: rows.length,
+      recent_signals: mappedData,
+      pagination: {
+        page: 1,
+        total_pages: 1,
+        total: rows.length,
+        limit: 1000,
+      },
+      meta: {
+        source: "supabase:signal_outcomes",
+        filter: "all",
+      },
     });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
