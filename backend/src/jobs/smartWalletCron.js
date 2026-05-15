@@ -1,5 +1,6 @@
 const cron = require("node-cron");
 const { getSupabase } = require("../lib/supabase");
+const { getOpsPostgresPool } = require("../lib/opsPostgresPool");
 const { randomUUID } = require("crypto");
 const { getSmartWalletQueue } = require("../queues/smartWallet.queue");
 const { analyzeWallet } = require("../services/analyzeWallet");
@@ -30,6 +31,40 @@ function getDirectLimit() {
   const raw = Number(process.env.SMART_WALLET_DIRECT_LIMIT || 20);
   if (!Number.isFinite(raw) || raw <= 0) return 20;
   return Math.min(100, Math.floor(raw));
+}
+
+/** Sync total_trades from wallet_tokens for wallets without signal-derived win_rate. */
+const SYNC_TOTAL_TRADES_FROM_WALLET_TOKENS_SQL = `
+UPDATE smart_wallets sw
+SET total_trades = wt.cnt, updated_at = NOW()
+FROM (
+  SELECT wallet_address, COUNT(*) AS cnt
+  FROM wallet_tokens
+  GROUP BY wallet_address
+) wt
+WHERE sw.wallet_address = wt.wallet_address
+AND (sw.win_rate IS NULL OR sw.win_rate = 0)
+`;
+
+async function syncTotalTradesFromWalletTokens(requestId) {
+  const pool = getOpsPostgresPool();
+  if (!pool) {
+    console.warn(
+      `[smart-wallet-cron][${requestId}] sync total_trades skipped: DATABASE_URL or SUPABASE_DB_PASSWORD required`
+    );
+    return;
+  }
+  try {
+    const result = await pool.query(SYNC_TOTAL_TRADES_FROM_WALLET_TOKENS_SQL);
+    console.log(
+      `[smart-wallet-cron][${requestId}] sync total_trades from wallet_tokens updated=${result.rowCount ?? 0}`
+    );
+  } catch (error) {
+    console.warn(
+      `[smart-wallet-cron][${requestId}] sync total_trades failed:`,
+      error?.message || error
+    );
+  }
 }
 
 function scheduleSmartWalletEnqueueAfterWebhookQuiet(triggerRequestId) {
@@ -128,6 +163,7 @@ async function enqueueActiveWallets(options = {}) {
     console.log(
       `[smart-wallet-cron][${requestId}] direct analysis complete at=${new Date().toISOString()} ok_wallets=${ok}/${sample.length}`
     );
+    await syncTotalTradesFromWalletTokens(requestId);
     return ok;
   }
 
