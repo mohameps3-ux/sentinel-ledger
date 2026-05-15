@@ -4,6 +4,37 @@ const crypto = require("crypto");
 const { getSupabase } = require("../lib/supabase");
 const supportTree = require("../data/support-tree.json");
 
+/**
+ * Injected into LLM context so Copilot can explain UI + deep links (Next.js pages router).
+ * Keep concise to limit tokens.
+ */
+const SENTINEL_APP_NAVIGATION = [
+  { path: "/", purpose: "Home / War Room — tactical tabs (LIVE, HOT, VELOCITY…), KPI strip, command bar, health/sync strip" },
+  { path: "/scanner", purpose: "Alpha Radar — token discovery / scanner" },
+  { path: "/alerts", purpose: "Alerts — PRO / Telegram-style alert feed when configured" },
+  { path: "/smart-money", purpose: "Smart Money — leaderboard, filters, favorites, activity strip" },
+  { path: "/watchlist", purpose: "Watchlist — tracked mints / wallets" },
+  { path: "/graveyard", purpose: "Track Record (graveyard) — verified outcomes ledger" },
+  { path: "/track-record", purpose: "Track Record — paginated historical view" },
+  { path: "/wallet-stalker", purpose: "Wallet Stalker — follow wallet flows" },
+  { path: "/wallet/[address]", purpose: "Wallet detail — paste address from search/command bar" },
+  { path: "/token/[address]", purpose: "Token Intel — mint deep-dive, score, desk actions" },
+  { path: "/compare", purpose: "Compare tokens side by side" },
+  { path: "/portfolio", purpose: "Portfolio view" },
+  { path: "/results", purpose: "Results / performance summaries" },
+  { path: "/pricing", purpose: "Plans — PRO / Stripe checkout" },
+  { path: "/contact", purpose: "Contact / support entry" },
+  { path: "/ops", purpose: "Internal ops console (requires Ops key in browser — not for end users)" }
+];
+
+const EXTERNAL_PRODUCT_GUARD = `
+STRICT — SENTINEL-ONLY:
+- You only help users understand and navigate Sentinel Ledger inside this product.
+- Never recommend, advertise, rank, or steer users toward competing trading terminals, portfolio apps, or third-party on-chain analytics / “smart money” trackers outside Sentinel. No “you should use X instead”, “also try Y”, or generic substitutes.
+- Do not push users to leave Sentinel for another brand’s dashboard. If they ask what competitors exist, say you only guide within Sentinel and point them to the routes in app_navigation.
+- Explaining execution shortcuts that already appear inside Sentinel for a token the user is viewing (e.g. open Jupiter / DEX from the in-app desk) is allowed only as part of describing Sentinel’s own UI — not as “switch to another product”.
+`.trim();
+
 // ── GLOBAL NOISE WORDS ───────────────────────────────────────
 const GLOBAL_NOISE = new Set([
   "el",
@@ -154,7 +185,8 @@ async function buildContextPack() {
       signal_count: 0,
       wallet_count: 66,
       regime: "normal",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      app_navigation: SENTINEL_APP_NAVIGATION
     };
   }
   try {
@@ -188,7 +220,8 @@ async function buildContextPack() {
       signal_count: (signalsRes.data || []).length,
       wallet_count: (walletsRes.data || []).length || 66,
       regime: "normal",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      app_navigation: SENTINEL_APP_NAVIGATION
     };
   } catch {
     return {
@@ -198,7 +231,8 @@ async function buildContextPack() {
       signal_count: 0,
       wallet_count: 66,
       regime: "normal",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      app_navigation: SENTINEL_APP_NAVIGATION
     };
   }
 }
@@ -254,12 +288,16 @@ async function callOpenAIChatCompletion({ system, user, maxTokens }) {
 async function callClaudeAPI(question, intent, contextPack, language) {
   const systemPrompt = `You are Sentinel Assistant, the AI for Sentinel Ledger — a Solana on-chain intelligence terminal.
 
+${EXTERNAL_PRODUCT_GUARD}
+
 RULES:
 - Answer in ${language === "en" ? "English" : "Spanish"}
 - Be concise and technical
 - Never give financial advice
 - Add "This is not financial advice" at the end
 - Use context data if available
+- Use "app_navigation" in SENTINEL CONTEXT to point users to the right in-app routes (paths like /smart-money).
+- Do not recommend competing platforms or external trackers.
 
 SENTINEL CONTEXT:
 ${JSON.stringify(contextPack, null, 2)}
@@ -305,6 +343,8 @@ function buildOperatorConfirmationReply(language) {
 function buildChatSystemPrompt(contextPack, language) {
   return `You are Sentinel Copilot.
 
+${EXTERNAL_PRODUCT_GUARD}
+
 DEFAULT BEHAVIOR:
 - Reply in ${language === "en" ? "English" : "Spanish"}.
 - Natural, friendly, concise conversation style.
@@ -312,20 +352,29 @@ DEFAULT BEHAVIOR:
 - Do NOT force diagnostics, scoring, gate metrics, or ops jargon unless the user asks.
 - Never give financial advice.
 
+PRODUCT & NAVIGATION (prioritize helping users find features):
+- Use the "app_navigation" list in SENTINEL CONTEXT for routes: always cite paths like /smart-money or /graveyard so users can paste them in the browser bar on the same site.
+- When explaining a feature, name the page, what they will see, and 1–3 concrete clicks or UI areas (tabs, command bar, desk rail) when helpful.
+- "recentSignals", "topWallets", and "gateEmitRate" are live-ish snapshots from the database — use them only when they clarify the user's question (counts, examples), not as a data dump.
+
 WHEN USER ASKS PRODUCT/TECH:
-- Explain clearly with practical steps.
+- Explain clearly with practical steps inside Sentinel.
 - Only include Sentinel metrics if explicitly requested.
 
-SENTINEL CONTEXT (optional; use only when relevant):
+SENTINEL CONTEXT (JSON; app_navigation + optional live snapshot):
 ${JSON.stringify(contextPack, null, 2)}`;
 }
 
 function buildDiagnosticSystemPrompt(contextPack, language) {
   return `You are Sentinel Diagnostic Assistant.
+
+${EXTERNAL_PRODUCT_GUARD}
+
 - Reply in ${language === "en" ? "English" : "Spanish"}.
 - Focus on telemetry, score, gates, quality, and concrete diagnosis.
 - Be precise and calm (no alarmism).
 - Never give financial advice.
+- Stay inside Sentinel; do not send users to external analytics competitors.
 
 SENTINEL CONTEXT:
 ${JSON.stringify(contextPack, null, 2)}`;
@@ -333,11 +382,15 @@ ${JSON.stringify(contextPack, null, 2)}`;
 
 function buildOperatorSystemPrompt(contextPack, language) {
   return `You are Sentinel Operator Copilot.
+
+${EXTERNAL_PRODUCT_GUARD}
+
 - Reply in ${language === "en" ? "English" : "Spanish"}.
 - You can propose implementation and ops actions.
 - You DO NOT execute changes directly.
 - Always require explicit confirmation from user before action execution.
 - Never give financial advice.
+- Do not recommend third-party products outside Sentinel.
 
 SENTINEL CONTEXT:
 ${JSON.stringify(contextPack, null, 2)}`;
@@ -404,7 +457,7 @@ async function handleBotMessage(message, language = "es", _sessionId, mode = "ch
       const answer = await callOpenAIChatCompletion({
         system: buildChatSystemPrompt(ctx, lang),
         user: String(message),
-        maxTokens: 260
+        maxTokens: 380
       });
       if (typeof answer === "string" && answer.trim()) {
         return {
@@ -438,7 +491,7 @@ async function handleBotMessage(message, language = "es", _sessionId, mode = "ch
       const answer = await callOpenAIChatCompletion({
         system,
         user: String(message),
-        maxTokens: 320
+        maxTokens: 400
       });
       if (typeof answer === "string" && answer.trim()) {
         return {
