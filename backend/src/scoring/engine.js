@@ -224,6 +224,17 @@ function detectContradictions(results) {
  * @returns {Promise<ScoringResult>}
  */
 async function evaluate(event, extraCtx = {}) {
+  if (String(process.env.SCORING_WHALE_DIAG || "").trim() === "1") {
+    console.log(
+      "[scoring][whale-diag][entry] event_type=",
+      event?.type,
+      "actor=",
+      event?.data?.actor,
+      "asset=",
+      event?.data?.asset
+    );
+  }
+
   if (!event || !event.data || !event.data.asset) {
     return null;
   }
