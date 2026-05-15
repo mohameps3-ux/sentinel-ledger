@@ -140,6 +140,9 @@ function minObservedPrice(row, nextPrice) {
 }
 
 function buildRuleSnapshot(score, ctx, ruleId, price) {
+  const rawSkew = score?.meta?.priceSkew;
+  const priceSkew =
+    rawSkew != null && Number.isFinite(Number(rawSkew)) ? Number(rawSkew) : null;
   return {
     version: 1,
     ruleId,
@@ -152,6 +155,7 @@ function buildRuleSnapshot(score, ctx, ruleId, price) {
     regime: normalizeRegime(score?.meta?.emissionGate?.regime?.key || ctx.regime),
     rawRegime: score?.meta?.emissionGate?.regime?.key || ctx.regime || "unknown",
     priceAtSignal: price,
+    priceSkew,
     emissionGate: score?.meta?.emissionGate || null,
     alphaLayer: score?.meta?.alphaLayer || null,
     capturedAt: toIso(Date.now())
