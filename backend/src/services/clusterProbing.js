@@ -5,6 +5,8 @@ const WINDOW_MS = 120_000;
 const MIN_WALLETS = 3;
 /** Min relative price difference across observed fills to flag skew (e.g. 0.015 = 1.5%). */
 const MIN_PRICE_SKEW = Number(process.env.CLUSTER_PROBE_MIN_PRICE_SKEW || 0.015);
+/** Max skew — above this, treat as late/chasing entry (e.g. 0.025 = 2.5%). */
+const MAX_PRICE_SKEW = Number(process.env.CLUSTER_PROBE_MAX_PRICE_SKEW || 0.025);
 
 const probesByMint = new Map();
 
@@ -61,6 +63,10 @@ async function evaluateIntent(mint, wallet, priceUsd) {
 
   if (priceSkew < MIN_PRICE_SKEW) {
     return { action: "observe", mint: m, wallets, priceSkew, reason: "low_skew" };
+  }
+
+  if (priceSkew > MAX_PRICE_SKEW) {
+    return { action: "observe", mint: m, wallets, priceSkew, reason: "skew_too_high" };
   }
 
   const sorted = [...wallets].sort();
