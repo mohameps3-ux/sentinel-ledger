@@ -43,6 +43,22 @@ function approxProfitFactorFromWinRate(totalTrades, winRatePct) {
   return Math.round((wins / losses) * 1000) / 1000;
 }
 
+/** Full-day inactivity from a single timestamp (leaderboard ranking only; does not touch stored scores). */
+function daysInactiveFromAnchor(iso) {
+  if (iso == null || String(iso).trim() === "") return null;
+  const t = Date.parse(String(iso));
+  if (!Number.isFinite(t)) return null;
+  return (Date.now() - t) / 86_400_000;
+}
+
+function leaderboardInactivityDecayMultiplier(daysInactive) {
+  if (daysInactive == null || !Number.isFinite(daysInactive)) return 0.3;
+  if (daysInactive > 30) return 0.3;
+  if (daysInactive > 14) return 0.5;
+  if (daysInactive > 7) return 0.75;
+  return 1.0;
+}
+
 function pctFromPrices(entry, later) {
   const e = Number(entry);
   const l = Number(later);
@@ -496,6 +512,15 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       const scoreVal = Number(score.toFixed(2));
       const profitFactor = approxProfitFactorFromWinRate(r.totalTrades, r.winRate);
 
+      const anchorForDecay = r.lastSeen != null ? r.lastSeen : r.smartWalletRowUpdatedAt;
+      const daysInactive = daysInactiveFromAnchor(anchorForDecay);
+      const decayMultiplier = leaderboardInactivityDecayMultiplier(daysInactive);
+      const baseForRanking =
+        r.smartScore != null && Number.isFinite(Number(r.smartScore))
+          ? Number(r.smartScore)
+          : scoreVal;
+      const rankingScore = Number((baseForRanking * decayMultiplier).toFixed(2));
+
       return {
         ...r,
         roi30dVsAvgSize: Number(roiMult.toFixed(2)),
@@ -505,6 +530,7 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
         score: scoreVal,
         unifiedScore: scoreVal,
         profitFactor,
+        rankingScore,
         profile: wb
           ? {
               winRateReal: wb.win_rate_real != null ? Number(wb.win_rate_real) : null,
@@ -531,7 +557,7 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       };
     });
 
-    const sorted = enriched.sort((a, b) => b.score - a.score);
+    const sorted = enriched.sort((a, b) => b.rankingScore - a.rankingScore);
 
     return res.json({
       ok: true,
