@@ -27,6 +27,61 @@ const SENTINEL_APP_NAVIGATION = [
   { path: "/ops", purpose: "Internal ops console (requires Ops key in browser — not for end users)" }
 ];
 
+/**
+ * Home (/) layout + patterns reused on other pages so Copilot can explain “cards” and regions.
+ */
+const SENTINEL_HOME_AND_SHARED_UI = [
+  {
+    area: "Home /",
+    element: "Status strip (under nav)",
+    purpose: "Sync / health snapshot (market, Supabase, Redis indicators) — shows pipeline state, not a button menu"
+  },
+  {
+    area: "Home /",
+    element: "KPI strip (kpi-strip / kpi-block)",
+    purpose: "Four headline metrics: signals today (UTC), active wallets, avg confidence, best signal — read-only pulse"
+  },
+  {
+    area: "Home /",
+    element: "Tactical tabs (LIVE · HOT TRACKED · VELOCITY · OUTLIER · TRACK)",
+    purpose:
+      "LIVE = decision feed from DB signals; HOT = heat-ranked token grid; VELOCITY/OUTLIER = alternate war-room lenses; TRACK = verified outcomes slice — tab state persists in browser"
+  },
+  {
+    area: "Home /",
+    element: "Feed cards (signal / token rows)",
+    purpose:
+      "Each card is a live or ranked opportunity: score/confidence chips, liquidity hints, rank deltas (↑/↓/NEW); clicking usually selects the token and opens Token Intel / desk context"
+  },
+  {
+    area: "Home /",
+    element: "Token Desk (right rail)",
+    purpose:
+      "When a mint is selected: detail, Sentinel score, execution shortcuts surfaced by Sentinel (JUP/DEX/DESK) — still Sentinel UI, not a separate site"
+  },
+  {
+    area: "Home /",
+    element: "War mode toggle",
+    purpose: "Faster refetch cadence / stressed styling for high-velocity sessions — does not change accounts or subscriptions"
+  },
+  {
+    area: "Home /",
+    element: "Bottom command strip",
+    purpose: "Ctrl+K: paste mint or wallet → Token or wallet flows; Follow / quick links when a row is focused"
+  },
+  {
+    area: "Global cards",
+    element: "glass-card / sl-card-elevated / terminal-panel",
+    purpose:
+      "Reusable elevated panels: title row + actions + body list or chart; used on Home, Smart Money, Track Record, etc. — explain header vs body vs foot CTAs (VIEW ALL, expand chevrons)"
+  },
+  {
+    area: "Any page",
+    element: "Primary CTA buttons",
+    purpose: "Usually navigate via Next Link to another route in app_navigation — say the path so users can go directly"
+  }
+];
+
 const EXTERNAL_PRODUCT_GUARD = `
 STRICT — SENTINEL-ONLY:
 - You only help users understand and navigate Sentinel Ledger inside this product.
@@ -186,7 +241,8 @@ async function buildContextPack() {
       wallet_count: 66,
       regime: "normal",
       timestamp: new Date().toISOString(),
-      app_navigation: SENTINEL_APP_NAVIGATION
+      app_navigation: SENTINEL_APP_NAVIGATION,
+      home_and_shared_ui: SENTINEL_HOME_AND_SHARED_UI
     };
   }
   try {
@@ -221,7 +277,8 @@ async function buildContextPack() {
       wallet_count: (walletsRes.data || []).length || 66,
       regime: "normal",
       timestamp: new Date().toISOString(),
-      app_navigation: SENTINEL_APP_NAVIGATION
+      app_navigation: SENTINEL_APP_NAVIGATION,
+      home_and_shared_ui: SENTINEL_HOME_AND_SHARED_UI
     };
   } catch {
     return {
@@ -232,7 +289,8 @@ async function buildContextPack() {
       wallet_count: 66,
       regime: "normal",
       timestamp: new Date().toISOString(),
-      app_navigation: SENTINEL_APP_NAVIGATION
+      app_navigation: SENTINEL_APP_NAVIGATION,
+      home_and_shared_ui: SENTINEL_HOME_AND_SHARED_UI
     };
   }
 }
@@ -296,7 +354,7 @@ RULES:
 - Never give financial advice
 - Add "This is not financial advice" at the end
 - Use context data if available
-- Use "app_navigation" in SENTINEL CONTEXT to point users to the right in-app routes (paths like /smart-money).
+- Use "app_navigation" and "home_and_shared_ui" in SENTINEL CONTEXT to point users to routes and to explain Home + card patterns on any page.
 - Do not recommend competing platforms or external trackers.
 
 SENTINEL CONTEXT:
@@ -354,6 +412,8 @@ DEFAULT BEHAVIOR:
 
 PRODUCT & NAVIGATION (prioritize helping users find features):
 - Use the "app_navigation" list in SENTINEL CONTEXT for routes: always cite paths like /smart-money or /graveyard so users can paste them in the browser bar on the same site.
+- Use "home_and_shared_ui" for Home (/) — KPI strip, tactical tabs, status strip, feed cards, Token Desk, war mode, command bar — and for how **cards / panels** work across the app (glass-card, sl-card-elevated, terminal-panel): headers, lists, CTAs, expand chevrons, VIEW ALL links.
+- When the user asks what a card or section does on **any** page, map it to the closest pattern in home_and_shared_ui + the route in app_navigation; if ambiguous, ask one short clarifying question (which tab or which page).
 - When explaining a feature, name the page, what they will see, and 1–3 concrete clicks or UI areas (tabs, command bar, desk rail) when helpful.
 - "recentSignals", "topWallets", and "gateEmitRate" are live-ish snapshots from the database — use them only when they clarify the user's question (counts, examples), not as a data dump.
 
@@ -361,7 +421,7 @@ WHEN USER ASKS PRODUCT/TECH:
 - Explain clearly with practical steps inside Sentinel.
 - Only include Sentinel metrics if explicitly requested.
 
-SENTINEL CONTEXT (JSON; app_navigation + optional live snapshot):
+SENTINEL CONTEXT (JSON; app_navigation + home_and_shared_ui + optional live snapshot):
 ${JSON.stringify(contextPack, null, 2)}`;
 }
 
@@ -375,6 +435,7 @@ ${EXTERNAL_PRODUCT_GUARD}
 - Be precise and calm (no alarmism).
 - Never give financial advice.
 - Stay inside Sentinel; do not send users to external analytics competitors.
+- Use app_navigation and home_and_shared_ui in context to explain Home layout and card-style panels on any page.
 
 SENTINEL CONTEXT:
 ${JSON.stringify(contextPack, null, 2)}`;
@@ -391,6 +452,7 @@ ${EXTERNAL_PRODUCT_GUARD}
 - Always require explicit confirmation from user before action execution.
 - Never give financial advice.
 - Do not recommend third-party products outside Sentinel.
+- Use app_navigation and home_and_shared_ui to explain UI and navigation.
 
 SENTINEL CONTEXT:
 ${JSON.stringify(contextPack, null, 2)}`;
