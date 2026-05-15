@@ -262,6 +262,20 @@ async function evaluate(event, extraCtx = {}) {
     liquidityUsd: Number.isFinite(extraCtx.liquidityUsd) ? Number(extraCtx.liquidityUsd) : null
   };
 
+  const whaleDiagOn =
+    String(process.env.SCORING_WHALE_DIAG || "").trim() === "1";
+  if (whaleDiagOn && isBuyish(event)) {
+    const fromExtraCtx = Number.isFinite(extraCtx.amountUsd);
+    console.log(
+      `[scoring][whale-diag] wallet=${shortAddr(event.data.actor)} asset=${shortAddr(event.data.asset)} ` +
+        `isElite=${ctx.isElite} amountUsd=${ctx.amountUsd == null ? "null" : ctx.amountUsd} ` +
+        `amountSource=${fromExtraCtx ? "extraCtx" : "inferOrNull"} quoteRaw=${event?.data?.quoteAmount ?? "—"} ` +
+        `whaleMin=${CONFIG.whaleMinUsd} r01_ok=${Boolean(
+          ctx.isElite && ctx.amountUsd != null && ctx.amountUsd >= CONFIG.whaleMinUsd
+        )}`
+    );
+  }
+
   const fired = [];
   for (const rule of RULES) {
     let r = null;
