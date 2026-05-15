@@ -3,10 +3,14 @@
 const { createHash } = require("crypto");
 const WINDOW_MS = 120_000;
 const MIN_WALLETS = 3;
-/** Min relative price difference across observed fills to flag skew (e.g. 0.015 = 1.5%). */
-const MIN_PRICE_SKEW = Number(process.env.CLUSTER_PROBE_MIN_PRICE_SKEW || 0.015);
-/** Max skew — above this, treat as late/chasing entry (e.g. 0.025 = 2.5%). */
-const MAX_PRICE_SKEW = Number(process.env.CLUSTER_PROBE_MAX_PRICE_SKEW || 0.025);
+/**
+ * Activation band: skew in [MIN, MAX]. Defaults favor early detection — low skew (below ~1.5%)
+ * across observed fills — and block late/chasing entries where skew has widened.
+ * Data: strongest bucket was low skew / lower confidence proxy; late entries lose.
+ */
+const MIN_PRICE_SKEW = Number(process.env.CLUSTER_PROBE_MIN_PRICE_SKEW || 0);
+/** Late entries skew wider — default 0.015 = 1.5% max relative spread to emit. */
+const MAX_PRICE_SKEW = Number(process.env.CLUSTER_PROBE_MAX_PRICE_SKEW || 0.015);
 
 const probesByMint = new Map();
 
@@ -61,6 +65,7 @@ async function evaluateIntent(mint, wallet, priceUsd) {
   const mid = (minP + maxP) / 2;
   const priceSkew = mid > 0 ? (maxP - minP) / mid : 0;
 
+  // Early detection wins, late entries lose: require skew in [MIN, MAX] (default [0, 1.5%]).
   if (priceSkew < MIN_PRICE_SKEW) {
     return { action: "observe", mint: m, wallets, priceSkew, reason: "low_skew" };
   }
