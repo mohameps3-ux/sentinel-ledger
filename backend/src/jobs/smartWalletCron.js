@@ -148,6 +148,7 @@ async function enqueueActiveWallets(options = {}) {
     }
   }
 
+  let processedCount = 0;
   if (!queue) {
     const directLimit = getDirectLimit();
     const sample = targetWallets.slice(0, directLimit);
@@ -163,26 +164,28 @@ async function enqueueActiveWallets(options = {}) {
     console.log(
       `[smart-wallet-cron][${requestId}] direct analysis complete at=${new Date().toISOString()} ok_wallets=${ok}/${sample.length}`
     );
-    await syncTotalTradesFromWalletTokens(requestId);
-    return ok;
+    processedCount = ok;
+  } else {
+    for (const walletAddress of targetWallets) {
+      await queue.add(
+        "analyze-wallet",
+        { walletAddress },
+        {
+          jobId: `smart-wallet_${walletAddress.replace(/:/g, "_")}`,
+          priority: BULLMQ_PRIORITY_LOW,
+          removeOnComplete: 500,
+          removeOnFail: 500
+        }
+      );
+    }
+    console.log(
+      `[smart-wallet-cron][${requestId}] enqueued at=${new Date().toISOString()} count=${targetWallets.length}`
+    );
+    processedCount = targetWallets.length;
   }
 
-  for (const walletAddress of targetWallets) {
-    await queue.add(
-      "analyze-wallet",
-      { walletAddress },
-      {
-        jobId: `smart-wallet_${walletAddress.replace(/:/g, "_")}`,
-        priority: BULLMQ_PRIORITY_LOW,
-        removeOnComplete: 500,
-        removeOnFail: 500
-      }
-    );
-  }
-  console.log(
-    `[smart-wallet-cron][${requestId}] enqueued at=${new Date().toISOString()} count=${targetWallets.length}`
-  );
-  return targetWallets.length;
+  await syncTotalTradesFromWalletTokens(requestId);
+  return processedCount;
 }
 
 function startSmartWalletCron() {
