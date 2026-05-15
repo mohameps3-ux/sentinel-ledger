@@ -57,6 +57,7 @@ const CONFIG = {
   newWalletMaxAgeMs: Number(process.env.RULE_NEWWALLET_MAX_AGE_MS || 24 * 60 * 60 * 1000),
   newWalletMinUsd: Number(process.env.RULE_NEWWALLET_MIN_USD || 1_000),
   velocityMultiplier: Number(process.env.RULE_VELOCITY_MULT || 3),
+  velocityMaxMultiplier: Number(process.env.RULE_VELOCITY_MAX_MULT || 4),
   velocityMinBaseline: Number(process.env.RULE_VELOCITY_MIN_BASELINE || 1),
   cacheTtlSec: 600
 };
@@ -141,6 +142,7 @@ function ruleVelocitySpike(ctx) {
   if (stats.baselinePerMin < CONFIG.velocityMinBaseline) return null;
   const ratio = stats.txLastMin / stats.baselinePerMin;
   if (!Number.isFinite(ratio) || ratio < CONFIG.velocityMultiplier) return null;
+  if (ratio > CONFIG.velocityMaxMultiplier) return null;
   return {
     delta: { momentum: 30 },
     signal: "velocity_spike",

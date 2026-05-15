@@ -297,10 +297,20 @@ function test(name, fn) {
     const r = _rules.ruleVelocitySpike({
       event,
       assetStats: {
-        txLastMin: SCORING_CONFIG.velocityMultiplier * 2,
+        txLastMin: SCORING_CONFIG.velocityMaxMultiplier,
         baselinePerMin: 1
       }
     });
+    assert.strictEqual(
+      _rules.ruleVelocitySpike({
+        event,
+        assetStats: {
+          txLastMin: SCORING_CONFIG.velocityMaxMultiplier + 1,
+          baselinePerMin: 1
+        }
+      }),
+      null
+    );
     assert.ok(r && r.delta.momentum === 30);
   });
 
