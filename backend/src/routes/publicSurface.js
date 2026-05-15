@@ -541,6 +541,9 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
         unifiedScore: scoreVal,
         profitFactor,
         rankingScore,
+        decayMultiplier,
+        daysInactive:
+          daysInactive != null && Number.isFinite(daysInactive) ? Number(daysInactive.toFixed(2)) : null,
         profile: wb
           ? {
               winRateReal: wb.win_rate_real != null ? Number(wb.win_rate_real) : null,

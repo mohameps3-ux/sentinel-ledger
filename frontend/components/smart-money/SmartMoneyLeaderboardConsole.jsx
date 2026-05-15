@@ -90,6 +90,32 @@ function winRateBadgeClass(wr) {
   return "bg-rose-950/30 text-rose-400/85 ring-1 ring-rose-900/30";
 }
 
+const INACTIVITY_DECAY_TOOLTIP = "Ranking includes inactivity decay";
+
+/** Server fields `daysInactive` / `decayMultiplier`; label tiers match leaderboard decay bands. */
+function inactivityDecayBadge(row) {
+  const mult = row.decayMultiplier != null ? Number(row.decayMultiplier) : 1;
+  if (!Number.isFinite(mult) || mult >= 1) return null;
+  const d = row.daysInactive != null ? Number(row.daysInactive) : null;
+  let label = null;
+  if (d != null && Number.isFinite(d)) {
+    if (d > 30) label = "dormant";
+    else if (d > 14) label = "inactive";
+    else if (d > 7) label = "stale";
+  }
+  if (!label) {
+    if (mult <= 0.31) label = "dormant";
+    else if (mult <= 0.51) label = "inactive";
+    else label = "stale";
+  }
+  const styles = {
+    dormant: "bg-zinc-800/55 text-zinc-500 ring-zinc-600/35",
+    inactive: "bg-zinc-800/45 text-zinc-500 ring-zinc-600/30",
+    stale: "bg-zinc-800/40 text-zinc-500 ring-zinc-600/25"
+  };
+  return { label, className: styles[label] || styles.stale };
+}
+
 /** @typedef {'rank'|'wallet'|'unifiedScore'|'winRate'|'pnl30d'|'totalTrades'|'profitFactor'|'lastSeen'} SortKey */
 
 function StatusDot({ tone }) {
@@ -651,8 +677,24 @@ export function SmartMoneyLeaderboardConsole({
                               <span className="text-zinc-600"> ({wc}W / {lc}L)</span>
                             </td>
                             <td className="px-5 py-5 font-mono text-[12px] tabular-nums text-zinc-500">{pf}</td>
-                            <td className="whitespace-nowrap px-5 py-5 font-mono text-[11px] tabular-nums text-zinc-500">
-                              {w.lastSeen ? formatDateTime(w.lastSeen) : "—"}
+                            <td className="px-5 py-5 font-mono text-[11px] tabular-nums text-zinc-500">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="whitespace-nowrap">
+                                  {w.lastSeen ? formatDateTime(w.lastSeen) : "—"}
+                                </span>
+                                {(() => {
+                                  const badge = inactivityDecayBadge(w);
+                                  if (!badge) return null;
+                                  return (
+                                    <span
+                                      title={INACTIVITY_DECAY_TOOLTIP}
+                                      className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ring-1 ${badge.className}`}
+                                    >
+                                      {badge.label}
+                                    </span>
+                                  );
+                                })()}
+                              </div>
                             </td>
                             <td className="px-5 py-5 last:pr-6">
                               <div className="flex flex-wrap gap-1.5" data-no-row-select>
