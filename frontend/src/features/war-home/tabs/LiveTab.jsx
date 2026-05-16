@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronsDown, ChevronsUp, Info, Inbox, Loader2, Sparkles, WifiOff } from "lucide-react";
+import { ChevronsDown, ChevronsUp, Info, Inbox, Loader2, Lock, Sparkles, WifiOff } from "lucide-react";
 import { Virtuoso } from "react-virtuoso";
 import { UI_CONFIG } from "@/constants/homeData";
 import { narrativeFromData } from "@/lib/narrativeFromData";
@@ -27,6 +27,7 @@ import { deriveApexState } from "../../../../components/apex";
 import { useWarMode } from "../../../../contexts/WarModeContext";
 import { cockpitCardClickTargetIsInteractive } from "../../../../lib/cockpitCardClick.mjs";
 import { useIngestionPulse } from "../../../../hooks/useIngestionPulse";
+import { useAccessTier } from "../../../../hooks/useAccessTier";
 
 /**
  * War Home — Live tab (grid / Virtuoso). Parent `index.js` controls merge + hysteresis; this file only renders.
@@ -91,6 +92,8 @@ export function LiveTab({
   onSelectMint
 }) {
   const { t } = useLocale();
+  const { isPro } = useAccessTier();
+  const FREE_VISIBLE_SIGNALS = 3;
   const [stalkerUnread, setStalkerUnread] = useState(0);
 
   const confidenceTr = useCallback(
@@ -147,6 +150,7 @@ export function LiveTab({
   }, [displaySignals, liveVirtuosoRows, isWarMode]);
 
   function renderLiveGridItem(sig, idx) {
+    const isLocked = !isPro && idx >= FREE_VISIBLE_SIGNALS;
     const isHeatFill = sig._liveSource === "hot_fill";
     const sec = sig._api
       ? Math.max(0, Math.round(Number(sig._api.entryWindowMinutesLeft || 0) * 60))
@@ -195,7 +199,7 @@ export function LiveTab({
     // Heat-fill is always "active" (warm gold) to communicate "pure heat, not validated signal".
     // Live cards derive from signalStrength: >=80 critical (high conviction), >=60 active, else neutral silver.
     const apexState = isHeatFill ? "active" : deriveApexState(sig.signalStrength);
-    return (
+    const card = (
       <RealtimeTokenCardShell
         data-testid="sl-war-live-card"
         data-apex-state={apexState}
@@ -488,6 +492,21 @@ export function LiveTab({
           );
         }}
       </RealtimeTokenCardShell>
+    );
+
+    if (!isLocked) return card;
+
+    return (
+      <div className="relative mb-2">
+        <div className="blur-sm pointer-events-none select-none">{card}</div>
+        <div
+          className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 rounded-lg border border-slate-700/50 bg-[#030712]/60 backdrop-blur-[2px]"
+          aria-hidden
+        >
+          <Lock className="h-4 w-4 text-cyan-300/90" strokeWidth={2} aria-hidden />
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-200/90">Pro</span>
+        </div>
+      </div>
     );
   }
 
