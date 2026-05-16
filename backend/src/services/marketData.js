@@ -5,7 +5,10 @@ const { detectNarrativeTags } = require("./narrativeTags");
 const { createCircuitBreaker } = require("../lib/circuitBreaker");
 const { getRecentMarketSnapshot, upsertMarketSnapshot } = require("./marketSnapshots");
 
-const CACHE_TTL_SECONDS = 20;
+const CACHE_TTL_SECONDS = Math.max(
+  5,
+  Number(process.env.MARKET_CACHE_TTL_SECONDS || 90)
+);
 const COINGECKO_SIMPLE_PRICE = "https://api.coingecko.com/api/v3/simple/price";
 const BIRDEYE_BASE = "https://public-api.birdeye.so";
 const BIRDEYE_HEADER_CHAIN = "solana";

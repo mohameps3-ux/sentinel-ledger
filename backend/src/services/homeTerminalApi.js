@@ -17,10 +17,10 @@ const { appendFreshnessEvent, getDataFreshnessSnapshotFromStore } = require("./f
 
 const CACHE_TTL_SEC = Number(process.env.HOME_TERMINAL_CACHE_TTL_SEC || 180);
 const HOT_CACHE_TTL_SEC = Math.max(30, Number(process.env.HOME_TERMINAL_HOT_CACHE_TTL_SEC || 90));
-/** Fase 3: default 3s para acercar home a señales recientes; override con env. */
+/** Signals feed cache; default 90s to cut Dex getMarketData pressure (override with env). */
 const LATEST_SIGNALS_CACHE_TTL_SEC = Math.max(
   3,
-  Math.min(600, Number(process.env.HOME_TERMINAL_LATEST_CACHE_TTL_SEC ?? 3))
+  Math.min(600, Number(process.env.HOME_TERMINAL_LATEST_CACHE_TTL_SEC ?? 90))
 );
 /** War home expanded grid (56) + headroom. Lower in prod if `getMarketData` pressure matters (each card may fetch market once per cache miss). */
 const SIGNAL_FEED_MAX_CARDS = Math.min(100, Math.max(16, Number(process.env.SIGNAL_FEED_MAX_CARDS || 64)));
@@ -119,8 +119,13 @@ const SIGNALS_LATEST_CACHE_KEY_PREFIX = "terminal:signals:latest:v8:";
 const SIGNALS_LATEST_STRATEGIES = ["balanced", "conservative", "aggressive"];
 const SIGNALS_LATEST_LIMITS = [8, 10, 12, 16, 24, 32, 50, 56, 64];
 
+const SIGNALS_LATEST_CACHE_INVALIDATE_DEBOUNCE_MS = 45_000;
+let signalsLatestCacheLastInvalidatedAt = 0;
+let signalsLatestCacheInvalidateTimer = null;
+let signalsLatestCacheInvalidatePending = false;
+
 /** Invalida caché Redis de GET /signals/latest (todas las variantes limit×strategy usadas en home). */
-async function invalidateSignalsLatestFeedCache() {
+async function runInvalidateSignalsLatestFeedCache() {
   for (const lim of SIGNALS_LATEST_LIMITS) {
     for (const strat of SIGNALS_LATEST_STRATEGIES) {
       const key = `${SIGNALS_LATEST_CACHE_KEY_PREFIX}${lim}:${strat}`;
@@ -131,6 +136,44 @@ async function invalidateSignalsLatestFeedCache() {
       }
     }
   }
+}
+
+/**
+ * Debounced invalidation: at most one flush per 45s; bursts collapse to a single run (last wins).
+ */
+async function invalidateSignalsLatestFeedCache() {
+  const now = Date.now();
+  const elapsed = now - signalsLatestCacheLastInvalidatedAt;
+
+  const flush = async () => {
+    signalsLatestCacheInvalidateTimer = null;
+    signalsLatestCacheInvalidatePending = false;
+    signalsLatestCacheLastInvalidatedAt = Date.now();
+    await runInvalidateSignalsLatestFeedCache();
+  };
+
+  if (elapsed >= SIGNALS_LATEST_CACHE_INVALIDATE_DEBOUNCE_MS) {
+    if (signalsLatestCacheInvalidateTimer) {
+      clearTimeout(signalsLatestCacheInvalidateTimer);
+      signalsLatestCacheInvalidateTimer = null;
+    }
+    return flush();
+  }
+
+  signalsLatestCacheInvalidatePending = true;
+  if (!signalsLatestCacheInvalidateTimer) {
+    const delay = SIGNALS_LATEST_CACHE_INVALIDATE_DEBOUNCE_MS - elapsed;
+    signalsLatestCacheInvalidateTimer = setTimeout(() => {
+      if (signalsLatestCacheInvalidatePending) {
+        flush().catch((e) =>
+          console.warn("[homeTerminalApi] debounced invalidate signals/latest", e.message)
+        );
+      } else {
+        signalsLatestCacheInvalidateTimer = null;
+      }
+    }, delay);
+  }
+  return undefined;
 }
 
 /** log-scale confidence in sample size (0–1). Peer formula: min(1, log10(n+1)/2). */
