@@ -1,5 +1,6 @@
 const redis = require("../lib/cache");
 const { getSupabase } = require("../lib/supabase");
+const { isSystemMint } = require("../lib/systemMints");
 const { processRedCoordinationPhases, checkRedPrepareAbort } = require("./walletCoordinationService");
 
 const WINDOW_SEC = 10 * 60;
@@ -58,6 +59,7 @@ async function reserveSignalInsert(mint, walletAddress, timestampMs) {
 }
 
 async function recordSmartWalletSignal(mint, walletAddress, timestampMs, action = "buy") {
+  if (isSystemMint(mint)) return;
   if (!mint || !walletAddress) return;
   const shouldInsert = await reserveSignalInsert(mint, walletAddress, timestampMs);
   if (!shouldInsert) return;

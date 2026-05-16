@@ -1,6 +1,7 @@
 "use strict";
 
 const { getSupabase } = require("../lib/supabase");
+const { isSystemMint } = require("../lib/systemMints");
 const { ecoModeActive } = require("../services/budgetGuard");
 const { verifyLeadershipFence } = require("../services/leaderService");
 const { shouldDeferBackfillForRecentWebhook } = require("../lib/eventPriority");
@@ -133,6 +134,7 @@ async function runSmartWalletSignalBackfillTick() {
     for (const [pairKey, row] of byPair.entries()) {
       const wallet = String(row.wallet_address || "");
       const token = String(row.token_address || "");
+      if (isSystemMint(token)) continue;
       const smart = smartByWallet.get(wallet);
       if (!smart) continue;
       smartCandidates += 1;

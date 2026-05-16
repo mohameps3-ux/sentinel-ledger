@@ -14,6 +14,7 @@ const {
   poolAgeLabelFromMs
 } = require("./signalFeedQuality");
 const { appendFreshnessEvent, getDataFreshnessSnapshotFromStore } = require("./freshnessHistoryStore");
+const { isSystemMint } = require("../lib/systemMints");
 
 const CACHE_TTL_SEC = Number(process.env.HOME_TERMINAL_CACHE_TTL_SEC || 180);
 const HOT_CACHE_TTL_SEC = Math.max(30, Number(process.env.HOME_TERMINAL_HOT_CACHE_TTL_SEC || 90));
@@ -898,6 +899,7 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
   let excludedDegradedMarket = 0;
   let excludedLowVolume24h = 0;
   for (const row of raw || []) {
+    if (isSystemMint(row.token_address)) continue;
     const pctProbe =
       row.result_pct != null ? Number(row.result_pct) : pctFromPrices(row.entry_price_usd, row.price_1h_usd);
     if (isAnomalousOutcomePct(pctProbe, anomalyAbsPct)) {
