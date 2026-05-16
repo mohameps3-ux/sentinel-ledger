@@ -7,7 +7,6 @@ import { useDecisionFeedQuotes } from "../hooks/useDecisionFeedQuotes";
 import { useRankDeltas } from "../hooks/useRankDeltas";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { AnimatedNumber } from "../components/ui/AnimatedNumber";
-import { useLiveFeedSocket } from "../hooks/useLiveFeedSocket";
 import { PageHead } from "../components/seo/PageHead";
 import { useWalletLabels } from "../hooks/useWalletLabels";
 import { TokenDesk } from "../components/cockpit/TokenDesk";
@@ -347,7 +346,6 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const [liveExpanded, setLiveExpanded] = useState(false);
   const [heatExpanded, setHeatExpanded] = useState(false);
   const skipTacticalTabPersistRef = useRef(true);
-  useLiveFeedSocket({ onSignal: useCallback(() => {}, []) });
   const router = useRouter();
   const selectedMint = useMemo(() => deskMintFromQuery(router.query), [router.query]);
   const deskRadarHint = useMemo(() => parseDeskRadarHintFromQuery(router.query), [router.query]);

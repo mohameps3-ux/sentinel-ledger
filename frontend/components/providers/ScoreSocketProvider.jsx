@@ -1,11 +1,30 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { useWallet } from '@solana/wallet-adapter-react'
 import { useMarketStore } from '@/lib/store/marketStore'
 import { getPublicWsUrl } from '@/lib/publicRuntime'
 import { bindScoreRoomSocket, replayScoreRoomJoins } from '@/lib/scoreRoomClient'
 
+function emitProRoomMembership(socket, walletAddress) {
+  if (!socket) return
+  try {
+    if (walletAddress) {
+      socket.emit('join-pro', walletAddress)
+    } else {
+      socket.emit('leave-pro')
+    }
+  } catch (_) {
+    /* ignore */
+  }
+}
+
 export function ScoreSocketProvider({ children }) {
-  // Selectores finos: solo suscribe a las funciones, nunca al store completo.
-  // Esto evita que el provider se re-renderice cuando cambian scores o narratives.
+  const { publicKey, connected } = useWallet()
+  const walletAddress = connected && publicKey ? publicKey.toBase58() : null
+  const walletRef = useRef(walletAddress)
+  walletRef.current = walletAddress
+
+  const socketRef = useRef(null)
+
   const updateLiveScore = useMarketStore((s) => s.updateLiveScore)
   const updateNarrative = useMarketStore((s) => s.updateNarrative)
   const setScoreSocketConnected = useMarketStore((s) => s.setScoreSocketConnected)
@@ -26,12 +45,14 @@ export function ScoreSocketProvider({ children }) {
         reconnectionDelayMax: 10000,
       })
       active = socket
+      socketRef.current = socket
 
       bindScoreRoomSocket(socket)
 
       const onConnect = () => {
         setScoreSocketConnected(true)
         replayScoreRoomJoins()
+        emitProRoomMembership(socket, walletRef.current)
       }
       const onDisconnect = () => setScoreSocketConnected(false)
 
@@ -54,6 +75,7 @@ export function ScoreSocketProvider({ children }) {
       if (socket.connected) {
         setScoreSocketConnected(true)
         replayScoreRoomJoins()
+        emitProRoomMembership(socket, walletRef.current)
       }
     })
 
@@ -61,6 +83,7 @@ export function ScoreSocketProvider({ children }) {
       cancelled = true
       bindScoreRoomSocket(null)
       setScoreSocketConnected(false)
+      socketRef.current = null
       if (active) {
         active.off('connect')
         active.off('disconnect')
@@ -71,6 +94,12 @@ export function ScoreSocketProvider({ children }) {
       }
     }
   }, [updateLiveScore, updateNarrative, setScoreSocketConnected])
+
+  useEffect(() => {
+    const socket = socketRef.current
+    if (!socket?.connected) return
+    emitProRoomMembership(socket, walletAddress)
+  }, [walletAddress])
 
   return children
 }
