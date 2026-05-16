@@ -51,6 +51,13 @@ async function main() {
       }
     }
 
+    const { rows: usdcSubReg } = await client.query("SELECT to_regclass($1) AS r", ["public.usdc_subscriptions"]);
+    if (usdcSubReg[0]?.r) {
+      console.log("OK: table public.usdc_subscriptions");
+    } else {
+      console.log("SKIP: public.usdc_subscriptions (optional — apply supabase/migrations/032_usdc_subscriptions.sql)");
+    }
+
     const userCols = ["telegram_chat_id", "pro_alerts_enabled", "pro_alert_prefs"];
     for (const c of userCols) {
       const { rows } = await client.query(
