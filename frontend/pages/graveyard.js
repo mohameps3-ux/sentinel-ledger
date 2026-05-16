@@ -1249,7 +1249,7 @@ export default function GraveyardPage() {
             </div>
 
             <div className="grave-thdr">
-              {["", "Activo", "Origen", "Conf.", "Entrada", "P&L 60m", "Estado", "Hora"].map((h, idx) => (
+              {["", "Activo", "Origen", "Conf.", "Entrada", "P&L 10m", "Estado", "Hora"].map((h, idx) => (
                 <div key={idx} className="grave-th-cell">
                   {h}
                 </div>
