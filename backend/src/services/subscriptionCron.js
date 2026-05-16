@@ -5,6 +5,10 @@ function startSubscriptionExpiryCron() {
   cron.schedule(
     "0 0 * * *",
     async () => {
+      if (String(process.env.CRYPTO_ONLY_MODE || "").trim().toLowerCase() === "true") {
+        console.log("[subscription-cron] skipped: CRYPTO_ONLY_MODE active");
+        return;
+      }
       try {
         await expireStaleSubscriptions();
         console.log("subscription expiry cron: ok");
