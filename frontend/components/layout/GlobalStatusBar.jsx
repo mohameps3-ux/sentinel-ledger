@@ -1,4 +1,4 @@
-import { useTerminalInfrastructureStatus, terminalStatusTimeAgo } from "../../hooks/useTerminalInfrastructureStatus";
+import { useTerminalInfrastructureStatus } from "../../hooks/useTerminalInfrastructureStatus";
 
 function ledClass(ok) {
   if (ok === true) return "sl-status-led sl-status-led--ok";
@@ -7,7 +7,8 @@ function ledClass(ok) {
 }
 
 export function GlobalStatusBar() {
-  const { state, service, signalsToday, walletCount, live, solPrice } = useTerminalInfrastructureStatus();
+  const { state, service, signalsToday, walletCount, live, solPrice, lastEventAgo } =
+    useTerminalInfrastructureStatus();
 
   return (
     <div className="sl-status-bar" role="status" aria-live="polite">
@@ -15,7 +16,7 @@ export function GlobalStatusBar() {
         <div className="sl-status-indicator min-w-0">
           <span className={live ? "sl-pulse-dot" : "sl-status-led sl-status-led--warn"} aria-hidden />
           <span className="text-[var(--sl-win)]">{live ? "LIVE" : state.loading ? "SYNC" : "DEGRADED"}</span>
-          <span className="truncate text-[var(--sl-text-muted)]">last event {terminalStatusTimeAgo(state.ingestion?.lastEventAt)}</span>
+          <span className="truncate text-[var(--sl-text-muted)]">last event {lastEventAgo}</span>
         </div>
         <div className="sl-status-bar__center truncate text-center">
           Monitoring {Number.isFinite(walletCount) ? walletCount : 0} wallets · {signalsToday} signals today · Oracle active

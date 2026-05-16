@@ -3,14 +3,44 @@ import { getPublicApiUrl } from "../lib/publicRuntime";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
-export function terminalStatusTimeAgo(iso) {
-  const t = iso ? Date.parse(iso) : NaN;
+/** Format recency from /health/ingestion (`lastEventAgeMs` and/or `lastEventAt` epoch ms). */
+export function terminalStatusTimeAgo(lastEventAt, lastEventAgeMs) {
+  const ageMs = Number(lastEventAgeMs);
+  if (Number.isFinite(ageMs) && ageMs >= 0) {
+    const sec = Math.max(0, Math.round(ageMs / 1000));
+    if (sec < 60) return `${sec}s ago`;
+    const min = Math.round(sec / 60);
+    if (min < 60) return `${min}m ago`;
+    return `${Math.round(min / 60)}h ago`;
+  }
+
+  let t = NaN;
+  if (lastEventAt != null && lastEventAt !== "") {
+    if (typeof lastEventAt === "number" && Number.isFinite(lastEventAt)) {
+      t = lastEventAt;
+    } else {
+      const parsed = Date.parse(String(lastEventAt));
+      if (Number.isFinite(parsed)) t = parsed;
+    }
+  }
   if (!Number.isFinite(t)) return "no events";
   const sec = Math.max(0, Math.round((Date.now() - t) / 1000));
   if (sec < 60) return `${sec}s ago`;
   const min = Math.round(sec / 60);
   if (min < 60) return `${min}m ago`;
   return `${Math.round(min / 60)}h ago`;
+}
+
+/** True when L2 ingestion is healthy per backend (`status: OK`, `ok: true`). */
+export function isIngestionLive(ingestion) {
+  if (!ingestion || typeof ingestion !== "object") return false;
+  if (ingestion.ok === false) return false;
+  const status = String(ingestion.status || "").toUpperCase();
+  if (status === "DEGRADED" || status === "WAITING") return false;
+  if (status === "OK" || status === "LIVE") return true;
+  if (ingestion.ok === true) return true;
+  const ageMs = Number(ingestion.lastEventAgeMs);
+  return Number.isFinite(ageMs) && ageMs <= 60_000;
 }
 
 /**
@@ -81,8 +111,9 @@ export function useTerminalInfrastructureStatus() {
       state.health?.smartWallets ??
       0
   );
-  const live = state.ingestion?.status === "LIVE" || state.sync?.status === "LIVE";
+  const live = isIngestionLive(state.ingestion);
   const solPrice = Number(state.sol?.price);
+  const ingestion = state.ingestion;
 
   return {
     state,
@@ -91,6 +122,6 @@ export function useTerminalInfrastructureStatus() {
     walletCount,
     live,
     solPrice,
-    lastEventAgo: terminalStatusTimeAgo(state.ingestion?.lastEventAt)
+    lastEventAgo: terminalStatusTimeAgo(ingestion?.lastEventAt, ingestion?.lastEventAgeMs)
   };
 }
