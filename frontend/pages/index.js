@@ -37,31 +37,8 @@ import { useWarMode } from "../contexts/WarModeContext";
 import { useLocale } from "../contexts/LocaleContext";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useLastGoodArray } from "../hooks/useLastGoodArray";
+import { useTerminalInfrastructureStatus } from "../hooks/useTerminalInfrastructureStatus";
 import { motion, AnimatePresence } from "framer-motion";
-
-/** Start of current UTC calendar day (ms). */
-function utcDayStartMs() {
-  const d = new Date();
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-}
-
-/**
- * DB-backed live feed cards (excl. heat fill) whose emission timestamp is on or after UTC midnight today.
- * Uses `createdAt` / `signalAt` from the signals/latest row (`_api`).
- */
-function countDbSignalsEmittedUtcToday(signals) {
-  const t0 = utcDayStartMs();
-  let n = 0;
-  for (const s of signals || []) {
-    if (s._liveSource === "hot_fill") continue;
-    const raw = s._api?.createdAt ?? s._api?.signalAt;
-    if (!raw) continue;
-    const ms = Date.parse(String(raw));
-    if (!Number.isFinite(ms) || ms < t0) continue;
-    n += 1;
-  }
-  return n;
-}
 
 function HomeMetricStrip({ t, signalsToday, activeWallets, avgConfidence, bestSignal }) {
   const dash = t("home.metricStrip.dash");
@@ -327,6 +304,7 @@ function mapHotTrendToLiveFill(row, heatContext) {
 
 export default function Home({ initialTrending = [], initialTrendingMeta = {} }) {
   const { t } = useLocale();
+  const { signalsToday: publicSignalsToday } = useTerminalInfrastructureStatus();
   const [alerts, setAlerts] = useState([]);
   const [signalCursor, setSignalCursor] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -796,12 +774,12 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     const bestSignal = scores.length ? Math.max(...scores) : null;
     const activeWallets = rankedWallets.length || topWalletsApi.length || 0;
     return {
-      signalsToday: countDbSignalsEmittedUtcToday(interpretedSignals),
+      signalsToday: publicSignalsToday,
       activeWallets,
       avgConfidence,
       bestSignal
     };
-  }, [interpretedSignals, rankedWallets.length, topWalletsApi.length]);
+  }, [interpretedSignals, rankedWallets.length, topWalletsApi.length, publicSignalsToday]);
 
   const warRoomKpis = useMemo(
     () => ({
