@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { useMarketStore } from "@/lib/store/marketStore";
-import { useSortedTokens } from "@/hooks/useSortedTokens";
 import { narrativeFromData } from "@/lib/narrativeFromData";
 import { TokenCardAvatar } from "./TokenCardAvatar";
 
@@ -384,7 +383,7 @@ const OpportunityRow = React.memo(function OpportunityRow({
   );
 });
 
-export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelectMint }) {
+export function WarRoomLayout({ signals = [], velocityTokens = [], kpis = {}, onSelectMint }) {
   const [activeMint, setActiveMint] = useState(null);
 
   const handleSelectToken = useCallback(
@@ -397,17 +396,9 @@ export function WarRoomLayout({ signals = [], hotTokens = [], kpis = {}, onSelec
     [onSelectMint]
   );
 
-  const allTokens = [
-    ...signals,
-    ...hotTokens.filter(
-      (h) => !signals.find((s) => (s.mint ?? s.address) === (h.mint ?? h.address))
-    )
-  ];
-  const sorted = useSortedTokens(allTokens);
-
   const displayTokens = useMemo(
-    () => sorted.filter((tok) => tok.mint ?? tok.address),
-    [sorted]
+    () => (velocityTokens || []).filter((tok) => tok.mint ?? tok.address ?? tok.tokenAddress),
+    [velocityTokens]
   );
 
   const activeTok = activeMint

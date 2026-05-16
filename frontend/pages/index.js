@@ -40,6 +40,36 @@ import { useLastGoodArray } from "../hooks/useLastGoodArray";
 import { useTerminalInfrastructureStatus } from "../hooks/useTerminalInfrastructureStatus";
 import { motion, AnimatePresence } from "framer-motion";
 
+/** Matches LiveTab war-mode visible cap (first N of grid before score re-sort). */
+const WAR_TAB_VISIBLE_MAX = 6;
+
+function signalCreatedAtMs(sig) {
+  const raw = sig?._api?.createdAt ?? sig?._api?.signalAt ?? null;
+  if (raw == null || raw === "") return null;
+  const ms = Date.parse(String(raw));
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function velocityValueForToken(tok) {
+  const p5m = Number(tok?.priceChange5m ?? tok?._api?.priceChange5m);
+  if (Number.isFinite(p5m)) return p5m;
+  const ch24 = Number(
+    tok?.spotChange24h ??
+      tok?.priceChange24h ??
+      tok?.change ??
+      tok?.token?.change ??
+      tok?._api?.spotChange24h ??
+      tok?._api?.change24h
+  );
+  if (Number.isFinite(ch24)) return ch24;
+  return 0;
+}
+
+function volume24hForHotRow(row) {
+  const v = Number(row?.volume24h ?? row?.token?.volume24h ?? row?._api?.volume24h ?? 0);
+  return Number.isFinite(v) ? v : 0;
+}
+
 function HomeMetricStrip({ t, signalsToday, activeWallets, avgConfidence, bestSignal }) {
   const dash = t("home.metricStrip.dash");
   const metrics = [
@@ -507,16 +537,39 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     }));
   }, [interpretedSignals]);
 
+  const warRoomSignals = useMemo(
+    () => liveSignalPool.filter((t) => t._liveSource !== "hot_fill"),
+    [liveSignalPool]
+  );
+
+  /** OUTLIER tab only — unchanged score sort; LIVE grid uses `liveTabTokens`. */
   const sortedSignalPool = useSortedTokens(liveSignalPool);
+
+  const liveTabTokens = useMemo(() => {
+    const signalsOnly = liveSignalPool.filter((t) => t._liveSource === "signal");
+    return [...signalsOnly].sort((a, b) => {
+      const ams = signalCreatedAtMs(a);
+      const bms = signalCreatedAtMs(b);
+      if (ams == null && bms == null) return 0;
+      if (ams == null) return 1;
+      if (bms == null) return -1;
+      return bms - ams;
+    });
+  }, [liveSignalPool]);
 
   const liveSignalsForGrid = useMemo(
     () =>
-      sortedSignalPool.slice(
+      liveTabTokens.slice(
         0,
         liveExpanded ? UI_CONFIG.GRID_EXPANDED_MAX_CARDS : UI_CONFIG.GRID_COMPACT_CARDS
       ),
-    [liveExpanded, sortedSignalPool]
+    [liveExpanded, liveTabTokens]
   );
+
+  const liveMintsExcluded = useMemo(() => {
+    const visible = isWarMode ? liveSignalsForGrid.slice(0, WAR_TAB_VISIBLE_MAX) : liveSignalsForGrid;
+    return new Set(visible.map((t) => t.mint).filter(Boolean));
+  }, [liveSignalsForGrid, isWarMode]);
 
   // Hysteresis: toggling at a single count (e.g. 50â51) used to swap Grid vs Virtuoso and remount *all* cards.
   // Do not replace with one threshold at N only (no 42/50 band) â that thrashes on the edge. Tune inside the band, not to a single cut.
@@ -580,13 +633,45 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     });
   }, [trending]);
 
+  const velocityTabTokens = useMemo(() => {
+    const byMint = new Map();
+    for (const t of warRoomSignals) {
+      if (!t?.mint || liveMintsExcluded.has(t.mint)) continue;
+      byMint.set(t.mint, t);
+    }
+    for (const t of heatTokenPool) {
+      if (!t?.mint || liveMintsExcluded.has(t.mint) || byMint.has(t.mint)) continue;
+      byMint.set(t.mint, t);
+    }
+    return [...byMint.values()].sort((a, b) => velocityValueForToken(b) - velocityValueForToken(a));
+  }, [warRoomSignals, heatTokenPool, liveMintsExcluded]);
+
+  const visibleVelocityTokens = useMemo(
+    () =>
+      velocityTabTokens.slice(0, isWarMode ? WAR_TAB_VISIBLE_MAX : UI_CONFIG.GRID_COMPACT_CARDS),
+    [velocityTabTokens, isWarMode]
+  );
+
+  const velocityMintsExcluded = useMemo(
+    () => new Set(visibleVelocityTokens.map((t) => t.mint).filter(Boolean)),
+    [visibleVelocityTokens]
+  );
+
+  const hotTabTokens = useMemo(
+    () =>
+      heatTokenPool
+        .filter((t) => t?.mint && !liveMintsExcluded.has(t.mint) && !velocityMintsExcluded.has(t.mint))
+        .sort((a, b) => volume24hForHotRow(b) - volume24hForHotRow(a)),
+    [heatTokenPool, liveMintsExcluded, velocityMintsExcluded]
+  );
+
   const heatTokensForGrid = useMemo(
     () =>
-      heatTokenPool.slice(
+      hotTabTokens.slice(
         0,
         heatExpanded ? UI_CONFIG.GRID_EXPANDED_MAX_CARDS : UI_CONFIG.GRID_COMPACT_CARDS
       ),
-    [heatExpanded, heatTokenPool]
+    [heatExpanded, hotTabTokens]
   );
 
   // Tracks rank changes between refetches so cards can render âN / âN / NEW
@@ -793,13 +878,6 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     [interpretedSignals, homeMetrics.activeWallets, homeMetrics.bestSignal, feedIsLive, feedLabel]
   );
 
-  const warRoomSignals = useMemo(
-    () => liveSignalPool.filter((t) => t._liveSource !== "hot_fill"),
-    [liveSignalPool]
-  );
-
-  const warRoomHotTokens = useMemo(() => heatTokenPool, [heatTokenPool]);
-
   return (
     <>
       <PageHead title={t("home.pageTitle")} description={t("home.pageDesc")} />
@@ -826,7 +904,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               panelVelocity={
                 <WarRoomLayout
                   signals={warRoomSignals}
-                  hotTokens={warRoomHotTokens}
+                  velocityTokens={visibleVelocityTokens}
                   kpis={warRoomKpis}
                   onSelectMint={pushDeskMint}
                 />
