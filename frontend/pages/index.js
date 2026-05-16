@@ -5,6 +5,7 @@ import { useTrendingTokens } from "../hooks/useTrendingTokens";
 import { useSignalsFeed } from "../hooks/useSignalsFeed";
 import { useDecisionFeedQuotes } from "../hooks/useDecisionFeedQuotes";
 import { useRankDeltas } from "../hooks/useRankDeltas";
+import { useAccessTier } from "../hooks/useAccessTier";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { AnimatedNumber } from "../components/ui/AnimatedNumber";
 import { PageHead } from "../components/seo/PageHead";
@@ -339,13 +340,15 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const [soundEnabled, setSoundEnabled] = useState(false);
   const strategyMode = useMarketStore((s) => s.strategy);
   const setStrategyMode = useMarketStore((s) => s.setStrategy);
-  const [tacticalTab, setTacticalTab] = useState("live");
+  const [tacticalTab, setTacticalTab] = useState("track");
   const [historyRows, setHistoryRows] = useState([]);
   const [topWalletsApi, setTopWalletsApi] = useState([]);
   const [entryCountdownByMint, setEntryCountdownByMint] = useState({});
   const [liveExpanded, setLiveExpanded] = useState(false);
   const [heatExpanded, setHeatExpanded] = useState(false);
   const skipTacticalTabPersistRef = useRef(true);
+  const tierDefaultTabAppliedRef = useRef(false);
+  const { isPro, isFree, isLoading: tierLoading } = useAccessTier();
   const router = useRouter();
   const selectedMint = useMemo(() => deskMintFromQuery(router.query), [router.query]);
   const deskRadarHint = useMemo(() => parseDeskRadarHintFromQuery(router.query), [router.query]);
@@ -672,15 +675,37 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   // badges when the live ordering moves. Pure client-side; no extra network.
   const signalsRankDeltas = useRankDeltas(interpretedSignals, (s) => s?.mint);
   const trendingRankDeltas = useRankDeltas(heatTokenPool, (t) => t?.mint);
+  /**
+   * One-shot tab after tier resolves. Initial state is "track" so free users never
+   * land on LIVE while subscription loads; PRO may flash TRACK briefly then restore LS.
+   */
   useEffect(() => {
+    if (tierLoading || tierDefaultTabAppliedRef.current) return;
+    tierDefaultTabAppliedRef.current = true;
+
+    if (isFree) {
+      setTacticalTab("track");
+      return;
+    }
+
+    if (!isPro) return;
+
     if (typeof window === "undefined") return;
     try {
       const tab = localStorage.getItem(TACTICAL_TAB_LS_KEY);
-      if (tab === "live" || tab === "hot" || tab === "velocity" || tab === "outlier" || tab === "track") setTacticalTab(tab);
-      if (tab === "history") setTacticalTab("track");
+      if (tab === "live" || tab === "hot" || tab === "velocity" || tab === "outlier" || tab === "track") {
+        setTacticalTab(tab);
+        return;
+      }
+      if (tab === "history") {
+        setTacticalTab("track");
+        return;
+      }
+      setTacticalTab("live");
     } catch (_) {
+      setTacticalTab("live");
     }
-  }, []);
+  }, [tierLoading, isFree, isPro]);
 
   useEffect(() => {
     let cancelled = false;
