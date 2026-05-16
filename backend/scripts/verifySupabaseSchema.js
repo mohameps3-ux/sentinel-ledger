@@ -51,11 +51,25 @@ async function main() {
       }
     }
 
-    const { rows: usdcSubReg } = await client.query("SELECT to_regclass($1) AS r", ["public.usdc_subscriptions"]);
-    if (usdcSubReg[0]?.r) {
-      console.log("OK: table public.usdc_subscriptions");
-    } else {
-      console.log("SKIP: public.usdc_subscriptions (optional — apply supabase/migrations/032_usdc_subscriptions.sql)");
+    const subscriptionCols = [
+      "id",
+      "wallet_address",
+      "tx_signature",
+      "amount_usdc",
+      "plan",
+      "expires_at",
+      "created_at"
+    ];
+    for (const c of subscriptionCols) {
+      const { rows } = await client.query(
+        `SELECT 1 FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = 'subscriptions' AND column_name = $1`,
+        [c]
+      );
+      if (rows.length === 0) {
+        console.error(`FAIL: subscriptions.${c} (expected on-chain USDC subscription schema)`);
+        failed += 1;
+      } else console.log(`OK: subscriptions.${c}`);
     }
 
     const userCols = ["telegram_chat_id", "pro_alerts_enabled", "pro_alert_prefs"];

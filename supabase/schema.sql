@@ -281,26 +281,22 @@ create index if not exists idx_wallet_coord_alerts_detected on wallet_coordinati
 create index if not exists idx_wallet_coord_alerts_mint on wallet_coordination_alerts(mint, detected_at desc);
 
 -- ---------------------------------------------------------------------------
--- Stripe, PRO Telegram alerts, worker tables (idempotent). Same SQL as
--- supabase/payments_and_pro.sql — edit that file and paste here, or run it
--- alone on databases that already have the tables above.
+-- On-chain USDC wallet subscriptions (verified via Helius + POST /api/v1/subscription/verify).
+-- One row per paid tx; tx_signature is unique (anti-replay). Not Stripe — no user_id / stripe_* columns.
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS subscriptions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  plan VARCHAR(20) NOT NULL DEFAULT 'free',
-  status VARCHAR(20) NOT NULL DEFAULT 'active',
-  starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  expires_at TIMESTAMPTZ,
-  stripe_subscription_id VARCHAR(255),
-  stripe_customer_id VARCHAR(255),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  id BIGSERIAL PRIMARY KEY,
+  wallet_address VARCHAR(44) NOT NULL,
+  tx_signature TEXT NOT NULL UNIQUE,
+  amount_usdc NUMERIC(20, 6) NOT NULL,
+  plan VARCHAR(20) NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_id ON subscriptions(stripe_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_wallet_address ON subscriptions (wallet_address);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_expires_at ON subscriptions (expires_at DESC);
 
 CREATE TABLE IF NOT EXISTS stripe_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

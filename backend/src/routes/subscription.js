@@ -12,8 +12,6 @@ const {
 
 const router = express.Router();
 
-const SUB_TABLE = () => String(process.env.CRYPTO_SUBSCRIPTIONS_TABLE || "usdc_subscriptions").trim() || "usdc_subscriptions";
-
 const verifyLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 40,
@@ -79,9 +77,8 @@ router.post("/verify", verifyLimiter, async (req, res) => {
     return res.status(503).json({ ok: false, error: "supabase_unconfigured" });
   }
 
-  const table = SUB_TABLE();
   const { data: dup, error: dupErr } = await supabase
-    .from(table)
+    .from("subscriptions")
     .select("id")
     .eq("tx_signature", signature)
     .maybeSingle();
@@ -100,7 +97,7 @@ router.post("/verify", verifyLimiter, async (req, res) => {
   const amountUsdc = Number(v.amount);
 
   const { data: inserted, error: insErr } = await supabase
-    .from(table)
+    .from("subscriptions")
     .insert({
       wallet_address: walletAddress,
       tx_signature: signature,
@@ -147,10 +144,9 @@ router.get("/status", async (req, res) => {
     return res.status(503).json({ ok: false, error: "supabase_unconfigured", active: false, plan: null, expires_at: null });
   }
 
-  const table = SUB_TABLE();
   const nowIso = new Date().toISOString();
   const { data, error } = await supabase
-    .from(table)
+    .from("subscriptions")
     .select("plan, expires_at")
     .eq("wallet_address", wallet)
     .gt("expires_at", nowIso)
