@@ -1,5 +1,7 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { getPublicApiUrl } from "../lib/publicRuntime";
+import { useSubscriptionStatus } from "./useSubscriptionStatus";
 
 /**
  * Live-polling hook for the Live Smart Money Feed on the home page.
@@ -23,10 +25,15 @@ import { getPublicApiUrl } from "../lib/publicRuntime";
  * upgrade layered on top of the existing REST surface.
  */
 
-async function fetchSignals({ limit, strategy }) {
-  const url = `${getPublicApiUrl()}/api/v1/signals/latest?limit=${encodeURIComponent(
-    limit
-  )}&strategy=${encodeURIComponent(strategy)}`;
+async function fetchSignals({ limit, strategy, walletAddress }) {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    strategy
+  });
+  if (walletAddress) {
+    params.set("wallet", walletAddress);
+  }
+  const url = `${getPublicApiUrl()}/api/v1/signals/latest?${params.toString()}`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`signals_fetch_failed_${res.status}`);
   return res.json();
@@ -37,9 +44,15 @@ export function useSignalsFeed({
   strategy = "balanced",
   refetchMs = 15_000
 } = {}) {
+  const { publicKey, connected } = useWallet();
+  const walletAddress = connected && publicKey ? publicKey.toBase58() : null;
+  const subscription = useSubscriptionStatus();
+  const feedTierKey =
+    walletAddress && subscription.active ? "realtime" : "delayed";
+
   return useQuery({
-    queryKey: ["signals-latest", strategy, limit],
-    queryFn: () => fetchSignals({ limit, strategy }),
+    queryKey: ["signals-latest", strategy, limit, walletAddress, feedTierKey],
+    queryFn: () => fetchSignals({ limit, strategy, walletAddress }),
     staleTime: Math.max(0, Math.floor(refetchMs / 2)),
     refetchInterval: refetchMs,
     placeholderData: keepPreviousData,
