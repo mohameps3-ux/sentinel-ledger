@@ -9,6 +9,7 @@ const {
   envTreasury,
   getHeliusRpcUrl
 } = require("../services/subscriptionVerifier");
+const { getActiveWalletSubscription } = require("../services/subscriptionAccess");
 
 const router = express.Router();
 
@@ -144,27 +145,15 @@ router.get("/status", async (req, res) => {
     return res.status(503).json({ ok: false, error: "supabase_unconfigured", active: false, plan: null, expires_at: null });
   }
 
-  const nowIso = new Date().toISOString();
-  const { data, error } = await supabase
-    .from("subscriptions")
-    .select("plan, expires_at")
-    .eq("wallet_address", wallet)
-    .gt("expires_at", nowIso)
-    .order("expires_at", { ascending: false })
-    .limit(1);
-
-  if (error) {
-    return res.status(500).json({ ok: false, error: error.message, active: false, plan: null, expires_at: null });
-  }
-  const row = Array.isArray(data) && data.length ? data[0] : null;
+  const row = await getActiveWalletSubscription(supabase, wallet);
   if (!row) {
     return res.json({ ok: true, active: false, plan: null, expires_at: null });
   }
   return res.json({
     ok: true,
     active: true,
-    plan: row.plan || null,
-    expires_at: row.expires_at || null
+    plan: row.plan,
+    expires_at: row.expires_at
   });
 });
 
