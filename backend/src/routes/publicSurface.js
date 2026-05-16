@@ -6,7 +6,7 @@ const redis = require("../lib/cache");
 
 const router = express.Router();
 
-const PUBLIC_STATS_CACHE_KEY = "public:sentinel:stats:v2";
+const PUBLIC_STATS_CACHE_KEY = "public:sentinel:stats:v3";
 
 function publicStatsCacheSeconds() {
   const n = Number(process.env.PUBLIC_STATS_CACHE_SECONDS);
@@ -51,6 +51,53 @@ async function countSignalsTodayPrimary(supabase) {
     .gte("created_at", since);
   if (legacyErr) throw legacyErr;
   return { count: legacyCount ?? 0, source: "smart_wallet_signals" };
+}
+
+/**
+ * Wallets with live on-chain touches (Helius webhook upserts wallet_tokens.bought_at).
+ * smart_wallet_signals is stale for activity; last_seen on smart_wallets only updates on gated signals.
+ */
+async function countActiveWalletsPrimary(supabase) {
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const seen = new Set();
+  const pageSize = 5000;
+  const maxPages = 20;
+  for (let page = 0; page < maxPages; page += 1) {
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error } = await supabase
+      .from("wallet_tokens")
+      .select("wallet_address")
+      .gte("bought_at", since24h)
+      .range(from, to);
+    if (error) break;
+    if (!Array.isArray(data) || data.length === 0) break;
+    for (const row of data) {
+      const w = String(row.wallet_address || "").trim();
+      if (w) seen.add(w);
+    }
+    if (data.length < pageSize) break;
+  }
+  if (seen.size > 0) {
+    return { count: seen.size, source: "wallet_tokens:24h" };
+  }
+
+  const { count: lastSeenCount, error: lsErr } = await supabase
+    .from("smart_wallets")
+    .select("wallet_address", { count: "exact", head: true })
+    .gte("last_seen", since24h);
+  if (!lsErr && lastSeenCount != null && lastSeenCount > 0) {
+    return { count: lastSeenCount, source: "smart_wallets:last_seen_24h" };
+  }
+
+  const { count: totalCount, error: totalErr } = await supabase
+    .from("smart_wallets")
+    .select("wallet_address", { count: "exact", head: true });
+  if (!totalErr && totalCount != null && totalCount > 0) {
+    return { count: totalCount, source: "smart_wallets:total" };
+  }
+
+  return { count: 0, source: "none" };
 }
 
 function mapPerfRowToSmartMoneyActivity(row) {
@@ -159,6 +206,7 @@ router.get("/stats", async (_req, res) => {
   }
   try {
     const { count: signalsToday, source: signalsTodaySource } = await countSignalsTodayPrimary(supabase);
+    const { count: activeWallets, source: activeWalletsSource } = await countActiveWalletsPrimary(supabase);
 
     const { data: topWallet } = await supabase
       .from("smart_wallets")
@@ -171,10 +219,13 @@ router.get("/stats", async (_req, res) => {
     const body = {
       ok: true,
       signalsToday: signalsToday ?? 0,
+      activeWallets: activeWallets ?? 0,
+      smartWallets: activeWallets ?? 0,
       topWalletPct30d: Number.isFinite(win) ? win : null,
       avgEntryWindowMins: 4,
       source: "supabase",
-      signalsTodaySource
+      signalsTodaySource,
+      activeWalletsSource
     };
     try {
       await redis.set(PUBLIC_STATS_CACHE_KEY, body, { ex: ttl });
