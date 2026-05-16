@@ -6,6 +6,7 @@ const {
   getOutcomesProofCached,
   capSignalsLatestLimit
 } = require("../services/homeTerminalApi");
+const { checkWalletProStatus } = require("../services/subscriptionAccess");
 const { pctFromPrices } = require("../services/smartWalletSignalPrices");
 const { buildDeskProofOfEdge } = require("../services/deskProofOfEdge");
 const { isMissingColumnError } = require("../lib/columnMissingError");
@@ -1070,7 +1071,7 @@ router.get("/track-record", async (req, res) => {
 /**
  * GET /api/v1/signals/latest
  * Decision feed cards — one row per token (latest signal). Redis TTL ~3m.
- * Query: limit (default 10), strategy=balanced|conservative|aggressive
+ * Query: limit (default 10), strategy=balanced|conservative|aggressive, wallet (optional, PRO tier)
  */
 router.get("/latest", async (req, res) => {
   const lim = capSignalsLatestLimit(Number(req.query.limit) || 10);
@@ -1078,9 +1079,20 @@ router.get("/latest", async (req, res) => {
     ? String(req.query.strategy)
     : "balanced";
   const tokenFilter = String(req.query.token || "").trim().toUpperCase();
+  const wallet = String(req.query.wallet || "").trim();
   const supabase = safeSupabase();
+  let feedTier = "delayed";
+  if (supabase && wallet) {
+    const isPro = await checkWalletProStatus(supabase, wallet);
+    feedTier = isPro ? "realtime" : "delayed";
+  }
   try {
-    const body = await getLatestSignalsFeedCached(supabase, tokenFilter ? capSignalsLatestLimit(50) : lim, strategy);
+    const body = await getLatestSignalsFeedCached(
+      supabase,
+      tokenFilter ? capSignalsLatestLimit(50) : lim,
+      strategy,
+      feedTier
+    );
     let payload = body;
     if (tokenFilter) {
       const filtered = (Array.isArray(body?.data) ? body.data : []).filter((row) => {

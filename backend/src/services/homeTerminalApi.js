@@ -120,22 +120,35 @@ function decisionFromScore(score, strategy = "balanced") {
 
 const SIGNALS_LATEST_CACHE_KEY_PREFIX = "terminal:signals:latest:v8:";
 const SIGNALS_LATEST_STRATEGIES = ["balanced", "conservative", "aggressive"];
+const SIGNALS_LATEST_FEED_TIERS = ["realtime", "delayed"];
 const SIGNALS_LATEST_LIMITS = [8, 10, 12, 16, 24, 32, 50, 56, 64];
+
+function signalFeedFreeDelayMinutes() {
+  const n = Number(process.env.SIGNAL_FEED_FREE_DELAY_MINUTES ?? 15);
+  if (!Number.isFinite(n) || n < 0) return 15;
+  return Math.min(24 * 60, Math.floor(n));
+}
+
+function normalizeSignalsFeedTier(feedTier) {
+  return feedTier === "realtime" ? "realtime" : "delayed";
+}
 
 const SIGNALS_LATEST_CACHE_INVALIDATE_DEBOUNCE_MS = 45_000;
 let signalsLatestCacheLastInvalidatedAt = 0;
 let signalsLatestCacheInvalidateTimer = null;
 let signalsLatestCacheInvalidatePending = false;
 
-/** Invalida caché Redis de GET /signals/latest (todas las variantes limit×strategy usadas en home). */
+/** Invalida caché Redis de GET /signals/latest (limit×strategy×feedTier usadas en home). */
 async function runInvalidateSignalsLatestFeedCache() {
   for (const lim of SIGNALS_LATEST_LIMITS) {
     for (const strat of SIGNALS_LATEST_STRATEGIES) {
-      const key = `${SIGNALS_LATEST_CACHE_KEY_PREFIX}${lim}:${strat}`;
-      try {
-        await redis.del(key);
-      } catch (e) {
-        console.warn("[homeTerminalApi] invalidate signals/latest", key, e.message);
+      for (const tier of SIGNALS_LATEST_FEED_TIERS) {
+        const key = `${SIGNALS_LATEST_CACHE_KEY_PREFIX}${lim}:${strat}:${tier}`;
+        try {
+          await redis.del(key);
+        } catch (e) {
+          console.warn("[homeTerminalApi] invalidate signals/latest", key, e.message);
+        }
       }
     }
   }
@@ -878,8 +891,15 @@ async function fetchLatestSignalRowsSupabase(supabase, since, limitRows) {
   };
 }
 
-async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanced" } = {}) {
+async function buildLatestSignalsFeed(
+  supabase,
+  { limit = 10, strategy = "balanced", feedTier: feedTierRaw = "delayed" } = {}
+) {
   const lim = capSignalsLatestLimit(limit);
+  const feedTier = normalizeSignalsFeedTier(feedTierRaw);
+  const delayMinutes = signalFeedFreeDelayMinutes();
+  const delayCutoffMs =
+    feedTier === "delayed" ? Date.now() - delayMinutes * 60 * 1000 : null;
   const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
   const { rows: raw, sourceTable } = await fetchLatestSignalRowsSupabase(supabase, since, 400);
   const anomalyAbsPct = Number(process.env.SIGNAL_FEED_EXCLUDE_ABS_OUTCOME_PCT || 0);
@@ -903,6 +923,12 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
   let excludedLowVolume24h = 0;
   for (const row of raw || []) {
     if (isSystemMint(row.token_address)) continue;
+    if (delayCutoffMs != null) {
+      const createdMs = Date.parse(row.created_at);
+      if (Number.isFinite(createdMs) && createdMs > delayCutoffMs) {
+        continue;
+      }
+    }
     const pctProbe =
       row.result_pct != null ? Number(row.result_pct) : pctFromPrices(row.entry_price_usd, row.price_1h_usd);
     if (isAnomalousOutcomePct(pctProbe, anomalyAbsPct)) {
@@ -1057,6 +1083,8 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       source: "supabase",
       count: out.length,
       strategy,
+      feedTier,
+      delayMinutes,
       providerUsed: sourceTable,
       signalQuality: {
         excludedAnomalies,
@@ -1435,17 +1463,18 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
   };
 }
 
-async function getLatestSignalsFeedCached(supabase, limit, strategy) {
+async function getLatestSignalsFeedCached(supabase, limit, strategy, feedTier = "delayed") {
   if (!supabase) {
     throw new Error("supabase_unconfigured");
   }
-  const key = `${SIGNALS_LATEST_CACHE_KEY_PREFIX}${limit}:${strategy}`;
+  const tier = normalizeSignalsFeedTier(feedTier);
+  const key = `${SIGNALS_LATEST_CACHE_KEY_PREFIX}${limit}:${strategy}:${tier}`;
   let payload;
   let cache;
   try {
     const out = await withCache(
       key,
-      () => buildLatestSignalsFeed(supabase, { limit, strategy }),
+      () => buildLatestSignalsFeed(supabase, { limit, strategy, feedTier: tier }),
       LATEST_SIGNALS_CACHE_TTL_SEC
     );
     payload = out.payload;
