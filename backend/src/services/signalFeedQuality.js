@@ -134,6 +134,45 @@ function poolAgeLabelFromMs(pairCreatedAtRaw) {
   return `Pool ~${dStr}d on DEX`;
 }
 
+/** Thresholds for early-memecoin discovery (env-tunable). */
+function earlyMemecoinThresholds(options = {}) {
+  const maxDays = Number(options.maxPairAgeDays ?? process.env.SIGNAL_FEED_MAX_PAIR_AGE_DAYS ?? 7);
+  const maxMcap = Number(options.maxMarketCapUsd ?? process.env.SIGNAL_FEED_MAX_MARKET_CAP_USD ?? 5_000_000);
+  return {
+    maxPairAgeDays: Number.isFinite(maxDays) && maxDays > 0 ? maxDays : 0,
+    maxMarketCapUsd: Number.isFinite(maxMcap) && maxMcap > 0 ? maxMcap : 0
+  };
+}
+
+/**
+ * Early memecoin eligibility: permissive when pairCreatedAt or marketCap is missing/zero.
+ * Exclude only when a known value exceeds max pair age (days) or max FDV-style market cap (USD).
+ */
+function isEarlyMemecoin(market, options = {}) {
+  const { maxPairAgeDays, maxMarketCapUsd } = earlyMemecoinThresholds(options);
+  const mcap = Number(market?.marketCap);
+  if (Number.isFinite(mcap) && mcap > 0 && maxMarketCapUsd > 0 && mcap > maxMarketCapUsd) {
+    return false;
+  }
+  const ms = normalizePairCreatedMs(market?.pairCreatedAt);
+  if (ms != null && maxPairAgeDays > 0) {
+    const ageDays = (Date.now() - ms) / 86400000;
+    if (Number.isFinite(ageDays) && ageDays > maxPairAgeDays) return false;
+  }
+  return true;
+}
+
+/** @returns {{ exclude: boolean, reason?: string }} */
+function gateEarlyMemecoin(market, options = {}) {
+  if (isEarlyMemecoin(market, options)) return { exclude: false };
+  const mcap = Number(market?.marketCap);
+  const { maxMarketCapUsd } = earlyMemecoinThresholds(options);
+  if (Number.isFinite(mcap) && mcap > 0 && maxMarketCapUsd > 0 && mcap > maxMarketCapUsd) {
+    return { exclude: true, reason: "market_cap_too_high" };
+  }
+  return { exclude: true, reason: "pair_too_old" };
+}
+
 module.exports = {
   asSignalTags,
   combinedPerformanceWeight,
@@ -142,5 +181,8 @@ module.exports = {
   isAnomalousOutcomePct,
   clampQualityStack,
   gateDexPairAge,
-  poolAgeLabelFromMs
+  poolAgeLabelFromMs,
+  earlyMemecoinThresholds,
+  isEarlyMemecoin,
+  gateEarlyMemecoin
 };

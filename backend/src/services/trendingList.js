@@ -1,4 +1,5 @@
 const { getMarketData, fetchDexHotProfilesLatest, fetchBirdeyeHotCandidates } = require("./marketData");
+const { isEarlyMemecoin } = require("./signalFeedQuality");
 
 const STRICT_MIN_LIQUIDITY = Math.max(0, Number(process.env.TRENDING_STRICT_MIN_LIQUIDITY_USD || 8_000));
 const STRICT_MIN_VOLUME_24H = Math.max(0, Number(process.env.TRENDING_STRICT_MIN_VOLUME_24H_USD || 8_000));
@@ -121,7 +122,10 @@ async function fetchTrendingList(limit = 6) {
       if (!market || !market.symbol) continue;
       const liq = Number(market?.liquidity || 0);
       const vol = Number(market?.volume24h || 0);
-      const normalized = normalizeTrendingEntry(mint, market);
+      const normalized = {
+        ...normalizeTrendingEntry(mint, market),
+        isEarly: isEarlyMemecoin(market)
+      };
       if (liq >= STRICT_MIN_LIQUIDITY && vol >= STRICT_MIN_VOLUME_24H) strict.push(normalized);
       else if (liq >= RELAXED_MIN_LIQUIDITY && vol >= RELAXED_MIN_VOLUME_24H) relaxed.push(normalized);
     }

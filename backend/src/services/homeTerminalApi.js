@@ -11,7 +11,9 @@ const {
   isAnomalousOutcomePct,
   clampQualityStack,
   gateDexPairAge,
-  poolAgeLabelFromMs
+  poolAgeLabelFromMs,
+  isEarlyMemecoin,
+  earlyMemecoinThresholds
 } = require("./signalFeedQuality");
 const { appendFreshnessEvent, getDataFreshnessSnapshotFromStore } = require("./freshnessHistoryStore");
 const { isSystemMint } = require("../lib/systemMints");
@@ -884,7 +886,7 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
   /** Defaults reduce ultra-thin / instant-rug prints; set env to 0 to disable a gate. */
   const minLiquidityUsd = signalFeedEnvUsd("SIGNAL_FEED_MIN_LIQUIDITY_USD", 5_000);
   const minPairAgeMin = signalFeedEnvMinutes("SIGNAL_FEED_MIN_PAIR_AGE_MINUTES", 5);
-  const maxPairAgeDays = Number(process.env.SIGNAL_FEED_MAX_PAIR_AGE_DAYS || 0);
+  const earlyThresholds = earlyMemecoinThresholds();
   const minVolume24hUsd = signalFeedEnvUsd("SIGNAL_FEED_MIN_VOLUME_24H_USD", 3_000);
   const excludeDegradedMarket =
     String(process.env.SIGNAL_FEED_EXCLUDE_DEGRADED_MARKET ?? "true").toLowerCase() !== "false";
@@ -897,6 +899,7 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
   let excludedPairTooYoung = 0;
   let excludedPairTooOld = 0;
   let excludedDegradedMarket = 0;
+  let excludedNotEarlyMemecoin = 0;
   let excludedLowVolume24h = 0;
   for (const row of raw || []) {
     if (isSystemMint(row.token_address)) continue;
@@ -964,10 +967,14 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
       excludedLowVolume24h += 1;
       continue;
     }
-    const pairGate = gateDexPairAge(md?.pairCreatedAt, minPairAgeMin, maxPairAgeDays);
+    const pairGate = gateDexPairAge(md?.pairCreatedAt, minPairAgeMin, 0);
     if (pairGate.exclude) {
       if (pairGate.reason === "pair_too_young") excludedPairTooYoung += 1;
       else if (pairGate.reason === "pair_too_old") excludedPairTooOld += 1;
+      continue;
+    }
+    if (!isEarlyMemecoin(md, earlyThresholds)) {
+      excludedNotEarlyMemecoin += 1;
       continue;
     }
     const symbol = md.symbol || mint.slice(0, 4).toUpperCase();
@@ -1056,13 +1063,15 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
         excludedLowLiquidity,
         excludedLowVolume24h,
         excludedDegradedMarket,
+        excludedNotEarlyMemecoin,
         excludedPairTooYoung,
         excludedPairTooOld,
         anomalyAbsThreshold: anomalyAbsPct > 0 ? anomalyAbsPct : null,
         minLiquidityUsd: minLiquidityUsd > 0 ? minLiquidityUsd : null,
         minVolume24hUsd: minVolume24hUsd > 0 ? minVolume24hUsd : null,
         minPairAgeMinutes: minPairAgeMin > 0 ? minPairAgeMin : null,
-        maxPairAgeDays: maxPairAgeDays > 0 ? maxPairAgeDays : null,
+        maxPairAgeDays: earlyThresholds.maxPairAgeDays > 0 ? earlyThresholds.maxPairAgeDays : null,
+        maxMarketCapUsd: earlyThresholds.maxMarketCapUsd > 0 ? earlyThresholds.maxMarketCapUsd : null,
         excludeDegradedMarket
       }
     }

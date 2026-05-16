@@ -641,6 +641,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     }
     for (const t of heatTokenPool) {
       if (!t?.mint || liveMintsExcluded.has(t.mint) || byMint.has(t.mint)) continue;
+      if (t.isEarly === false) continue;
       byMint.set(t.mint, t);
     }
     return [...byMint.values()].sort((a, b) => velocityValueForToken(b) - velocityValueForToken(a));
