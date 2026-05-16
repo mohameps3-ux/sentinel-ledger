@@ -1,10 +1,10 @@
 const { getMarketData, fetchDexHotProfilesLatest, fetchBirdeyeHotCandidates } = require("./marketData");
 
-const STRICT_MIN_LIQUIDITY = Math.max(0, Number(process.env.TRENDING_STRICT_MIN_LIQUIDITY_USD || 15_000));
-const STRICT_MIN_VOLUME_24H = Math.max(0, Number(process.env.TRENDING_STRICT_MIN_VOLUME_24H_USD || 25_000));
-/** Raised from 2k/5k — thin pools disproportionately rug; override via env if feed runs dry. */
-const RELAXED_MIN_LIQUIDITY = Math.max(0, Number(process.env.TRENDING_RELAXED_MIN_LIQUIDITY_USD || 8_000));
-const RELAXED_MIN_VOLUME_24H = Math.max(0, Number(process.env.TRENDING_RELAXED_MIN_VOLUME_24H_USD || 12_000));
+const STRICT_MIN_LIQUIDITY = Math.max(0, Number(process.env.TRENDING_STRICT_MIN_LIQUIDITY_USD || 8_000));
+const STRICT_MIN_VOLUME_24H = Math.max(0, Number(process.env.TRENDING_STRICT_MIN_VOLUME_24H_USD || 8_000));
+/** Relaxed tier fills toward cap when strict pool is thin; override via env if feed runs dry. */
+const RELAXED_MIN_LIQUIDITY = Math.max(0, Number(process.env.TRENDING_RELAXED_MIN_LIQUIDITY_USD || 3_000));
+const RELAXED_MIN_VOLUME_24H = Math.max(0, Number(process.env.TRENDING_RELAXED_MIN_VOLUME_24H_USD || 2_000));
 const TRENDING_STRICT_POOL_ONLY =
   String(process.env.TRENDING_STRICT_POOL_ONLY || "false").toLowerCase() === "true";
 

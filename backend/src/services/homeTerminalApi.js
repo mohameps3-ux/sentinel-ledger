@@ -838,10 +838,10 @@ async function buildLatestSignalsFeed(supabase, { limit = 10, strategy = "balanc
   const { rows: raw, sourceTable } = await fetchLatestSignalRowsSupabase(supabase, since, 400);
   const anomalyAbsPct = Number(process.env.SIGNAL_FEED_EXCLUDE_ABS_OUTCOME_PCT || 0);
   /** Defaults reduce ultra-thin / instant-rug prints; set env to 0 to disable a gate. */
-  const minLiquidityUsd = signalFeedEnvUsd("SIGNAL_FEED_MIN_LIQUIDITY_USD", 20_000);
+  const minLiquidityUsd = signalFeedEnvUsd("SIGNAL_FEED_MIN_LIQUIDITY_USD", 5_000);
   const minPairAgeMin = signalFeedEnvMinutes("SIGNAL_FEED_MIN_PAIR_AGE_MINUTES", 5);
   const maxPairAgeDays = Number(process.env.SIGNAL_FEED_MAX_PAIR_AGE_DAYS || 0);
-  const minVolume24hUsd = signalFeedEnvUsd("SIGNAL_FEED_MIN_VOLUME_24H_USD", 12_000);
+  const minVolume24hUsd = signalFeedEnvUsd("SIGNAL_FEED_MIN_VOLUME_24H_USD", 3_000);
   const excludeDegradedMarket =
     String(process.env.SIGNAL_FEED_EXCLUDE_DEGRADED_MARKET ?? "true").toLowerCase() !== "false";
   const weightMap = getActiveSignalWeightMap();
