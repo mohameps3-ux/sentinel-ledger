@@ -5,6 +5,7 @@ const { getSupabase } = require("../lib/supabase");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 const tokenStateMachine = require("../services/tokenStateMachine");
 const { getHistoricalEdgeForSignals } = require("../services/signalCalibrator");
+const { emitNarrativeTiered } = require("../services/narrativeSocket");
 
 const HISTORICAL_MIN_SAMPLES = Math.max(
   10,
@@ -427,9 +428,10 @@ function handleObservedEvent(event) {
     state: tokenState ? { key: tokenState.state, since: tokenState.since, prev: tokenState.prev } : null,
     evidence,
     timestamp: nowIso(),
-    expiresAt: new Date(Date.now() + NARRATIVE_TTL_MS).toISOString()
+    expiresAt: new Date(Date.now() + NARRATIVE_TTL_MS).toISOString(),
+    signalAt: event.timestamp || event.created_at || event.detectedAt || null
   };
-  state.io.emit("sentinel:narrative", payload);
+  emitNarrativeTiered(state.io, event, payload);
   return true;
 }
 

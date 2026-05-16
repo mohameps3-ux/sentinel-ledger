@@ -109,6 +109,8 @@ const { startTelegramBot } = require("./bots/telegramBot");
 const { startSubscriptionExpiryCron } = require("./services/subscriptionCron");
 const { corsMiddlewareOptions, socketIoCors } = require("./lib/corsOptions");
 const { isProbableSolanaPubkey } = require("./lib/solanaAddress");
+const { getSupabase } = require("./lib/supabase");
+const { checkWalletProStatus } = require("./services/subscriptionAccess");
 const redis = require("./lib/cache");
 const { getIngestionSnapshot } = require("./ingestion/ingestionState");
 const { getDedupeStats } = require("./ingestion/dedupe");
@@ -473,6 +475,37 @@ io.on("connection", (socket) => {
       if (!decoded?.userId) return;
       socket.join(`user:${decoded.userId}`);
     } catch (_) {}
+  });
+  socket.on("join-pro", async (raw) => {
+    const wallet =
+      typeof raw === "string"
+        ? raw.trim()
+        : String(raw?.wallet ?? raw?.walletAddress ?? "").trim();
+    if (!wallet || !isProbableSolanaPubkey(wallet)) {
+      socket.leave("pro");
+      return;
+    }
+    let supabase;
+    try {
+      supabase = getSupabase();
+    } catch {
+      socket.leave("pro");
+      return;
+    }
+    try {
+      const isPro = await checkWalletProStatus(supabase, wallet);
+      if (isPro) {
+        socket.join("pro");
+      } else {
+        socket.leave("pro");
+      }
+    } catch (err) {
+      console.warn("[socket] join-pro failed:", err?.message || err);
+      socket.leave("pro");
+    }
+  });
+  socket.on("leave-pro", () => {
+    socket.leave("pro");
   });
 });
 
