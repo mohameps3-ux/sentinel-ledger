@@ -532,23 +532,22 @@ async function buildTrackRecordPayload(
   const to = from + safePageSize - 1;
   const chartSpan = Math.min(6, Math.max(1, Math.floor(Number(chartPageSpan) || 1)));
 
-  let ledger = await resolveSignalOutcomesLedgerAggregates(supabase);
+  let ledger;
   let rowSource = "signal_outcomes";
-  if (Number(ledger.total_signals || 0) === 0) {
-    try {
-      const perfLedger = await resolveSignalPerformanceLedgerAggregates(supabase);
-      if (Number(perfLedger.total_signals || 0) > 0) {
-        ledger = perfLedger;
-        rowSource = "signal_performance";
-        if (process.env.NODE_ENV !== "test") {
-          console.warn("[track-record] using signal_performance mirror (signal_outcomes ledger empty)");
-        }
-      }
-    } catch (err) {
-      if (process.env.NODE_ENV !== "test") {
-        console.warn("[track-record] signal_performance mirror unavailable:", err?.message || err);
-      }
+  try {
+    const perfLedger = await resolveSignalPerformanceLedgerAggregates(supabase);
+    if (Number(perfLedger.total_signals || 0) > 0) {
+      ledger = perfLedger;
+      rowSource = "signal_performance";
+    } else {
+      ledger = await resolveSignalOutcomesLedgerAggregates(supabase);
     }
+  } catch (err) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("[track-record] signal_performance primary read failed:", err?.message || err);
+    }
+    ledger = await resolveSignalOutcomesLedgerAggregates(supabase);
+    rowSource = "signal_outcomes";
   }
 
   const perfSelect =
@@ -999,7 +998,7 @@ router.get("/track-record", async (req, res) => {
   } catch (error) {
     console.warn("[track-record] cache gen read failed:", error?.message || error);
   }
-  const cacheKey = `signals:track-record:v11:g${cacheGen}:${filter}:${page}:${pageSize}:cp${chartPages}`;
+  const cacheKey = `signals:track-record:v12:g${cacheGen}:${filter}:${page}:${pageSize}:cp${chartPages}`;
   const cacheSec = trackRecordCacheSeconds();
   try {
     const cached = await redis.get(cacheKey);
@@ -1245,6 +1244,52 @@ router.get("/track-record/summary", async (req, res) => {
 router.get("/track-record-fast", async (req, res) => {
   try {
     const supabase = getSupabase();
+    const perfSelect =
+      "id, asset, emitted_at, confidence, signals, outcome_pct, status, emission_regime, entry_price_usd";
+    const { data: perfData, error: perfError } = await supabase
+      .from("signal_performance")
+      .select(perfSelect)
+      .order("emitted_at", { ascending: false })
+      .limit(1000);
+    if (!perfError && Array.isArray(perfData) && perfData.length > 0) {
+      const mappedData = perfData.map((row) => {
+        const pct = row.outcome_pct != null ? Number(row.outcome_pct) : null;
+        const outcomeFrac = Number.isFinite(pct) ? pct / 100 : null;
+        const sigs = Array.isArray(row.signals) ? row.signals : [];
+        return {
+          id: row.id,
+          mint: row.asset,
+          regime: row.emission_regime || null,
+          outcome_60m: outcomeFrac,
+          outcome_5m: null,
+          outcome_15m: null,
+          created_at: row.emitted_at,
+          validated: String(row.status || "").toLowerCase() === "resolved",
+          outcome_pct: outcomeFrac,
+          confidence: Number(row.confidence || 0),
+          signal_type: sigs[0] || "cluster_buy"
+        };
+      });
+      return res.json({
+        ok: true,
+        count: mappedData.length,
+        recent_signals: mappedData,
+        pagination: {
+          page: 1,
+          total_pages: 1,
+          total: mappedData.length,
+          limit: 1000
+        },
+        meta: {
+          source: "supabase:signal_performance",
+          filter: "all"
+        }
+      });
+    }
+    if (perfError) {
+      console.warn("[track-record-fast] signal_performance read failed:", perfError.message);
+    }
+
     const { data, error } = await supabase
       .from("signal_outcomes")
       .select("id, mint, regime, outcome_60m, outcome_5m, outcome_15m, created_at, validated")
@@ -1257,7 +1302,7 @@ router.get("/track-record-fast", async (req, res) => {
       ...s,
       outcome_pct: s.outcome_60m,
       confidence: 65,
-      signal_type: "cluster_buy",
+      signal_type: "cluster_buy"
     }));
     return res.json({
       ok: true,
@@ -1267,12 +1312,12 @@ router.get("/track-record-fast", async (req, res) => {
         page: 1,
         total_pages: 1,
         total: rows.length,
-        limit: 1000,
+        limit: 1000
       },
       meta: {
         source: "supabase:signal_outcomes",
-        filter: "all",
-      },
+        filter: "all"
+      }
     });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });

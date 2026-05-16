@@ -6,7 +6,7 @@ const redis = require("../lib/cache");
 
 const router = express.Router();
 
-const PUBLIC_STATS_CACHE_KEY = "public:sentinel:stats:v1";
+const PUBLIC_STATS_CACHE_KEY = "public:sentinel:stats:v2";
 
 function publicStatsCacheSeconds() {
   const n = Number(process.env.PUBLIC_STATS_CACHE_SECONDS);
@@ -27,6 +27,43 @@ function safeSupabase() {
   } catch {
     return null;
   }
+}
+
+function utcDayStartIso() {
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  return start.toISOString();
+}
+
+/** Live emissions land in signal_performance; smart_wallet_signals may lag (backfill/convergence). */
+async function countSignalsTodayPrimary(supabase) {
+  const since = utcDayStartIso();
+  const { count: perfCount, error: perfErr } = await supabase
+    .from("signal_performance")
+    .select("id", { count: "exact", head: true })
+    .gte("emitted_at", since);
+  if (!perfErr && perfCount != null) {
+    return { count: perfCount, source: "signal_performance" };
+  }
+  const { count: legacyCount, error: legacyErr } = await supabase
+    .from("smart_wallet_signals")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", since);
+  if (legacyErr) throw legacyErr;
+  return { count: legacyCount ?? 0, source: "smart_wallet_signals" };
+}
+
+function mapPerfRowToSmartMoneyActivity(row) {
+  const sigs = Array.isArray(row.signals) ? row.signals : [];
+  const side = sigs.some((s) => /sell/i.test(String(s))) ? "sell" : "buy";
+  return {
+    wallet: null,
+    token: row.asset,
+    side,
+    confidence: Number(row.confidence || 0),
+    createdAt: row.emitted_at,
+    resultPct: row.outcome_pct != null ? Number(row.outcome_pct) : null
+  };
 }
 
 /**
@@ -121,12 +158,7 @@ router.get("/stats", async (_req, res) => {
     return res.status(503).json({ ok: false, error: "supabase_unconfigured" });
   }
   try {
-    const start = new Date();
-    start.setUTCHours(0, 0, 0, 0);
-    const { count: signalsToday } = await supabase
-      .from("smart_wallet_signals")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", start.toISOString());
+    const { count: signalsToday, source: signalsTodaySource } = await countSignalsTodayPrimary(supabase);
 
     const { data: topWallet } = await supabase
       .from("smart_wallets")
@@ -141,7 +173,8 @@ router.get("/stats", async (_req, res) => {
       signalsToday: signalsToday ?? 0,
       topWalletPct30d: Number.isFinite(win) ? win : null,
       avgEntryWindowMins: 4,
-      source: "supabase"
+      source: "supabase",
+      signalsTodaySource
     };
     try {
       await redis.set(PUBLIC_STATS_CACHE_KEY, body, { ex: ttl });
@@ -601,6 +634,24 @@ router.get("/smart-money-activity", async (req, res) => {
   }
   const limit = Math.min(100, Math.max(1, Number(req.query.limit || 48)));
   try {
+    const perfSelect = "asset, emitted_at, confidence, signals, outcome_pct, status";
+    const { data: perfData, error: perfError } = await supabase
+      .from("signal_performance")
+      .select(perfSelect)
+      .order("emitted_at", { ascending: false })
+      .limit(limit);
+    if (!perfError && Array.isArray(perfData) && perfData.length > 0) {
+      const rows = perfData.map(mapPerfRowToSmartMoneyActivity);
+      return res.json({
+        ok: true,
+        rows,
+        meta: { source: "signal_performance", count: rows.length }
+      });
+    }
+    if (perfError) {
+      console.warn("[smart-money-activity] signal_performance read failed:", perfError.message);
+    }
+
     let sel = "wallet_address, token_address, last_action, confidence, created_at, result_pct";
     let { data, error } = await supabase
       .from("smart_wallet_signals")
@@ -624,7 +675,7 @@ router.get("/smart-money-activity", async (req, res) => {
       createdAt: r.created_at,
       resultPct: r.result_pct != null ? Number(r.result_pct) : null
     }));
-    return res.json({ ok: true, rows, meta: { source: "supabase", count: rows.length } });
+    return res.json({ ok: true, rows, meta: { source: "smart_wallet_signals", count: rows.length } });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message, rows: [] });
   }
