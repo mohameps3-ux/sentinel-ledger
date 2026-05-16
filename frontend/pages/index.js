@@ -652,17 +652,12 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     [velocityTabTokens, isWarMode]
   );
 
-  const velocityMintsExcluded = useMemo(
-    () => new Set(visibleVelocityTokens.map((t) => t.mint).filter(Boolean)),
-    [visibleVelocityTokens]
-  );
-
   const hotTabTokens = useMemo(
     () =>
       heatTokenPool
-        .filter((t) => t?.mint && !liveMintsExcluded.has(t.mint) && !velocityMintsExcluded.has(t.mint))
+        .filter((t) => t?.mint && !liveMintsExcluded.has(t.mint))
         .sort((a, b) => volume24hForHotRow(b) - volume24hForHotRow(a)),
-    [heatTokenPool, liveMintsExcluded, velocityMintsExcluded]
+    [heatTokenPool, liveMintsExcluded]
   );
 
   const heatTokensForGrid = useMemo(
