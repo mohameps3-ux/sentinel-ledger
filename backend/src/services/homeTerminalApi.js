@@ -1307,7 +1307,7 @@ function computeHotSentinel(token) {
 }
 
 async function buildHotTokens({ limit = 10, supabase = null } = {}) {
-  const lim = Math.min(24, Math.max(1, Number(limit) || 10));
+  const lim = Math.min(60, Math.max(1, Number(limit) || 10));
   let payload;
   try {
     payload = await fetchTrendingList(lim);
@@ -1319,7 +1319,7 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
   const iaByMint = new Map();
   if (supabase && list.length) {
     try {
-      const mints = [...new Set(list.map((t) => t.mint).filter(Boolean))].slice(0, 24);
+      const mints = [...new Set(list.map((t) => t.mint).filter(Boolean))].slice(0, 60);
       if (mints.length) {
         const { data: analyzed, error } = await supabase
           .from("tokens_analyzed")

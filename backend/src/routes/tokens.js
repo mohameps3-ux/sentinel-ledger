@@ -23,7 +23,7 @@ function safeSupabase() {
 router.get("/hot", publicTerminalLimiter, async (req, res) => {
   try {
     const supabase = safeSupabase();
-    const lim = Math.min(24, Math.max(1, Number(req.query.limit) || 12));
+    const lim = Math.min(60, Math.max(1, Number(req.query.limit) || 12));
     const body = await getHotTokensCached(lim, supabase);
     const narrative = String(req.query.narrative || "").trim().toUpperCase();
     const filteredData =

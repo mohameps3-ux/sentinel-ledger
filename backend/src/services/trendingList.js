@@ -67,7 +67,7 @@ function normalizeTrendingEntry(mint, market) {
  * DexScreener latest profiles → enriched trending rows (same shape as legacy /token/trending).
  */
 async function fetchTrendingList(limit = 6) {
-  const cap = Math.min(24, Math.max(1, Number(limit) || 6));
+  const cap = Math.min(60, Math.max(1, Number(limit) || 6));
   let providerUsed = "dex_hot";
   let attempts = 0;
   let circuitState = "UNKNOWN";
