@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
@@ -15,6 +15,7 @@ const TRIAL_AMOUNT = 10_000_000;
 const PRO_AMOUNT = 29_000_000;
 
 const FALLBACK_MAINNET_RPC = "https://api.mainnet-beta.solana.com";
+const SIGNING_TIMEOUT_MS = 90_000;
 
 function getModalRpcUrl() {
   const raw = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_HELIUS_RPC_URL : "";
@@ -22,11 +23,29 @@ function getModalRpcUrl() {
   return s || FALLBACK_MAINNET_RPC;
 }
 
+function errorText(err) {
+  if (err == null) return "";
+  if (typeof err === "string") return err;
+  const parts = [
+    err.message,
+    err.msg,
+    err.error,
+    typeof err.error === "string" ? err.error : err.error?.message,
+    err.data?.message,
+    err.data?.error
+  ];
+  return parts.filter(Boolean).join(" ");
+}
+
 function mapSendError(err) {
-  const raw = String(err?.message || err || "");
+  const raw = errorText(err);
   const msg = raw.toLowerCase();
-  if (/user rejected|user reject|cancel|denied|rejected request/i.test(raw)) {
+  const code = err?.code ?? err?.error?.code;
+  if (code === 4001 || /user rejected|user reject|cancel|denied|rejected request|transaction cancelled/i.test(msg)) {
     return "Pago cancelado";
+  }
+  if (/blocked|bloqueada|request blocked|solicitud bloqueada|popup blocked|not allowed/i.test(msg)) {
+    return "Solicitud bloqueada por Phantom";
   }
   if (/insufficient|custom program error: 0x1|insufficient funds/i.test(msg)) {
     return "Saldo USDC insuficiente";
@@ -35,6 +54,16 @@ function mapSendError(err) {
     return "Error de red, inténtalo de nuevo";
   }
   return null;
+}
+
+function withTimeout(promise, ms, timeoutError) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(timeoutError)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
 }
 
 /** @returns {Promise<string>} transaction signature */
@@ -54,6 +83,7 @@ export default function SubscriptionModal({ isOpen, onClose, onSuccess }) {
   const [busyCard, setBusyCard] = useState(null);
   const [phase, setPhase] = useState("idle");
   const [inlineError, setInlineError] = useState("");
+  const flowIdRef = useRef(0);
 
   const rpcUrl = useMemo(() => getModalRpcUrl(), []);
   const connection = useMemo(() => new Connection(rpcUrl, "confirmed"), [rpcUrl]);
@@ -61,12 +91,24 @@ export default function SubscriptionModal({ isOpen, onClose, onSuccess }) {
   const mintPk = useMemo(() => new PublicKey(USDC_MINT), []);
   const treasuryPk = useMemo(() => new PublicKey(TREASURY_WALLET), []);
 
-  useEffect(() => {
-    if (!isOpen) return;
+  const resetFlow = useCallback(() => {
     setBusyCard(null);
     setPhase("idle");
+  }, []);
+
+  const handleClose = useCallback(() => {
+    flowIdRef.current += 1;
+    resetFlow();
     setInlineError("");
-  }, [isOpen]);
+    onClose();
+  }, [onClose, resetFlow]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    flowIdRef.current += 1;
+    resetFlow();
+    setInlineError("");
+  }, [isOpen, resetFlow]);
 
   const verifyPayment = useCallback(async (signature, walletAddress) => {
     const base = getPublicApiUrl().replace(/\/+$/, "");
@@ -88,6 +130,10 @@ export default function SubscriptionModal({ isOpen, onClose, onSuccess }) {
 
   const pay = useCallback(
     async (amount, cardKey) => {
+      const flowId = flowIdRef.current + 1;
+      flowIdRef.current = flowId;
+      const isStale = () => flowIdRef.current !== flowId;
+
       setInlineError("");
       if (!publicKey) {
         setInlineError("Conecta tu billetera para continuar.");
@@ -100,7 +146,9 @@ export default function SubscriptionModal({ isOpen, onClose, onSuccess }) {
         const treasuryAta = getAssociatedTokenAddressSync(mintPk, treasuryPk, false);
 
         const userAtaInfo = await connection.getAccountInfo(userAta);
+        if (isStale()) return;
         const treasuryAtaInfo = await connection.getAccountInfo(treasuryAta);
+        if (isStale()) return;
 
         if (!userAtaInfo) {
           setInlineError("No tienes USDC en esta wallet");
@@ -117,6 +165,7 @@ export default function SubscriptionModal({ isOpen, onClose, onSuccess }) {
         );
 
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+        if (isStale()) return;
         const tx = new Transaction({ feePayer: publicKey, recentBlockhash: blockhash });
         if (!treasuryAtaInfo) {
           tx.add(
@@ -130,33 +179,46 @@ export default function SubscriptionModal({ isOpen, onClose, onSuccess }) {
         }
         tx.add(ixTransfer);
 
-        const signature = await phantomSignAndSend(connection, tx);
+        const signature = await withTimeout(
+          phantomSignAndSend(connection, tx),
+          SIGNING_TIMEOUT_MS,
+          "signing_timeout"
+        );
+        if (isStale()) return;
 
         await connection.confirmTransaction(
           { signature, blockhash, lastValidBlockHeight },
           "confirmed"
         );
+        if (isStale()) return;
 
         setPhase("verifying");
         await verifyPayment(signature, publicKey.toBase58());
+        if (isStale()) return;
 
         if (typeof onSuccess === "function") await onSuccess();
-        onClose();
+        handleClose();
       } catch (e) {
-        const mapped = mapSendError(e);
-        if (mapped) {
-          setInlineError(mapped);
-        } else if (String(e?.message || e) === "phantom_sign_unavailable") {
-          setInlineError("Phantom no está disponible. Usa Phantom para firmar el envío.");
+        if (isStale()) return;
+        if (String(e?.message || e) === "signing_timeout") {
+          setInlineError("La operación tardó demasiado, inténtalo de nuevo");
         } else {
-          setInlineError(String(e?.message || e || "Error desconocido"));
+          const mapped = mapSendError(e);
+          if (mapped) {
+            setInlineError(mapped);
+          } else if (String(e?.message || e) === "phantom_sign_unavailable") {
+            setInlineError("Phantom no está disponible. Usa Phantom para firmar el envío.");
+          } else {
+            setInlineError(errorText(e) || "Error desconocido");
+          }
         }
       } finally {
-        setBusyCard(null);
-        setPhase("idle");
+        if (!isStale()) {
+          resetFlow();
+        }
       }
     },
-    [connection, mintPk, onClose, onSuccess, publicKey, treasuryPk, verifyPayment]
+    [connection, handleClose, mintPk, onSuccess, publicKey, resetFlow, treasuryPk, verifyPayment]
   );
 
   if (!isOpen) return null;
@@ -170,7 +232,7 @@ export default function SubscriptionModal({ isOpen, onClose, onSuccess }) {
       aria-modal="true"
       aria-labelledby="subscription-modal-title"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !anyBusy) onClose();
+        if (e.target === e.currentTarget) handleClose();
       }}
     >
       <div
@@ -186,9 +248,8 @@ export default function SubscriptionModal({ isOpen, onClose, onSuccess }) {
           </h2>
           <button
             type="button"
-            disabled={anyBusy}
-            onClick={onClose}
-            className="font-mono text-zinc-500 hover:text-zinc-300 disabled:opacity-40 px-2 py-0.5 -mr-1 transition-colors"
+            onClick={handleClose}
+            className="font-mono text-zinc-500 hover:text-zinc-300 px-2 py-0.5 -mr-1 transition-colors"
             aria-label="Cerrar"
           >
             ✕
