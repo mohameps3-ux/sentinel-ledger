@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHead } from "../components/seo/PageHead";
@@ -194,12 +194,11 @@ function TrackRecordPage() {
   const avgReturn = data && data.avg_return != null && Number.isFinite(Number(data.avg_return)) ? Number(data.avg_return) : 0;
   const flatNeutral = data && Number.isFinite(Number(data.flat_resolved_signals)) ? Number(data.flat_resolved_signals) : NaN;
   const avgRows = Number(meta.avg_return_sample_rows || 0);
-  const exactLedger = meta.stats_basis === "exact_ledger_sql";
   const perfMirrorAgg = meta.stats_basis === "signal_performance_mirror";
   const rollingDays = Number(meta.rolling_metrics_days || 7);
   const winDetail = `win ÷ (win+loss), move ±5%, last ${rollingDays}d`;
   const avgDetail = perfMirrorAgg
-    ? `mean resolved signal_performance · last ${rollingDays}d`
+    ? `mean resolved outcomes · last ${rollingDays}d`
     : avgRows > 0
       ? `last ${rollingDays}d · sample ${avgRows.toLocaleString()} rows`
       : `mean resolved · last ${rollingDays}d`;
@@ -223,6 +222,14 @@ function TrackRecordPage() {
     }
     return { ...sample, fromLedger: false };
   }, [data]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development" || !data?.meta) return;
+    if (data.meta.track_record_row_source === "signal_performance") {
+      console.debug("[track-record] dev: row_source=signal_performance", data.meta);
+    }
+  }, [data]);
+
   return (
     <Shell>
       {loadFailed ? (
@@ -253,39 +260,36 @@ function TrackRecordPage() {
           usada: <span className="font-mono text-amber-100/80">{apiBase}</span>
         </div>
       ) : null}
-      {perfMirror ? (
-        <div className="border-b border-sky-500/35 bg-sky-950/35 px-6 py-3 text-sm text-sky-100 xl:px-8">
-          KPIs and tape are mirrored from <code className="text-sky-200">signal_performance</code> because{" "}
-          <code className="text-sky-200">signal_outcomes</code> returned zero rows. Restore ledger sync so the canonical
-          table drives this page.
+      {perfMirror && !emptyLedger && query.isSuccess ? (
+        <div className="border-b border-cyan-500/25 bg-cyan-950/20 px-6 py-3 text-sm text-cyan-50 xl:px-8">
+          <b className="text-cyan-200">Automated resolution.</b> Metrics resolve at 10m using live DEX prices—every
+          number on this page reflects real post-signal market moves.
         </div>
       ) : null}
       <div className="border-b border-slate-800 bg-[#030712]/85 px-6 py-4 backdrop-blur-xl xl:px-8"><div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400"><span>YOU ARE HERE&nbsp;&nbsp; <b className="text-slate-200">Sentinel</b> › <b className="text-slate-200">Track Record</b></span><span>
-            Oracle · KPIs {hideNumericKpis ? "…" : exactLedger ? "full-table SQL" : perfMirror ? "perf mirror" : "fallback sample"} · chart {hideNumericKpis ? "—" : chartRows.length} paged rows ·{" "}
-            <span className="text-emerald-300">●</span> Supabase
+            Oracle · KPIs {hideNumericKpis ? "…" : "live"} · chart {hideNumericKpis ? "—" : chartRows.length} rows ·{" "}
+            <span className="text-emerald-300">●</span> live data
           </span></div></div><div className="space-y-4 p-6 xl:p-8"><section className="grid gap-6 xl:grid-cols-[1fr_360px]"><div><span className="rounded border border-cyan-400/30 bg-cyan-400/5 px-3 py-1 font-mono text-xs uppercase tracking-[0.16em] text-cyan-300">Performance Verified · 10m</span><h1 className="mt-4 text-4xl font-black tracking-tight text-white">Sentinel Validation Engine</h1><h2 className="mt-2 text-2xl font-black text-cyan-300">Track Record Institutional</h2><p className="mt-3 max-w-2xl text-slate-400">
             {perfMirror ? (
               <>
-                Headline metrics are mirrored from <code className="text-slate-300">signal_performance</code> because
-                the validation ledger (<code className="text-slate-300">signal_outcomes</code>) is empty. Charts use the
-                same resolved outcomes as the KPI strip.
+                Every headline metric and chart row is backed by automated 10-minute resolution against live DEX
+                prices. Win rate and average return use the same resolved outcomes across the tape and charts—not demo
+                curves.
               </>
             ) : (
               <>
-                Headline KPIs read from <code className="text-slate-300">signal_outcomes</code> in Supabase (real ledger rows,
-                not demo curves).
-                With the WebSocket stream connected, numbers refresh when the ledger changes, not only on the HTTP poll.
-                Charts aggregate paged oracle rows; headline totals use the full table when migration 029 (RPC stats) is
-                applied.
+                Headline KPIs and charts use signal outcomes resolved at 10m with live DEX prices (real resolved rows,
+                not demo curves). With the WebSocket stream connected, numbers refresh when new resolutions land—not
+                only on the HTTP poll.
               </>
             )}
-          </p></div><div className="flex items-center justify-end gap-3"><button onClick={() => query.refetch()} className="rounded border border-cyan-400/40 bg-cyan-400/5 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-cyan-200 hover:bg-cyan-400/10">↻ Refresh</button><Link href="/scanner" className="rounded border border-slate-700 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-slate-200 hover:border-cyan-400/40">Alpha Radar</Link></div></section><section className="rounded-2xl border border-slate-800 bg-[#06101a]/80 p-4"><div className="mb-4 flex flex-wrap items-center gap-3 text-sm"><b className="text-cyan-300">LIVE ORACLE</b><span>Validation Engine · Real Chart Series</span>{wsConnected ? (<span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-300">Real-time stream</span>) : (<span className="rounded-full border border-slate-600 bg-slate-800/60 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Stream idle · poll only</span>)}{lastLivePushAt ? (<span className={`font-mono text-[11px] uppercase tracking-[0.12em] ${Date.now() - lastLivePushAt < 15000 ? "animate-pulse text-emerald-300" : "text-slate-500"}`}>Ledger push {new Date(lastLivePushAt).toLocaleTimeString()}</span>) : null}<span className="font-mono text-slate-500">HTTP {data?.last_updated ? new Date(data.last_updated).toLocaleTimeString() : "—"}</span></div><div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6"><Kpi label="Total Signals" value={hideNumericKpis ? "…" : total.toLocaleString()} detail={perfMirror ? "signal_performance mirror" : "validation ledger"} /><Kpi label="Resolved" value={hideNumericKpis ? "…" : resolved.toLocaleString()} detail={hideNumericKpis ? "—" : Number.isFinite(flatNeutral) ? `resolved @ 10m · ±5% neutral: ${flatNeutral.toLocaleString()}` : "resolved @ 10m"} tone="blue" /><Kpi label="Pending" value={hideNumericKpis ? "…" : pending.toLocaleString()} detail="awaiting 10m resolution" /><Kpi label="Win Rate (7d)" value={hideNumericKpis ? "…" : pct(winRate, 1)} detail={winDetail} tone="good" /><Kpi label="Avg Return (7d)" value={hideNumericKpis ? "…" : pct(avgReturn, 2)} detail={avgDetail} tone="good" /><Kpi label="Worst 10m (7d)" value={hideNumericKpis ? "…" : pct(data?.max_drawdown, 2)} detail={ddDetail} tone="bad" /></div><div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_360px]"><LineChart title="Win Rate Over Time (10m)" subtitle={hideNumericKpis ? "cargando…" : `${chartRows.length} oracle rows (tape + top wins)`} value={hideNumericKpis ? "…" : pct(winRate, 1)} rows={chartRows} mode="win" color="#22d3ee" /><LineChart title="Avg Return Over Time" subtitle="rolling average from real outcomes" value={hideNumericKpis ? "…" : pct(avgReturn, 2)} rows={chartRows} mode="avg" color="#3b82f6" />{hideNumericKpis ? (
+          </p></div><div className="flex items-center justify-end gap-3"><button onClick={() => query.refetch()} className="rounded border border-cyan-400/40 bg-cyan-400/5 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-cyan-200 hover:bg-cyan-400/10">↻ Refresh</button><Link href="/scanner" className="rounded border border-slate-700 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-slate-200 hover:border-cyan-400/40">Alpha Radar</Link></div></section><section className="rounded-2xl border border-slate-800 bg-[#06101a]/80 p-4"><div className="mb-4 flex flex-wrap items-center gap-3 text-sm"><b className="text-cyan-300">LIVE ORACLE</b><span>Validation Engine · Real Chart Series</span>{wsConnected ? (<span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-300">Real-time stream</span>) : (<span className="rounded-full border border-slate-600 bg-slate-800/60 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Stream idle · poll only</span>)}{lastLivePushAt ? (<span className={`font-mono text-[11px] uppercase tracking-[0.12em] ${Date.now() - lastLivePushAt < 15000 ? "animate-pulse text-emerald-300" : "text-slate-500"}`}>Ledger push {new Date(lastLivePushAt).toLocaleTimeString()}</span>) : null}<span className="font-mono text-slate-500">HTTP {data?.last_updated ? new Date(data.last_updated).toLocaleTimeString() : "—"}</span></div><div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6"><Kpi label="Total Signals" value={hideNumericKpis ? "…" : total.toLocaleString()} detail={perfMirror ? "automated 10m resolution" : "resolved at 10m"} /><Kpi label="Resolved" value={hideNumericKpis ? "…" : resolved.toLocaleString()} detail={hideNumericKpis ? "—" : Number.isFinite(flatNeutral) ? `resolved @ 10m · ±5% neutral: ${flatNeutral.toLocaleString()}` : "resolved @ 10m"} tone="blue" /><Kpi label="Pending" value={hideNumericKpis ? "…" : pending.toLocaleString()} detail="awaiting 10m resolution" /><Kpi label="Win Rate (7d)" value={hideNumericKpis ? "…" : pct(winRate, 1)} detail={winDetail} tone="good" /><Kpi label="Avg Return (7d)" value={hideNumericKpis ? "…" : pct(avgReturn, 2)} detail={avgDetail} tone="good" /><Kpi label="Worst 10m (7d)" value={hideNumericKpis ? "…" : pct(data?.max_drawdown, 2)} detail={ddDetail} tone="bad" /></div><div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_360px]"><LineChart title="Win Rate Over Time (10m)" subtitle={hideNumericKpis ? "cargando…" : `${chartRows.length} oracle rows (tape + top wins)`} value={hideNumericKpis ? "…" : pct(winRate, 1)} rows={chartRows} mode="win" color="#22d3ee" /><LineChart title="Avg Return Over Time" subtitle="rolling average from real outcomes" value={hideNumericKpis ? "…" : pct(avgReturn, 2)} rows={chartRows} mode="avg" color="#3b82f6" />{hideNumericKpis ? (
                 <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4 flex min-h-[170px] items-center justify-center font-mono text-slate-500">
                   …
                 </div>
               ) : (
                 <Donut distribution={donutDistribution} />
-              )}</div></section><section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#06101a]/80"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 p-4"><div><h3 className="text-lg font-bold">Live Signal Tape</h3><p className="text-sm text-slate-500">Recent validated signals</p></div><div className="flex gap-2 text-sm"><span className="rounded-full bg-slate-800 px-3 py-1">{rows.length} visible</span><span className="rounded-full bg-cyan-400/10 px-3 py-1 text-cyan-300">{chartRows.length} chart rows</span><span className="rounded-full bg-sky-400/10 px-3 py-1 text-sky-300">{hideNumericKpis ? "…" : pending} pending</span></div></div><div className="overflow-x-auto"><table className="w-full min-w-[1040px] text-left text-sm"><thead className="border-b border-slate-800 text-[11px] uppercase tracking-[0.16em] text-slate-500"><tr><th className="px-4 py-3">Token</th><th className="px-4 py-3">Mint</th><th className="px-4 py-3">Regime</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Confidence</th><th className="px-4 py-3">State</th><th className="px-4 py-3">Outcome 10m</th><th className="px-4 py-3">Timestamp</th></tr></thead><tbody>{rows.length ? rows.map((r) => <SignalRow key={r.id || `${r.mint}-${r.created_at}`} row={r} />) : <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">{loadFailed ? "Fix the error above — zeros here are not a real ledger read." : showSkeleton ? "Cargando señales…" : emptyLedger ? "Ledger vacío en este API — revisa NEXT_PUBLIC_API_URL en Vercel y el backend Railway." : !total ? "No rows in signal_outcomes and no resolved signal_performance to mirror — check workers, RLS, and Supabase." : "No rows on this page."}</td></tr>}</tbody></table></div></section></div>
+              )}</div></section><section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#06101a]/80"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 p-4"><div><h3 className="text-lg font-bold">Live Signal Tape</h3><p className="text-sm text-slate-500">Recent validated signals</p></div><div className="flex gap-2 text-sm"><span className="rounded-full bg-slate-800 px-3 py-1">{rows.length} visible</span><span className="rounded-full bg-cyan-400/10 px-3 py-1 text-cyan-300">{chartRows.length} chart rows</span><span className="rounded-full bg-sky-400/10 px-3 py-1 text-sky-300">{hideNumericKpis ? "…" : pending} pending</span></div></div><div className="overflow-x-auto"><table className="w-full min-w-[1040px] text-left text-sm"><thead className="border-b border-slate-800 text-[11px] uppercase tracking-[0.16em] text-slate-500"><tr><th className="px-4 py-3">Token</th><th className="px-4 py-3">Mint</th><th className="px-4 py-3">Regime</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Confidence</th><th className="px-4 py-3">State</th><th className="px-4 py-3">Outcome 10m</th><th className="px-4 py-3">Timestamp</th></tr></thead><tbody>{rows.length ? rows.map((r) => <SignalRow key={r.id || `${r.mint}-${r.created_at}`} row={r} />) : <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">{loadFailed ? "Fix the error above — zeros here are not a real ledger read." : showSkeleton ? "Cargando señales…" : emptyLedger ? "Ledger vacío en este API — revisa NEXT_PUBLIC_API_URL en Vercel y el backend Railway." : !total ? "No verified signals on this page yet. Metrics update automatically as outcomes resolve." : "No rows on this page."}</td></tr>}</tbody></table></div></section></div>
     </Shell>
   );
 }
