@@ -3,6 +3,11 @@
 const { getSupabase } = require("../lib/supabase");
 const { getMarketData } = require("../services/marketData");
 const autoDiscovery = require("./autoDiscovery");
+const {
+  tallyRecordOracleOutcome,
+  ensureOracleInsertTelemetryStarted,
+  startOracleInsertTelemetry
+} = require("./oracleInsertTelemetry");
 
 const RULE_ID_BY_SIGNAL = {
   whale_accumulation: "R01",
@@ -162,16 +167,25 @@ function buildRuleSnapshot(score, ctx, ruleId, price) {
   };
 }
 
+function finishRecordOracleSignal(out) {
+  tallyRecordOracleOutcome(out);
+  return out;
+}
+
 async function recordOracleSignal(score, ctx = {}) {
+  ensureOracleInsertTelemetryStarted();
+
   const ruleId = primaryRuleId(score);
   const mint = String(score?.asset || "").trim();
-  if (!ruleId || !mint) return { ok: false, reason: "no_rule" };
+  if (!ruleId || !mint) return finishRecordOracleSignal({ ok: false, reason: "no_rule" });
 
   const price = Number(ctx.priceUsd ?? ctx.price_at_signal);
-  if (!Number.isFinite(price) || price <= 0) return { ok: false, reason: "missing_price" };
+  if (!Number.isFinite(price) || price <= 0) {
+    return finishRecordOracleSignal({ ok: false, reason: "missing_price" });
+  }
 
   const supabase = await safeSupabase();
-  if (!supabase) return { ok: false, reason: "supabase_unconfigured" };
+  if (!supabase) return finishRecordOracleSignal({ ok: false, reason: "supabase_unconfigured" });
 
   const signalId = String(score?.meta?.lastEventId || score?.id || "").trim() || null;
   const regime = normalizeRegime(score?.meta?.emissionGate?.regime?.key || ctx.regime);
@@ -194,19 +208,21 @@ async function recordOracleSignal(score, ctx = {}) {
         .eq("signal_id", signalId)
         .eq("rule_id", ruleId)
         .maybeSingle();
-      if (!lookupError && existing?.id) return { ok: true, ruleId, dedupe: true };
+      if (!lookupError && existing?.id) {
+        return finishRecordOracleSignal({ ok: true, ruleId, dedupe: true });
+      }
     }
     const { error } = await supabase.from("signal_outcomes").insert(row);
-    if (error) return { ok: false, reason: error.message || "insert_failed" };
+    if (error) return finishRecordOracleSignal({ ok: false, reason: error.message || "insert_failed" });
     try {
       const { scheduleTrackRecordLedgerLive } = require("../services/trackRecordLive");
       scheduleTrackRecordLedgerLive("oracle_signal_insert");
     } catch (_) {
       /* non-fatal */
     }
-    return { ok: true, ruleId };
+    return finishRecordOracleSignal({ ok: true, ruleId });
   } catch (error) {
-    return { ok: false, reason: error?.message || "insert_failed" };
+    return finishRecordOracleSignal({ ok: false, reason: error?.message || "insert_failed" });
   }
 }
 
@@ -369,6 +385,7 @@ async function runValidationOracleTick() {
 }
 
 function startValidationOracle() {
+  startOracleInsertTelemetry();
   if (intervalRef) return;
   if (!isEnabled()) {
     console.log("Validation Oracle disabled via VALIDATION_ORACLE_ENABLED=false");
