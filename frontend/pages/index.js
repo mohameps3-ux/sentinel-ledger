@@ -334,7 +334,8 @@ function mapHotTrendToLiveFill(row, heatContext) {
 
 export default function Home({ initialTrending = [], initialTrendingMeta = {} }) {
   const { t } = useLocale();
-  const { signalsToday: publicSignalsToday } = useTerminalInfrastructureStatus();
+  const { signalsToday: publicSignalsToday, walletCount: publicActiveWallets } =
+    useTerminalInfrastructureStatus();
   const [alerts, setAlerts] = useState([]);
   const [signalCursor, setSignalCursor] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -876,14 +877,14 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     const scores = interpretedSignals.map((s) => Number(s.signalStrength)).filter(Number.isFinite);
     const avgConfidence = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
     const bestSignal = scores.length ? Math.max(...scores) : null;
-    const activeWallets = rankedWallets.length || topWalletsApi.length || 0;
+    const activeWallets = Number.isFinite(publicActiveWallets) ? publicActiveWallets : 0;
     return {
       signalsToday: publicSignalsToday,
       activeWallets,
       avgConfidence,
       bestSignal
     };
-  }, [interpretedSignals, rankedWallets.length, topWalletsApi.length, publicSignalsToday]);
+  }, [interpretedSignals, publicSignalsToday, publicActiveWallets]);
 
   const warRoomKpis = useMemo(
     () => ({
