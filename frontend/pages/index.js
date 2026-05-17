@@ -547,9 +547,13 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   /** OUTLIER tab only — unchanged score sort; LIVE grid uses `liveTabTokens`. */
   const sortedSignalPool = useSortedTokens(liveSignalPool);
 
+  /** LIVE grid: engine signals first, then hot_fill trending rows up to grid cap. */
   const liveTabTokens = useMemo(() => {
+    const cap = liveExpanded
+      ? UI_CONFIG.GRID_EXPANDED_MAX_CARDS
+      : UI_CONFIG.GRID_COMPACT_CARDS;
     const signalsOnly = liveSignalPool.filter((t) => t._liveSource === "signal");
-    return [...signalsOnly].sort((a, b) => {
+    const sorted = [...signalsOnly].sort((a, b) => {
       const ams = signalCreatedAtMs(a);
       const bms = signalCreatedAtMs(b);
       if (ams == null && bms == null) return 0;
@@ -557,7 +561,13 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       if (bms == null) return -1;
       return bms - ams;
     });
-  }, [liveSignalPool]);
+    if (sorted.length >= cap) return sorted.slice(0, cap);
+    const seen = new Set(sorted.map((t) => t.mint).filter(Boolean));
+    const fillers = liveSignalPool.filter(
+      (t) => t._liveSource === "hot_fill" && t.mint && !seen.has(t.mint)
+    );
+    return [...sorted, ...fillers.slice(0, cap - sorted.length)];
+  }, [liveSignalPool, liveExpanded]);
 
   const liveSignalsForGrid = useMemo(
     () =>
