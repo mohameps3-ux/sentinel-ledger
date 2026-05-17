@@ -92,7 +92,11 @@ function HomeMetricStrip({ t, signalsToday, activeWallets, avgConfidence, bestSi
   );
 }
 
+const PROFILE_MODES = ["balanced", "sniper", "liquidity", "momentum"];
+const STRATEGY_MODES = ["conservative", "balanced", "aggressive"];
+
 function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onToggleSound }) {
+  const { t } = useLocale();
   const profile = useMarketStore((s) => s.profile);
   const setProfile = useMarketStore((s) => s.setProfile);
 
@@ -107,59 +111,102 @@ function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onTogg
     if (typeof window === "undefined") return;
     try {
       const saved = localStorage.getItem("sentinelProfile");
-      if (saved && ["balanced", "sniper", "liquidity", "momentum"].includes(saved)) {
+      if (saved && PROFILE_MODES.includes(saved)) {
         setProfile(saved);
       }
     } catch (_) {}
   }, [setProfile]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("sentinelStrategy", strategyMode);
+    } catch (_) {}
+  }, [strategyMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem("sentinelStrategy");
+      if (saved && STRATEGY_MODES.includes(saved)) {
+        onStrategyModeChange(saved);
+      }
+    } catch (_) {}
+  }, [onStrategyModeChange]);
 
   const pill = (active) =>
     active
       ? "border-indigo-400/45 bg-indigo-500/15 text-indigo-100"
       : "border-sl-border bg-sl-card text-sl-sub hover:text-sl-text";
 
+  const profileLabelKey = {
+    balanced: "home.settings.profile.balanced",
+    sniper: "home.settings.profile.sniper",
+    liquidity: "home.settings.profile.liquidity",
+    momentum: "home.settings.profile.momentum"
+  };
+
+  const strategyLabelKey = {
+    conservative: "war.intro.strategy.conservative",
+    balanced: "war.intro.strategy.balanced",
+    aggressive: "war.intro.strategy.aggressive"
+  };
+
   return (
-    <div className="flex items-center gap-2 flex-wrap w-full min-w-0">
-      <div className="flex items-center gap-2 flex-wrap">
-        {[
-          ["balanced", "Balanced"],
-          ["sniper", "Sniper"],
-          ["liquidity", "Liquidity"],
-          ["momentum", "Momentum"]
-        ].map(([id, label]) => (
+    <div className="flex flex-col gap-3 w-full min-w-0 border border-white/[0.06] bg-sl-card/40 px-2.5 py-2 sm:px-3 sm:py-2.5">
+      <section className="flex flex-col gap-1.5 min-w-0">
+        <p className="text-[11px] font-semibold text-sl-text tracking-tight">
+          {t("home.settings.profileTitle")}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {PROFILE_MODES.map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setProfile(id)}
+              className={`rounded-md border px-2 py-0.5 text-[10px] font-mono transition-colors ${pill(profile === id)}`}
+            >
+              {t(profileLabelKey[id])}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-1.5 min-w-0 border-t border-white/[0.06] pt-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-sl-text tracking-tight">
+              {t("home.settings.strategyTitle")}
+            </p>
+            <p className="text-[10px] text-sl-muted leading-snug mt-0.5 max-w-xl">
+              {t("home.settings.strategyDesc")}
+            </p>
+          </div>
           <button
-            key={id}
             type="button"
-            onClick={() => setProfile(id)}
-            className={`rounded-md border px-2 py-0.5 text-[10px] font-mono transition-colors ${pill(profile === id)}`}
+            onClick={onToggleSound}
+            className={`shrink-0 self-start rounded-md border px-2 py-0.5 text-[10px] font-mono transition-colors ${
+              soundEnabled
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                : "border-sl-border bg-sl-card text-sl-sub hover:text-sl-text"
+            }`}
           >
-            {label}
+            {soundEnabled ? "🔔 Sound On" : "🔕 Sound Off"}
           </button>
-        ))}
-      </div>
-      <div className="flex items-center gap-2 flex-wrap ml-auto">
-        {["conservative", "balanced", "aggressive"].map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => onStrategyModeChange(mode)}
-            className={`rounded-md border px-2 py-0.5 text-[10px] font-mono capitalize transition-colors ${pill(strategyMode === mode)}`}
-          >
-            {mode}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={onToggleSound}
-          className={`rounded-md border px-2 py-0.5 text-[10px] font-mono transition-colors ${
-            soundEnabled
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-              : "border-sl-border bg-sl-card text-sl-sub hover:text-sl-text"
-          }`}
-        >
-          {soundEnabled ? "🔔 Sound On" : "🔕 Sound Off"}
-        </button>
-      </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {STRATEGY_MODES.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onStrategyModeChange(mode)}
+              className={`rounded-md border px-2 py-0.5 text-[10px] font-mono transition-colors ${pill(strategyMode === mode)}`}
+            >
+              {t(strategyLabelKey[mode])}
+            </button>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

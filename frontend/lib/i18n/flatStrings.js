@@ -76,6 +76,19 @@ export const FLAT_STRINGS = {
     pt: "Sinais à esquerda · intel do token à direita"
   }),
 
+  "home.settings.profileTitle": S("Opportunity focus", { es: "Enfoque de oportunidades" }),
+  "home.settings.strategyTitle": S("Decision mode", { es: "Modo de decisión" }),
+  "home.settings.strategyDesc": S(
+    "How strict Sentinel is when labeling the action (ENTER / PREPARE / STAY OUT).",
+    {
+      es: "Qué tan estricto es Sentinel al etiquetar la acción (ENTER / PREPARE / STAY OUT)."
+    }
+  ),
+  "home.settings.profile.balanced": S("Balanced", { es: "Equilibrado" }),
+  "home.settings.profile.sniper": S("Sniper", { es: "Sniper" }),
+  "home.settings.profile.liquidity": S("Liquidity", { es: "Liquidez" }),
+  "home.settings.profile.momentum": S("Momentum", { es: "Momentum" }),
+
   "war.intro.ribbonTitle": S("Solana smart-money tracking", {
     es: "Seguimiento de smart money en Solana",
     fr: "Suivi smart money sur Solana",
