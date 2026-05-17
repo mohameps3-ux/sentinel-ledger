@@ -1,5 +1,7 @@
 "use strict";
 
+const { claimMintEmission } = require("./emissionMintCooldown");
+
 function clamp(n, lo, hi) {
   const v = Number(n);
   if (!Number.isFinite(v)) return lo;
@@ -464,7 +466,16 @@ async function evaluateSignalEmission(score, ctx = {}) {
     appendAlphaLayerGateReasons(score, reasons);
   }
 
-  const allow = !cfg.enabled || reasons.length === 0;
+  let allow = !cfg.enabled || reasons.length === 0;
+
+  if (allow && asset) {
+    const claimed = await claimMintEmission(asset);
+    if (!claimed) {
+      allow = false;
+      reasons.push("mint_emission_cooldown");
+    }
+  }
+
   const entry = {
     at: nowIso,
     asset: String(score?.asset || ""),
