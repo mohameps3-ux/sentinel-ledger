@@ -194,6 +194,17 @@ export const FLAT_STRINGS = {
   }),
   "war.live.decisionFeedLabel": S("Decision feed", { es: "Feed de decisiones", fr: "Fil des décisions", de: "Entscheidungs-Feed", it: "Feed decisioni", ru: "Лента решений", zh: "决策信息流", ko: "결정 피드", ja: "意思決定フィード", ar: "تدفق القرارات", pt: "Feed de decisões" }),
   "war.live.liveTitle": S("Live Smart Money"),
+  "war.live.notice.title": S("Live feed · delayed preview", {
+    es: "Feed en vivo · vista con retraso"
+  }),
+  "war.live.notice.body": S(
+    "You have full access to the live grid. Free accounts see signals about {{minutes}} minutes after they fire. PRO unlocks the same feed in real time.",
+    {
+      es: "Tienes acceso completo a la cuadrícula en vivo. En cuenta gratuita las señales aparecen ~{{minutes}} minutos después de emitirse. PRO desbloquea el mismo feed en tiempo real."
+    }
+  ),
+  "war.live.notice.cta": S("Go PRO", { es: "Ir a PRO" }),
+  "war.live.notice.dismissAria": S("Dismiss notice", { es: "Cerrar aviso" }),
   "war.live.expandAria": S("Expand grid", { es: "Ampliar cuadrícula", fr: "Agrandir la grille", de: "Raster vergrößern", it: "Espandi griglia", ru: "Развернуть сетку", zh: "展开网格", ko: "그리드 확장", ja: "グリッドを広げる", ar: "توسيع الشبكة", pt: "Expandir grade" }),
   "war.live.collapseAria": S("Collapse grid", { es: "Contraer cuadrícula", fr: "Réduire la grille", de: "Raster einklappen", it: "Comprimi griglia", ru: "Свернуть сетку", zh: "收起网格", ko: "그리드 접기", ja: "グリッドを畳む", ar: "طي الشبكة", pt: "Recolher grade" }),
   "war.live.expandTitle": S("Expand feed", { es: "Ampliar feed", fr: "Agrandir le flux", de: "Feed vergrößern", it: "Espandi feed", ru: "Развернуть ленту", zh: "展开信息流", ko: "피드 확장", ja: "フィードを広げる", ar: "توسيع التدفق", pt: "Expandir feed" }),
