@@ -19,7 +19,6 @@
     "backfill:wallets": "node scripts/backfillWalletHistory.js",
     "enrich:signals": "node scripts/enrichSignals.js",
     "seed:smart-wallets": "node scripts/seedSmartWallets.js",
-    "oneoff:seed-sw-from-token-activity": "node scripts/oneoffSeedSmartWalletsFromTokenActivity.js",
     "seed:terminal-home": "node scripts/seedTerminalHome.js",
     "db:prune-smart-wallet-shells": "node scripts/pruneSmartWalletShellRows.js",
     "signal-prices-once": "node scripts/runSignalPricesOnce.js",
