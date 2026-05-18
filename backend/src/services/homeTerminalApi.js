@@ -842,36 +842,9 @@ function avgWalletSentinel(wallets) {
   return Math.min(100, Math.max(35, Math.round(avg)));
 }
 
-/**
- * Latest signals → one card per token (most recent signal per mint).
- */
-async function fetchLatestSignalRowsSupabase(supabase, since, limitRows) {
-  const { data: rawSignals, error: signalsError } = await supabase
-    .from("smart_wallet_signals")
-    .select(
-      "id, token_address, wallet_address, confidence, created_at, entry_price_usd, price_1h_usd, price_4h_usd, result_pct"
-    )
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .limit(limitRows);
-  if (signalsError) throw signalsError;
-  if ((rawSignals || []).length > 0) {
-    const rows = (rawSignals || []).map((row) => ({ ...row, signal_tags: [] }));
-    return {
-      rows,
-      sourceTable: "smart_wallet_signals"
-    };
-  }
-
-  const { data: perfRows, error: perfError } = await supabase
-    .from("signal_performance")
-    .select("id, asset, emitted_at, confidence, entry_price_usd, outcome_pct, signals")
-    .gte("emitted_at", since)
-    .order("emitted_at", { ascending: false })
-    .limit(limitRows);
-  if (perfError) throw perfError;
-
-  const synthetic = (perfRows || [])
+/** Normalize signal_performance rows for buildLatestSignalsFeed (internal feed shape). */
+function mapSignalPerformanceRowsToFeedRows(perfRows) {
+  return (perfRows || [])
     .filter((row) => row?.asset)
     .map((row) => ({
       id: row.id,
@@ -885,9 +858,43 @@ async function fetchLatestSignalRowsSupabase(supabase, since, limitRows) {
       result_pct: row.outcome_pct,
       signal_tags: Array.isArray(row.signals) ? row.signals.map((s) => String(s)).filter(Boolean).slice(0, 16) : []
     }));
+}
+
+/**
+ * Latest signals → one card per token (most recent signal per mint).
+ */
+async function fetchLatestSignalRowsSupabase(supabase, since, limitRows) {
+  // Live emissions land in signal_performance first (see countSignalsTodayPrimary / smart-money-activity).
+  const { data: perfRows, error: perfError } = await supabase
+    .from("signal_performance")
+    .select("id, asset, emitted_at, confidence, entry_price_usd, outcome_pct, signals")
+    .gte("emitted_at", since)
+    .order("emitted_at", { ascending: false })
+    .limit(limitRows);
+  if (perfError) throw perfError;
+
+  const perfMapped = mapSignalPerformanceRowsToFeedRows(perfRows);
+  if (perfMapped.length > 0) {
+    return {
+      rows: perfMapped,
+      sourceTable: "signal_performance"
+    };
+  }
+
+  const { data: rawSignals, error: signalsError } = await supabase
+    .from("smart_wallet_signals")
+    .select(
+      "id, token_address, wallet_address, confidence, created_at, entry_price_usd, price_1h_usd, price_4h_usd, result_pct"
+    )
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(limitRows);
+  if (signalsError) throw signalsError;
+
+  const rows = (rawSignals || []).map((row) => ({ ...row, signal_tags: [] }));
   return {
-    rows: synthetic,
-    sourceTable: "signal_performance"
+    rows,
+    sourceTable: "smart_wallet_signals"
   };
 }
 
