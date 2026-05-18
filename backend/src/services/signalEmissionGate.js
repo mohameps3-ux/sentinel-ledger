@@ -60,6 +60,8 @@ const BLOCK_META_LABEL_SKIP =
   String(process.env.SIGNAL_GATE_META_BLOCK_SKIP || "false").toLowerCase() === "true";
 const BLOCK_META_LABEL_CAUTION =
   String(process.env.SIGNAL_GATE_META_BLOCK_CAUTION || "false").toLowerCase() === "true";
+const GATE_BLOCK_R03_CALM =
+  String(process.env.GATE_BLOCK_R03_CALM ?? "true").trim().toLowerCase() !== "false";
 
 /** "New pair" cutoff for no-chasing (24h move vs pool age). Not env-tunable per product spec. */
 const NEW_TOKEN_POOL_AGE_MAX_MIN = 60;
@@ -329,6 +331,18 @@ function shouldKillSignal({ entryPrice, currentPrice, maxLossPct = 0.1 } = {}) {
   return dropFrac >= maxLossPct;
 }
 
+const STRONG_NON_R03_SIGNALS = new Set(["whale_accumulation", "liquidity_shock"]);
+
+function isR03DominatedEmission(score) {
+  const tags = Array.isArray(score?.signals)
+    ? score.signals.map((s) => String(s).trim()).filter(Boolean)
+    : [];
+  const hasR03 = tags.includes("cluster_buy") || tags.includes("cluster_probing");
+  if (!hasR03) return false;
+  const hasStrongOther = tags.some((t) => STRONG_NON_R03_SIGNALS.has(t));
+  return !hasStrongOther;
+}
+
 async function evaluateSignalEmission(score, ctx = {}) {
   const asset = String(score?.asset || "");
 
@@ -464,6 +478,9 @@ async function evaluateSignalEmission(score, ctx = {}) {
 
     if (us.unified < cfg.minUnifiedScore) reasons.push("low_unified_score");
     appendAlphaLayerGateReasons(score, reasons);
+    if (GATE_BLOCK_R03_CALM && regime.key === "calm" && isR03DominatedEmission(score)) {
+      reasons.push("r03_calm_blocked");
+    }
   }
 
   let allow = !cfg.enabled || reasons.length === 0;
@@ -574,6 +591,7 @@ function getSignalGateOpsSnapshot() {
       effectivePreview: previewEffectiveByRegime()
     },
     alpha: alphaGateConfigSnapshot(),
+    calibration: { blockR03Calm: GATE_BLOCK_R03_CALM },
     stats: {
       startedAt: state.startedAt,
       decisions: state.decisions,
