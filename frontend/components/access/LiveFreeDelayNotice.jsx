@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { X, Zap } from "lucide-react";
 import { useLocale } from "../../contexts/LocaleContext";
+import { useSubscriptionModal } from "../../contexts/SubscriptionModalContext";
 
 const DISMISS_KEY = "sl_live_free_delay_notice_dismissed";
 const DELAY_MINUTES = 15;
@@ -27,6 +27,7 @@ function persistDismissed() {
 
 export function LiveFreeDelayNotice() {
   const { t } = useLocale();
+  const { openSubscriptionModal } = useSubscriptionModal();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -83,12 +84,13 @@ export function LiveFreeDelayNotice() {
             {t("war.live.notice.body", { minutes: DELAY_MINUTES })}
           </p>
           <p className="mt-4 pl-12">
-            <Link
-              href="/pricing"
-              className="inline-flex items-center justify-center border border-cyan-400/45 bg-cyan-500/15 px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-100 no-underline hover:bg-cyan-500/25 hover:border-cyan-300/55 transition-colors"
+            <button
+              type="button"
+              onClick={openSubscriptionModal}
+              className="inline-flex items-center justify-center border border-cyan-400/45 bg-cyan-500/15 px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-100 hover:bg-cyan-500/25 hover:border-cyan-300/55 transition-colors"
             >
               {t("war.live.notice.cta")}
-            </Link>
+            </button>
           </p>
         </section>
       </section>
