@@ -42,12 +42,12 @@ export function LiveFreeDelayNotice() {
 
   return (
     <section
-      className="fixed bottom-28 left-4 right-4 z-[90] sm:right-auto sm:left-6 sm:bottom-32 sm:max-w-[22rem] p-2 pointer-events-none"
+      className="w-full shrink-0"
       role="dialog"
       aria-labelledby="live-free-delay-notice-title"
       aria-describedby="live-free-delay-notice-body"
     >
-      <section className="pointer-events-auto relative overflow-hidden border border-cyan-500/35 bg-gradient-to-br from-[#061018]/98 via-[#0a121c]/98 to-[#050b12]/98 backdrop-blur-md shadow-[0_0_40px_rgba(34,211,238,0.12),0_16px_48px_rgba(0,0,0,0.55)]">
+      <section className="relative overflow-hidden border border-cyan-500/35 bg-gradient-to-br from-[#061018]/98 via-[#0a121c]/98 to-[#050b12]/98 backdrop-blur-md shadow-[0_0_40px_rgba(34,211,238,0.12),0_16px_48px_rgba(0,0,0,0.55)]">
         <span
           className="absolute inset-x-0 top-0 block h-px bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent"
           aria-hidden

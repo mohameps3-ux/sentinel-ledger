@@ -11,6 +11,7 @@ import { AnimatedNumber } from "../components/ui/AnimatedNumber";
 import { PageHead } from "../components/seo/PageHead";
 import { useWalletLabels } from "../hooks/useWalletLabels";
 import { TokenDesk } from "../components/cockpit/TokenDesk";
+import { LiveFreeDelayNotice } from "../components/access/LiveFreeDelayNotice";
 import { isProbableSolanaMint } from "../lib/solanaMint.mjs";
 import {
   deskMintFromQuery,
@@ -1048,7 +1049,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
             </div>
             <TrackRecordPanel />
         </div>
-        <div className="w-[340px] flex-shrink-0 hidden lg:block lg:self-start sticky top-0 h-screen overflow-y-auto">
+        <div className="w-[340px] flex-shrink-0 hidden lg:block lg:self-start sticky top-0 h-screen overflow-y-auto flex flex-col gap-3">
+          {!isPro ? <LiveFreeDelayNotice /> : null}
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedMint ?? "__desk_none__"}

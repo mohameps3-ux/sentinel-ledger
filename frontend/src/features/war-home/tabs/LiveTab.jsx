@@ -6,8 +6,6 @@ import { UI_CONFIG } from "@/constants/homeData";
 import { useLocale } from "../../../../contexts/LocaleContext";
 import { useWarMode } from "../../../../contexts/WarModeContext";
 import { useIngestionPulse } from "../../../../hooks/useIngestionPulse";
-import { useAccessTier } from "../../../../hooks/useAccessTier";
-import { LiveFreeDelayNotice } from "../../../../components/access/LiveFreeDelayNotice";
 import { LiveSignalCard } from "../LiveSignalCard";
 
 /**
@@ -40,7 +38,6 @@ export function LiveTab({
   onSelectMint
 }) {
   const { t } = useLocale();
-  const { isPro } = useAccessTier();
   const [stalkerUnread, setStalkerUnread] = useState(0);
 
   useEffect(() => {
@@ -291,7 +288,6 @@ export function LiveTab({
           ))}
         </div>
       )}
-      {!isPro ? <LiveFreeDelayNotice /> : null}
     </section>
   );
 }
