@@ -1,9 +1,6 @@
-import Link from "next/link";
-import { useMemo, useState, useEffect } from "react";
-import toast from "react-hot-toast";
+import { useMemo } from "react";
 import { useUserStatus } from "../../hooks/useUserStatus";
-import { getPublicApiUrl } from "../../lib/publicRuntime";
-import { useClientAuthToken } from "../../hooks/useClientAuthToken";
+import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
 
 function formatDateShort(iso) {
   if (!iso) return "";
@@ -14,22 +11,10 @@ function formatDateShort(iso) {
 
 /**
  * @param {object} [props]
- * @param {boolean} [props.onlyBadge] — plan status only (no links / portal); for compact header
+ * @param {boolean} [props.onlyBadge] — plan status only (no upgrade links); for compact header
  */
 export function HealthBar({ onlyBadge = false }) {
   const { loading, plan, status, expiresAt, isLifetime, hasProAccess } = useUserStatus();
-  const token = useClientAuthToken();
-  const [portalLoading, setPortalLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const effectiveToken = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    return token || localStorage.getItem("token");
-  }, [token]);
 
   const label = useMemo(() => {
     if (loading) return null;
@@ -39,30 +24,6 @@ export function HealthBar({ onlyBadge = false }) {
     if (hasProAccess) return "paid";
     return "free";
   }, [loading, hasProAccess, plan, status, isLifetime]);
-
-  const openPortal = async () => {
-    if (!mounted || !effectiveToken) {
-      toast.error("Connect wallet and sign in first.");
-      return;
-    }
-    try {
-      setPortalLoading(true);
-      const res = await fetch(`${getPublicApiUrl()}/api/v1/create-portal-session`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${effectiveToken}`
-        }
-      });
-      const json = await res.json();
-      if (!res.ok || !json?.ok || !json?.url) throw new Error(json?.error || "portal_failed");
-      window.location.href = json.url;
-    } catch (e) {
-      toast.error(e.message || "Could not open billing portal.");
-    } finally {
-      setPortalLoading(false);
-    }
-  };
 
   const badgeClass = "text-[10px] sm:text-[11px] px-2 py-0.5 sm:py-1 rounded-full border";
 
@@ -86,14 +47,6 @@ export function HealthBar({ onlyBadge = false }) {
         <span className="px-2 py-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-200">
           Lifetime PRO
         </span>
-        <button
-          type="button"
-          onClick={openPortal}
-          disabled={portalLoading}
-          className="text-purple-300 hover:text-purple-200 disabled:opacity-50"
-        >
-          {portalLoading ? "…" : "Manage"}
-        </button>
       </div>
     );
   }
@@ -111,9 +64,7 @@ export function HealthBar({ onlyBadge = false }) {
         <span className="px-2 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-200">
           PRO expired
         </span>
-        <Link href="/pricing" className="text-purple-300 hover:text-purple-200">
-          Renew
-        </Link>
+        <ProPurchaseButton className="text-purple-300 hover:text-purple-200">Renew</ProPurchaseButton>
       </div>
     );
   }
@@ -138,17 +89,7 @@ export function HealthBar({ onlyBadge = false }) {
         <span className="text-sl-sub truncate">
           {expiresAt ? `until ${formatDateShort(expiresAt)}` : "active"}
         </span>
-        <button
-          type="button"
-          onClick={openPortal}
-          disabled={portalLoading}
-          className="text-purple-300 hover:text-purple-200 shrink-0 disabled:opacity-50"
-        >
-          {portalLoading ? "…" : "Manage"}
-        </button>
-        <Link href="/pricing" className="text-sl-sub hover:text-sl-text shrink-0">
-          Upgrade
-        </Link>
+        <ProPurchaseButton className="text-sl-sub hover:text-sl-text shrink-0">Upgrade</ProPurchaseButton>
       </div>
     );
   }
@@ -160,9 +101,7 @@ export function HealthBar({ onlyBadge = false }) {
   return (
     <div className="flex items-center gap-2 text-[11px]">
       <span className="px-2 py-1 rounded-full border border-sl-border bg-white/5 text-sl-sub">Free</span>
-      <Link href="/pricing" className="text-purple-300 hover:text-purple-200">
-        Upgrade to PRO
-      </Link>
+      <ProPurchaseButton className="text-purple-300 hover:text-purple-200">Upgrade to PRO</ProPurchaseButton>
     </div>
   );
 }

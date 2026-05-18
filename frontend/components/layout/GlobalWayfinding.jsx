@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useMemo, useState, useEffect } from "react";
 import { getNextSuggestedStep } from "../../lib/nextSuggestedStep";
 import { useLocale } from "../../contexts/LocaleContext";
+import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
 
 function placeKeyForPath(pathname) {
   if (pathname === "/") return "home";
@@ -15,7 +18,6 @@ function placeKeyForPath(pathname) {
   if (pathname === "/watchlist") return "watchlist";
   if (pathname === "/portfolio") return "portfolio";
   if (pathname === "/alerts") return "alerts";
-  if (pathname === "/pricing") return "pricing";
   if (pathname === "/graveyard") return "graveyard";
   if (pathname === "/wallet-stalker") return "stalker";
   if (pathname === "/ops") return "ops";
@@ -69,7 +71,7 @@ export function GlobalWayfinding() {
       { href: "/smart-money", labelKey: "smartMoney", descKey: "smartMoneyDesc" },
       { href: "/watchlist", labelKey: "watchlist", descKey: "watchlistDesc" },
       { href: "/alerts", labelKey: "alerts", descKey: "alertsDesc" },
-      { href: "/pricing", labelKey: "pricing", descKey: "pricingDesc" }
+      { openSubscription: true, labelKey: "pricing", descKey: "pricingDesc" }
     ],
     []
   );
@@ -121,21 +123,34 @@ export function GlobalWayfinding() {
           <span className="text-[var(--sl-fg-soft)] font-medium uppercase tracking-wide w-full sm:w-auto sm:mr-1 sm:pr-2 shrink-0">
             {t("wayfinding.goTo")}
           </span>
-          {links.map(({ href, labelKey, descKey }) => {
-            const active = pathname === href || (href !== "/" && pathname.startsWith(href));
+          {links.map((item) => {
+            const { labelKey, descKey } = item;
+            const href = item.href;
+            const active = item.openSubscription
+              ? false
+              : pathname === href || (href !== "/" && pathname.startsWith(href));
             const label = t(`wayfinding.links.${labelKey}`);
             const desc = t(`wayfinding.links.${descKey}`);
+            const linkClass = `sl-wayfinding-link inline-flex items-center rounded-md px-2 py-1 border transition-colors duration-150 ${
+              active
+                ? "border-white/25 bg-white/[0.08] text-sl-text font-semibold"
+                : "border-transparent text-[var(--sl-fg-muted)] hover:text-sl-text hover:bg-white/[0.05] hover:border-sl-border"
+            }`;
+            if (item.openSubscription) {
+              return (
+                <ProPurchaseButton key={labelKey} title={desc} className={linkClass}>
+                  <span>{label}</span>
+                  <span className="hidden md:inline text-[var(--sl-fg-soft)] font-normal ml-1.5">({desc})</span>
+                </ProPurchaseButton>
+              );
+            }
             return (
               <Link
                 key={href}
                 href={href}
                 title={desc}
                 aria-current={active ? "page" : undefined}
-                className={`sl-wayfinding-link inline-flex items-center rounded-md px-2 py-1 border transition-colors duration-150 ${
-                  active
-                    ? "border-white/25 bg-white/[0.08] text-sl-text font-semibold"
-                    : "border-transparent text-[var(--sl-fg-muted)] hover:text-sl-text hover:bg-white/[0.05] hover:border-sl-border"
-                }`}
+                className={linkClass}
               >
                 <span>{label}</span>
                 <span className="hidden md:inline text-[var(--sl-fg-soft)] font-normal ml-1.5">({desc})</span>

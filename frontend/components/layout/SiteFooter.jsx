@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useLocale } from "../../contexts/LocaleContext";
+import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
 import { FinancialDisclaimer } from "./FinancialDisclaimer";
 
 const showOpsLink =
@@ -31,7 +32,7 @@ const FOOTER_GROUPS = [
   {
     titleKey: "footer.col.account",
     items: [
-      { href: "/pricing", labelKey: "footer.link.pricing" },
+      { openSubscription: true, labelKey: "footer.link.pricing" },
       { href: "/ops", labelKey: "footer.link.ops" },
       { href: "/contact", labelKey: "footer.link.contact" }
     ]
@@ -98,10 +99,14 @@ export function SiteFooter() {
                 {group.items
                   .filter((item) => item.href !== "/ops" || showOpsLink)
                   .map((item) => (
-                  <li key={item.href}>
-                    <Link href={item.href} className={linkBase}>
-                      {t(item.labelKey)}
-                    </Link>
+                  <li key={item.href || item.labelKey}>
+                    {item.openSubscription ? (
+                      <ProPurchaseButton className={linkBase}>{t(item.labelKey)}</ProPurchaseButton>
+                    ) : (
+                      <Link href={item.href} className={linkBase}>
+                        {t(item.labelKey)}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
