@@ -282,7 +282,7 @@ async function emitScore(tx, sentinelEvent) {
     }
   };
   global.io.to(tx.tokenAddress).emit("sentinel:score", score);
-  recordSignalEmission(score).catch(() => {});
+  recordSignalEmission(score, { walletAddresses: ctx.wallets }).catch(() => {});
 }
 
 async function emitConvergence(tx) {

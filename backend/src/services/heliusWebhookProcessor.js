@@ -316,7 +316,8 @@ async function processHeliusWebhookRaw(raw) {
             const perfProbe = await recordSignalEmission(probingScore, {
               source: "cluster_probing",
               emission_regime: "cluster_activation",
-              priority: "HIGH"
+              priority: "HIGH",
+              walletAddresses: ctx.wallets
             });
             if (perfProbe && perfProbe.ok === false) {
               console.warn(
@@ -375,7 +376,7 @@ async function processHeliusWebhookRaw(raw) {
             if (global.io) {
               global.io.to(tx.tokenAddress).emit("sentinel:score", score);
             }
-            const perf = await recordSignalEmission(score);
+            const perf = await recordSignalEmission(score, { walletAddresses: ctx.wallets });
             if (perf && perf.ok === false) {
               console.warn(
                 `[helius-webhook] signal_performance skip asset=${score.asset} reason=${perf.reason || "unknown"}`

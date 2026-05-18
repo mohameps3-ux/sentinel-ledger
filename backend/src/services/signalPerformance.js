@@ -4,6 +4,7 @@ const { getSupabase } = require("../lib/supabase");
 const { getMarketData } = require("./marketData");
 const { isSystemMint } = require("../lib/systemMints");
 const { shouldKillSignal } = require("./signalEmissionGate");
+const { resolveBaseSentinelScoreAtEmission } = require("./signalCardScore");
 
 const DEFAULT_HORIZON_MIN = Number(process.env.SIGNAL_PERF_HORIZON_MIN || 10);
 const SUCCESS_MIN_PCT = Number(process.env.SIGNAL_PERF_SUCCESS_MIN_PCT || 1.0);
@@ -200,6 +201,11 @@ function emissionArchiveFromScore(score) {
 /**
  * Records a signal-outcome candidate at emission time. Best effort by design:
  * no throw, no back-pressure into webhook path.
+ *
+ * @param {object} score
+ * @param {object} [extra]
+ * @param {number} [extra.horizonMin]
+ * @param {string[]} [extra.walletAddresses] — real wallet pubkeys for sentinel_score at emit
  */
 async function recordSignalEmission(score, extra = {}) {
   const payload = normalizeScorePayload(score);
@@ -234,6 +240,15 @@ async function recordSignalEmission(score, extra = {}) {
     gateBase && typeof gateBase === "object"
       ? { ...gateBase, killSwitch: riskKillSwitch }
       : { killSwitch: riskKillSwitch };
+
+  let sentinel_score = null;
+  try {
+    const base = await resolveBaseSentinelScoreAtEmission(supabase, score, extra.walletAddresses);
+    if (Number.isFinite(base)) sentinel_score = base;
+  } catch (err) {
+    console.warn("[signal-perf] sentinel_score compute failed:", payload.asset, err?.message || err);
+  }
+
   const row = {
     asset: payload.asset,
     event_id: payload.eventId,
@@ -246,6 +261,7 @@ async function recordSignalEmission(score, extra = {}) {
     entry_price_usd: entryPriceUsd,
     emission_regime,
     emission_gate,
+    sentinel_score,
     status: "pending",
     attempts: 0
   };
