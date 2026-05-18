@@ -22,6 +22,59 @@ import { AnimatedNumber } from "../../../components/ui/AnimatedNumber";
 import { useLocale } from "../../../contexts/LocaleContext";
 import { deriveApexState } from "../../../components/apex";
 import { cockpitCardClickTargetIsInteractive } from "../../../lib/cockpitCardClick.mjs";
+import { formatUsdWhole, formatTokenPrice } from "../../../lib/formatStable";
+
+/** Engine/heuristic RED lines — not shown on Trending (volume-only) cards. */
+function isEngineDerivedRedFlag(line) {
+  const s = String(line);
+  return /sentinel score below conviction/i.test(s) || /cluster conviction low/i.test(s);
+}
+
+/** Market-fact RED flags only (Trending / hot_fill). */
+function redFlagsForTrendingFill(sig) {
+  const api = sig?._api;
+  if (Array.isArray(api?.redFlags) && api.redFlags.length) {
+    return api.redFlags.filter((line) => !isEngineDerivedRedFlag(line));
+  }
+  const token = sig?.token || {};
+  const out = [];
+  const liq = Number(sig?.liquidityUsd ?? token?.liquidity ?? sig?.liquidity ?? 0);
+  if (liq > 0 && liq < 50000) out.push(`Low liquidity: $${formatUsdWhole(Math.round(liq))}`);
+  else if (Number(token?.liquidity || 0) > 0 && Number(token?.liquidity || 0) < 50000) out.push("⚠️ Low liquidity");
+  const chg = Number(sig?.priceChange24h ?? token?.change ?? 0);
+  if (Number.isFinite(chg) && chg < 0) out.push("⚠️ Momentum fading");
+  return out;
+}
+
+function TrendingSwapLinks({ sig }) {
+  return (
+    <div className="flex flex-wrap gap-0.5 pt-0.5 border-t border-white/[0.04] mt-0.5">
+      {[0.5, 1, 5].map((size) => {
+        const canSwap = sig.mint && isProbableSolanaMint(sig.mint);
+        return (
+          <a
+            key={size}
+            href={canSwap ? buildJupiterSwapUrl(sig.mint, size) : "#"}
+            target="_blank"
+            rel={EXTERNAL_ANCHOR_REL}
+            aria-disabled={!canSwap}
+            onClick={(e) => {
+              if (!canSwap) e.preventDefault();
+            }}
+            className="btn-ghost-sm"
+          >
+            {size} SOL
+          </a>
+        );
+      })}
+      {sig.mint && isProbableSolanaMint(sig.mint) ? (
+        <Link href={`/token/${sig.mint}`} className="btn-ghost-sm ml-auto" title="Open Token Intel">
+          Token Intel
+        </Link>
+      ) : null}
+    </div>
+  );
+}
 
 function normalizeSignalDecision(action) {
   const raw = String(action || "").trim().toUpperCase();
@@ -201,6 +254,106 @@ export function LiveSignalCard({
                 ? "narrative-tactical"
                 : "narrative-default";
 
+        if (isHeatFill) {
+          const trendingFlags = redFlagsForTrendingFill(sig);
+          const vol24 = Number(sig?.token?.volume24h ?? sig?.volume24h ?? sig?._api?.volume24h ?? 0);
+          const liqNum = Number(safeLiq ?? sig?.token?.liquidity ?? 0);
+          const hasVol = Number.isFinite(vol24) && vol24 > 0;
+          const hasLiq = Number.isFinite(liqNum) && liqNum > 0;
+          const avatarSize = isWarMode ? 28 : 32;
+
+          const trendingMarketRow = (
+            <div
+              className={`grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] font-mono leading-tight ${
+                quotesPricesFetching ? "opacity-90" : ""
+              }`}
+            >
+              <div className="min-w-0">
+                <span className="text-[9px] uppercase tracking-wide text-sl-muted/80">Price </span>
+                <span className="text-sl-text tabular-nums">{hasPx ? `$${formatTokenPrice(px)}` : "—"}</span>
+              </div>
+              <div className="min-w-0 text-right">
+                <span className="text-[9px] uppercase tracking-wide text-sl-muted/80">24h </span>
+                <span className={`tabular-nums ${hasChg ? (chg >= 0 ? "text-emerald-400" : "text-red-400") : "text-sl-muted"}`}>
+                  {hasChg ? `${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%` : "—"}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] uppercase tracking-wide text-sl-muted/80">Vol 24h </span>
+                <span className="text-sl-text tabular-nums">{hasVol ? `$${formatUsdWhole(vol24)}` : "—"}</span>
+              </div>
+              <div className="min-w-0 text-right">
+                <span className="text-[9px] uppercase tracking-wide text-sl-muted/80">Liq </span>
+                <span className="text-sl-text tabular-nums">{hasLiq ? `$${formatUsdWhole(liqNum)}` : "—"}</span>
+              </div>
+            </div>
+          );
+
+          const trendingDisclaimer = (
+            <p className="text-[10px] text-sl-muted/70 leading-snug pt-1">{t("war.live.trendingDisclaimer")}</p>
+          );
+
+          if (isWarMode) {
+            return (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <TokenCardAvatar tokenLike={{ ...sig, ...sig._api }} mint={sig.mint} size={avatarSize} variant="heat" />
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <p
+                        className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight min-w-0 flex-1"
+                        title={symbolMetaTitle}
+                      >
+                        ${sig.symbol}
+                      </p>
+                      <HomeCardSparkline mint={sig.mint} change24h={sparkCh24} change5m={sparkCh5} compact />
+                    </div>
+                  </div>
+                  <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-amber-500/45 bg-amber-500/15 text-amber-100/95 war-badge shrink-0">
+                    {t("war.live.badgeHeat")}
+                  </span>
+                </div>
+                {trendingMarketRow}
+                {trendingFlags.length ? (
+                  <p className="text-[9px] text-red-200/95 truncate leading-tight">RED: {trendingFlags.join(" · ")}</p>
+                ) : null}
+                <TrendingSwapLinks sig={sig} />
+                {trendingDisclaimer}
+              </>
+            );
+          }
+
+          return (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <TokenCardAvatar tokenLike={{ ...sig, ...sig._api }} mint={sig.mint} size={avatarSize} variant="heat" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1 mb-0 flex-wrap">
+                      <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-amber-500/45 bg-amber-500/15 text-amber-100/95">
+                        {t("war.live.badgeHeat")}
+                      </span>
+                    </div>
+                    <p
+                      className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight"
+                      title={symbolMetaTitle}
+                    >
+                      ${sig.symbol}
+                    </p>
+                  </div>
+                  <HomeCardSparkline mint={sig.mint} change24h={sparkCh24} change5m={sparkCh5} />
+                </div>
+              </div>
+              {trendingMarketRow}
+              {trendingFlags.length ? (
+                <p className="text-[9px] text-red-200/95 truncate leading-tight">RED: {trendingFlags.join(" · ")}</p>
+              ) : null}
+              <TrendingSwapLinks sig={sig} />
+              {trendingDisclaimer}
+            </>
+          );
+        }
+
         if (isWarMode) {
           const warAc = warActionBadgeClass(safeAction);
           return (
@@ -211,7 +364,7 @@ export function LiveSignalCard({
                     tokenLike={{ ...sig, ...sig._api }}
                     mint={sig.mint}
                     size={28}
-                    variant={isHeatFill ? "heat" : "live"}
+                    variant="live"
                   />
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <p
@@ -224,15 +377,9 @@ export function LiveSignalCard({
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
-                  {isHeatFill ? (
-                    <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-amber-500/45 bg-amber-500/15 text-amber-100/95 war-badge">
-                      {t("war.live.badgeHeat")}
-                    </span>
-                  ) : (
-                    <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-emerald-500/45 bg-emerald-500/12 text-emerald-100/95 war-badge">
-                      {t("war.live.badgeSignal")}
-                    </span>
-                  )}
+                  <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-emerald-500/45 bg-emerald-500/12 text-emerald-100/95 war-badge">
+                    {t("war.live.badgeSignal")}
+                  </span>
                   {isStaleCard ? (
                     <span
                       className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-rose-500/40 bg-rose-500/12 text-rose-100/90 war-badge"
@@ -261,21 +408,15 @@ export function LiveSignalCard({
                   tokenLike={{ ...sig, ...sig._api }}
                   mint={sig.mint}
                   size={32}
-                  variant={isHeatFill ? "heat" : "live"}
+                  variant="live"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1 mb-0 flex-wrap">
                     <RankBadge rank={rankInfo.rank} />
                     <RankDeltaChip delta={rankInfo.delta} isNew={rankInfo.isNew} />
-                    {isHeatFill ? (
-                      <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-amber-500/45 bg-amber-500/15 text-amber-100/95">
-                        {t("war.live.badgeHeat")}
-                      </span>
-                    ) : (
-                      <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-emerald-500/45 bg-emerald-500/12 text-emerald-100/95">
-                        {t("war.live.badgeSignal")}
-                      </span>
-                    )}
+                    <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-emerald-500/45 bg-emerald-500/12 text-emerald-100/95">
+                      {t("war.live.badgeSignal")}
+                    </span>
                     {isStaleCard ? (
                       <span
                         className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-rose-500/40 bg-rose-500/12 text-rose-100/90"
@@ -349,7 +490,7 @@ export function LiveSignalCard({
                     {String(coordOnCard).replace(/_/g, " ")}
                   </span>
                 ) : null}
-                {!isHeatFill && (sig._api?.confluence || (!sig._api && toneScore >= 88)) ? (
+                {(sig._api?.confluence || (!sig._api && toneScore >= 88)) ? (
                   <span className="text-[8px] text-blue-200 bg-blue-500/10 border border-blue-500/25 rounded px-1 py-0.5 font-mono">
                     multi
                   </span>
@@ -370,7 +511,7 @@ export function LiveSignalCard({
             ) : null}
 
             <span className="font-mono text-2xs text-sl-muted">
-              {isHeatFill ? t("war.live.heatNoEntry") : win.label === "CLOSED" || timeLeft <= 0 ? "CLOSED" : `${timeLeft}m`}
+              {win.label === "CLOSED" || timeLeft <= 0 ? "CLOSED" : `${timeLeft}m`}
             </span>
 
             <details className="border-t border-sl-border">

@@ -166,6 +166,9 @@ export const FLAT_STRINGS = {
     pt: "Somente mercado"
   }),
   "war.live.badgeHeat": S("Trending", { es: "Tendencia" }),
+  "war.live.trendingDisclaimer": S("Trending by volume · Not evaluated by Sentinel engine", {
+    es: "Tendencia por volumen · No evaluado por el motor Sentinel"
+  }),
   "war.live.badgeSignal": S("Signal", { es: "Señal", fr: "Signal", de: "Signal", it: "Segnale", ru: "Сигнал", zh: "信号", ko: "시그널", ja: "シグナル", ar: "إشارة", pt: "Sinal" }),
   "war.live.titleHintHeat": S("Click: open on desk (?t=) · Heat data", {
     es: "Clic: ver en el desk (?t=) · datos Heat",
