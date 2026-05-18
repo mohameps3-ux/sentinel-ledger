@@ -141,7 +141,8 @@ create table if not exists signal_performance (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   emission_regime varchar(32),
-  emission_gate jsonb
+  emission_gate jsonb,
+  sentinel_score numeric(6,2)
 );
 
 create table if not exists market_snapshots (
