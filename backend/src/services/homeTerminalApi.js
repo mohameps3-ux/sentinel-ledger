@@ -823,7 +823,8 @@ function mapSignalPerformanceRowsToFeedRows(perfRows) {
       price_1h_usd: null,
       price_4h_usd: null,
       result_pct: row.outcome_pct,
-      signal_tags: Array.isArray(row.signals) ? row.signals.map((s) => String(s)).filter(Boolean).slice(0, 16) : []
+      signal_tags: Array.isArray(row.signals) ? row.signals.map((s) => String(s)).filter(Boolean).slice(0, 16) : [],
+      persisted_sentinel_score: row.sentinel_score
     }));
 }
 
@@ -834,7 +835,7 @@ async function fetchLatestSignalRowsSupabase(supabase, since, limitRows) {
   // Live emissions land in signal_performance first (see countSignalsTodayPrimary / smart-money-activity).
   const { data: perfRows, error: perfError } = await supabase
     .from("signal_performance")
-    .select("id, asset, emitted_at, confidence, entry_price_usd, outcome_pct, signals")
+    .select("id, asset, emitted_at, confidence, entry_price_usd, outcome_pct, signals, sentinel_score")
     .gte("emitted_at", since)
     .order("emitted_at", { ascending: false })
     .limit(limitRows);
@@ -978,15 +979,21 @@ async function buildLatestSignalsFeed(
       continue;
     }
     const symbol = md.symbol || mint.slice(0, 4).toUpperCase();
-    let wallets = [];
-    try {
-      wallets = await fetchWalletRows(supabase, walletList);
-    } catch (_) {
-      wallets = [];
-    }
-    let sentinelScore = avgWalletSentinel(wallets);
-    if (sentinelScore == null) {
-      sentinelScore = Math.min(100, Math.max(40, Math.round(Number(row.confidence || 70) * 0.92)));
+    const persistedBase = Number(row.persisted_sentinel_score);
+    let sentinelScore;
+    if (Number.isFinite(persistedBase)) {
+      sentinelScore = Math.min(100, Math.max(35, Math.round(persistedBase)));
+    } else {
+      let wallets = [];
+      try {
+        wallets = await fetchWalletRows(supabase, walletList);
+      } catch (_) {
+        wallets = [];
+      }
+      sentinelScore = avgWalletSentinel(wallets);
+      if (sentinelScore == null) {
+        sentinelScore = Math.min(100, Math.max(40, Math.round(Number(row.confidence || 70) * 0.92)));
+      }
     }
     const baseSentinelScore = sentinelScore;
     const perfW = combinedPerformanceWeight(row.signal_tags, weightMap);
