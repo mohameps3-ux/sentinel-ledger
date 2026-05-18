@@ -33,6 +33,7 @@ import {
 } from "@/lib/signalUtils";
 import { useMarketStore } from "@/lib/store/marketStore";
 import { useSortedTokens } from "@/hooks/useSortedTokens";
+import { applyProfileFilter } from "@/lib/profileFilter";
 import { useWarMode } from "../contexts/WarModeContext";
 import { useLocale } from "../contexts/LocaleContext";
 import { useWebSocket } from "../hooks/useWebSocket";
@@ -48,6 +49,17 @@ function signalCreatedAtMs(sig) {
   if (raw == null || raw === "") return null;
   const ms = Date.parse(String(raw));
   return Number.isFinite(ms) ? ms : null;
+}
+
+function sortLiveSignalsNewestFirst(rows) {
+  return [...rows].sort((a, b) => {
+    const ams = signalCreatedAtMs(a);
+    const bms = signalCreatedAtMs(b);
+    if (ams == null && bms == null) return 0;
+    if (ams == null) return 1;
+    if (bms == null) return -1;
+    return bms - ams;
+  });
 }
 
 function velocityValueForToken(tok) {
@@ -388,6 +400,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const [soundEnabled, setSoundEnabled] = useState(false);
   const strategyMode = useMarketStore((s) => s.strategy);
   const setStrategyMode = useMarketStore((s) => s.setStrategy);
+  const profile = useMarketStore((s) => s.profile);
   const [tacticalTab, setTacticalTab] = useState("track");
   const [historyRows, setHistoryRows] = useState([]);
   const [topWalletsApi, setTopWalletsApi] = useState([]);
@@ -599,22 +612,33 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     const cap = liveExpanded
       ? UI_CONFIG.GRID_EXPANDED_MAX_CARDS
       : UI_CONFIG.GRID_COMPACT_CARDS;
-    const signalsOnly = liveSignalPool.filter((t) => t._liveSource === "signal");
-    const sorted = [...signalsOnly].sort((a, b) => {
-      const ams = signalCreatedAtMs(a);
-      const bms = signalCreatedAtMs(b);
-      if (ams == null && bms == null) return 0;
-      if (ams == null) return 1;
-      if (bms == null) return -1;
-      return bms - ams;
-    });
-    if (sorted.length >= cap) return sorted.slice(0, cap);
-    const seen = new Set(sorted.map((t) => t.mint).filter(Boolean));
-    const fillers = liveSignalPool.filter(
+
+    if (profile === "balanced") {
+      const signalsOnly = liveSignalPool.filter((t) => t._liveSource === "signal");
+      const sorted = sortLiveSignalsNewestFirst(signalsOnly);
+      if (sorted.length >= cap) return sorted.slice(0, cap);
+      const seen = new Set(sorted.map((t) => t.mint).filter(Boolean));
+      const fillers = liveSignalPool.filter(
+        (t) => t._liveSource === "hot_fill" && t.mint && !seen.has(t.mint)
+      );
+      return [...sorted, ...fillers.slice(0, cap - sorted.length)];
+    }
+
+    let signals = liveSignalPool.filter((t) => t._liveSource === "signal");
+    if (profile === "sniper") {
+      signals = applyProfileFilter(sortLiveSignalsNewestFirst(signals), profile);
+    } else {
+      signals = applyProfileFilter(signals, profile);
+    }
+
+    const seen = new Set(signals.map((t) => t.mint).filter(Boolean));
+    let fillers = liveSignalPool.filter(
       (t) => t._liveSource === "hot_fill" && t.mint && !seen.has(t.mint)
     );
-    return [...sorted, ...fillers.slice(0, cap - sorted.length)];
-  }, [liveSignalPool, liveExpanded]);
+    fillers = applyProfileFilter(fillers, profile);
+
+    return [...signals, ...fillers].slice(0, cap);
+  }, [liveSignalPool, liveExpanded, profile]);
 
   const liveSignalsForGrid = useMemo(
     () =>

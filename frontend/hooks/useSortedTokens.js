@@ -1,28 +1,10 @@
 import { useMemo, useRef } from 'react'
 import { useMarketStore } from '@/lib/store/marketStore'
+import { applyProfileFilter } from '@/lib/profileFilter'
 
 const STRATEGY_HIGH = { conservative: 90, balanced: 85, aggressive: 80 }
 const WAR_MIN       = 35
 const WAR_TOP       = 6
-
-function applyProfileFilter(result, profile, _isWarMode) {
-  if (profile === 'sniper') {
-    return result.filter((t) =>
-      t._currentScore >= 70 || t.smartMoneyCount > 0
-    )
-  }
-  if (profile === 'liquidity') {
-    return result
-      .filter((t) => (t.liquidityUsd ?? 0) > 50_000)
-      .sort((a, b) => (b.liquidityUsd ?? 0) - (a.liquidityUsd ?? 0))
-  }
-  if (profile === 'momentum') {
-    return [...result].sort((a, b) =>
-      (b.priceChange24h ?? 0) - (a.priceChange24h ?? 0)
-    )
-  }
-  return result
-}
 
 export function useSortedTokens(tokens = []) {
   const isWarMode = useMarketStore((s) => s.isWarMode)
