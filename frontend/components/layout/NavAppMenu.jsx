@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { HealthBar } from "./HealthBar";
 import { APP_NAV_LINKS } from "./appNavConfig";
+import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
 
 const rowBase = "block w-full text-left text-[13px] rounded-md px-2.5 py-1.5 transition-colors";
 
@@ -53,7 +54,7 @@ export function NavAppMenu({ router, stalkerUnread, onStalkerNavigate }) {
           <div className="px-2 pt-1.5 pb-1 text-[9px] text-sl-muted uppercase tracking-wider">App</div>
           <div className="flex flex-col gap-0.5 px-1.5">
             {APP_NAV_LINKS.map((item) => {
-              const active = item.key === "pricing" ? p === "/pricing" : p === item.href;
+              const active = item.openSubscription ? false : p === item.href;
               if (item.isStalker) {
                 return (
                   <Link
@@ -72,6 +73,21 @@ export function NavAppMenu({ router, stalkerUnread, onStalkerNavigate }) {
                   </Link>
                 );
               }
+              if (item.openSubscription) {
+                return (
+                  <ProPurchaseButton
+                    key={item.key}
+                    onClick={() => setOpen(false)}
+                    className={`${rowBase} text-sl-sub hover:bg-white/[0.05] hover:text-sl-text inline-flex items-center flex-wrap gap-x-1`}
+                    role="menuitem"
+                  >
+                    {item.label}
+                    <span className="text-[7px] font-bold uppercase tracking-widest text-sl-muted border border-sl-border rounded px-0.5">
+                      pro
+                    </span>
+                  </ProPurchaseButton>
+                );
+              }
               return (
                 <Link
                   key={item.key}
@@ -85,11 +101,6 @@ export function NavAppMenu({ router, stalkerUnread, onStalkerNavigate }) {
                   role="menuitem"
                 >
                   {item.label}
-                  {item.key === "pricing" ? (
-                    <span className="text-[7px] font-bold uppercase tracking-widest text-sl-muted border border-sl-border rounded px-0.5">
-                      pro
-                    </span>
-                  ) : null}
                 </Link>
               );
             })}

@@ -31,6 +31,11 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: "/pricing",
+        destination: "/",
+        permanent: false
+      },
+      {
         source: "/graveyard",
         destination: "/track-record",
         permanent: false

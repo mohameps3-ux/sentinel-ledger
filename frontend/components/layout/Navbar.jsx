@@ -7,6 +7,7 @@ import { useLocale } from "../../contexts/LocaleContext";
 import { useLayoutEffect, useRef, useEffect, useState, useMemo } from "react";
 import { Menu, X } from "lucide-react";
 import { SentinelLogo } from "./SentinelLogo";
+import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
 
 const ALL_PAGES_SECTIONS = [
   {
@@ -34,10 +35,7 @@ const ALL_PAGES_SECTIONS = [
   {
     key: "account",
     title: "ACCOUNT",
-    links: [
-      { href: "/pricing", label: "Pricing" },
-      { href: "/contact", label: "Contact" }
-    ]
+    links: [{ href: "/contact", label: "Contact" }]
   },
   {
     key: "system",
@@ -51,11 +49,49 @@ const ALL_PAGES_SECTIONS = [
   }
 ];
 
+function renderAppNavItem(item, { router, t, stalkerUnread, className, onAfterClick }) {
+  const active = item.openSubscription ? false : router.pathname === item.href;
+  const label = (
+    <>
+      <span className="truncate">{t(`nav.${item.key}`)}</span>
+      {item.isStalker && stalkerUnread > 0 ? (
+        <span className="inline-flex min-w-[16px] h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[9px] items-center justify-center px-0.5">
+          {Math.min(stalkerUnread, 99)}
+        </span>
+      ) : null}
+    </>
+  );
+
+  if (item.openSubscription) {
+    return (
+      <ProPurchaseButton
+        key={item.key}
+        onClick={() => onAfterClick?.()}
+        className={className}
+      >
+        {label}
+      </ProPurchaseButton>
+    );
+  }
+
+  return (
+    <Link
+      key={item.key}
+      href={item.href}
+      onClick={() => onAfterClick?.()}
+      className={className}
+      aria-current={active ? "page" : undefined}
+    >
+      {label}
+    </Link>
+  );
+}
+
 export function Navbar() {
   const { t } = useLocale();
   const router = useRouter();
   const allPagesSections = useMemo(() => ALL_PAGES_SECTIONS, []);
-  const isControlRoom = ["/ops", "/ops-live", "/pricing", "/legal", "/privacy", "/terms", "/contact"].includes(router.pathname);
+  const isControlRoom = ["/ops", "/ops-live", "/legal", "/privacy", "/terms", "/contact"].includes(router.pathname);
   const showTradingChrome = !isControlRoom;
   const navRef = useRef(null);
   const menuRef = useRef(null);
@@ -204,30 +240,21 @@ export function Navbar() {
               {showTradingChrome ? <SearchBar compact /> : null}
               <div className="mt-4 flex flex-col gap-1">
                 {APP_NAV_LINKS.filter((it) => !it.isSecondary).map((item) => {
-                  const active = item.key === "pricing" ? router.pathname === "/pricing" : router.pathname === item.href;
-                  return (
-                    <Link
-                      key={item.key}
-                      href={item.href}
-                      onClick={() => {
-                        if (item.isStalker) clearStalker();
-                        setMenuOpen(false);
-                      }}
-                      className={`text-xs px-2.5 py-2 rounded-md border no-underline inline-flex items-center justify-between gap-2 ${
-                        active
-                          ? "text-white border-white/20 bg-white/[0.08]"
-                          : "text-gray-300 border-transparent hover:border-white/10 hover:bg-white/[0.05]"
-                      }`}
-                      aria-current={active ? "page" : undefined}
-                    >
-                      <span className="truncate">{t(`nav.${item.key}`)}</span>
-                      {item.isStalker && stalkerUnread > 0 ? (
-                        <span className="inline-flex min-w-[16px] h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[9px] items-center justify-center px-0.5">
-                          {Math.min(stalkerUnread, 99)}
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
+                  const active = item.openSubscription ? false : router.pathname === item.href;
+                  return renderAppNavItem(item, {
+                    router,
+                    t,
+                    stalkerUnread,
+                    className: `text-xs px-2.5 py-2 rounded-md border no-underline inline-flex items-center justify-between gap-2 w-full ${
+                      active
+                        ? "text-white border-white/20 bg-white/[0.08]"
+                        : "text-gray-300 border-transparent hover:border-white/10 hover:bg-white/[0.05]"
+                    }`,
+                    onAfterClick: () => {
+                      if (item.isStalker) clearStalker();
+                      setMenuOpen(false);
+                    }
+                  });
                 })}
               </div>
               <div className="mt-6">
@@ -263,30 +290,21 @@ export function Navbar() {
               </p>
               <div className="flex flex-col gap-1">
                 {APP_NAV_LINKS.map((item) => {
-                  const active = item.key === "pricing" ? router.pathname === "/pricing" : router.pathname === item.href;
-                  return (
-                    <Link
-                      key={item.key}
-                      href={item.href}
-                      onClick={() => {
-                        if (item.isStalker) clearStalker();
-                        setMenuOpen(false);
-                      }}
-                      className={`text-xs px-2 py-1.5 rounded-md border no-underline inline-flex items-center justify-between gap-2 ${
-                        active
-                          ? "text-white border-white/20 bg-white/[0.08]"
-                          : "text-gray-300 border-transparent hover:border-white/10 hover:bg-white/[0.05]"
-                      }`}
-                      aria-current={active ? "page" : undefined}
-                    >
-                      <span className="truncate">{t(`nav.${item.key}`)}</span>
-                      {item.isStalker && stalkerUnread > 0 ? (
-                        <span className="inline-flex min-w-[16px] h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[9px] items-center justify-center px-0.5">
-                          {Math.min(stalkerUnread, 99)}
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
+                  const active = item.openSubscription ? false : router.pathname === item.href;
+                  return renderAppNavItem(item, {
+                    router,
+                    t,
+                    stalkerUnread,
+                    className: `text-xs px-2 py-1.5 rounded-md border no-underline inline-flex items-center justify-between gap-2 w-full ${
+                      active
+                        ? "text-white border-white/20 bg-white/[0.08]"
+                        : "text-gray-300 border-transparent hover:border-white/10 hover:bg-white/[0.05]"
+                    }`,
+                    onAfterClick: () => {
+                      if (item.isStalker) clearStalker();
+                      setMenuOpen(false);
+                    }
+                  });
                 })}
               </div>
             </div>

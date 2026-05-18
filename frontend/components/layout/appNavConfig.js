@@ -9,7 +9,7 @@ export const APP_NAV_LINKS = [
   { href: "/scanner", key: "tokenIntel", label: "Token Intel" },
   { href: "/smart-money", key: "smart", label: "Smart Money" },
   { href: "/alerts", key: "alerts", label: "Alerts" },
-  { href: "/pricing", key: "pricing", label: "Go PRO" },
+  { key: "pricing", label: "Go PRO", openSubscription: true },
   { href: "/track-record", key: "track", label: "Track Record" },
   { href: "/ops-login", key: "ops", label: "Ops", isSecondary: true },
   { href: "/wallet-stalker", key: "stalker", label: "Stalker", isStalker: true },
