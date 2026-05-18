@@ -11,6 +11,7 @@ const path = require("path");
 const root = path.join(__dirname, "..");
 const indexPath = path.join(root, "pages", "index.js");
 const liveTabPath = path.join(root, "src", "features", "war-home", "tabs", "LiveTab.jsx");
+const liveSignalCardPath = path.join(root, "src", "features", "war-home", "LiveSignalCard.jsx");
 
 function read(p) {
   return fs.readFileSync(p, "utf8");
@@ -32,12 +33,15 @@ function err(msg) {
 
 mustPathExists(indexPath, "pages/index.js");
 mustPathExists(liveTabPath, "LiveTab.jsx");
+mustPathExists(liveSignalCardPath, "LiveSignalCard.jsx");
 if (failed) process.exit(1);
 let index;
 let live;
+let liveSignalCard;
 try {
   index = read(indexPath);
   live = read(liveTabPath);
+  liveSignalCard = read(liveSignalCardPath);
 } catch (e) {
   err(`read failed: ${e.message}`);
   process.exit(1);
@@ -91,9 +95,9 @@ for (const s of needIndex) {
   }
 }
 
-// --- LiveTab: test ids for optional E2E + PR smoke
-if (!live.includes("data-testid=\"sl-war-live-section\"") || !live.includes("data-testid=\"sl-war-live-card\"")) {
-  err("LiveTab.jsx must expose data-testid sl-war-live-section and sl-war-live-card (see anti-regression PR checklist).");
+// --- Live tab: test ids for optional E2E + PR smoke (section in LiveTab, card in LiveSignalCard)
+if (!live.includes("data-testid=\"sl-war-live-section\"") || !liveSignalCard.includes("data-testid=\"sl-war-live-card\"")) {
+  err("Live tab must expose data-testid sl-war-live-section (LiveTab) and sl-war-live-card (LiveSignalCard).");
 }
 
 if (failed) {
