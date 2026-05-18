@@ -330,21 +330,88 @@ function test(name, fn) {
     const asset = "MintCluster";
     const wallets = ["W1", "W2", "W3", "W4"];
     wallets.forEach((w, i) => {
-      recordAssetEvent(makeEvent({
-        timestamp: now - i * 5000, // all within 40s window
-        data: { actor: w, asset },
-        metadata: { labels: ["buy"], confidence: 0.9 }
-      }));
+      recordAssetEvent(
+        makeEvent({
+          timestamp: now - i * 5000, // all within 40s window
+          data: { actor: w, asset },
+          metadata: { labels: ["buy"], confidence: 0.9 }
+        }),
+        { amountUsd: 300 }
+      );
     });
     // One stale buyer (older than the cluster window) — must NOT count.
-    recordAssetEvent(makeEvent({
-      timestamp: now - 120_000,
-      data: { actor: "WStale", asset },
-      metadata: { labels: ["buy"], confidence: 0.9 }
-    }));
-    const stats = getAssetStats(asset, { nowMs: now, clusterWindowMs: 40_000 });
+    recordAssetEvent(
+      makeEvent({
+        timestamp: now - 120_000,
+        data: { actor: "WStale", asset },
+        metadata: { labels: ["buy"], confidence: 0.9 }
+      }),
+      { amountUsd: 300 }
+    );
+    const stats = getAssetStats(asset, {
+      nowMs: now,
+      clusterWindowMs: 40_000,
+      clusterMinUsdEach: 250
+    });
     assert.strictEqual(stats.uniqueWalletsInWindow, 4);
     assert.ok(stats.eventsInWindow >= 4);
+  });
+
+  test("asset stats: cluster min USD filters small buys (2 of 3 wallets qualify)", () => {
+    _resetScoringState();
+    const now = Date.now();
+    const asset = "MintClusterUsd";
+    recordAssetEvent(
+      makeEvent({
+        timestamp: now - 3000,
+        data: { actor: "WBig1", asset },
+        metadata: { labels: ["buy"] }
+      }),
+      { amountUsd: 400 }
+    );
+    recordAssetEvent(
+      makeEvent({
+        timestamp: now - 2000,
+        data: { actor: "WBig2", asset },
+        metadata: { labels: ["buy"] }
+      }),
+      { amountUsd: 300 }
+    );
+    recordAssetEvent(
+      makeEvent({
+        timestamp: now - 1000,
+        data: { actor: "WSmall", asset },
+        metadata: { labels: ["buy"] }
+      }),
+      { amountUsd: 5 }
+    );
+    const stats = getAssetStats(asset, {
+      nowMs: now,
+      clusterWindowMs: 40_000,
+      clusterMinUsdEach: 250
+    });
+    assert.strictEqual(stats.uniqueWalletsInWindow, 2);
+  });
+
+  test("asset stats: RULE_CLUSTER_MIN_USD=0 counts any buy (legacy behavior)", () => {
+    _resetScoringState();
+    const now = Date.now();
+    const asset = "MintClusterLegacy";
+    ["W1", "W2", "W3"].forEach((w, i) => {
+      recordAssetEvent(
+        makeEvent({
+          timestamp: now - i * 2000,
+          data: { actor: w, asset },
+          metadata: { labels: ["buy"] }
+        })
+      );
+    });
+    const stats = getAssetStats(asset, {
+      nowMs: now,
+      clusterWindowMs: 40_000,
+      clusterMinUsdEach: 0
+    });
+    assert.strictEqual(stats.uniqueWalletsInWindow, 3);
   });
 
   await test("evaluate(event) yields a complete ScoringResult and never throws on missing ctx", async () => {

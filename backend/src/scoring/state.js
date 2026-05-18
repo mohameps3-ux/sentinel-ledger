@@ -16,8 +16,16 @@ const FIRST_SEEN_TTL_SEC = 7 * 24 * 60 * 60; // 7 days — enough to evaluate "<
 const HISTORY_WINDOW_MS = 30 * 60 * 1000; // 30 min rolling window per asset.
 const MAX_EVENTS_PER_ASSET = 1500; // hard cap to bound memory.
 
-// asset -> { events: [{tsMs, wallet, type, amount, quoteAmount}], lastTrim }
+// asset -> { events: [{tsMs, wallet, type, amount, quoteAmount, amountUsd }], lastTrim }
 const assetHistory = new Map();
+
+function eventAmountUsd(e) {
+  const u = Number(e?.amountUsd);
+  if (Number.isFinite(u) && u > 0) return u;
+  const q = Number(e?.quoteAmount);
+  if (Number.isFinite(q) && q > 0) return q;
+  return null;
+}
 
 function trim(asset, nowMs) {
   const bucket = assetHistory.get(asset);
@@ -36,7 +44,7 @@ function trim(asset, nowMs) {
  * Record a normalized SentinelEvent into the per-asset rolling window.
  * Caller passes the SentinelEvent directly; we only keep what rules need.
  */
-function recordAssetEvent(event) {
+function recordAssetEvent(event, opts = {}) {
   if (!event || !event.data || !event.data.asset) return;
   const asset = event.data.asset;
   const tsMs = Number(event.timestamp) || Date.now();
@@ -45,6 +53,7 @@ function recordAssetEvent(event) {
     bucket = { events: [], lastTrim: tsMs };
     assetHistory.set(asset, bucket);
   }
+  const passedUsd = Number(opts.amountUsd);
   bucket.events.push({
     tsMs,
     wallet: event.data.actor,
@@ -56,7 +65,8 @@ function recordAssetEvent(event) {
           ? "sell"
           : "swap",
     amount: event.data.amount,
-    quoteAmount: event.data.quoteAmount || null
+    quoteAmount: event.data.quoteAmount || null,
+    amountUsd: Number.isFinite(passedUsd) && passedUsd > 0 ? passedUsd : null
   });
   if (tsMs - bucket.lastTrim > 5_000) trim(asset, tsMs);
 }
@@ -71,6 +81,7 @@ function recordAssetEvent(event) {
 function getAssetStats(asset, opts = {}) {
   const nowMs = opts.nowMs || Date.now();
   const clusterWindowMs = Number(opts.clusterWindowMs) || 40_000;
+  const clusterMinUsdEach = Number(opts.clusterMinUsdEach) || 0;
   const bucket = assetHistory.get(asset);
   if (!bucket || !bucket.events.length) {
     return {
@@ -99,7 +110,14 @@ function getAssetStats(asset, opts = {}) {
     if (e.tsMs >= clusterCutoff) {
       eventsInWindow += 1;
       if (e.wallet && (e.direction === "buy" || e.direction === "swap")) {
-        buyers.add(e.wallet);
+        if (clusterMinUsdEach <= 0) {
+          buyers.add(e.wallet);
+        } else {
+          const usd = eventAmountUsd(e);
+          if (Number.isFinite(usd) && usd >= clusterMinUsdEach) {
+            buyers.add(e.wallet);
+          }
+        }
       }
     }
   }

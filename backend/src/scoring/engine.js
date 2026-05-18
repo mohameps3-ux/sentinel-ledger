@@ -246,8 +246,12 @@ async function evaluate(event, extraCtx = {}) {
     return null;
   }
 
+  const amountUsd = Number.isFinite(extraCtx.amountUsd)
+    ? Number(extraCtx.amountUsd)
+    : inferAmountUsd(event);
+
   // Record before stats so the current event participates in the window.
-  recordAssetEvent(event);
+  recordAssetEvent(event, { amountUsd });
 
   const [eliteFlag, walletAge] = await Promise.all([
     safeIsElite(event.data.actor),
@@ -256,12 +260,9 @@ async function evaluate(event, extraCtx = {}) {
 
   const assetStats = getAssetStats(event.data.asset, {
     nowMs: event.timestamp || Date.now(),
-    clusterWindowMs: CONFIG.clusterWindowMs
+    clusterWindowMs: CONFIG.clusterWindowMs,
+    clusterMinUsdEach: CONFIG.clusterMinUsdEach
   });
-
-  const amountUsd = Number.isFinite(extraCtx.amountUsd)
-    ? Number(extraCtx.amountUsd)
-    : inferAmountUsd(event);
 
   const ctx = {
     event,
