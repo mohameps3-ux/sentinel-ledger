@@ -17,6 +17,11 @@ const {
 } = require("./signalFeedQuality");
 const { appendFreshnessEvent, getDataFreshnessSnapshotFromStore } = require("./freshnessHistoryStore");
 const { isSystemMint } = require("../lib/systemMints");
+const {
+  computedSmartScore,
+  fetchWalletRows,
+  avgWalletSentinel
+} = require("./signalCardScore");
 
 const CACHE_TTL_SEC = Number(process.env.HOME_TERMINAL_CACHE_TTL_SEC || 180);
 const HOT_CACHE_TTL_SEC = Math.max(30, Number(process.env.HOME_TERMINAL_HOT_CACHE_TTL_SEC || 90));
@@ -250,21 +255,6 @@ function compareSmartWalletTopRows(a, b) {
   if (sd !== 0) return sd > 0 ? 1 : -1;
   const td = (b.totalTrades || 0) - (a.totalTrades || 0);
   return td > 0 ? 1 : td < 0 ? -1 : 0;
-}
-
-/** Ranking score: DB smart_score if set, else spec blend win*0.4 + early*0.3 + cluster*0.2 + consistency*0.1 */
-function computedSmartScore(row) {
-  const wr = Number(row.win_rate || 0);
-  const early = Number(row.early_entry_score);
-  const cluster = Number(row.cluster_score);
-  const consistency = Number(row.consistency_score);
-  const db = Number(row.smart_score);
-  if (Number.isFinite(db) && db > 0) return Math.min(100, Math.round(db));
-  if ([early, cluster, consistency].every((n) => Number.isFinite(n))) {
-    const blended = wr * 0.4 + early * 0.3 + cluster * 0.2 + consistency * 0.1;
-    return Math.min(100, Math.max(35, Math.round(blended)));
-  }
-  return Math.min(100, Math.max(35, Math.round(wr)));
 }
 
 function laterIsoTimestamp(a, b) {
@@ -817,29 +807,6 @@ function whyNowLines({ walletCount, entryWindowMinutesLeft, sentinelScore, symbo
     `Entry window ${entryWindowMinutesLeft ? "open" : "closing"}: ~${Math.max(1, entryWindowMinutesLeft)} min left`,
     `Similar ${symbol || "setup"} structures historically returned +${Math.max(18, Math.round(sentinelScore * 0.72))}% avg (model est.)`
   ];
-}
-
-async function fetchWalletRows(supabase, addresses) {
-  const uniq = [...new Set((addresses || []).filter(Boolean))].slice(0, 40);
-  if (!uniq.length) return [];
-  const { data, error } = await supabase.from("smart_wallets").select("*").in("wallet_address", uniq);
-  if (error) throw error;
-  return data || [];
-}
-
-function avgWalletSentinel(wallets) {
-  if (!wallets.length) return null;
-  const scores = wallets.map((w) => {
-    const early = Number(w.early_entry_score);
-    const cluster = Number(w.cluster_score);
-    const consistency = Number(w.consistency_score);
-    if ([early, cluster, consistency].every((n) => Number.isFinite(n))) {
-      return (early + cluster + consistency) / 3;
-    }
-    return computedSmartScore(w);
-  });
-  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-  return Math.min(100, Math.max(35, Math.round(avg)));
 }
 
 /** Normalize signal_performance rows for buildLatestSignalsFeed (internal feed shape). */
