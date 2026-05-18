@@ -401,7 +401,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const strategyMode = useMarketStore((s) => s.strategy);
   const setStrategyMode = useMarketStore((s) => s.setStrategy);
   const profile = useMarketStore((s) => s.profile);
-  const [tacticalTab, setTacticalTab] = useState("track");
+  const [tacticalTab, setTacticalTab] = useState("live");
   const [historyRows, setHistoryRows] = useState([]);
   const [topWalletsApi, setTopWalletsApi] = useState([]);
   const [entryCountdownByMint, setEntryCountdownByMint] = useState({});
@@ -758,15 +758,15 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const signalsRankDeltas = useRankDeltas(interpretedSignals, (s) => s?.mint);
   const trendingRankDeltas = useRankDeltas(heatTokenPool, (t) => t?.mint);
   /**
-   * One-shot tab after tier resolves. Initial state is "track" so free users never
-   * land on LIVE while subscription loads; PRO may flash TRACK briefly then restore LS.
+   * One-shot tab after tier resolves. LIVE is the default action surface for all users;
+   * PRO restores localStorage when present, otherwise stays on live.
    */
   useEffect(() => {
     if (tierLoading || tierDefaultTabAppliedRef.current) return;
     tierDefaultTabAppliedRef.current = true;
 
     if (isFree) {
-      setTacticalTab("track");
+      setTacticalTab("live");
       return;
     }
 
