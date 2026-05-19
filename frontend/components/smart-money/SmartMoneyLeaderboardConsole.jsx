@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 import { formatUsdWhole, formatDateTime } from "../../lib/formatStable";
 import { SmartWalletDetailPanel } from "./SmartWalletDetailPanel";
 import { WalletNarrativeCard } from "../WalletNarrativeCard";
+import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
 
 function truncateWallet(addr) {
   if (!addr || addr.length < 9) return addr || "—";
@@ -520,12 +521,9 @@ export function SmartMoneyLeaderboardConsole({
           <div className="mx-auto max-w-md rounded-2xl bg-[#101620]/60 px-8 py-10 text-center ring-1 ring-white/[0.05]">
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{t("smart.empty.title")}</p>
             <p className="mt-3 text-sm leading-relaxed text-zinc-500">{t("smart.empty.hint")}</p>
-            <Link
-              href="/pricing"
-              className="mt-6 inline-flex rounded-lg bg-zinc-800/80 px-4 py-2.5 text-xs font-semibold text-zinc-200 ring-1 ring-white/[0.06] hover:bg-zinc-800"
-            >
+            <ProPurchaseButton className="mt-6 inline-flex rounded-lg bg-zinc-800/80 px-4 py-2.5 text-xs font-semibold text-zinc-200 ring-1 ring-white/[0.06] hover:bg-zinc-800">
               Upgrade
-            </Link>
+            </ProPurchaseButton>
           </div>
         ) : null}
 

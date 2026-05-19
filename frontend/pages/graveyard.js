@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { PageHead } from "../components/seo/PageHead";
+import { ProPurchaseButton } from "../components/subscription/ProPurchaseButton";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 
 /** Client poll interval for Track Record (ms). Env NEXT_PUBLIC_TRACK_RECORD_POLL_MS; default 10s, clamp 3s–120s. */
@@ -776,10 +777,10 @@ export default function GraveyardPage() {
                     { href: "/smart-money", label: "Smart Money", sub: "Wallets y edge" },
                     { href: "/watchlist", label: "Watchlist", sub: "Tus tokens" },
                     { href: "/alerts", label: "Alertas", sub: "Telegram / PRO" },
-                    { href: "/pricing", label: "Precios", sub: "Acceso" },
+                    { openSubscription: true, label: "Precios", sub: "Acceso" },
                     { href: "/graveyard", label: "Track Record", sub: "Historial verificado" }
-                  ].map((item) => (
-                    <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} style={{ textDecoration: "none", display: "block" }}>
+                  ].map((item) => {
+                    const rowInner = (
                       <div
                         style={{
                           padding: "6px 8px",
@@ -797,8 +798,34 @@ export default function GraveyardPage() {
                         <div style={{ fontSize: "11px", color: "#e2e8f0", fontWeight: "500" }}>{item.label}</div>
                         <div style={{ fontSize: "9px", color: "#6b7280" }}>{item.sub}</div>
                       </div>
-                    </Link>
-                  ))}
+                    );
+                    if (item.openSubscription) {
+                      return (
+                        <ProPurchaseButton
+                          key="precios"
+                          type="button"
+                          onClick={() => setMenuOpen(false)}
+                          style={{
+                            textDecoration: "none",
+                            display: "block",
+                            width: "100%",
+                            background: "transparent",
+                            border: "none",
+                            padding: 0,
+                            cursor: "pointer",
+                            textAlign: "left"
+                          }}
+                        >
+                          {rowInner}
+                        </ProPurchaseButton>
+                      );
+                    }
+                    return (
+                      <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} style={{ textDecoration: "none", display: "block" }}>
+                        {rowInner}
+                      </Link>
+                    );
+                  })}
                 </div>
               ) : null}
             </div>

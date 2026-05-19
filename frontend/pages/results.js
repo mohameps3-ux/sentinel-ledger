@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHead } from "../components/seo/PageHead";
+import { ProPurchaseButton } from "../components/subscription/ProPurchaseButton";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useLocale } from "../contexts/LocaleContext";
 
@@ -217,9 +218,9 @@ export default function ResultsPage() {
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-sl-border bg-[#0B0B0E]/95 backdrop-blur-md py-3 px-4 safe-bottom-pad">
           <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-sm">
             <span className="text-sl-sub text-center sm:text-left">{t("results.stickyLine")}</span>
-            <Link href="/pricing" className="btn-pro inline-flex text-center no-underline">
+            <ProPurchaseButton className="btn-pro inline-flex text-center no-underline">
               {t("results.upgradePro")}
-            </Link>
+            </ProPurchaseButton>
           </div>
         </div>
       </div>

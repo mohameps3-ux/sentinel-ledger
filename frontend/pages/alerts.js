@@ -25,6 +25,7 @@ import {
   unsubscribeWebPush
 } from "../lib/webPushClient";
 import { FinancialDisclaimer } from "../components/layout/FinancialDisclaimer";
+import { ProPurchaseButton } from "../components/subscription/ProPurchaseButton";
 import { useLocale } from "../contexts/LocaleContext";
 import { isProbableSolanaMint } from "../lib/solanaMint.mjs";
 import { InstitutionalPage, InstitutionalCard } from "../components/institutional";
@@ -463,13 +464,10 @@ export default function ProAlertsPage() {
                 <p className="text-base font-semibold text-zinc-100">{t("alerts.upgradeTitle")}</p>
                 <p className="mt-1 max-w-2xl text-sm leading-relaxed text-zinc-400">{t("alerts.upgradeBody")}</p>
               </div>
-              <Link
-                href="/pricing"
-                className="inline-flex h-9 w-fit items-center justify-center gap-2 border border-amber-300/30 bg-amber-300/10 px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-amber-100 no-underline"
-              >
+              <ProPurchaseButton className="inline-flex h-9 w-fit items-center justify-center gap-2 border border-amber-300/30 bg-amber-300/10 px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-amber-100 no-underline">
                 {t("alerts.viewPricing")}
                 <ExternalLink size={14} />
-              </Link>
+              </ProPurchaseButton>
             </div>
           </InstitutionalCard>
         ) : null}
