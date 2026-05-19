@@ -8,6 +8,7 @@ import { useLayoutEffect, useRef, useEffect, useState, useMemo } from "react";
 import { Menu, X } from "lucide-react";
 import { SentinelLogo } from "./SentinelLogo";
 import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
+import { useSubscriptionStatus } from "../../hooks/useSubscriptionStatus";
 
 const ALL_PAGES_SECTIONS = [
   {
@@ -99,6 +100,7 @@ export function Navbar() {
   const [stalkerUnread, setStalkerUnread] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [allPagesOpen, setAllPagesOpen] = useState(false);
+  const { active: walletSubActive } = useSubscriptionStatus();
 
   const clearStalker = () => {
     if (typeof window !== "undefined") {
@@ -239,7 +241,7 @@ export function Navbar() {
               </div>
               {showTradingChrome ? <SearchBar compact /> : null}
               <div className="mt-4 flex flex-col gap-1">
-                {APP_NAV_LINKS.filter((it) => !it.isSecondary).map((item) => {
+                {APP_NAV_LINKS.filter((it) => !it.isSecondary && !(it.openSubscription && walletSubActive)).map((item) => {
                   const active = item.openSubscription ? false : router.pathname === item.href;
                   return renderAppNavItem(item, {
                     router,
