@@ -12,6 +12,11 @@ function resolveTokenImageUrl(tok) {
     tok.logoUri ??
     tok.icon ??
     tok.tokenImage ??
+    tok.market?.imageUrl ??
+    tok.market?.image ??
+    tok.market?.logoURI ??
+    tok.market?.logoUri ??
+    tok.market?.icon ??
     tok.token?.logoURI ??
     tok.token?.image ??
     tok.token?.imageUrl ??
