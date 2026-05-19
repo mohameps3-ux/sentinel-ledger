@@ -15,7 +15,7 @@ import {
 import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 
 const WATCHLIST_CACHE_KEY = "sentinel-watchlist-cache";
-const CONTROL_ROOM_PATHS = new Set(["/ops", "/pricing", "/legal", "/privacy", "/terms", "/contact"]);
+const CONTROL_ROOM_PATHS = new Set(["/ops", "/legal", "/privacy", "/terms", "/contact"]);
 
 function shortAddress(value = "") {
   return value ? `${value.slice(0, 4)}…${value.slice(-4)}` : "none";

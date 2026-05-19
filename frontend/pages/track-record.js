@@ -4,6 +4,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHead } from "../components/seo/PageHead";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useTrackRecordLive, TRACK_RECORD_QUERY_KEY } from "../hooks/useTrackRecordLive";
+import {
+  TrackRecordNavGroup,
+  TRACK_RECORD_NAV_OPEN_PRO
+} from "../components/layout/TrackRecordNavGroup";
 
 const REFRESH_MS = 30_000;
 const CHART_PAGES = 6;
@@ -13,7 +17,7 @@ const TR_DECISIVE_LOSS = -0.05;
 
 const nav = [
   ["Home", "/"], ["Scanner", "/scanner"], ["Smart Money", "/smart-money"], ["Watchlist", "/watchlist"],
-  ["Alerts", "/alerts"], ["Pricing", "/pricing"], ["Compare", "/compare"], ["Portfolio", "/portfolio"],
+  ["Alerts", "/alerts"], ["Pricing", TRACK_RECORD_NAV_OPEN_PRO], ["Compare", "/compare"], ["Portfolio", "/portfolio"],
   ["Track Record", "/track-record", "active"], ["Alpha Radar", "/scanner"], ["Settings", "/settings"], ["Docs", "/docs"]
 ];
 
@@ -85,8 +89,7 @@ async function fetchTrackRecord() {
   }
 }
 
-function Shell({ children }) { return <div className="min-h-screen bg-[#030712] text-slate-100"><PageHead title="Track Record — Sentinel Ledger" description="Institutional Sentinel validation terminal." /><aside className="fixed inset-y-0 left-0 z-30 hidden w-[276px] border-r border-slate-800/80 bg-[#050b12]/95 backdrop-blur-xl xl:block"><div className="flex h-20 items-center gap-3 border-b border-slate-800/70 px-7"><div className="grid h-10 w-10 place-items-center rounded-full border border-cyan-400/40 bg-cyan-400/5 text-cyan-300">◎</div><div className="leading-tight"><div className="text-sm font-black tracking-[0.22em]">SENTINEL</div><div className="text-sm font-black tracking-[0.22em]">LEDGER</div></div></div><div className="space-y-7 px-5 py-6"><NavGroup title="MAIN" items={nav.slice(0, 8)} /><NavGroup title="INTELLIGENCE" items={nav.slice(8, 10)} /><NavGroup title="SYSTEM" items={nav.slice(10)} /></div><div className="absolute bottom-0 left-0 right-0 border-t border-slate-800/70 p-6"><div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">System Status</div><div className="mt-3 text-2xl font-black text-emerald-300">LIVE</div><div className="mt-2 flex items-center justify-between text-xs text-slate-400"><span>All systems operational</span><span className="h-2 w-2 rounded-full bg-emerald-400" /></div></div></aside><main className="xl:pl-[276px]">{children}</main></div>; }
-function NavGroup({ title, items }) { return <div><div className="mb-3 px-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">{title}</div><div className="space-y-1">{items.map(([label, href, active]) => <Link key={`${label}-${href}`} href={href} className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition ${active ? "bg-cyan-400/10 text-cyan-200 ring-1 ring-cyan-400/15" : "text-slate-300 hover:bg-slate-800/50 hover:text-white"}`}><span>{label}</span>{active ? <span className="text-[10px] uppercase tracking-[0.14em] text-cyan-300">Oracle</span> : null}</Link>)}</div></div>; }
+function Shell({ children }) { return <div className="min-h-screen bg-[#030712] text-slate-100"><PageHead title="Track Record — Sentinel Ledger" description="Institutional Sentinel validation terminal." /><aside className="fixed inset-y-0 left-0 z-30 hidden w-[276px] border-r border-slate-800/80 bg-[#050b12]/95 backdrop-blur-xl xl:block"><div className="flex h-20 items-center gap-3 border-b border-slate-800/70 px-7"><div className="grid h-10 w-10 place-items-center rounded-full border border-cyan-400/40 bg-cyan-400/5 text-cyan-300">◎</div><div className="leading-tight"><div className="text-sm font-black tracking-[0.22em]">SENTINEL</div><div className="text-sm font-black tracking-[0.22em]">LEDGER</div></div></div><div className="space-y-7 px-5 py-6"><TrackRecordNavGroup title="MAIN" items={nav.slice(0, 8)} /><TrackRecordNavGroup title="INTELLIGENCE" items={nav.slice(8, 10)} /><TrackRecordNavGroup title="SYSTEM" items={nav.slice(10)} /></div><div className="absolute bottom-0 left-0 right-0 border-t border-slate-800/70 p-6"><div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">System Status</div><div className="mt-3 text-2xl font-black text-emerald-300">LIVE</div><div className="mt-2 flex items-center justify-between text-xs text-slate-400"><span>All systems operational</span><span className="h-2 w-2 rounded-full bg-emerald-400" /></div></div></aside><main className="xl:pl-[276px]">{children}</main></div>; }
 function Kpi({ label, value, detail, tone = "default" }) { const color = tone === "good" ? "text-emerald-300" : tone === "bad" ? "text-rose-300" : tone === "blue" ? "text-sky-300" : "text-slate-100"; const dot = tone === "bad" ? "bg-rose-400" : tone === "blue" ? "bg-sky-400" : "bg-emerald-400"; return <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4"><div className="flex items-start justify-between gap-3"><div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{label}</div><span className={`h-2 w-2 rounded-full ${dot}`} /></div><div className={`mt-4 font-mono text-2xl font-black ${color}`}>{value}</div><div className="mt-2 text-sm text-slate-400">{detail}</div></div>; }
 
 function makeSeries(rows, mode) {

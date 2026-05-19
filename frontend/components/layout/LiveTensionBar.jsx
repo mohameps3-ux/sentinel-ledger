@@ -1,5 +1,7 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
 import { getPublicApiUrl } from "../../lib/publicRuntime";
 import { recordClientTelemetry } from "../../lib/clientTelemetry.mjs";
 
@@ -111,12 +113,9 @@ export function LiveTensionBar() {
             {freshness.ageSec != null ? `age ${freshness.ageSec}s` : "age n/a"}
           </span>
         </div>
-        <Link
-          href="/pricing"
-          className="shrink-0 inline-flex items-center justify-center border border-purple-500/45 bg-purple-500/12 px-3 py-1.5 text-[11px] font-semibold text-purple-100 hover:bg-purple-500/22 hover:border-purple-400/55 transition whitespace-nowrap"
-        >
+        <ProPurchaseButton className="shrink-0 inline-flex items-center justify-center border border-purple-500/45 bg-purple-500/12 px-3 py-1.5 text-[11px] font-semibold text-purple-100 hover:bg-purple-500/22 hover:border-purple-400/55 transition whitespace-nowrap">
           🔒 Unlock PRO →
-        </Link>
+        </ProPurchaseButton>
       </div>
     </div>
   );
