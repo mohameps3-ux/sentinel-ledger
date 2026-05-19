@@ -33,6 +33,15 @@ function tokenFallbacks() {
   };
 }
 
+function firstHttpImageUrl(...candidates) {
+  for (const value of candidates) {
+    if (typeof value !== "string") continue;
+    const s = value.trim();
+    if (s.startsWith("https://") || s.startsWith("http://")) return s;
+  }
+  return null;
+}
+
 async function withTimeout(promise, ms, fallback, label) {
   let timer = null;
   try {
@@ -92,6 +101,14 @@ router.get("/:address", async (req, res) => {
     const marketData = await getMarketData(address);
     if (!marketData)
       return res.status(404).json({ ok: false, error: "Token not found" });
+
+    const tokenImageUrl = firstHttpImageUrl(
+      marketData.imageUrl,
+      marketData.image,
+      marketData.logoURI,
+      marketData.logoUri,
+      marketData.icon
+    );
 
     const [holdersData, largestData, tokenOnChainSec] = await Promise.all([
       withTimeout(getHolderConcentration(address), TOKEN_ROUTE_FAST_TIMEOUT_MS, fallback.holders, "holders"),
@@ -205,6 +222,8 @@ router.get("/:address", async (req, res) => {
           priceChange24h: marketData.priceChange24h,
           symbol: marketData.symbol,
           name: marketData.name,
+          imageUrl: tokenImageUrl,
+          logoURI: tokenImageUrl,
           // Always Unix **ms** (re-normalize so seconds from any source never leak)
           pairCreatedAt: pairCreatedRawToUnixMs(marketData.pairCreatedAt) ?? null,
           lpLocked: marketData.lpLocked,
@@ -243,4 +262,3 @@ router.get("/:address", async (req, res) => {
 });
 
 module.exports = router;
-
