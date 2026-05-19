@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { HealthBar } from "./HealthBar";
 import { APP_NAV_LINKS } from "./appNavConfig";
 import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
+import { useSubscriptionStatus } from "../../hooks/useSubscriptionStatus";
 
 const rowBase = "block w-full text-left text-[13px] rounded-md px-2.5 py-1.5 transition-colors";
 
@@ -15,6 +16,7 @@ export function NavAppMenu({ router, stalkerUnread, onStalkerNavigate }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const p = router.pathname || "";
+  const { active: walletSubActive } = useSubscriptionStatus();
 
   useEffect(() => {
     function onDoc(e) {
@@ -55,6 +57,8 @@ export function NavAppMenu({ router, stalkerUnread, onStalkerNavigate }) {
           <div className="flex flex-col gap-0.5 px-1.5">
             {APP_NAV_LINKS.map((item) => {
               const active = item.openSubscription ? false : p === item.href;
+              // Hide "Go PRO" when wallet subscription is already active
+              if (item.openSubscription && walletSubActive) return null;
               if (item.isStalker) {
                 return (
                   <Link

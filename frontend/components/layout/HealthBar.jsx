@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useUserStatus } from "../../hooks/useUserStatus";
+import { useSubscriptionStatus } from "../../hooks/useSubscriptionStatus";
 import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
 
 function formatDateShort(iso) {
@@ -14,7 +15,15 @@ function formatDateShort(iso) {
  * @param {boolean} [props.onlyBadge] — plan status only (no upgrade links); for compact header
  */
 export function HealthBar({ onlyBadge = false }) {
-  const { loading, plan, status, expiresAt, isLifetime, hasProAccess } = useUserStatus();
+  const { loading: jwtLoading, plan: jwtPlan, status: jwtStatus, expiresAt: jwtExpiresAt, isLifetime, hasProAccess: jwtHasProAccess } = useUserStatus();
+  const walletSub = useSubscriptionStatus();
+
+  // Wallet USDC subscription takes precedence over JWT (no JWT for wallet-only subscribers)
+  const hasProAccess = jwtHasProAccess || walletSub.active;
+  const plan = walletSub.active ? (walletSub.plan || "trial") : jwtPlan;
+  const expiresAt = walletSub.active ? walletSub.expiresAt : jwtExpiresAt;
+  const status = walletSub.active ? "active" : jwtStatus;
+  const loading = jwtLoading || walletSub.isLoading;
 
   const label = useMemo(() => {
     if (loading) return null;
