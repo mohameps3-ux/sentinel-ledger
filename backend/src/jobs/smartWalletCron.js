@@ -54,10 +54,32 @@ function safeAddrForJobId(walletAddress) {
   return String(walletAddress || "").replace(/:/g, "_");
 }
 
-/** UTC hour bucket so each cron tick can enqueue a fresh analyze-wallet job. */
-function cronAnalyzeWalletJobId(walletAddress) {
-  const hourBucket = new Date().toISOString().slice(0, 13).replace(/[-:T]/g, "");
-  return `smart-wallet_${safeAddrForJobId(walletAddress)}_${hourBucket}`.slice(0, 200);
+function cronJobBucketMinutes() {
+  const raw = Number(process.env.SMART_WALLET_CRON_JOB_BUCKET_MINUTES ?? 60);
+  if (!Number.isFinite(raw) || raw <= 0) return 60;
+  return Math.min(60, Math.floor(raw));
+}
+
+/**
+ * UTC time bucket for stable BullMQ jobId. bucketMinutes>=60 → YYYYMMDDHH (legacy hourly).
+ * bucketMinutes<60 → YYYYMMDDHH + zero-padded minute slot (e.g. 10 → 00,10,…,50).
+ */
+function cronJobTimeBucket(d = new Date()) {
+  const bucketMin = cronJobBucketMinutes();
+  const y = d.getUTCFullYear();
+  const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const h = String(d.getUTCHours()).padStart(2, "0");
+  const prefix = `${y}${mo}${day}${h}`;
+  if (bucketMin >= 60) return prefix;
+  const slot = Math.floor(d.getUTCMinutes() / bucketMin) * bucketMin;
+  return `${prefix}${String(slot).padStart(2, "0")}`;
+}
+
+/** UTC bucketed jobId so each cron tick can enqueue a fresh analyze-wallet job. */
+function cronAnalyzeWalletJobId(walletAddress, at = new Date()) {
+  const bucket = cronJobTimeBucket(at);
+  return `smart-wallet_${safeAddrForJobId(walletAddress)}_${bucket}`.slice(0, 200);
 }
 
 async function enqueueAnalyzeWalletJob(queue, walletAddress, requestId) {
