@@ -11,6 +11,7 @@ const {
   backfillQuietMinutes,
   BULLMQ_PRIORITY_LOW
 } = require("../lib/eventPriority");
+const { fetchLeaderboardWalletAddresses } = require("../lib/smartWalletLeaderboardPool");
 
 /** Fase 4: por defecto 02:00 UTC diario. Rollback: SMART_WALLET_CRON_INTERVAL_MS=21600000 */
 const DEFAULT_CRON_EXPRESSION = "0 2 * * *";
@@ -31,6 +32,57 @@ function getDirectLimit() {
   const raw = Number(process.env.SMART_WALLET_DIRECT_LIMIT || 20);
   if (!Number.isFinite(raw) || raw <= 0) return 20;
   return Math.min(100, Math.floor(raw));
+}
+
+function refreshLeaderboardEnabled() {
+  return String(process.env.SMART_WALLET_REFRESH_LEADERBOARD ?? "true").trim().toLowerCase() !== "false";
+}
+
+function refreshLeaderboardLimit() {
+  const raw = Number(process.env.SMART_WALLET_REFRESH_LEADERBOARD_LIMIT ?? 240);
+  if (!Number.isFinite(raw) || raw <= 0) return 240;
+  return Math.min(1000, Math.floor(raw));
+}
+
+function cronUnionMax() {
+  const raw = Number(process.env.SMART_WALLET_CRON_UNION_MAX ?? 240);
+  if (!Number.isFinite(raw) || raw <= 0) return 240;
+  return Math.min(1000, Math.floor(raw));
+}
+
+function safeAddrForJobId(walletAddress) {
+  return String(walletAddress || "").replace(/:/g, "_");
+}
+
+/** UTC hour bucket so each cron tick can enqueue a fresh analyze-wallet job. */
+function cronAnalyzeWalletJobId(walletAddress) {
+  const hourBucket = new Date().toISOString().slice(0, 13).replace(/[-:T]/g, "");
+  return `smart-wallet_${safeAddrForJobId(walletAddress)}_${hourBucket}`.slice(0, 200);
+}
+
+async function enqueueAnalyzeWalletJob(queue, walletAddress, requestId) {
+  const jobId = cronAnalyzeWalletJobId(walletAddress);
+  try {
+    await queue.add(
+      "analyze-wallet",
+      { walletAddress },
+      {
+        jobId,
+        priority: BULLMQ_PRIORITY_LOW,
+        removeOnComplete: 500,
+        removeOnFail: 500
+      }
+    );
+    return true;
+  } catch (e) {
+    const msg = e?.message || String(e);
+    if (/already exists|duplicate job id/i.test(msg)) return false;
+    console.warn(
+      `[smart-wallet-cron][${requestId}] enqueue analyze-wallet failed (${String(walletAddress).slice(0, 6)}…):`,
+      msg
+    );
+    return false;
+  }
 }
 
 /** Sync total_trades from wallet_tokens for wallets without signal-derived win_rate. */
@@ -129,11 +181,32 @@ async function enqueueActiveWallets(options = {}) {
     counts.set(key, (counts.get(key) || 0) + 1);
   }
 
-  const topWallets = [...counts.entries()]
+  const activitySet = [...counts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 100)
     .map(([addr]) => addr);
-  let targetWallets = topWallets;
+  let targetWallets = activitySet;
+  let leaderboardCount = 0;
+
+  if (refreshLeaderboardEnabled()) {
+    try {
+      const leaderboardSet = await fetchLeaderboardWalletAddresses(supabase, {
+        limit: refreshLeaderboardLimit()
+      });
+      leaderboardCount = leaderboardSet.length;
+      const unionMax = cronUnionMax();
+      targetWallets = [...new Set([...activitySet, ...leaderboardSet])].slice(0, unionMax);
+    } catch (lbErr) {
+      console.warn(
+        `[smart-wallet-cron][${requestId}] leaderboard pool skipped:`,
+        lbErr?.message || lbErr
+      );
+    }
+  }
+
+  console.log(
+    `[smart-wallet-cron][${requestId}] wallet_pool activity=${activitySet.length} leaderboard=${leaderboardCount} union=${targetWallets.length}`
+  );
 
   if (!targetWallets.length) {
     const { data: seedRows, error: seedError } = await supabase
@@ -166,22 +239,14 @@ async function enqueueActiveWallets(options = {}) {
     );
     processedCount = ok;
   } else {
+    let enqueued = 0;
     for (const walletAddress of targetWallets) {
-      await queue.add(
-        "analyze-wallet",
-        { walletAddress },
-        {
-          jobId: `smart-wallet_${walletAddress.replace(/:/g, "_")}`,
-          priority: BULLMQ_PRIORITY_LOW,
-          removeOnComplete: 500,
-          removeOnFail: 500
-        }
-      );
+      if (await enqueueAnalyzeWalletJob(queue, walletAddress, requestId)) enqueued += 1;
     }
     console.log(
-      `[smart-wallet-cron][${requestId}] enqueued at=${new Date().toISOString()} count=${targetWallets.length}`
+      `[smart-wallet-cron][${requestId}] enqueued at=${new Date().toISOString()} ok=${enqueued}/${targetWallets.length}`
     );
-    processedCount = targetWallets.length;
+    processedCount = enqueued;
   }
 
   await syncTotalTradesFromWalletTokens(requestId);
