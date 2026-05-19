@@ -124,6 +124,21 @@ function inferSellEvents(walletAddress, tx) {
   return out;
 }
 
+/** Stamp poll time after a successful getSignaturesForAddress (including zero new txs). */
+async function touchWalletLastChecked(supabase, walletAddress) {
+  const nowIso = new Date().toISOString();
+  const { error } = await supabase
+    .from("smart_wallets")
+    .update({ last_checked_at: nowIso, updated_at: nowIso })
+    .eq("wallet_address", walletAddress);
+  if (error) {
+    console.warn(
+      `[analyzeWallet] last_checked_at touch failed (${walletAddress}):`,
+      error.message || error
+    );
+  }
+}
+
 async function upsertSmartWalletRow(supabase, payload) {
   // First attempt with advanced schema.
   const rich = await supabase
@@ -141,6 +156,9 @@ async function upsertSmartWalletRow(supabase, payload) {
     last_seen: payload.last_seen,
     updated_at: payload.updated_at
   };
+  if (payload.last_checked_at) {
+    minimalPayload.last_checked_at = payload.last_checked_at;
+  }
   if (payload.last_signature) {
     minimalPayload.last_signature = payload.last_signature;
   }
@@ -184,10 +202,13 @@ async function analyzeWallet(walletAddress) {
     ? { untilSignature, skipGlobalDedupe: true }
     : { limit: 100, skipGlobalDedupe: false };
 
-  const { transactions: txs, deltaStats } = await fetchWalletTransactions(walletAddress, fetchOpts);
+  const { transactions: txs, deltaStats, pollOk } = await fetchWalletTransactions(walletAddress, fetchOpts);
 
   if (!txs.length) {
     console.log(`[analyzeWallet] ${walletAddress} — no txs found, skipping upsert`);
+    if (pollOk !== false) {
+      await touchWalletLastChecked(supabase, walletAddress);
+    }
     return { walletAddress, totalTrades: 0, deltaStats };
   }
   let totalTrades = 0;
@@ -337,6 +358,7 @@ async function analyzeWallet(walletAddress) {
     consistency_score: consistency,
     smart_score: smartScore,
     last_seen: nowIso,
+    last_checked_at: nowIso,
     updated_at: nowIso
   };
 

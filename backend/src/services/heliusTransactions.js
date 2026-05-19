@@ -51,12 +51,12 @@ async function fetchParsedBatch(endpoint, signatures) {
 /**
  * @param {string} walletAddress
  * @param {number|{limit?:number,untilSignature?:string|null,skipGlobalDedupe?:boolean}} limitOrOpts
- * @returns {Promise<{ transactions: any[], deltaStats: null | { newSignatures: number, cacheHits: number, rpcParsed: number } }>}
+ * @returns {Promise<{ transactions: any[], deltaStats: null | { newSignatures: number, cacheHits: number, rpcParsed: number, headSignature?: string | null }, pollOk?: boolean }>}
  */
 async function fetchWalletTransactions(walletAddress, limitOrOpts = 100) {
-  if (!walletAddress) return { transactions: [], deltaStats: null };
+  if (!walletAddress) return { transactions: [], deltaStats: null, pollOk: false };
   const urls = getSolanaJsonRpcUrlList();
-  if (!urls.length) return { transactions: [], deltaStats: null };
+  if (!urls.length) return { transactions: [], deltaStats: null, pollOk: false };
 
   const opts = normalizeOpts(limitOrOpts);
   const untilSig = opts.untilSignature && String(opts.untilSignature).trim() ? String(opts.untilSignature).trim() : null;
@@ -86,7 +86,9 @@ async function fetchWalletTransactions(walletAddress, limitOrOpts = 100) {
         /* try next RPC */
       }
     }
-    if (!signatures.length || !endpointUsed) return { transactions: [], deltaStats: null };
+    if (!signatures.length || !endpointUsed) {
+      return { transactions: [], deltaStats: null, pollOk: false };
+    }
 
     const claimedSigs = [];
     const freshSignatures = [];
@@ -97,7 +99,7 @@ async function fetchWalletTransactions(walletAddress, limitOrOpts = 100) {
         claimedSigs.push(s);
       }
     }
-    if (!freshSignatures.length) return { transactions: [], deltaStats: null };
+    if (!freshSignatures.length) return { transactions: [], deltaStats: null, pollOk: true };
 
     const releaseAll = async () => {
       for (const s of claimedSigs) await releaseTransactionClaim(s);
@@ -106,21 +108,21 @@ async function fetchWalletTransactions(walletAddress, limitOrOpts = 100) {
     try {
       const rows = await fetchParsedBatch(endpointUsed, freshSignatures);
       const out = rows.filter(Boolean).slice(0, cappedLimit);
-      return { transactions: out, deltaStats: null };
+      return { transactions: out, deltaStats: null, pollOk: true };
     } catch (_) {
       for (const endpoint of urls) {
         if (endpoint === endpointUsed) continue;
         try {
           const rows = await fetchParsedBatch(endpoint, freshSignatures);
           const out = rows.filter(Boolean).slice(0, cappedLimit);
-          return { transactions: out, deltaStats: null };
+          return { transactions: out, deltaStats: null, pollOk: true };
         } catch {
           /* continue */
         }
       }
       await releaseAll();
     }
-    return { transactions: [], deltaStats: null };
+    return { transactions: [], deltaStats: null, pollOk: true };
   }
 
   const sigPageLimit = untilSig ? fetchTxLimit() : bootstrapSignatureLimit();
@@ -157,7 +159,8 @@ async function fetchWalletTransactions(walletAddress, limitOrOpts = 100) {
   if (!signatures.length || !endpointUsed) {
     return {
       transactions: [],
-      deltaStats: { newSignatures: 0, cacheHits: 0, rpcParsed: 0, headSignature: null }
+      deltaStats: { newSignatures: 0, cacheHits: 0, rpcParsed: 0, headSignature: null },
+      pollOk: false
     };
   }
 
@@ -214,7 +217,8 @@ async function fetchWalletTransactions(walletAddress, limitOrOpts = 100) {
       cacheHits,
       rpcParsed,
       headSignature: ordered.length ? ordered[0] : null
-    }
+    },
+    pollOk: true
   };
 }
 
