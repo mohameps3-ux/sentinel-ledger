@@ -399,42 +399,31 @@ export function LiveSignalCard({
 
         return (
           <>
-            {displayNarrative ? (
-              <div className={`sentinel-narrative ${severityClass}`}>{displayNarrative}</div>
-            ) : null}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2.5 min-w-0 flex-1">
                 <TokenCardAvatar
                   tokenLike={{ ...sig, ...sig._api }}
                   mint={sig.mint}
-                  size={32}
+                  size={34}
                   variant="live"
                 />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1 mb-0 flex-wrap">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center gap-1 flex-wrap">
                     <RankBadge rank={rankInfo.rank} />
                     <RankDeltaChip delta={rankInfo.delta} isNew={rankInfo.isNew} />
                     <span className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-emerald-500/45 bg-emerald-500/12 text-emerald-100/95">
                       {t("war.live.badgeSignal")}
                     </span>
-                    {isStaleCard ? (
-                      <span
-                        className="text-[6px] font-bold uppercase tracking-wider px-1 py-px rounded border border-rose-500/40 bg-rose-500/12 text-rose-100/90"
-                        title={t("war.live.staleSignal")}
-                      >
-                        {t("war.live.staleSignal")}
-                      </span>
-                    ) : null}
                   </div>
                   <p
-                    className="text-xs font-bold text-sl-text tracking-tight truncate leading-tight"
+                    className="text-sm font-black text-sl-text tracking-tight truncate leading-tight"
                     title={symbolMetaTitle}
                   >
                     ${sig.symbol}
                   </p>
                   {hasPx || hasChg ? (
                     <div
-                      className={`mt-0.5 flex items-baseline justify-between gap-2 text-[10px] font-mono leading-tight ${
+                      className={`flex items-baseline justify-between gap-2 text-[10px] font-mono leading-tight ${
                         quotesPricesFetching ? "opacity-90" : ""
                       }`}
                     >
@@ -453,55 +442,69 @@ export function LiveSignalCard({
                     </div>
                   ) : null}
                 </div>
+              </div>
+
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <span
+                  className={`text-[8px] font-bold uppercase tracking-[0.16em] px-1.5 py-0.5 rounded border ${
+                    isStaleCard
+                      ? "border-rose-500/40 bg-rose-500/12 text-rose-100/90"
+                      : "border-emerald-500/45 bg-emerald-500/12 text-emerald-100/95"
+                  }`}
+                  title={isStaleCard ? t("war.live.staleSignal") : "Live signal"}
+                >
+                  {isStaleCard ? t("war.live.staleSignal") : "LIVE"}
+                </span>
                 <HomeCardSparkline mint={sig.mint} change24h={sparkCh24} change5m={sparkCh5} />
               </div>
-              <span
-                className={`shrink-0 self-start text-[8px] max-w-[4.75rem] text-right leading-tight px-1.5 py-0.5 rounded border line-clamp-1 ${confidenceTone(toneScore)}`}
-                title={confidenceTr(toneScore)}
-              >
-                {confidenceTr(toneScore)}
-              </span>
             </div>
 
-            <div className="space-y-1">
-              <div className="h-1 rounded-full bg-sl-card overflow-hidden ring-1 ring-white/8">
-                <div className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(toneScore)}`} style={{ width: `${displayScore}%` }} />
+            {displayNarrative ? (
+              <div className={`rounded-xl border border-white/[0.06] bg-black/18 px-2.5 py-2 ${severityClass}`}>
+                <div className="mb-1 text-[8px] font-bold uppercase tracking-[0.18em] text-sl-muted">Why now</div>
+                <p className="text-[11px] leading-snug text-sl-sub line-clamp-2">{displayNarrative}</p>
               </div>
+            ) : null}
+
+            <div className="rounded-xl border border-white/[0.06] bg-black/14 px-2.5 py-2 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-[11px] font-bold tabular-nums text-sl-text">{safeScore}/100</span>
-                <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-sl-muted">{confidenceTr(toneScore)}</span>
+                <div>
+                  <div className="text-[8px] font-bold uppercase tracking-[0.18em] text-sl-muted">Score</div>
+                  <div className="font-mono text-[13px] font-black tabular-nums text-sl-text">{safeScore}/100</div>
+                </div>
+                <span className={`inline-flex items-center justify-center ${feedDecisionPillClass(actionKey, toneScore)}`}>
+                  {decisionEmoji}
+                  {actionLabel}
+                </span>
               </div>
-              <div className="score-track mx-3 mb-2">
+              <div className="h-1.5 rounded-full bg-sl-card overflow-hidden ring-1 ring-white/8">
                 <div
-                  className={displayScore >= 60 ? "score-fill-high" : displayScore >= 40 ? "score-fill-mid" : "score-fill-low"}
-                  style={{ width: `${Math.min(displayScore, 100)}%` }}
+                  className={`h-full rounded-full bg-gradient-to-r ${scoreBarGradient(toneScore)}`}
+                  style={{ width: `${Math.min(Number(displayScore) || 0, 100)}%` }}
                 />
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-0.5">
-              <span className={`inline-flex items-center justify-center ${feedDecisionPillClass(actionKey, toneScore)}`}>
-                {decisionEmoji}
-                {actionLabel}
+            <div className="flex flex-wrap items-center gap-1">
+              {safeWallets > 0 ? (
+                <span className="text-[8px] px-1.5 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/12 text-indigo-100 font-mono font-bold">
+                  {safeWallets} SM
+                </span>
+              ) : null}
+              <span className="text-[8px] px-1.5 py-0.5 rounded border border-white/[0.08] bg-white/[0.03] text-sl-muted font-mono">
+                {win.label === "CLOSED" || timeLeft <= 0 ? "CLOSED" : `${timeLeft}m left`}
               </span>
-              <>
-                {coordOnCard ? (
-                  <span className="text-[8px] px-1 py-0.5 rounded border border-rose-500/40 bg-rose-500/15 text-rose-200 font-mono" title="Wallet cluster coordination (same as token page)">
-                    {String(coordOnCard).replace(/_/g, " ")}
-                  </span>
-                ) : null}
-                {(sig._api?.confluence || (!sig._api && toneScore >= 88)) ? (
-                  <span className="text-[8px] text-blue-200 bg-blue-500/10 border border-blue-500/25 rounded px-1 py-0.5 font-mono">
-                    multi
-                  </span>
-                ) : null}
-                {safeWallets > 0 ? (
-                  <span className="text-[8px] px-1 py-0.5 rounded border border-indigo-400/40 bg-indigo-500/12 text-indigo-100 font-mono font-bold">
-                    {safeWallets} SM
-                  </span>
-                ) : null}
-                <RulePerformanceBadge performance={sig._api?.rulePerformance} compact />
-              </>
+              {coordOnCard ? (
+                <span className="text-[8px] px-1.5 py-0.5 rounded border border-rose-500/40 bg-rose-500/15 text-rose-200 font-mono" title="Wallet cluster coordination (same as token page)">
+                  {String(coordOnCard).replace(/_/g, " ")}
+                </span>
+              ) : null}
+              {(sig._api?.confluence || (!sig._api && toneScore >= 88)) ? (
+                <span className="text-[8px] text-blue-200 bg-blue-500/10 border border-blue-500/25 rounded px-1.5 py-0.5 font-mono">
+                  multi
+                </span>
+              ) : null}
+              <RulePerformanceBadge performance={sig._api?.rulePerformance} compact />
             </div>
 
             <LiveCardOverlay mint={sig.mint} />
@@ -509,10 +512,6 @@ export function LiveSignalCard({
             {redFlagsForSignal(sig).length ? (
               <p className="text-[9px] text-red-200/95 truncate leading-tight">RED: {redFlagsForSignal(sig).join(" · ")}</p>
             ) : null}
-
-            <span className="font-mono text-2xs text-sl-muted">
-              {win.label === "CLOSED" || timeLeft <= 0 ? "CLOSED" : `${timeLeft}m`}
-            </span>
 
             <details className="border-t border-sl-border">
               <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 w-full font-mono text-2xs text-sl-muted hover:text-sl-sub transition-colors duration-150">
