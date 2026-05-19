@@ -209,8 +209,8 @@ export function LiveSignalCard({
       hideExecutionBar={isWarMode}
       baseClassName={`apex-card terminal-card-interactive group mb-2 relative ${isWarMode ? "feed-card-enter" : ""} ${
         isHeatFill
-          ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat bg-gradient-to-b from-amber-950/25 to-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(250,204,21,0.18)]"
-          : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live bg-sl-card p-1.5 sm:p-2 space-y-1 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(250,204,21,0.14)]"
+          ? "sl-home-card-compact sl-terminal-shell sl-terminal-shell--heat bg-gradient-to-b from-amber-950/25 to-sl-card p-2 sm:p-2.5 space-y-1.5 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(250,204,21,0.18)]"
+          : "sl-home-card-compact sl-terminal-shell sl-terminal-shell--live bg-sl-card p-2 sm:p-2.5 space-y-1.5 touch-manipulation transition-all duration-300 hover:max-h-none hover:-translate-y-[1px] hover:shadow-[0_0_18px_rgba(250,204,21,0.14)]"
       } ${hot ? "ring-1 ring-[rgba(250,204,21,0.32)]" : ""} ${
         sig.mint && isProbableSolanaMint(sig.mint) ? "cursor-pointer" : ""
       } ${selectedMint && sig.mint === selectedMint ? "ring-2 ring-[rgba(250,204,21,0.5)]" : ""}`}
