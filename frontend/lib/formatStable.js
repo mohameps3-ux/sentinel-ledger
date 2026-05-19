@@ -51,7 +51,11 @@ export function formatInteger(value) {
 export function formatDateTime(value) {
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(STABLE_LOCALE, { dateStyle: "medium", timeStyle: "short" });
+  return d.toLocaleString(STABLE_LOCALE, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    hour12: false
+  });
 }
 
 export function formatTime(value) {
