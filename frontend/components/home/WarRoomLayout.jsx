@@ -4,6 +4,49 @@ import { useMarketStore } from "@/lib/store/marketStore";
 import { narrativeFromData } from "@/lib/narrativeFromData";
 import { TokenCardAvatar } from "./TokenCardAvatar";
 
+function formatCompactUsd(value, opts = {}) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  if (opts.price) {
+    if (n < 0.000001) return `$${n.toExponential(2)}`;
+    if (n < 0.01) return `$${n.toFixed(8)}`;
+    if (n < 1) return `$${n.toFixed(4)}`;
+  }
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: n >= 1000 ? 1 : 2,
+    style: "currency",
+    currency: "USD"
+  }).format(n);
+}
+
+function formatPoolAge(value) {
+  if (value == null || value === "") return "—";
+  if (typeof value === "string") return value;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return "—";
+  if (n < 60) return `${Math.round(n)}m`;
+  if (n < 1440) return `${Math.round(n / 60)}h`;
+  return `${Math.round(n / 1440)}d`;
+}
+
+function getVelocityMarketFacts(tok) {
+  const source = tok?.market ?? tok?.token ?? tok ?? {};
+  const price = source.priceUsd ?? source.price ?? tok?.priceUsd ?? tok?.price ?? null;
+  const liquidity = source.liquidityUsd ?? source.liquidity ?? tok?.liquidityUsd ?? tok?.liquidity ?? null;
+  const volume24h = source.volume24hUsd ?? source.volume24h ?? source.v24h ?? tok?.volume24hUsd ?? tok?.volume24h ?? null;
+  const marketCap = source.marketCapUsd ?? source.marketCap ?? source.fdv ?? tok?.marketCapUsd ?? tok?.marketCap ?? tok?.fdv ?? null;
+  const poolAge = source.poolAgeMinutes ?? source.poolAge ?? source.ageMinutes ?? tok?.poolAgeMinutes ?? tok?.poolAge ?? null;
+
+  return [
+    { label: "PRICE", value: formatCompactUsd(price, { price: true }) },
+    { label: "LIQ", value: formatCompactUsd(liquidity) },
+    { label: "VOL 24H", value: formatCompactUsd(volume24h) },
+    { label: "MCAP", value: formatCompactUsd(marketCap) },
+    { label: "AGE", value: formatPoolAge(poolAge) }
+  ];
+}
+
 function SmartMoneyFlow({ tok }) {
   if (!tok) return null;
 
@@ -125,7 +168,7 @@ function SmartMoneyFlow({ tok }) {
       </div>
 
       <div className="war-smflow-events">
-        {events.slice(0, 4).map((ev, i) => (
+        {events.slice(0, 3).map((ev, i) => (
           <div key={i} className={`war-smflow-event war-smflow-${ev.type}`}>
             <span className={`war-smflow-dot war-smflow-dot-${ev.type}`} />
             <span className="war-smflow-text">{ev.text}</span>
@@ -148,27 +191,27 @@ function getAction(score, action) {
   const a = action ?? "WATCH";
   if (a === "BUY" || a === "ENTER NOW" || score >= 85)
     return {
-      label: "🚀 STRONG BUY",
+      label: "↗ STRONG BUY",
       cls: "war-opp-buy",
       target: score >= 85 ? "3–5x" : "2–3x",
       time: score >= 85 ? "< 30m" : "30m – 2h"
     };
   if (a === "SCALP" || score >= 70)
     return {
-      label: "⚡ SCALP",
+      label: "↗ SCALP",
       cls: "war-opp-scalp",
       target: "1–2x",
       time: "< 15m"
     };
   if (a === "WATCH" || a === "PREPARE")
     return {
-      label: "👁 WATCH",
+      label: "WATCH",
       cls: "war-opp-watch",
       target: "1–2x",
       time: "1 – 3h"
     };
   return {
-    label: "✕ STAY OUT",
+    label: "STAY OUT",
     cls: "war-opp-avoid",
     target: "N/A",
     time: "N/A"
@@ -281,6 +324,7 @@ const OpportunityRow = React.memo(function OpportunityRow({
     return line != null && line !== "" ? String(line) : "";
   })();
   const chips = getPatternChips(tok);
+  const marketFacts = getVelocityMarketFacts(tok);
   const wallets = tok.smartMoneyCount ?? tok.smartWallets ?? 0;
   const change = tok.priceChange24h ?? tok.change24h ?? 0;
 
@@ -332,9 +376,11 @@ const OpportunityRow = React.memo(function OpportunityRow({
       }}
     >
       <div className="war-opp-rank">{rank}</div>
+      <div className="war-opp-avatar-wrap">
+        <TokenCardAvatar tokenLike={tok} mint={mint} size={64} variant="neutral" />
+      </div>
       <div className="war-opp-body">
         <div className="war-opp-top">
-          <TokenCardAvatar tokenLike={tok} mint={mint} size={28} variant="neutral" />
           <span className={`war-intent-badge ${intent.cls}`}>{intent.label}</span>
           <span className="war-opp-symbol">
             ${tok.symbol ?? tok.name ?? mint.slice(0, 6)}
@@ -349,6 +395,15 @@ const OpportunityRow = React.memo(function OpportunityRow({
         >
           {narr}
         </motion.div>
+
+        <div className="war-opp-market-facts" aria-label="Token market facts">
+          {marketFacts.map((fact) => (
+            <span key={fact.label} className="war-opp-market-chip">
+              <span className="war-opp-market-label">{fact.label}</span>
+              <span className="war-opp-market-value">{fact.value}</span>
+            </span>
+          ))}
+        </div>
 
         {isActive ? (
           <>
@@ -412,7 +467,7 @@ export function WarRoomLayout({ signals = [], velocityTokens = [], kpis = {}, on
     : null;
 
   return (
-    <div className="war-room-container">
+    <div className="war-room-container velocity-institutional">
       <div className="war-room-header">
         <div className="war-room-title-row">
           <h1 className="war-room-title">VELOCITY</h1>
@@ -474,47 +529,53 @@ export function WarRoomLayout({ signals = [], velocityTokens = [], kpis = {}, on
             </div>
           </div>
 
-          <div className="war-room-feed war-aside-section">
-            <div className="war-aside-title">
-              ⬤ RECENT SIGNALS <span style={{ color: "#22c55e", marginLeft: 4 }}>Live</span>
-            </div>
-            <div className="war-recent-signals-scroll war-velocity-scroll">
-              {displayTokens.map((tok) => {
-                const sc = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
-                const intent = getIntentLevel(sc);
-                const mint = tok.mint ?? tok.address;
-                const isRecentActive = Boolean(mint && activeMint === mint);
-                return (
-                  <div
-                    key={mint}
-                    className={`war-recent-signal${isRecentActive ? " war-recent-active" : ""}`}
-                    onClick={() => handleSelectToken(tok)}
-                    style={{ cursor: "pointer" }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleSelectToken(tok);
-                      }
-                    }}
-                  >
-                    <span className={`war-intent-dot ${intent.cls}`} />
-                    <span className="war-recent-symbol">
-                      ${tok.symbol ?? tok.name ?? "TOKEN"}
-                    </span>
-                    <span className="war-recent-narrative">
-                      <WarNarrativeSnippet tok={tok} maxLen={32} />
-                    </span>
-                    <span className="war-recent-score">{sc}</span>
-                  </div>
-                );
-              })}
+          <div className="war-room-feed-stack">
+            <SmartMoneyFlow
+              key={activeTok?.mint ?? activeTok?.address ?? "default"}
+              tok={activeTok}
+            />
+            <div className="war-room-feed war-aside-section">
+              <div className="war-aside-title">
+                ⬤ RECENT SIGNALS <span className="war-smflow-live">LIVE</span>
+              </div>
+              <div className="war-recent-signals-scroll war-velocity-scroll">
+                {displayTokens.map((tok) => {
+                  const sc = Math.round(tok._currentScore ?? tok.sentinelScore ?? 0);
+                  const intent = getIntentLevel(sc);
+                  const mint = tok.mint ?? tok.address;
+                  const isRecentActive = Boolean(mint && activeMint === mint);
+                  return (
+                    <div
+                      key={mint}
+                      className={`war-recent-signal${isRecentActive ? " war-recent-active" : ""}`}
+                      onClick={() => handleSelectToken(tok)}
+                      style={{ cursor: "pointer" }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleSelectToken(tok);
+                        }
+                      }}
+                    >
+                      <span className={`war-intent-dot ${intent.cls}`} />
+                      <span className="war-recent-symbol">
+                        ${tok.symbol ?? tok.name ?? "TOKEN"}
+                      </span>
+                      <span className="war-recent-narrative">
+                        <WarNarrativeSnippet tok={tok} maxLen={32} />
+                      </span>
+                      <span className="war-recent-score">{sc}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="war-room-bottom-pair">
+        <div className="war-room-bottom-pair war-room-bottom-pair-single">
           <div className="war-aside-section war-quick-actions-panel war-bottom-box">
             <div className="war-aside-title">QUICK ACTIONS</div>
             <a href="/alerts" className="war-quick-action">
@@ -526,12 +587,6 @@ export function WarRoomLayout({ signals = [], velocityTokens = [], kpis = {}, on
             <a href="/watchlist" className="war-quick-action">
               ★ MANAGE WATCHLIST
             </a>
-          </div>
-          <div className="war-bottom-box war-bottom-smflow">
-            <SmartMoneyFlow
-              key={activeTok?.mint ?? activeTok?.address ?? "default"}
-              tok={activeTok}
-            />
           </div>
         </div>
       </div>
