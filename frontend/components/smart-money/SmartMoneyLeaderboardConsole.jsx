@@ -117,7 +117,12 @@ function inactivityDecayBadge(row) {
   return { label, className: styles[label] || styles.stale };
 }
 
-/** @typedef {'rank'|'wallet'|'unifiedScore'|'winRate'|'pnl30d'|'totalTrades'|'profitFactor'|'lastSeen'} SortKey */
+/** @typedef {'rank'|'wallet'|'unifiedScore'|'winRate'|'pnl30d'|'totalTrades'|'profitFactor'|'lastCheckedAt'} SortKey */
+
+/** Poll time for table column; until first poll after deploy, fall back to last trade time. */
+function leaderboardCheckedIso(row) {
+  return row?.lastCheckedAt || row?.lastSeen || null;
+}
 
 function StatusDot({ tone }) {
   const map = {
@@ -188,8 +193,10 @@ export function SmartMoneyLeaderboardConsole({
           return Number(row.totalTrades);
         case "profitFactor":
           return profitFactorSortValue(row);
-        case "lastSeen":
-          return row.lastSeen ? new Date(row.lastSeen).getTime() : 0;
+        case "lastCheckedAt": {
+          const iso = leaderboardCheckedIso(row);
+          return iso ? new Date(iso).getTime() : 0;
+        }
         default:
           return 0;
       }
@@ -573,7 +580,7 @@ export function SmartMoneyLeaderboardConsole({
                           ["pnl30d", "30D PnL"],
                           ["totalTrades", "Trades"],
                           ["profitFactor", "Profit factor"],
-                          ["lastSeen", "Last active"],
+                          ["lastCheckedAt", t("smart.th.lastChecked")],
                           [null, "Action"]
                         ].map(([key, label]) =>
                           key ? (
@@ -678,7 +685,7 @@ export function SmartMoneyLeaderboardConsole({
                             <td className="px-5 py-5 font-mono text-[11px] tabular-nums text-zinc-500">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="whitespace-nowrap">
-                                  {w.lastSeen ? formatDateTime(w.lastSeen) : "—"}
+                                  {leaderboardCheckedIso(w) ? formatDateTime(leaderboardCheckedIso(w)) : "—"}
                                 </span>
                                 {(() => {
                                   const badge = inactivityDecayBadge(w);
@@ -812,7 +819,14 @@ export function SmartMoneyLeaderboardConsole({
                             "30D PnL",
                             `${Number(selectedRow.pnl30d || 0) >= 0 ? "+" : "-"}$${formatUsdWhole(Math.abs(Number(selectedRow.pnl30d || 0)))}`
                           ],
-                          ["Last active", selectedRow.lastSeen ? relShort(selectedRow.lastSeen) : "—"]
+                          [
+                            t("smart.th.lastChecked"),
+                            leaderboardCheckedIso(selectedRow) ? relShort(leaderboardCheckedIso(selectedRow)) : "—"
+                          ],
+                          [
+                            t("smart.th.lastSeen"),
+                            selectedRow.lastSeen ? relShort(selectedRow.lastSeen) : "—"
+                          ]
                         ].map(([lab, val]) => (
                           <div key={lab} className="rounded-xl bg-[#121926]/60 px-3 py-3 ring-1 ring-white/[0.04]">
                             <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-500">{lab}</p>

@@ -112,7 +112,11 @@ export function SmartWalletDetailPanel({ row, labelFor, titleFor, narrativeLang 
           </p>
         </div>
         <div className="border border-[#1F2937] p-1.5 bg-[#0D1117]">
-          <p className="text-[9px] text-gray-500 uppercase tracking-wide">LAST SEEN</p>
+          <p className="text-[9px] text-gray-500 uppercase tracking-wide">LAST CHECKED</p>
+          <p className="text-gray-300 mt-0.5">{w.lastCheckedAt ? formatDateTime(w.lastCheckedAt) : "—"}</p>
+        </div>
+        <div className="border border-[#1F2937] p-1.5 bg-[#0D1117]">
+          <p className="text-[9px] text-gray-500 uppercase tracking-wide">LAST TRADE</p>
           <p className="text-gray-300 mt-0.5">{w.lastSeen ? formatDateTime(w.lastSeen) : "—"}</p>
         </div>
         <div className="border border-[#1F2937] p-1.5 bg-[#0D1117]">

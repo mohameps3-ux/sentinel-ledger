@@ -551,6 +551,7 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       recentHits: Number(w.recent_hits || 0),
       totalTrades: Number(w.total_trades || 0),
       lastSeen: w.last_seen,
+      lastCheckedAt: w.last_checked_at || null,
       smartScore: w.smart_score != null ? Number(w.smart_score) : null,
       earlyEntryScore: w.early_entry_score != null ? Number(w.early_entry_score) : null,
       clusterScore: w.cluster_score != null ? Number(w.cluster_score) : null,

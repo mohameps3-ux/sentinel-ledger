@@ -92,6 +92,7 @@ export const SMART_MONEY_PAGE_STRINGS = {
   "smart.th.trades": S("Trades", { es: "Trades" }),
   "smart.th.best": S("Best trade", { es: "Mejor trade" }),
   "smart.th.lastSeen": S("Last seen", { es: "Última vez" }),
+  "smart.th.lastChecked": S("Last checked", { es: "Última comprobación" }),
   "smart.th.call": S("Call", { es: "Llamada" }),
 
   "smart.fav.removeTitle": S("Remove from favorites", { es: "Quitar de favoritos" }),
