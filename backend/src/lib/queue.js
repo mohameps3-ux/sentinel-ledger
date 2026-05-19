@@ -1,12 +1,8 @@
 const { Queue } = require("bullmq");
-const IORedis = require("ioredis");
+const { getBullmqConnection } = require("./bullmq");
 
 function makeConnection() {
-  const url = process.env.UPSTASH_REDIS_URL;
-  if (!url) return null;
-  return new IORedis(url, {
-    maxRetriesPerRequest: null
-  });
+  return getBullmqConnection();
 }
 
 const connection = makeConnection();
@@ -15,4 +11,3 @@ const deployerQueue = connection
   : null;
 
 module.exports = { deployerQueue, makeConnection };
-

@@ -291,7 +291,9 @@ app.get("/health", async (_, res) => {
       null,
     cache: cacheOk,
     redisRestConfigured: Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
-    bullMqTcpConfigured: Boolean(process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL),
+    bullMqTcpConfigured: Boolean(
+      process.env.BULLMQ_REDIS_URL || process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL
+    ),
     heliusWebhookConfigured: Boolean(process.env.HELIUS_WEBHOOK_SECRET),
     webPushVapidKeysConfigured: isVapidKeyMaterialPresent(),
     missingCriticalSecrets: missingCritical,
