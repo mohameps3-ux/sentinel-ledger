@@ -1,0 +1,268 @@
+/* Velocity-only institutional refresh.
+   Scoped under .velocity-institutional so Live/Hot/Track/Outlier remain untouched. */
+
+.velocity-institutional {
+  --velocity-bg: #0b1220;
+  --velocity-surface: rgba(15, 23, 42, 0.78);
+  --velocity-surface-strong: rgba(17, 28, 46, 0.92);
+  --velocity-border: rgba(100, 116, 139, 0.24);
+  --velocity-border-active: rgba(45, 212, 191, 0.48);
+  --velocity-text: #e5edf7;
+  --velocity-muted: #94a3b8;
+  --velocity-accent: #2dd4bf;
+  --velocity-blue: #60a5fa;
+  --velocity-success: #22c55e;
+  --velocity-danger: #f87171;
+  --velocity-warning: #d6a84f;
+
+  background:
+    radial-gradient(circle at 16% 0%, rgba(45, 212, 191, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(9, 14, 26, 0.98), rgba(5, 9, 16, 0.98));
+}
+
+.velocity-institutional .war-room-title {
+  color: var(--velocity-text);
+  letter-spacing: -0.03em;
+}
+
+.velocity-institutional .war-room-subtitle,
+.velocity-institutional .war-room-section-sub {
+  color: var(--velocity-muted);
+}
+
+.velocity-institutional .war-room-section-title,
+.velocity-institutional .war-narrative-engine-label {
+  color: var(--velocity-accent);
+}
+
+.velocity-institutional .war-kpi,
+.velocity-institutional .war-aside-section,
+.velocity-institutional .war-opportunity,
+.velocity-institutional .war-narrative-bar {
+  background: var(--velocity-surface);
+  border-color: var(--velocity-border);
+  box-shadow: 0 16px 42px rgba(2, 8, 23, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.velocity-institutional .war-kpi-danger {
+  border-color: var(--velocity-border);
+}
+
+.velocity-institutional .war-kpi-red {
+  color: var(--velocity-danger);
+}
+
+.velocity-institutional .war-kpi-green {
+  color: var(--velocity-success);
+}
+
+.velocity-institutional .war-opportunity {
+  align-items: flex-start;
+  min-height: 128px;
+  padding: 18px 20px;
+  gap: 18px;
+  border-left-width: 3px;
+}
+
+.velocity-institutional .war-opportunity:hover {
+  background: var(--velocity-surface-strong);
+  border-color: rgba(96, 165, 250, 0.34);
+}
+
+.velocity-institutional .war-opportunity.intent-extreme {
+  border-left-color: var(--velocity-warning);
+}
+.velocity-institutional .war-opportunity.intent-high {
+  border-left-color: var(--velocity-accent);
+}
+.velocity-institutional .war-opportunity.intent-medium {
+  border-left-color: var(--velocity-blue);
+}
+.velocity-institutional .war-opportunity.intent-low {
+  border-left-color: rgba(148, 163, 184, 0.42);
+}
+
+.velocity-institutional .war-card-active {
+  min-height: 144px !important;
+  background: linear-gradient(90deg, rgba(45, 212, 191, 0.08), rgba(15, 23, 42, 0.88)) !important;
+  border-color: var(--velocity-border-active) !important;
+  box-shadow: 0 18px 54px rgba(2, 8, 23, 0.42), 0 0 0 1px rgba(45, 212, 191, 0.14) !important;
+}
+
+.velocity-institutional .war-opp-rank {
+  color: var(--velocity-muted);
+  min-width: 30px;
+  padding-top: 18px;
+}
+
+.velocity-institutional .war-opp-avatar-wrap {
+  flex: 0 0 auto;
+  padding-top: 2px;
+}
+
+.velocity-institutional .war-opp-avatar-wrap img,
+.velocity-institutional .war-opp-avatar-wrap [data-token-avatar="1"] {
+  width: 64px !important;
+  height: 64px !important;
+}
+
+.velocity-institutional .war-opp-body {
+  gap: 7px;
+}
+
+.velocity-institutional .war-opp-top {
+  gap: 9px;
+}
+
+.velocity-institutional .war-opp-symbol {
+  color: var(--velocity-text);
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.velocity-institutional .war-opp-narrative {
+  color: rgba(229, 237, 247, 0.88);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.velocity-institutional .war-opp-market-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.velocity-institutional .war-opp-market-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 7px;
+  border-radius: 7px;
+  border: 1px solid rgba(100, 116, 139, 0.22);
+  background: rgba(15, 23, 42, 0.72);
+  font-family: var(--sl-font-mono, "JetBrains Mono", monospace);
+  white-space: nowrap;
+}
+
+.velocity-institutional .war-opp-market-label {
+  color: var(--velocity-muted);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
+.velocity-institutional .war-opp-market-value {
+  color: var(--velocity-text);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.velocity-institutional .war-intent-badge.intent-extreme {
+  background: rgba(214, 168, 79, 0.16);
+  color: #f0c96d;
+}
+.velocity-institutional .war-intent-badge.intent-high {
+  background: rgba(45, 212, 191, 0.14);
+  color: var(--velocity-accent);
+}
+.velocity-institutional .war-intent-badge.intent-medium {
+  background: rgba(96, 165, 250, 0.14);
+  color: var(--velocity-blue);
+}
+.velocity-institutional .war-intent-badge.intent-low {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--velocity-muted);
+}
+
+.velocity-institutional .war-score-ring-live {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.72);
+}
+.velocity-institutional .score-level-extreme {
+  border-color: var(--velocity-warning);
+  box-shadow: 0 0 24px rgba(214, 168, 79, 0.22);
+}
+.velocity-institutional .score-level-high {
+  border-color: var(--velocity-accent);
+  box-shadow: 0 0 20px rgba(45, 212, 191, 0.16);
+}
+.velocity-institutional .score-level-medium {
+  border-color: var(--velocity-blue);
+  box-shadow: 0 0 18px rgba(96, 165, 250, 0.14);
+}
+
+.velocity-institutional .war-opp-buy {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.28);
+  color: #86efac;
+}
+.velocity-institutional .war-opp-scalp,
+.velocity-institutional .war-opp-watch {
+  background: rgba(96, 165, 250, 0.11);
+  border-color: rgba(96, 165, 250, 0.28);
+  color: #bfdbfe;
+}
+.velocity-institutional .war-opp-avoid {
+  background: rgba(248, 113, 113, 0.10);
+  border-color: rgba(248, 113, 113, 0.24);
+  color: #fecaca;
+}
+
+.velocity-institutional .war-room-feed-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.velocity-institutional .war-smflow {
+  border-color: rgba(45, 212, 191, 0.24) !important;
+}
+
+.velocity-institutional .war-pressure-fill-buy {
+  background: linear-gradient(90deg, #22c55e, #2dd4bf);
+}
+.velocity-institutional .war-pressure-fill-sell {
+  background: linear-gradient(90deg, #f87171, #ef4444);
+}
+
+.velocity-institutional .war-recent-signal {
+  min-height: 24px;
+  padding: 3px 4px;
+  border-radius: 6px;
+}
+
+.velocity-institutional .war-recent-active {
+  background: rgba(45, 212, 191, 0.10);
+  outline: 1px solid rgba(45, 212, 191, 0.22);
+}
+
+.velocity-institutional .war-room-bottom-pair-single {
+  grid-template-columns: 1fr;
+}
+
+.velocity-institutional .war-narrative-bar {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(45, 212, 191, 0.18);
+}
+
+.velocity-institutional .war-conviction-badge {
+  background: rgba(45, 212, 191, 0.10);
+  color: var(--velocity-accent);
+  border-color: rgba(45, 212, 191, 0.24);
+}
+
+@media (max-width: 1100px) {
+  .velocity-institutional .war-opportunity {
+    min-height: 118px;
+    padding: 14px 16px;
+  }
+  .velocity-institutional .war-opp-avatar-wrap img,
+  .velocity-institutional .war-opp-avatar-wrap [data-token-avatar="1"] {
+    width: 56px !important;
+    height: 56px !important;
+  }
+}
