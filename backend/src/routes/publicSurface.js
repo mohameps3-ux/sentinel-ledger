@@ -135,6 +135,21 @@ function daysInactiveFromAnchor(iso) {
   return (Date.now() - t) / 86_400_000;
 }
 
+/** Smart Money leaderboard: max age of last_seen (days). 0 = filter disabled. */
+function leaderboardMaxStaleDays() {
+  const raw = Number(process.env.LEADERBOARD_MAX_STALE_DAYS ?? 14);
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  return Math.min(3650, Math.floor(raw));
+}
+
+function isLeaderboardFresh(lastSeenIso, maxStaleDays) {
+  if (maxStaleDays <= 0) return true;
+  if (lastSeenIso == null || String(lastSeenIso).trim() === "") return false;
+  const t = Date.parse(String(lastSeenIso));
+  if (!Number.isFinite(t)) return false;
+  return Date.now() - t <= maxStaleDays * 86_400_000;
+}
+
 function leaderboardInactivityDecayMultiplier(daysInactive) {
   if (daysInactive == null || !Number.isFinite(daysInactive)) return 0.3;
   if (daysInactive > 30) return 0.3;
@@ -484,13 +499,15 @@ router.get("/wallet-labels", async (req, res) => {
   }
 });
 
-/** GET /api/v1/public/smart-wallets-leaderboard — global ranked wallets (Supabase) */
+/** GET /api/v1/public/smart-wallets-leaderboard — global ranked wallets (Supabase).
+ *  Excludes wallets with last_seen older than LEADERBOARD_MAX_STALE_DAYS (default 14; 0 = off). */
 router.get("/smart-wallets-leaderboard", async (req, res) => {
   const supabase = safeSupabase();
   if (!supabase) {
     return res.status(503).json({ ok: false, error: "supabase_unconfigured", rows: [] });
   }
   try {
+    const maxStaleDays = leaderboardMaxStaleDays();
     const minWr = Math.min(100, Math.max(0, Number(req.query.minWinRate || 0)));
     const minTrades = Math.min(100000, Math.max(0, Number(req.query.minTrades || 0)));
     const chain = String(req.query.chain || "solana").toLowerCase();
@@ -510,11 +527,7 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
         .trim()
         .toLowerCase() === "true";
 
-    let q = supabase
-      .from("smart_wallets")
-      .select("*")
-      .order("total_trades", { ascending: false })
-      .limit(240);
+    let q = supabase.from("smart_wallets").select("*");
     if (!includeZeroTrade) {
       q = q.gt("total_trades", 0);
     }
@@ -522,6 +535,11 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       q = q.gt("win_rate", 0);
     }
     if (minWr > 0) q = q.gte("win_rate", minWr);
+    if (maxStaleDays > 0) {
+      const cutoffIso = new Date(Date.now() - maxStaleDays * 86_400_000).toISOString();
+      q = q.gte("last_seen", cutoffIso);
+    }
+    q = q.order("total_trades", { ascending: false }).limit(240);
     const { data, error } = await q;
     if (error) throw error;
 
@@ -539,6 +557,10 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       consistencyScore: w.consistency_score != null ? Number(w.consistency_score) : null,
       smartWalletRowUpdatedAt: w.updated_at || null
     }));
+
+    if (maxStaleDays > 0) {
+      rows = rows.filter((r) => isLeaderboardFresh(r.lastSeen, maxStaleDays));
+    }
 
     if (minTrades > 0) {
       rows = rows.filter((r) => r.totalTrades >= minTrades);
@@ -668,7 +690,9 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
           minWinRate: minWr,
           minTrades,
           includeZeroTradeRows: includeZeroTrade,
-          includeZeroWinRateRows: includeZeroWinRate
+          includeZeroWinRateRows: includeZeroWinRate,
+          maxStaleDays: maxStaleDays || null,
+          freshnessColumn: "last_seen"
         }
       }
     });
