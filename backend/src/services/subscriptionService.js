@@ -9,10 +9,16 @@ function looksLikeUuid(value) {
 
 function hasProAccess(row) {
   if (!row || row.plan === "free") return false;
-  if (row.status === "expired") return false;
-  if (row.plan === "lifetime" && row.status === "active") return true;
   const exp = row.expires_at ? new Date(row.expires_at).getTime() : null;
   const now = Date.now();
+
+  if (row.wallet_address) {
+    if (!exp || Number.isNaN(exp)) return false;
+    return exp > now;
+  }
+
+  if (row.status === "expired") return false;
+  if (row.plan === "lifetime" && row.status === "active") return true;
   if (row.plan !== "lifetime") {
     if (!exp || Number.isNaN(exp)) return false;
     if (exp <= now) return false;
@@ -24,13 +30,29 @@ function hasProAccess(row) {
   return false;
 }
 
+async function getWalletAddressForUser(userId) {
+  if (!looksLikeUuid(userId) || String(userId) === ZERO_UUID) return null;
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("users")
+    .select("wallet_address")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  const wallet = data?.wallet_address ? String(data.wallet_address).trim() : "";
+  return wallet || null;
+}
+
 async function getLatestSubscription(userId) {
+  const walletAddress = await getWalletAddressForUser(userId);
+  if (!walletAddress) return null;
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("subscriptions")
     .select("*")
-    .eq("user_id", userId)
-    .order("updated_at", { ascending: false })
+    .eq("wallet_address", walletAddress)
+    .order("expires_at", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(1);
   if (error) throw error;
   return Array.isArray(data) && data.length ? data[0] : null;
@@ -111,10 +133,15 @@ async function upsertSubscriptionRow({
     return data;
   }
 
+  const walletAddress = await getWalletAddressForUser(userId);
+  if (!walletAddress) {
+    throw new Error("user_wallet_not_found");
+  }
+
   const { data, error } = await supabase
     .from("subscriptions")
     .insert({
-      user_id: userId,
+      wallet_address: walletAddress,
       plan,
       status,
       starts_at: nowIso,
@@ -212,18 +239,12 @@ async function applySubscriptionDeleted(stripeSubscription) {
   if (error) throw error;
 }
 
-/** Daily cron: mark non-lifetime active subs as expired when past expires_at */
+/**
+ * Daily cron hook. On-chain wallet subscriptions (wallet_address + expires_at) do not use
+ * a status column — entitlement is evaluated at read time (expires_at > now).
+ */
 async function expireStaleSubscriptions() {
-  const supabase = getSupabase();
-  const nowIso = new Date().toISOString();
-  const { error } = await supabase
-    .from("subscriptions")
-    .update({ status: "expired", updated_at: nowIso })
-    .neq("plan", "lifetime")
-    .eq("status", "active")
-    .not("expires_at", "is", null)
-    .lt("expires_at", nowIso);
-  if (error) throw error;
+  return;
 }
 
 async function applyStripeEvent(event) {

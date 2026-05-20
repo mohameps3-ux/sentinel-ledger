@@ -84,13 +84,46 @@ async function maybeActivateProSubscription(events) {
                   const senderWallet = tx.fromUserAccount;
                           if (!senderWallet) continue;
 
+                  const txSignature = String(event?.signature || event?.transactionSignature || "").trim();
+                  if (!txSignature) {
+                              console.warn("[usdc-pro] missing transaction signature — skipping subscription insert");
+                              continue;
+                  }
+
                   console.log(`[usdc-pro] detected 19 USDC payment from ${senderWallet} — activating PRO`);
 
                   const supabase = createClient(supabaseUrl, supabaseKey);
                           const now = new Date();
                           const expiresAt = new Date(now.getTime() + PRO_DURATION_MS);
 
-                  // Look up user by wallet address
+                  const { data: existingSub, error: dupErr } = await supabase
+                            .from("subscriptions")
+                            .select("id")
+                            .eq("tx_signature", txSignature)
+                            .maybeSingle();
+
+                  if (dupErr) {
+                              console.error("[usdc-pro] subscription dup lookup error:", dupErr.message);
+                              continue;
+                  }
+                  if (existingSub?.id) {
+                              console.warn(`[usdc-pro] tx_signature already used: ${txSignature}`);
+                              continue;
+                  }
+
+                  const { error: subError } = await supabase.from("subscriptions").insert({
+                            wallet_address: senderWallet,
+                            tx_signature: txSignature,
+                            amount_usdc: PRO_PRICE_LAMPORTS / 1_000_000,
+                            plan: "pro",
+                            expires_at: expiresAt.toISOString()
+                  });
+
+                  if (subError) {
+                              console.error("[usdc-pro] subscription insert error:", subError.message);
+                              continue;
+                  }
+
                   const { data: user } = await supabase
                             .from("users")
                             .select("id")
@@ -98,32 +131,12 @@ async function maybeActivateProSubscription(events) {
                             .maybeSingle();
 
                   if (!user) {
-                              console.warn(`[usdc-pro] no user found for wallet ${senderWallet}`);
+                              console.log(
+                                `[usdc-pro] PRO subscription stored for wallet ${senderWallet} until ${expiresAt.toISOString()} (no users row)`
+                              );
                               continue;
                   }
 
-                  // Upsert subscription record
-                  const { error: subError } = await supabase
-                            .from("subscriptions")
-                            .upsert(
-                              {
-                                              user_id: user.id,
-                                              plan: "pro",
-                                              status: "active",
-                                              starts_at: now.toISOString(),
-                                              expires_at: expiresAt.toISOString(),
-                                              payment_method: "usdc_solana",
-                                              updated_at: now.toISOString()
-                              },
-                              { onConflict: "user_id" }
-                                        );
-
-                  if (subError) {
-                              console.error("[usdc-pro] subscription upsert error:", subError.message);
-                              continue;
-                  }
-
-                  // Enable pro_alerts_enabled flag on user
                   const { error: userError } = await supabase
                             .from("users")
                             .update({ pro_alerts_enabled: true, updated_at: now.toISOString() })
