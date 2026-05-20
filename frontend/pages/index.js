@@ -677,38 +677,6 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     [useLiveVirtualized, liveSignalsForGrid]
   );
 
-  const liveMintsForQuotes = useMemo(() => {
-    const mints = new Set(
-      liveSignalsForGrid.map((s) => s.mint).filter((m) => m && isProbableSolanaMint(m))
-    );
-    if (tacticalTab === "hot") {
-      for (const t of heatTokensForGrid) {
-        if (t?.mint && isProbableSolanaMint(t.mint)) mints.add(t.mint);
-      }
-    }
-    if (tacticalTab === "velocity") {
-      for (const t of visibleVelocityTokens) {
-        const m = t?.mint ?? t?.tokenAddress;
-        if (m && isProbableSolanaMint(m)) mints.add(m);
-      }
-    }
-    return [...mints];
-  }, [liveSignalsForGrid, heatTokensForGrid, visibleVelocityTokens, tacticalTab]);
-  const quotesQuery = useDecisionFeedQuotes(liveMintsForQuotes, {
-    isWarMode,
-    enabled: tacticalTab === "live" || tacticalTab === "hot" || tacticalTab === "velocity"
-  });
-  const tickerByMint = useMemo(() => {
-    const rows = quotesQuery.data?.data;
-    const o = {};
-    if (Array.isArray(rows)) {
-      for (const r of rows) {
-        if (r?.mint) o[r.mint] = r;
-      }
-    }
-    return o;
-  }, [quotesQuery.data]);
-
   const heatTokenPool = useMemo(() => {
     const out = [];
     const seen = new Set();
@@ -769,6 +737,41 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       ),
     [heatExpanded, hotTabTokens]
   );
+
+  // Quotes block must stay AFTER heatTokensForGrid and visibleVelocityTokens
+  // (it reads both). Moving it earlier triggers a TDZ ReferenceError during SSG
+  // because Next prerenders pages/ in a single module scope.
+  const liveMintsForQuotes = useMemo(() => {
+    const mints = new Set(
+      liveSignalsForGrid.map((s) => s.mint).filter((m) => m && isProbableSolanaMint(m))
+    );
+    if (tacticalTab === "hot") {
+      for (const t of heatTokensForGrid) {
+        if (t?.mint && isProbableSolanaMint(t.mint)) mints.add(t.mint);
+      }
+    }
+    if (tacticalTab === "velocity") {
+      for (const t of visibleVelocityTokens) {
+        const m = t?.mint ?? t?.tokenAddress;
+        if (m && isProbableSolanaMint(m)) mints.add(m);
+      }
+    }
+    return [...mints];
+  }, [liveSignalsForGrid, heatTokensForGrid, visibleVelocityTokens, tacticalTab]);
+  const quotesQuery = useDecisionFeedQuotes(liveMintsForQuotes, {
+    isWarMode,
+    enabled: tacticalTab === "live" || tacticalTab === "hot" || tacticalTab === "velocity"
+  });
+  const tickerByMint = useMemo(() => {
+    const rows = quotesQuery.data?.data;
+    const o = {};
+    if (Array.isArray(rows)) {
+      for (const r of rows) {
+        if (r?.mint) o[r.mint] = r;
+      }
+    }
+    return o;
+  }, [quotesQuery.data]);
 
   // Tracks rank changes between refetches so cards can render âN / âN / NEW
   // badges when the live ordering moves. Pure client-side; no extra network.
