@@ -2,7 +2,7 @@ import { Fragment, useMemo } from "react";
 import { Zap } from "lucide-react";
 import { UI_CONFIG } from "@/constants/homeData";
 import { mapTrendRowToLiveSignal } from "@/lib/signalUtils";
-import { useLocale } from "../../../contexts/LocaleContext";
+import { useLocale } from "../../contexts/LocaleContext";
 import { LiveSignalCard } from "@/features/war-home/LiveSignalCard";
 
 export function WarRoomLayout({
