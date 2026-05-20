@@ -4,6 +4,7 @@ import { ChevronsDown, ChevronsUp, Info, Inbox, Loader2, Sparkles, WifiOff } fro
 import { Virtuoso } from "react-virtuoso";
 import { UI_CONFIG } from "@/constants/homeData";
 import { useLocale } from "../../../../contexts/LocaleContext";
+import { useSubscriptionModal } from "../../../../contexts/SubscriptionModalContext";
 import { useWarMode } from "../../../../contexts/WarModeContext";
 import { useIngestionPulse } from "../../../../hooks/useIngestionPulse";
 import { LiveSignalCard } from "../LiveSignalCard";
@@ -20,6 +21,7 @@ export function LiveTab({
   onToggleLiveExpanded,
   liveSignalsForGrid,
   liveSignalPool,
+  isProFeed = false,
   signalsFeedIsError,
   signalsFeedIsDegraded = false,
   signalsFeedIsLoading = false,
@@ -38,6 +40,7 @@ export function LiveTab({
   onSelectMint
 }) {
   const { t } = useLocale();
+  const { openSubscriptionModal } = useSubscriptionModal();
   const [stalkerUnread, setStalkerUnread] = useState(0);
 
   useEffect(() => {
@@ -94,6 +97,38 @@ export function LiveTab({
       className={`sl-section${isWarMode ? " war-mode-active" : ""}`}
     >
       <div className="mb-3 space-y-2">
+        <div
+          className={`flex flex-wrap items-center gap-2 px-2.5 py-1.5 border ${
+            isProFeed
+              ? "border-emerald-500/35 bg-emerald-500/10"
+              : "border-amber-500/35 bg-amber-500/10"
+          }`}
+          data-testid="sl-live-feed-tier-badge"
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+              isProFeed ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+            }`}
+            aria-hidden
+          />
+          {isProFeed ? (
+            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200">
+              {t("war.live.accessLive")}
+            </span>
+          ) : (
+            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-100/95 leading-snug">
+              {t("war.live.accessDelayedPrefix")}
+              {" · "}
+              <button
+                type="button"
+                onClick={openSubscriptionModal}
+                className="normal-case tracking-normal underline underline-offset-2 text-cyan-200/95 hover:text-cyan-50 transition-colors"
+              >
+                {t("war.live.accessDelayedCta")}
+              </button>
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <p className="sl-label text-[9px] inline-flex items-center gap-1.5 !text-sl-muted">
@@ -139,20 +174,12 @@ export function LiveTab({
               </Link>
             </div>
             <div className="flex flex-wrap items-center justify-start md:justify-end gap-1">
-            <span
-              className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border inline-flex items-center gap-1 ${
-                signalsFeedIsError || signalsFeedIsDegraded
-                  ? "bg-amber-500/15 text-amber-200 border-amber-500/30"
-                  : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-              }`}
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  signalsFeedIsError || signalsFeedIsDegraded ? "bg-amber-400" : "bg-emerald-400 animate-pulse"
-                }`}
-              />
-              {signalsFeedIsError || signalsFeedIsDegraded ? t("war.live.statusDegraded") : t("war.live.statusLive")}
-            </span>
+            {signalsFeedIsError || signalsFeedIsDegraded ? (
+              <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border inline-flex items-center gap-1 bg-amber-500/15 text-amber-200 border-amber-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                {t("war.live.statusDegraded")}
+              </span>
+            ) : null}
             <span
               className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border inline-flex items-center gap-1 ${
                 ingestLive ? "bg-emerald-950/40 text-emerald-200 border-emerald-600/35" : "bg-zinc-800/80 text-zinc-400 border-zinc-600/30"

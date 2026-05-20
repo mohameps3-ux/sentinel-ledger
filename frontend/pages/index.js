@@ -6,6 +6,10 @@ import { useSignalsFeed } from "../hooks/useSignalsFeed";
 import { useDecisionFeedQuotes } from "../hooks/useDecisionFeedQuotes";
 import { useRankDeltas } from "../hooks/useRankDeltas";
 import { useAccessTier } from "../hooks/useAccessTier";
+import {
+  filterLiveSignalsForFreeTier,
+  getLiveSignalEmittedAtMs
+} from "../lib/liveFeedAccess";
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { AnimatedNumber } from "../components/ui/AnimatedNumber";
 import { PageHead } from "../components/seo/PageHead";
@@ -45,17 +49,10 @@ import { motion, AnimatePresence } from "framer-motion";
 /** Matches LiveTab war-mode visible cap (first N of grid before score re-sort). */
 const WAR_TAB_VISIBLE_MAX = 6;
 
-function signalCreatedAtMs(sig) {
-  const raw = sig?._api?.createdAt ?? sig?._api?.signalAt ?? null;
-  if (raw == null || raw === "") return null;
-  const ms = Date.parse(String(raw));
-  return Number.isFinite(ms) ? ms : null;
-}
-
 function sortLiveSignalsNewestFirst(rows) {
   return [...rows].sort((a, b) => {
-    const ams = signalCreatedAtMs(a);
-    const bms = signalCreatedAtMs(b);
+    const ams = getLiveSignalEmittedAtMs(a);
+    const bms = getLiveSignalEmittedAtMs(b);
     if (ams == null && bms == null) return 0;
     if (ams == null) return 1;
     if (bms == null) return -1;
@@ -600,6 +597,12 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     }));
   }, [interpretedSignals]);
 
+  /** Free / disconnected wallets: client-side 15 min delay on top of API tier. */
+  const liveSignalPoolForFeed = useMemo(() => {
+    if (isPro) return liveSignalPool;
+    return filterLiveSignalsForFreeTier(liveSignalPool);
+  }, [liveSignalPool, isPro]);
+
   const warRoomSignals = useMemo(
     () => liveSignalPool.filter((t) => t._liveSource !== "hot_fill"),
     [liveSignalPool]
@@ -607,6 +610,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
 
   /** OUTLIER tab only — unchanged score sort; LIVE grid uses `liveTabTokens`. */
   const sortedSignalPool = useSortedTokens(liveSignalPool);
+  const sortedLiveFeedPool = useSortedTokens(liveSignalPoolForFeed);
 
   /** LIVE grid: engine signals first, then hot_fill trending rows up to grid cap. */
   const liveTabTokens = useMemo(() => {
@@ -615,17 +619,17 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
       : UI_CONFIG.GRID_COMPACT_CARDS;
 
     if (profile === "balanced") {
-      const signalsOnly = liveSignalPool.filter((t) => t._liveSource === "signal");
+      const signalsOnly = liveSignalPoolForFeed.filter((t) => t._liveSource === "signal");
       const sorted = sortLiveSignalsNewestFirst(signalsOnly);
       if (sorted.length >= cap) return sorted.slice(0, cap);
       const seen = new Set(sorted.map((t) => t.mint).filter(Boolean));
-      const fillers = liveSignalPool.filter(
+      const fillers = liveSignalPoolForFeed.filter(
         (t) => t._liveSource === "hot_fill" && t.mint && !seen.has(t.mint)
       );
       return [...sorted, ...fillers.slice(0, cap - sorted.length)];
     }
 
-    let signals = liveSignalPool.filter((t) => t._liveSource === "signal");
+    let signals = liveSignalPoolForFeed.filter((t) => t._liveSource === "signal");
     if (profile === "sniper") {
       signals = applyProfileFilter(sortLiveSignalsNewestFirst(signals), profile);
     } else {
@@ -633,13 +637,13 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     }
 
     const seen = new Set(signals.map((t) => t.mint).filter(Boolean));
-    let fillers = liveSignalPool.filter(
+    let fillers = liveSignalPoolForFeed.filter(
       (t) => t._liveSource === "hot_fill" && t.mint && !seen.has(t.mint)
     );
     fillers = applyProfileFilter(fillers, profile);
 
     return [...signals, ...fillers].slice(0, cap);
-  }, [liveSignalPool, liveExpanded, profile]);
+  }, [liveSignalPoolForFeed, liveExpanded, profile]);
 
   const liveSignalsForGrid = useMemo(
     () =>
@@ -1016,6 +1020,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               onToggleLiveExpanded={() => setLiveExpanded((v) => !v)}
               liveSignalsForGrid={liveSignalsForGrid}
               liveSignalPool={sortedSignalPool}
+              liveFeedPool={sortedLiveFeedPool}
+              isProFeed={isPro}
               signalsFeedIsError={signalsFeedQuery.isError}
               signalsFeedIsDegraded={signalsFeedIsDegraded}
               signalsFeedIsLoading={signalsFeedQuery.isLoading}

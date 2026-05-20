@@ -26,6 +26,8 @@ export default function TacticalFeed({
   onToggleLiveExpanded,
   liveSignalsForGrid,
   liveSignalPool,
+  liveFeedPool,
+  isProFeed = false,
   signalsFeedIsError,
   signalsFeedIsDegraded = false,
   signalsFeedIsLoading,
@@ -161,7 +163,8 @@ export default function TacticalFeed({
           liveExpanded={liveExpanded}
           onToggleLiveExpanded={onToggleLiveExpanded}
           liveSignalsForGrid={liveSignalsForGrid}
-          liveSignalPool={liveSignalPool}
+          liveSignalPool={liveFeedPool ?? liveSignalPool}
+          isProFeed={isProFeed}
           signalsFeedIsError={signalsFeedIsError}
           signalsFeedIsDegraded={signalsFeedIsDegraded}
           signalsFeedIsLoading={signalsFeedIsLoading}
