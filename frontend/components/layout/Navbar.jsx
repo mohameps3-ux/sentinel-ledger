@@ -9,6 +9,7 @@ import { Menu, X } from "lucide-react";
 import { SentinelLogo } from "./SentinelLogo";
 import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
 import { useSubscriptionStatus } from "../../hooks/useSubscriptionStatus";
+import { NavProAccess } from "./NavProAccess";
 
 const ALL_PAGES_SECTIONS = [
   {
@@ -206,12 +207,14 @@ export function Navbar() {
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center min-w-0">
+          <div className="flex shrink-0 items-center gap-2 min-w-0">
+            <NavProAccess />
             <WalletButton navCompact />
           </div>
         </div>
 
-        <div className="sm:hidden flex h-12 items-center justify-end px-6 sm:px-8">
+        <div className="sm:hidden flex h-12 items-center justify-end gap-2 px-6 sm:px-8">
+          <NavProAccess />
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
@@ -240,6 +243,9 @@ export function Navbar() {
                 </button>
               </div>
               {showTradingChrome ? <SearchBar compact /> : null}
+              <div className="mt-3">
+                <NavProAccess className="w-full !max-w-none !justify-center" />
+              </div>
               <div className="mt-4 flex flex-col gap-1">
                 {APP_NAV_LINKS.filter((it) => !it.isSecondary && !(it.openSubscription && walletSubActive)).map((item) => {
                   const active = item.openSubscription ? false : router.pathname === item.href;

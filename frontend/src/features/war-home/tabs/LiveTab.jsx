@@ -4,9 +4,9 @@ import { ChevronsDown, ChevronsUp, Info, Inbox, Loader2, Sparkles, WifiOff } fro
 import { Virtuoso } from "react-virtuoso";
 import { UI_CONFIG } from "@/constants/homeData";
 import { useLocale } from "../../../../contexts/LocaleContext";
-import { useSubscriptionModal } from "../../../../contexts/SubscriptionModalContext";
 import { useWarMode } from "../../../../contexts/WarModeContext";
 import { useIngestionPulse } from "../../../../hooks/useIngestionPulse";
+import { LiveDelayedFeedCard } from "../../../../components/access/LiveDelayedFeedCard";
 import { LiveSignalCard } from "../LiveSignalCard";
 
 /**
@@ -40,7 +40,6 @@ export function LiveTab({
   onSelectMint
 }) {
   const { t } = useLocale();
-  const { openSubscriptionModal } = useSubscriptionModal();
   const [stalkerUnread, setStalkerUnread] = useState(0);
 
   useEffect(() => {
@@ -97,38 +96,19 @@ export function LiveTab({
       className={`sl-section${isWarMode ? " war-mode-active" : ""}`}
     >
       <div className="mb-3 space-y-2">
-        <div
-          className={`flex flex-wrap items-center gap-2 px-2.5 py-1.5 border ${
-            isProFeed
-              ? "border-emerald-500/35 bg-emerald-500/10"
-              : "border-amber-500/35 bg-amber-500/10"
-          }`}
-          data-testid="sl-live-feed-tier-badge"
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-              isProFeed ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
-            }`}
-            aria-hidden
-          />
-          {isProFeed ? (
+        {isProFeed ? (
+          <div
+            className="flex flex-wrap items-center gap-2 px-2.5 py-1.5 border border-emerald-500/35 bg-emerald-500/10"
+            data-testid="sl-live-feed-tier-badge"
+          >
+            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-400 animate-pulse" aria-hidden />
             <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200">
               {t("war.live.accessLive")}
             </span>
-          ) : (
-            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-100/95 leading-snug">
-              {t("war.live.accessDelayedPrefix")}
-              {" · "}
-              <button
-                type="button"
-                onClick={openSubscriptionModal}
-                className="normal-case tracking-normal underline underline-offset-2 text-cyan-200/95 hover:text-cyan-50 transition-colors"
-              >
-                {t("war.live.accessDelayedCta")}
-              </button>
-            </span>
-          )}
-        </div>
+          </div>
+        ) : (
+          <LiveDelayedFeedCard />
+        )}
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <p className="sl-label text-[9px] inline-flex items-center gap-1.5 !text-sl-muted">

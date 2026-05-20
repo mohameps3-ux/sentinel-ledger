@@ -233,8 +233,16 @@ export const FLAT_STRINGS = {
   "war.live.statusDegraded": S("Degraded", { es: "Degradado", fr: "Dégradé", de: "Eingeschränkt", it: "Degradato", ru: "Ограничено", zh: "降级", ko: "저하", ja: "劣化", ar: "مخفض", pt: "Degradado" }),
   "war.live.statusLive": S("Live", { es: "En vivo", fr: "En direct", de: "Live", it: "Live", ru: "Онлайн", zh: "实时", ko: "라이브", ja: "ライブ", ar: "مباشر", pt: "Ao vivo" }),
   "war.live.accessLive": S("LIVE", { es: "EN VIVO" }),
-  "war.live.accessDelayedPrefix": S("DELAYED · 15min", { es: "RETRASO · 15min" }),
-  "war.live.accessDelayedCta": S("Go PRO for real-time", { es: "Pásate a PRO en tiempo real" }),
+  "war.live.delayedCard.badge": S("DELAYED · 15min", { es: "RETRASO · 15min" }),
+  "war.live.delayedCard.title": S("Delayed live feed", { es: "Feed en vivo con retraso" }),
+  "war.live.delayedCard.body": S(
+    "You're viewing the feed with a 15-minute delay. Pro subscribers see it in real time.",
+    {
+      es: "Estás viendo el feed con un retraso de 15 minutos. Los suscriptores Pro lo ven en tiempo real."
+    }
+  ),
+  "war.live.delayedCard.cta": S("Go Pro", { es: "Hazte Pro" }),
+  "war.live.delayedCard.dismissAria": S("Dismiss delayed feed notice", { es: "Cerrar aviso de retraso" }),
   "war.live.staleSignal": S("Stale data", { es: "Dato obsoleto", fr: "Donnée obsolète", de: "Veraltet", it: "Dato obsoleto", ru: "Устарело", zh: "数据偏旧", ko: "오래된 데이터", ja: "データ古め", ar: "بيانات قديمة", pt: "Dado obsoleto" }),
   "war.live.ingestLive": S("Ingest live", { es: "Ingesta viva", fr: "Ingestion active", de: "Ingest live", it: "Ingest attivo", ru: "Инжест OK", zh: "接入正常", ko: "수집 정상", ja: "取り込み正常", ar: "الاستيعاب نشط", pt: "Ingestão ativa" }),
   "war.live.ingestQuiet": S("Ingest quiet", { es: "Ingesta lenta", fr: "Ingestion calme", de: "Ingest ruhig", it: "Ingest lento", ru: "Инжест тихо", zh: "接入偏慢", ko: "수집 지연", ja: "取り込み遅め", ar: "الاستيعاب بطيء", pt: "Ingestão lenta" }),
@@ -641,6 +649,10 @@ export const FLAT_STRINGS = {
   "nav.smart": S("Smart Money", { es: "Smart money", fr: "Smart money", de: "Smart Money", it: "Smart money", ru: "Smart money", zh: "聪明钱", ko: "스마트 머니", ja: "スマートマネー", ar: "الأموال الذكية", pt: "Smart money" }),
   "nav.alerts": S("Alerts", { es: "Alertas", fr: "Alertes", de: "Alerts", it: "Avvisi", ru: "Оповещения", zh: "提醒", ko: "알림", ja: "アラート", ar: "التنبيهات", pt: "Alertas" }),
   "nav.pricing": S("Go PRO", { es: "Ir a PRO", fr: "Passer PRO", de: "PRO werden", it: "Passa a PRO", ru: "PRO", zh: "升级 PRO", ko: "PRO로", ja: "PROへ", ar: "ترقية PRO", pt: "Ir ao PRO" }),
+  "nav.proCta": S("Pro", { es: "Pro" }),
+  "nav.proActive": S("active", { es: "activo" }),
+  "nav.proRemainingDays": S("{{days}} days remaining", { es: "{{days}} días restantes" }),
+  "nav.proRemainingHours": S("{{hours}}h remaining", { es: "{{hours}}h restantes" }),
   "nav.grave": S("Track Record", { es: "Historial", fr: "Historique", de: "Leistungsbilanz", it: "Storico", ru: "История", zh: "记录", ko: "트랙 레코드", ja: "実績", ar: "السجل", pt: "Histórico" }),
   "nav.stalker": S("Stalker", { es: "Stalker", fr: "Stalker", de: "Stalker", it: "Stalker", ru: "Сталкер", zh: "跟踪", ko: "스토커", ja: "ストーカー", ar: "المُراقب", pt: "Stalker" }),
   "nav.compare": S("Compare", { es: "Comparar", fr: "Comparer", de: "Vergleichen", it: "Confronta", ru: "Сравнить", zh: "对比", ko: "비교", ja: "比較", ar: "مقارنة", pt: "Comparar" }),
