@@ -245,7 +245,7 @@ export default function ResultsPage() {
         </section>
 
         <div className="terminal-panel hidden lg:block overflow-x-auto">
-          <table className="data-table w-full min-w-[1040px] table-fixed">
+          <table className="w-full min-w-[1040px] table-fixed border-collapse text-left text-sm">
             <colgroup>
               <col className="w-[13%]" />
               <col className="w-[18%]" />
@@ -257,37 +257,37 @@ export default function ResultsPage() {
               <col className="w-[18%]" />
             </colgroup>
             <thead>
-              <tr>
-                <th className="data-th text-left">TOKEN</th>
-                <th className="data-th text-left">SIGNAL TIME</th>
-                <th className="data-th text-left">RULE</th>
-                <th className="data-th text-left">CONFIDENCE</th>
-                <th className="data-th text-left">5M</th>
-                <th className="data-th text-left">15M</th>
-                <th className="data-th text-left">60M</th>
-                <th className="data-th text-left">STATUS</th>
+              <tr className="border-b border-sl-border text-[10px] uppercase tracking-[0.18em] text-sl-muted">
+                <th className="px-4 py-3 text-left font-mono font-semibold">TOKEN</th>
+                <th className="px-4 py-3 text-left font-mono font-semibold">SIGNAL TIME</th>
+                <th className="px-4 py-3 text-left font-mono font-semibold">RULE</th>
+                <th className="px-4 py-3 text-left font-mono font-semibold">CONFIDENCE</th>
+                <th className="px-4 py-3 text-left font-mono font-semibold">5M</th>
+                <th className="px-4 py-3 text-left font-mono font-semibold">15M</th>
+                <th className="px-4 py-3 text-left font-mono font-semibold">60M</th>
+                <th className="px-4 py-3 text-left font-mono font-semibold">STATUS</th>
               </tr>
             </thead>
             <tbody>
               {normalizedRows.length === 0 && !data.loading ? (
                 <tr>
-                  <td colSpan={8} className="data-td text-center text-sl-muted">
+                  <td colSpan={8} className="px-4 py-8 text-center text-sl-muted">
                     {t("results.empty")}
                   </td>
                 </tr>
               ) : (
                 normalizedRows.map((r) => (
-                  <tr key={r.id} className="feed-row">
-                    <td className="data-td whitespace-nowrap font-mono text-xs text-sl-sub" title={String(r.token || r.mint || "")}>{shortToken(r._token)}</td>
-                    <td className="data-td whitespace-nowrap font-mono text-xs">
+                  <tr key={r.id} className="border-b border-sl-border/80 hover:bg-white/[0.025]">
+                    <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-sl-sub" title={String(r.token || r.mint || "")}>{shortToken(r._token)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-sl-text">
                       {r._time ? new Date(r._time).toLocaleString() : "—"}
                     </td>
-                    <td className="data-td whitespace-nowrap font-mono text-xs">{r.rule || "—"}</td>
-                    <td className="data-td whitespace-nowrap font-mono">{r.signalStrength != null ? Number(r.signalStrength).toFixed(0) : "—"}</td>
-                    <td className="data-td whitespace-nowrap font-mono">{fmtPct(pctFromFraction(r.outcome5m ?? r.outcome_5m))}</td>
-                    <td className="data-td whitespace-nowrap font-mono">{fmtPct(pctFromFraction(r.outcome15m ?? r.outcome_15m))}</td>
-                    <td className={`data-td whitespace-nowrap font-mono ${Number(r._resultPct) >= 0 ? "data-pos" : "data-neg"}`}>{fmtPct(r._resultPct)}</td>
-                    <td className="data-td whitespace-nowrap">{statusBadge(r._status, t)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-sl-text">{r.rule || "—"}</td>
+                    <td className="px-4 py-3 whitespace-nowrap font-mono text-sl-text">{r.signalStrength != null ? Number(r.signalStrength).toFixed(0) : "—"}</td>
+                    <td className="px-4 py-3 whitespace-nowrap font-mono text-sl-text">{fmtPct(pctFromFraction(r.outcome5m ?? r.outcome_5m))}</td>
+                    <td className="px-4 py-3 whitespace-nowrap font-mono text-sl-text">{fmtPct(pctFromFraction(r.outcome15m ?? r.outcome_15m))}</td>
+                    <td className={`px-4 py-3 whitespace-nowrap font-mono ${Number(r._resultPct) >= 0 ? "data-pos" : "data-neg"}`}>{fmtPct(r._resultPct)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{statusBadge(r._status, t)}</td>
                   </tr>
                 ))
               )}
