@@ -245,17 +245,27 @@ export default function ResultsPage() {
         </section>
 
         <div className="terminal-panel hidden lg:block overflow-x-auto">
-          <table className="data-table min-w-[920px]">
+          <table className="data-table w-full min-w-[1040px] table-fixed">
+            <colgroup>
+              <col className="w-[13%]" />
+              <col className="w-[18%]" />
+              <col className="w-[9%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
+              <col className="w-[12%]" />
+              <col className="w-[18%]" />
+            </colgroup>
             <thead>
               <tr>
-                <th className="data-th">TOKEN</th>
-                <th className="data-th">SIGNAL TIME</th>
-                <th className="data-th">RULE</th>
-                <th className="data-th">CONFIDENCE</th>
-                <th className="data-th">5M</th>
-                <th className="data-th">15M</th>
-                <th className="data-th">60M</th>
-                <th className="data-th">STATUS</th>
+                <th className="data-th text-left">TOKEN</th>
+                <th className="data-th text-left">SIGNAL TIME</th>
+                <th className="data-th text-left">RULE</th>
+                <th className="data-th text-left">CONFIDENCE</th>
+                <th className="data-th text-left">5M</th>
+                <th className="data-th text-left">15M</th>
+                <th className="data-th text-left">60M</th>
+                <th className="data-th text-left">STATUS</th>
               </tr>
             </thead>
             <tbody>
@@ -268,16 +278,16 @@ export default function ResultsPage() {
               ) : (
                 normalizedRows.map((r) => (
                   <tr key={r.id} className="feed-row">
-                    <td className="data-td font-mono text-xs text-sl-sub" title={String(r.token || r.mint || "")}>{shortToken(r._token)}</td>
-                    <td className="data-td font-mono text-xs">
+                    <td className="data-td whitespace-nowrap font-mono text-xs text-sl-sub" title={String(r.token || r.mint || "")}>{shortToken(r._token)}</td>
+                    <td className="data-td whitespace-nowrap font-mono text-xs">
                       {r._time ? new Date(r._time).toLocaleString() : "—"}
                     </td>
-                    <td className="data-td font-mono text-xs">{r.rule || "—"}</td>
-                    <td className="data-td font-mono">{r.signalStrength != null ? Number(r.signalStrength).toFixed(0) : "—"}</td>
-                    <td className="data-td font-mono">{fmtPct(pctFromFraction(r.outcome5m ?? r.outcome_5m))}</td>
-                    <td className="data-td font-mono">{fmtPct(pctFromFraction(r.outcome15m ?? r.outcome_15m))}</td>
-                    <td className={`data-td font-mono ${Number(r._resultPct) >= 0 ? "data-pos" : "data-neg"}`}>{fmtPct(r._resultPct)}</td>
-                    <td className="data-td">{statusBadge(r._status, t)}</td>
+                    <td className="data-td whitespace-nowrap font-mono text-xs">{r.rule || "—"}</td>
+                    <td className="data-td whitespace-nowrap font-mono">{r.signalStrength != null ? Number(r.signalStrength).toFixed(0) : "—"}</td>
+                    <td className="data-td whitespace-nowrap font-mono">{fmtPct(pctFromFraction(r.outcome5m ?? r.outcome_5m))}</td>
+                    <td className="data-td whitespace-nowrap font-mono">{fmtPct(pctFromFraction(r.outcome15m ?? r.outcome_15m))}</td>
+                    <td className={`data-td whitespace-nowrap font-mono ${Number(r._resultPct) >= 0 ? "data-pos" : "data-neg"}`}>{fmtPct(r._resultPct)}</td>
+                    <td className="data-td whitespace-nowrap">{statusBadge(r._status, t)}</td>
                   </tr>
                 ))
               )}
