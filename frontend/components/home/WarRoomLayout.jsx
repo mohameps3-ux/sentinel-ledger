@@ -4,6 +4,12 @@ import { UI_CONFIG } from "@/constants/homeData";
 import { mapTrendRowToLiveSignal } from "@/lib/signalUtils";
 import { useLocale } from "../../contexts/LocaleContext";
 import { LiveSignalCard } from "@/features/war-home/LiveSignalCard";
+import { SmartMoneyFlow } from "./SmartMoneyFlow";
+import { RecentSignalsPanel } from "./RecentSignalsPanel";
+
+function tokenMint(tok) {
+  return tok?.mint ?? tok?.address ?? tok?.tokenAddress ?? "";
+}
 
 export function WarRoomLayout({
   velocityTokens = [],
@@ -37,6 +43,16 @@ export function WarRoomLayout({
     }
     return list;
   }, [velocityTokens, velocityContext, isWarMode]);
+
+  const activeVelocityToken = useMemo(() => {
+    const list = (velocityTokens || []).filter((tok) => tokenMint(tok));
+    if (!list.length) return null;
+    if (selectedMint) {
+      const selected = list.find((tok) => tokenMint(tok) === selectedMint);
+      if (selected) return selected;
+    }
+    return list[0];
+  }, [velocityTokens, selectedMint]);
 
   return (
     <section className={`sl-section${isWarMode ? " war-mode-active" : ""}`}>
@@ -84,6 +100,13 @@ export function WarRoomLayout({
           ))}
         </div>
       )}
+
+      <SmartMoneyFlow token={activeVelocityToken} />
+      <RecentSignalsPanel
+        tokens={velocityTokens}
+        selectedMint={selectedMint}
+        onSelectMint={onSelectMint}
+      />
     </section>
   );
 }
