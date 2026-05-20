@@ -196,9 +196,13 @@ export default function TacticalFeed({
           isWarMode={isWarMode}
           trendingMinLiquidityUsd={trendingMinLiquidityUsd}
           strategyMode={strategyMode}
+          signalCursor={signalCursor}
           entryCountdownByMint={entryCountdownByMint}
           trendingRankDeltas={trendingRankDeltas}
+          tickerByMint={tickerByMint}
+          quotesPricesFetching={quotesPricesFetching}
           selectedMint={selectedMint}
+          deskCoordination={deskCoordination}
           onSelectMint={onSelectMint}
         />
       }

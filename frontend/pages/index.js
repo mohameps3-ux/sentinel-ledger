@@ -677,13 +677,26 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     [useLiveVirtualized, liveSignalsForGrid]
   );
 
-  const liveMintsForQuotes = useMemo(
-    () => liveSignalsForGrid.map((s) => s.mint).filter((m) => m && isProbableSolanaMint(m)),
-    [liveSignalsForGrid]
-  );
+  const liveMintsForQuotes = useMemo(() => {
+    const mints = new Set(
+      liveSignalsForGrid.map((s) => s.mint).filter((m) => m && isProbableSolanaMint(m))
+    );
+    if (tacticalTab === "hot") {
+      for (const t of heatTokensForGrid) {
+        if (t?.mint && isProbableSolanaMint(t.mint)) mints.add(t.mint);
+      }
+    }
+    if (tacticalTab === "velocity") {
+      for (const t of visibleVelocityTokens) {
+        const m = t?.mint ?? t?.tokenAddress;
+        if (m && isProbableSolanaMint(m)) mints.add(m);
+      }
+    }
+    return [...mints];
+  }, [liveSignalsForGrid, heatTokensForGrid, visibleVelocityTokens, tacticalTab]);
   const quotesQuery = useDecisionFeedQuotes(liveMintsForQuotes, {
     isWarMode,
-    enabled: tacticalTab === "live"
+    enabled: tacticalTab === "live" || tacticalTab === "hot" || tacticalTab === "velocity"
   });
   const tickerByMint = useMemo(() => {
     const rows = quotesQuery.data?.data;
@@ -761,6 +774,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   // badges when the live ordering moves. Pure client-side; no extra network.
   const signalsRankDeltas = useRankDeltas(interpretedSignals, (s) => s?.mint);
   const trendingRankDeltas = useRankDeltas(heatTokenPool, (t) => t?.mint);
+  const velocityRankDeltas = useRankDeltas(velocityTabTokens, (t) => t?.mint);
   /**
    * One-shot tab after tier resolves. LIVE is the default action surface for all users;
    * PRO restores localStorage when present, otherwise stays on live.
@@ -971,18 +985,6 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     };
   }, [interpretedSignals, publicSignalsToday, publicActiveWallets]);
 
-  const warRoomKpis = useMemo(
-    () => ({
-      highIntentCount: interpretedSignals.filter(
-        (s) => (Number(s.signalStrength) || Number(s.sentinelScore) || 0) >= 75
-      ).length,
-      activeWallets: homeMetrics.activeWallets,
-      bestScore: homeMetrics.bestSignal != null ? Math.round(homeMetrics.bestSignal) : undefined,
-      marketTemp: feedIsLive ? "LIVE" : String(feedLabel || "ACTIVE")
-    }),
-    [interpretedSignals, homeMetrics.activeWallets, homeMetrics.bestSignal, feedIsLive, feedLabel]
-  );
-
   return (
     <>
       <PageHead title={t("home.pageTitle")} description={t("home.pageDesc")} />
@@ -1008,9 +1010,16 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               onTabChange={setTacticalTab}
               panelVelocity={
                 <WarRoomLayout
-                  signals={warRoomSignals}
                   velocityTokens={visibleVelocityTokens}
-                  kpis={warRoomKpis}
+                  strategyMode={strategyMode}
+                  signalCursor={signalCursor}
+                  velocityRankDeltas={velocityRankDeltas}
+                  tickerByMint={tickerByMint}
+                  quotesPricesFetching={quotesQuery.isFetching}
+                  entryCountdownByMint={entryCountdownByMint}
+                  selectedMint={selectedMint}
+                  deskCoordination={deskCoordination}
+                  isWarMode={isWarMode}
                   onSelectMint={pushDeskMint}
                 />
               }

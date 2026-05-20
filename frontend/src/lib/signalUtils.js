@@ -227,3 +227,107 @@ export function scoreBarGradient(strength) {
   if (s >= 65) return "from-amber-400 to-orange-400";
   return "from-red-500 to-orange-700";
 }
+
+function velocityIntentChip(score) {
+  const n = Number(score);
+  if (!Number.isFinite(n)) return null;
+  if (n >= 85) return "INTENT EXTREME";
+  if (n >= 70) return "INTENT HIGH";
+  if (n >= 50) return "INTENT MEDIUM";
+  return "INTENT LOW";
+}
+
+/**
+ * Trending / heat / velocity row → LIVE tab card shape (`_liveSource: "signal"`).
+ * Used by HOT TRACKED and VELOCITY tabs only; LIVE hot-fill merge keeps `mapHotTrendToLiveFill` in index.
+ */
+export function mapTrendRowToLiveSignal(row, context = "", { velocityIntent = false } = {}) {
+  if (!row || typeof row !== "object") return null;
+
+  const mint =
+    (row.mint && isProbableSolanaMint(String(row.mint)) && String(row.mint)) ||
+    (row.tokenAddress && isProbableSolanaMint(String(row.tokenAddress)) && String(row.tokenAddress)) ||
+    null;
+  if (!mint) return null;
+
+  if (row._liveSource === "signal" && row._api && row.signalStrength != null) {
+    return row.mint === mint ? row : { ...row, mint };
+  }
+
+  const rawScore = Number(row.sentinelScore ?? row.signalStrength);
+  const score = Number.isFinite(rawScore) && rawScore > 0 ? Math.round(rawScore) : computeSignalStrength(row);
+  if (!Number.isFinite(score)) return null;
+
+  const sym = String(row.symbol || row.token?.symbol || row.token || "TOKEN").replace(/^\$/, "").trim() || "TOKEN";
+  const sw = Number(row.smartWallets ?? row.smartMoneyCount);
+  const smartWallets = Number.isFinite(sw) ? Math.max(0, Math.round(sw)) : 0;
+  const change24h = Number(row.change ?? row.change24h ?? row.priceChange24h ?? row.token?.change ?? 0);
+  const evidence = [
+    ...(Array.isArray(row.evidenceChips) ? row.evidenceChips : []),
+    ...(velocityIntent ? [velocityIntentChip(score)].filter(Boolean) : []),
+    ...(Number.isFinite(change24h) ? [`Δ24h ${change24h >= 0 ? "+" : ""}${change24h.toFixed(1)}%`] : [])
+  ].filter(Boolean);
+
+  return {
+    symbol: sym,
+    mint,
+    _liveSource: "signal",
+    token: {
+      symbol: sym,
+      mint,
+      imageUrl: row.imageUrl || row.token?.imageUrl || null,
+      price: (() => {
+        const p = Number(row.price ?? row.token?.price);
+        return Number.isFinite(p) && p > 0 ? p : undefined;
+      })(),
+      liquidity: Number(row.liquidity ?? row.liquidityUsd ?? row.token?.liquidity ?? 0),
+      volume24h: Number(row.volume24h ?? row.token?.volume24h ?? 0),
+      change: Number.isFinite(change24h) ? change24h : 0,
+      whyTrade: Array.isArray(row.whyTrade) ? row.whyTrade : Array.isArray(row.token?.whyTrade) ? row.token.whyTrade : []
+    },
+    signalStrength: Math.max(1, Math.min(100, score)),
+    smartWallets,
+    context: row.context || context,
+    clusterScore: Math.min(99, Math.max(1, Math.round(score - 6))),
+    momentum: Number(row.volume24h ?? row.token?.volume24h ?? 0),
+    _api: {
+      token: sym.startsWith("$") ? sym : `$${sym}`,
+      tokenAddress: mint,
+      smartWallets,
+      sentinelScore: Math.max(1, Math.min(100, score)),
+      decision: row.decision || row.action || "MERCADO",
+      whyNow: Array.isArray(row.whyTrade)
+        ? row.whyTrade
+        : Array.isArray(row.whyNow)
+          ? row.whyNow
+          : Array.isArray(row.token?.whyTrade)
+            ? row.token.whyTrade
+            : [],
+      redFlags: Array.isArray(row.redFlags) ? row.redFlags : [],
+      entryWindow: row.entryWindow ?? null,
+      entryWindowMinutesLeft: row.entryWindowMinutesLeft ?? null,
+      timeAdvantage: row.timeAdvantage ?? null,
+      signalDecay: row.signalDecay ?? null,
+      poolAgeLabel: row.poolAgeLabel ?? null,
+      confluence: Boolean(row.confluence),
+      evidenceChips: evidence.length ? evidence : [String(row.grade || "HEAT").slice(0, 6)],
+      contextHistory: row.contextHistory || context,
+      rulePerformance: row.rulePerformance || null,
+      createdAt: row.createdAt || row._api?.createdAt || new Date().toISOString(),
+      volume24h: Number(row.volume24h ?? row.token?.volume24h ?? 0),
+      change24h: Number.isFinite(change24h) ? change24h : 0,
+      imageUrl: row.imageUrl || row.token?.imageUrl || null,
+      priceChange5m:
+        row.priceChange5m != null && Number.isFinite(Number(row.priceChange5m))
+          ? Number(row.priceChange5m)
+          : row._api?.priceChange5m != null && Number.isFinite(Number(row._api.priceChange5m))
+            ? Number(row._api.priceChange5m)
+            : null,
+      spotChange24h: Number.isFinite(change24h) ? change24h : undefined,
+      spotPriceUsd: (() => {
+        const p = Number(row.price ?? row.token?.price);
+        return Number.isFinite(p) && p > 0 ? p : undefined;
+      })()
+    }
+  };
+}
