@@ -176,12 +176,12 @@ function ScoreGauge({ value, accent }) {
 
   return (
     <div
-      className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${accent.text}`}
+      className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${accent.text}`}
       style={{
         background: `conic-gradient(currentColor ${deg}deg, rgba(255,255,255,0.10) 0deg)`
       }}
     >
-      <div className="relative flex h-[42px] w-[42px] items-center justify-center rounded-full bg-zinc-950 text-[11px] font-bold tabular-nums text-zinc-100">
+      <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-zinc-950 text-[10px] font-bold tabular-nums text-zinc-100">
         {Math.round(score)}
       </div>
     </div>
@@ -385,7 +385,7 @@ export function LiveSignalCard({
         }
 
         return (
-          <div className="flex h-full min-h-[280px] max-h-[340px] flex-col p-4 sm:p-5">
+          <div className="flex h-full min-h-[260px] max-h-[310px] flex-col p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3 border-b border-white/[0.08] pb-3">
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                 <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] font-semibold text-zinc-300">
@@ -412,72 +412,51 @@ export function LiveSignalCard({
               </div>
             </div>
 
-            <div className="flex min-w-0 items-center gap-4 py-4">
+            <div className="flex min-w-0 items-center gap-4 pt-4">
               <SignalAvatar tokenLike={{ ...sig, token: sig.token, _api: sig._api }} symbol={symbol} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-2xl font-bold tracking-tight text-zinc-50" title={`$${symbol}`}>
                   ${symbol}
                 </p>
-                <div className="mt-2 flex min-w-0 items-center gap-3">
-                  <div className={`min-w-0 font-mono text-sm ${quotesPricesFetching ? "opacity-80" : ""}`}>
+                <div className={`mt-2 min-w-0 font-mono text-sm ${quotesPricesFetching ? "opacity-80" : ""}`}>
+                  <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                     <span className="text-zinc-100 tabular-nums">
                       {hasPx ? `$${formatTokenPrice(px)}` : "Price unavailable"}
                     </span>
                     {hasChg ? (
-                      <span className={`ml-2 tabular-nums ${chg >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                      <span className={`tabular-nums ${chg >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
                         {formatPct(chg)}
                       </span>
                     ) : null}
                   </div>
-                  <HomeCardSparkline
-                    mint={sig.mint}
-                    change24h={sparkCh24}
-                    change5m={sparkCh5}
-                    compact
-                    className="ml-auto"
-                  />
                 </div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <div className={`min-h-[74px] rounded-lg border ${accent.softBorder} bg-white/[0.035] p-3`}>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-semibold uppercase text-zinc-500">Conviction</span>
-                  <span className="font-mono text-xs font-bold text-zinc-100">{displayScoreSafe}/100</span>
-                </div>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className={`h-full rounded-full bg-gradient-to-r ${accent.bar}`}
-                    style={{ width: `${displayScoreSafe}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className={`min-h-[74px] rounded-lg border ${accent.softBorder} bg-white/[0.035] p-3`}>
-                <span className="text-[10px] font-semibold uppercase text-zinc-500">Type</span>
-                <p className={`mt-2 line-clamp-2 text-sm font-bold leading-tight ${accent.text}`}>{typeLabel}</p>
-              </div>
-
-              <div className={`flex min-h-[74px] items-center justify-between gap-2 rounded-lg border ${accent.softBorder} bg-white/[0.035] p-3`}>
-                <div className="min-w-0">
-                  <span className="text-[10px] font-semibold uppercase text-zinc-500">Score</span>
-                  <p className="mt-1 font-mono text-xs font-bold text-zinc-100">{displayScoreSafe}/100</p>
-                </div>
+              <div className="flex shrink-0 flex-col items-center gap-1">
                 <ScoreGauge value={displayScoreSafe} accent={accent} />
+                <span className="font-mono text-[9px] font-semibold uppercase text-zinc-500">Score</span>
               </div>
             </div>
+
+            <div className="mt-4 h-14 w-full overflow-hidden rounded-lg border border-white/10 bg-black/20">
+              <HomeCardSparkline
+                mint={sig.mint}
+                change24h={sparkCh24}
+                change5m={sparkCh5}
+                className="!h-14 !w-full rounded-lg bg-transparent ring-0 [&_svg]:!h-14 [&_svg]:!w-full"
+              />
+            </div>
+
 
             {hasLiq || hasSparkCh5 || normalizedDecision ? (
-              <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {hasLiq ? (
-                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                  <div className="min-w-[6.5rem] flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
                     <p className="text-[9px] font-semibold uppercase text-zinc-500">Liquidity</p>
                     <p className="mt-1 font-mono text-xs font-bold text-zinc-100">{formatUsdCompact(safeLiq)}</p>
                   </div>
                 ) : null}
                 {hasSparkCh5 ? (
-                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                  <div className="min-w-[5rem] flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
                     <p className="text-[9px] font-semibold uppercase text-zinc-500">5m</p>
                     <p className={`mt-1 font-mono text-xs font-bold ${sparkCh5 >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
                       {formatPct(sparkCh5)}
@@ -485,7 +464,7 @@ export function LiveSignalCard({
                   </div>
                 ) : null}
                 {normalizedDecision ? (
-                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                  <div className="min-w-[6rem] flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
                     <p className="text-[9px] font-semibold uppercase text-zinc-500">Decision</p>
                     <p className={`mt-1 truncate font-mono text-xs font-bold ${accent.text}`}>{normalizedDecision}</p>
                   </div>
