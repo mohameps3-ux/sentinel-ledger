@@ -385,7 +385,7 @@ export function LiveSignalCard({
         }
 
         return (
-          <div className="flex h-full min-h-[260px] max-h-[310px] flex-col p-4 sm:p-5">
+          <div className="flex h-full min-h-[320px] flex-col p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3 border-b border-white/[0.08] pb-3">
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                 <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] font-semibold text-zinc-300">
