@@ -146,7 +146,7 @@ export default function ScannerPage() {
       <div className="min-h-screen bg-[#05070a] font-sans text-zinc-200 antialiased">
         <ScannerStatusStrip />
         <div className="w-full px-4 pb-16 pt-6 sm:px-6 xl:px-8">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)] lg:items-start">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)]">
             <div className="min-w-0 space-y-4">
               <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
@@ -226,8 +226,8 @@ export default function ScannerPage() {
               </section>
             </div>
 
-            <div className="min-w-0">
-              <section className="overflow-hidden rounded-md border border-white/10 bg-white/[0.025] backdrop-blur-md">
+            <div className="min-w-0 lg:h-full">
+              <section className="overflow-hidden rounded-md border border-white/10 bg-white/[0.025] backdrop-blur-md lg:h-full">
                 <div className="border-b border-white/10 bg-white/[0.02] px-4 py-3 sm:px-5">
                   <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">{t("scanner.universe.title")}</p>
                   <p className="mt-0.5 text-xs text-zinc-600">{t("scanner.universe.sub")}</p>
