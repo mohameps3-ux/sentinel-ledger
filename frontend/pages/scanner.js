@@ -146,41 +146,41 @@ export default function ScannerPage() {
       <div className="min-h-screen bg-[#05070a] font-sans text-zinc-200 antialiased">
         <ScannerStatusStrip />
         <div className="w-full px-4 pb-16 pt-6 sm:px-6 xl:px-8">
+          <header className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-cyan-300/70">SCANNER</p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">{t("scanner.h1")}</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">{t("scanner.body")}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/")}
+              className="inline-flex h-9 w-fit items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-3 text-[10px] font-mono uppercase tracking-wide text-zinc-500 transition-colors hover:border-white/15 hover:text-zinc-300"
+            >
+              {t("scanner.backDashboard")}
+            </button>
+          </header>
+
+          <div className="mb-4 rounded-md border border-white/10 bg-white/[0.035] p-3 backdrop-blur-md sm:p-4">
+            <form onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+              <input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="So11111111111111111111111111111111111111112"
+                className="min-h-10 w-full rounded-md border border-white/[0.08] bg-black/30 px-3 font-mono text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-cyan-300/35 focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="shrink-0 rounded-md border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-cyan-100 transition-colors hover:border-cyan-300/45 hover:bg-cyan-300/15"
+              >
+                {t("scanner.scanBtn")}
+              </button>
+            </form>
+            {error ? <p className="mt-2 font-mono text-xs text-red-500">{error}</p> : null}
+          </div>
+
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)]">
             <div className="min-w-0 space-y-4">
-              <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-cyan-300/70">SCANNER</p>
-                  <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">{t("scanner.h1")}</h1>
-                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">{t("scanner.body")}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => router.push("/")}
-                  className="inline-flex h-9 w-fit items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-3 text-[10px] font-mono uppercase tracking-wide text-zinc-500 transition-colors hover:border-white/15 hover:text-zinc-300"
-                >
-                  {t("scanner.backDashboard")}
-                </button>
-              </header>
-
-              <div className="rounded-md border border-white/10 bg-white/[0.035] p-3 backdrop-blur-md sm:p-4">
-                <form onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-                  <input
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="So11111111111111111111111111111111111111112"
-                    className="min-h-10 w-full rounded-md border border-white/[0.08] bg-black/30 px-3 font-mono text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-cyan-300/35 focus:outline-none"
-                  />
-                  <button
-                    type="submit"
-                    className="shrink-0 rounded-md border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-cyan-100 transition-colors hover:border-cyan-300/45 hover:bg-cyan-300/15"
-                  >
-                    {t("scanner.scanBtn")}
-                  </button>
-                </form>
-                {error ? <p className="mt-2 font-mono text-xs text-red-500">{error}</p> : null}
-              </div>
-
               <section className="overflow-hidden rounded-md border border-white/10 bg-white/[0.025] shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-md">
                 <ScannerDecisionHeader token={focusedToken} t={t} />
                 {focusedToken ? (
