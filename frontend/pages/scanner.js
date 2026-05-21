@@ -146,96 +146,102 @@ export default function ScannerPage() {
       <div className="min-h-screen bg-[#05070a] font-sans text-zinc-200 antialiased">
         <ScannerStatusStrip />
         <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-5">
-          <header className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-cyan-300/70">SCANNER</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">{t("scanner.h1")}</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">{t("scanner.body")}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => router.push("/")}
-              className="inline-flex h-9 w-fit items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-3 text-[10px] font-mono uppercase tracking-wide text-zinc-500 transition-colors hover:border-white/15 hover:text-zinc-300"
-            >
-              {t("scanner.backDashboard")}
-            </button>
-          </header>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)] lg:items-start">
+            <div className="min-w-0 space-y-4">
+              <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-cyan-300/70">SCANNER</p>
+                  <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">{t("scanner.h1")}</h1>
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">{t("scanner.body")}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push("/")}
+                  className="inline-flex h-9 w-fit items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-3 text-[10px] font-mono uppercase tracking-wide text-zinc-500 transition-colors hover:border-white/15 hover:text-zinc-300"
+                >
+                  {t("scanner.backDashboard")}
+                </button>
+              </header>
 
-          <div className="mb-4 rounded-md border border-white/10 bg-white/[0.035] p-3 backdrop-blur-md sm:p-4">
-            <form onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-              <input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="So11111111111111111111111111111111111111112"
-                className="min-h-10 w-full rounded-md border border-white/[0.08] bg-black/30 px-3 font-mono text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-cyan-300/35 focus:outline-none"
-              />
-              <button
-                type="submit"
-                className="shrink-0 rounded-md border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-cyan-100 transition-colors hover:border-cyan-300/45 hover:bg-cyan-300/15"
-              >
-                {t("scanner.scanBtn")}
-              </button>
-            </form>
-            {error ? <p className="mt-2 font-mono text-xs text-red-500">{error}</p> : null}
-          </div>
-
-          <section className="mb-4 overflow-hidden rounded-md border border-white/10 bg-white/[0.025] shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-md">
-            <ScannerDecisionHeader token={focusedToken} t={t} />
-            {focusedToken ? (
-              <>
-                <ScannerMetricsStrip token={focusedToken} universeRows={tableRows} t={t} />
-                <ScannerSignalStrip token={focusedToken} t={t} />
-              </>
-            ) : null}
-            <ScannerNarrativeContext token={focusedToken} t={t} />
-          </section>
-
-          <section className="mb-3 rounded-md border border-white/[0.08] bg-white/[0.025] p-3">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">{t("scanner.filters.heading")}</p>
-                <p className="mt-0.5 text-[11px] text-zinc-600">{t("scanner.narrativeH2")}</p>
+              <div className="rounded-md border border-white/10 bg-white/[0.035] p-3 backdrop-blur-md sm:p-4">
+                <form onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                  <input
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="So11111111111111111111111111111111111111112"
+                    className="min-h-10 w-full rounded-md border border-white/[0.08] bg-black/30 px-3 font-mono text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-cyan-300/35 focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="shrink-0 rounded-md border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-cyan-100 transition-colors hover:border-cyan-300/45 hover:bg-cyan-300/15"
+                  >
+                    {t("scanner.scanBtn")}
+                  </button>
+                </form>
+                {error ? <p className="mt-2 font-mono text-xs text-red-500">{error}</p> : null}
               </div>
-            </div>
-            <div className="mt-3 flex gap-1.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {NARRATIVE_OPTIONS.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => setNarrative(opt)}
-                  className={`${tabBase} ${narrative === opt ? tabActive : tabInactive}`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {VENUE_FILTERS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setVenueFilter(id)}
-                  className={`${venueTabBase} ${venueFilter === id ? venueActive : venueInactive}`}
-                >
-                  {t(`scanner.filter.${id}`)}
-                </button>
-              ))}
-            </div>
-          </section>
 
-          <section className="overflow-hidden rounded-md border border-white/10 bg-white/[0.025] backdrop-blur-md">
-            <div className="border-b border-white/10 bg-white/[0.02] px-4 py-3 sm:px-5">
-              <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">{t("scanner.universe.title")}</p>
-              <p className="mt-0.5 text-xs text-zinc-600">{t("scanner.universe.sub")}</p>
+              <section className="overflow-hidden rounded-md border border-white/10 bg-white/[0.025] shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-md">
+                <ScannerDecisionHeader token={focusedToken} t={t} />
+                {focusedToken ? (
+                  <>
+                    <ScannerMetricsStrip token={focusedToken} universeRows={tableRows} t={t} />
+                    <ScannerSignalStrip token={focusedToken} t={t} />
+                  </>
+                ) : null}
+                <ScannerNarrativeContext token={focusedToken} t={t} />
+              </section>
+
+              <section className="rounded-md border border-white/[0.08] bg-white/[0.025] p-3">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">{t("scanner.filters.heading")}</p>
+                    <p className="mt-0.5 text-[11px] text-zinc-600">{t("scanner.narrativeH2")}</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-1.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {NARRATIVE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setNarrative(opt)}
+                      className={`${tabBase} ${narrative === opt ? tabActive : tabInactive}`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {VENUE_FILTERS.map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setVenueFilter(id)}
+                      className={`${venueTabBase} ${venueFilter === id ? venueActive : venueInactive}`}
+                    >
+                      {t(`scanner.filter.${id}`)}
+                    </button>
+                  ))}
+                </div>
+              </section>
             </div>
-            <ScannerTokenTable
-              rows={tableRows}
-              focusedMint={focusedMint}
-              onFocusMint={(mint) => setFocusedMint(mint)}
-              t={t}
-              status={scannerStatus}
-            />
-          </section>
+
+            <div className="min-w-0">
+              <section className="overflow-hidden rounded-md border border-white/10 bg-white/[0.025] backdrop-blur-md">
+                <div className="border-b border-white/10 bg-white/[0.02] px-4 py-3 sm:px-5">
+                  <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">{t("scanner.universe.title")}</p>
+                  <p className="mt-0.5 text-xs text-zinc-600">{t("scanner.universe.sub")}</p>
+                </div>
+                <ScannerTokenTable
+                  rows={tableRows}
+                  focusedMint={focusedMint}
+                  onFocusMint={(mint) => setFocusedMint(mint)}
+                  t={t}
+                  status={scannerStatus}
+                />
+              </section>
+            </div>
+          </div>
         </div>
       </div>
     </>
