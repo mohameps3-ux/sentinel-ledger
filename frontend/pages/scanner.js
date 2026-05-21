@@ -145,7 +145,7 @@ export default function ScannerPage() {
       <PageHead title={t("scanner.pageTitle")} description={t("scanner.pageDesc")} />
       <div className="min-h-screen bg-[#05070a] font-sans text-zinc-200 antialiased">
         <ScannerStatusStrip />
-        <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-5">
+        <div className="w-full px-4 pb-16 pt-6 sm:px-6 xl:px-8">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)] lg:items-start">
             <div className="min-w-0 space-y-4">
               <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
