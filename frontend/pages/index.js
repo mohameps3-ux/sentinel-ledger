@@ -611,37 +611,26 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   const sortedSignalPool = useSortedTokens(liveSignalPool);
   const sortedLiveFeedPool = useSortedTokens(liveSignalPoolForFeed);
 
-  /** LIVE grid: engine signals first, then hot_fill trending rows up to grid cap. */
+  /** LIVE grid: engine signals only. Do not backfill with hot_fill trending rows. */
   const liveTabTokens = useMemo(() => {
     const cap = liveExpanded
       ? UI_CONFIG.GRID_EXPANDED_MAX_CARDS
       : UI_CONFIG.GRID_COMPACT_CARDS;
 
     if (profile === "balanced") {
-      const signalsOnly = liveSignalPoolForFeed.filter((t) => t._liveSource === "signal");
+      const signalsOnly = liveSignalPoolForFeed.filter((t) => t._liveSource !== "hot_fill");
       const sorted = sortLiveSignalsNewestFirst(signalsOnly);
-      if (sorted.length >= cap) return sorted.slice(0, cap);
-      const seen = new Set(sorted.map((t) => t.mint).filter(Boolean));
-      const fillers = liveSignalPoolForFeed.filter(
-        (t) => t._liveSource === "hot_fill" && t.mint && !seen.has(t.mint)
-      );
-      return [...sorted, ...fillers.slice(0, cap - sorted.length)];
+      return sorted.slice(0, cap);
     }
 
-    let signals = liveSignalPoolForFeed.filter((t) => t._liveSource === "signal");
+    let signals = liveSignalPoolForFeed.filter((t) => t._liveSource !== "hot_fill");
     if (profile === "sniper") {
       signals = applyProfileFilter(sortLiveSignalsNewestFirst(signals), profile);
     } else {
       signals = applyProfileFilter(signals, profile);
     }
 
-    const seen = new Set(signals.map((t) => t.mint).filter(Boolean));
-    let fillers = liveSignalPoolForFeed.filter(
-      (t) => t._liveSource === "hot_fill" && t.mint && !seen.has(t.mint)
-    );
-    fillers = applyProfileFilter(fillers, profile);
-
-    return [...signals, ...fillers].slice(0, cap);
+    return signals.slice(0, cap);
   }, [liveSignalPoolForFeed, liveExpanded, profile]);
 
   const liveSignalsForGrid = useMemo(
