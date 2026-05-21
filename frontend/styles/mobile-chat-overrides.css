@@ -1,0 +1,19 @@
+/* Mobile-only positioning guard for the floating Sentinel assistant.
+   Keeps the launcher and open chat panel away from bottom navigation/input controls. */
+@media (max-width: 639px) {
+  button[title="Sentinel Assistant"] {
+    bottom: 6rem !important;
+    right: 1rem !important;
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+  }
+
+  button[title="Sentinel Assistant"] + div {
+    bottom: 10rem !important;
+    left: 0.75rem !important;
+    right: 0.75rem !important;
+    width: auto !important;
+    height: min(480px, calc(100vh - 11rem)) !important;
+    max-width: calc(100vw - 1.5rem) !important;
+  }
+}
