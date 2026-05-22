@@ -34,55 +34,82 @@
   white-space: nowrap !important;
 }
 
-.home-control-shelf {
-  display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-  border: 1px solid rgba(255,255,255,.06);
-  background: rgba(18,18,22,.36);
-  padding: 6px 8px;
+/* Exact compacting of the HomeSettings panel: one horizontal shelf. */
+div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  min-height: 38px !important;
+  padding: 6px 8px !important;
 }
 
-.home-control-group {
-  min-width: 0;
+/* Decision mode first. */
+div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] > section:nth-child(2) {
+  order: 0 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  border-top: 0 !important;
+  padding-top: 0 !important;
 }
 
-.home-control-title {
-  margin: 0 0 4px;
-  font-size: 9px;
-  line-height: 1;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  color: rgba(228,228,231,.84);
+/* Opportunity focus second. */
+div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] > section:nth-child(1) {
+  order: 1 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
 }
 
-.home-control-pills {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+/* Turn each section into label + pills on the same line. */
+div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] > section > div,
+div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] > section > div:first-child {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
 }
 
-.home-control-shelf button {
+div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] p {
+  margin: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* Hide the long description that made a dead second line. */
+div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] p.text-sl-muted {
+  display: none !important;
+}
+
+div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] p.text-\[11px\] {
+  font-size: 9px !important;
+  line-height: 1 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .1em !important;
+  color: rgba(228,228,231,.8) !important;
+}
+
+/* Compact all top shelf buttons. */
+div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] button {
   padding: 3px 7px !important;
   font-size: 9px !important;
   line-height: 1.1 !important;
+  white-space: nowrap !important;
 }
 
-.home-sound-toggle {
-  margin-left: auto;
-}
-
-.home-top-stack {
-  gap: 6px !important;
+/* Put the sound toggle on the far right of the same row. */
+div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] > section:nth-child(2) button[type="button"]:last-child {
+  margin-left: auto !important;
 }
 
 @media (max-width: 900px) {
-  .home-control-shelf {
-    grid-template-columns: 1fr;
+  div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] {
+    flex-wrap: wrap !important;
   }
 }
