@@ -17,13 +17,32 @@ function safeSupabase() {
   }
 }
 
+async function countTotalSmartWallets(supabase) {
+  if (!supabase) return null;
+  const { count, error } = await supabase
+    .from("smart_wallets")
+    .select("wallet_address", { count: "exact", head: true });
+  if (error) return null;
+  return Number.isFinite(Number(count)) ? Number(count) : null;
+}
+
 /** GET /api/v1/smart-wallets/top — leaderboard + terminal fields. Cached ~3m. */
 router.get("/top", publicTerminalLimiter, async (req, res) => {
   const lim = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
   const supabase = safeSupabase();
   try {
-    const body = await getSmartWalletsTopCached(supabase, lim);
-    return res.json(body);
+    const [body, totalSmartWallets] = await Promise.all([
+      getSmartWalletsTopCached(supabase, lim),
+      countTotalSmartWallets(supabase)
+    ]);
+    return res.json({
+      ...body,
+      meta: {
+        ...(body?.meta || {}),
+        totalSmartWallets,
+        displayedWallets: Array.isArray(body?.data) ? body.data.length : Array.isArray(body?.rows) ? body.rows.length : 0
+      }
+    });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message, data: [], rows: [] });
   }
@@ -63,4 +82,3 @@ router.get("/:address", authMiddleware, requirePro, smartWalletsLimiter, async (
 });
 
 module.exports = router;
-
