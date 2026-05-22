@@ -19,6 +19,14 @@ if (profile !== "strict") {
   process.env.GATE_BLOCK_R03_CALM = "false";
   process.env.GATE_FILTER_WALLET_QUALITY = "false";
   process.env.RULE_NEWWALLET_ENABLED = "false";
+
+  // HOT / VELOCITY are discovery surfaces, not verified trade calls. Keep them
+  // populated for real users while still requiring provider-backed market data.
+  process.env.TRENDING_STRICT_MIN_LIQUIDITY_USD = "2000";
+  process.env.TRENDING_STRICT_MIN_VOLUME_24H_USD = "1000";
+  process.env.TRENDING_RELAXED_MIN_LIQUIDITY_USD = "250";
+  process.env.TRENDING_RELAXED_MIN_VOLUME_24H_USD = "100";
+  process.env.TRENDING_STRICT_POOL_ONLY = "false";
 }
 
 module.exports = { profile };
