@@ -79,13 +79,13 @@ function volume24hForHotRow(row) {
   return Number.isFinite(v) ? v : 0;
 }
 
-function HomeMetricStrip({ signalsToday, tokensInFeed, walletHitsInFeed, avgConfidence, bestSignal }) {
+function HomeMetricStrip({ t, signalsToday, activeWallets, avgConfidence, bestSignal }) {
+  const dash = t("home.metricStrip.dash");
   const metrics = [
-    ["Signals Today", signalsToday],
-    ["Tokens in Feed", tokensInFeed],
-    ["Wallet Hits", walletHitsInFeed],
-    ["Avg Conviction", avgConfidence != null ? `${Math.round(avgConfidence)}%` : "—"],
-    ["Best Score", bestSignal != null ? `${Math.round(bestSignal)}%` : "—"]
+    [t("home.metricStrip.signalsToday"), signalsToday],
+    [t("home.metricStrip.activeWallets"), activeWallets],
+    [t("home.metricStrip.avgConfidence"), avgConfidence != null ? `${Math.round(avgConfidence)}%` : dash],
+    [t("home.metricStrip.bestSignal"), bestSignal != null ? `${Math.round(bestSignal)}%` : dash]
   ];
   return (
     <div className="kpi-strip w-full">
@@ -647,109 +647,196 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     return new Set(visible.map((t) => t.mint).filter(Boolean));
   }, [liveSignalsForGrid, isWarMode]);
 
-  // Hysteresis: toggling at a single count (e.g. 50â51) used to swap Grid vs Virtuoso repeatedly during polls.
-  // Keep virtualized once enabled until the pool is clearly small again.
+  // Hysteresis: toggling at a single count (e.g. 50â51) used to swap Grid vs Virtuoso and remount *all* cards.
+  // Do not replace with one threshold at N only (no 42/50 band) â that thrashes on the edge. Tune inside the band, not to a single cut.
   const [useLiveVirtualized, setUseLiveVirtualized] = useState(false);
-  useEffect(() => {
-    setUseLiveVirtualized((prev) => {
-      if (prev) return sortedLiveFeedPool.length > UI_CONFIG.VIRTUOSO_EXIT_THRESHOLD;
-      return sortedLiveFeedPool.length > UI_CONFIG.VIRTUOSO_ENTER_THRESHOLD;
+  const liveN = liveSignalsForGrid.length;
+  useLayoutEffect(() => {
+    setUseLiveVirtualized((v) => {
+      if (liveN > 50) return true;
+      if (liveN < 42) return false;
+      return v;
     });
-  }, [sortedLiveFeedPool.length]);
-
+  }, [liveN]);
   const liveVirtuosoRows = useMemo(
-    () => chunkArray(sortedLiveFeedPool, UI_CONFIG.VIRTUOSO_COLUMNS),
-    [sortedLiveFeedPool]
+    () =>
+      useLiveVirtualized && liveSignalsForGrid.length > UI_CONFIG.VIRTUOSO_ROW_THRESHOLD
+        ? chunkArray(liveSignalsForGrid, UI_CONFIG.VIRTUOSO_COLUMNS)
+        : [],
+    [useLiveVirtualized, liveSignalsForGrid]
   );
 
-  const visibleVelocityTokens = useMemo(() => {
-    let rows = liveSignalPoolForFeed.filter((t) => t._liveSource !== "hot_fill" && !liveMintsExcluded.has(t.mint));
-    if (rows.length < UI_CONFIG.VELOCITY_COMPACT_CARDS) {
-      const existing = new Set(rows.map((t) => t.mint).filter(Boolean));
-      const filler = liveSignalPoolForFeed
-        .filter((t) => t._liveSource !== "hot_fill" && !existing.has(t.mint))
-        .sort((a, b) => velocityValueForToken(b) - velocityValueForToken(a));
-      rows = [...rows, ...filler];
-    }
-    rows = rows.slice().sort((a, b) => velocityValueForToken(b) - velocityValueForToken(a));
-    return rows.slice(0, heatExpanded ? UI_CONFIG.GRID_EXPANDED_MAX_CARDS : UI_CONFIG.VELOCITY_COMPACT_CARDS);
-  }, [liveSignalPoolForFeed, liveMintsExcluded, heatExpanded]);
+  const heatTokenPool = useMemo(() => {
+    const out = [];
+    const seen = new Set();
 
-  const heatTokensForGrid = useMemo(() => {
-    const realRows = trending
-      .filter((t) => !liveMintsExcluded.has(t.mint || t.tokenAddress))
-      .slice()
-      .sort((a, b) => volume24hForHotRow(b) - volume24hForHotRow(a));
-    return realRows.slice(0, heatExpanded ? UI_CONFIG.GRID_EXPANDED_MAX_CARDS : UI_CONFIG.HEAT_COMPACT_CARDS);
-  }, [trending, liveMintsExcluded, heatExpanded]);
-
-  const heatTokenPool = useMemo(
-    () => trending.filter((t) => !liveMintsExcluded.has(t.mint || t.tokenAddress)),
-    [trending, liveMintsExcluded]
-  );
-
-  const signalsRankDeltas = useRankDeltas(sortedSignalPool, (item) => item.mint);
-  const velocityRankDeltas = useRankDeltas(visibleVelocityTokens, (item) => item.mint);
-  const trendingRankDeltas = useRankDeltas(heatTokensForGrid, (item) => item.mint || item.tokenAddress);
-  const quoteMints = useMemo(() => {
-    const set = new Set();
-    const addMint = (mint) => {
-      if (mint && isProbableSolanaMint(mint)) set.add(mint);
+    const tryAdd = (t) => {
+      if (!t || typeof t !== "object") return;
+      const mint =
+        (t.mint && isProbableSolanaMint(String(t.mint)) && String(t.mint)) ||
+        (t.tokenAddress && isProbableSolanaMint(String(t.tokenAddress)) && String(t.tokenAddress)) ||
+        null;
+      if (!mint || seen.has(mint)) return;
+      seen.add(mint);
+      out.push(t.mint === mint ? t : { ...t, mint, tokenAddress: t.tokenAddress || mint });
     };
-    liveSignalsForGrid.forEach((t) => addMint(t.mint));
-    sortedSignalPool.slice(0, 30).forEach((t) => addMint(t.mint));
-    visibleVelocityTokens.forEach((t) => addMint(t.mint));
-    heatTokensForGrid.forEach((t) => addMint(t.mint || t.tokenAddress));
-    if (selectedMint) addMint(selectedMint);
-    return [...set].slice(0, 80);
-  }, [liveSignalsForGrid, sortedSignalPool, visibleVelocityTokens, heatTokensForGrid, selectedMint]);
 
-  const quotesQuery = useDecisionFeedQuotes(quoteMints, { enabled: quoteMints.length > 0 });
-  const tickerByMint = useMemo(() => {
-    const out = {};
-    for (const q of quotesQuery.data || []) {
-      if (q?.mint) out[q.mint] = q;
+    trending.forEach((t) => tryAdd(t));
+
+    return out.slice().sort((a, b) => {
+      const sa = Number.isFinite(Number(a.sentinelScore)) ? Number(a.sentinelScore) : computeSignalStrength(a);
+      const sb = Number.isFinite(Number(b.sentinelScore)) ? Number(b.sentinelScore) : computeSignalStrength(b);
+      return sb - sa;
+    });
+  }, [trending]);
+
+  const velocityTabTokens = useMemo(() => {
+    const byMint = new Map();
+    for (const t of warRoomSignals) {
+      if (!t?.mint || liveMintsExcluded.has(t.mint)) continue;
+      byMint.set(t.mint, t);
     }
-    return out;
+    for (const t of heatTokenPool) {
+      if (!t?.mint || liveMintsExcluded.has(t.mint) || byMint.has(t.mint)) continue;
+      if (t.isEarly === false) continue;
+      byMint.set(t.mint, t);
+    }
+    return [...byMint.values()].sort((a, b) => velocityValueForToken(b) - velocityValueForToken(a));
+  }, [warRoomSignals, heatTokenPool, liveMintsExcluded]);
+
+  const visibleVelocityTokens = useMemo(
+    () =>
+      velocityTabTokens.slice(0, isWarMode ? WAR_TAB_VISIBLE_MAX : UI_CONFIG.GRID_COMPACT_CARDS),
+    [velocityTabTokens, isWarMode]
+  );
+
+  const hotTabTokens = useMemo(
+    () =>
+      heatTokenPool
+        .filter((t) => t?.mint && !liveMintsExcluded.has(t.mint))
+        .sort((a, b) => volume24hForHotRow(b) - volume24hForHotRow(a)),
+    [heatTokenPool, liveMintsExcluded]
+  );
+
+  const heatTokensForGrid = useMemo(
+    () =>
+      hotTabTokens.slice(
+        0,
+        heatExpanded ? UI_CONFIG.GRID_EXPANDED_MAX_CARDS : UI_CONFIG.GRID_COMPACT_CARDS
+      ),
+    [heatExpanded, hotTabTokens]
+  );
+
+  // Quotes block must stay AFTER heatTokensForGrid and visibleVelocityTokens
+  // (it reads both). Moving it earlier triggers a TDZ ReferenceError during SSG
+  // because Next prerenders pages/ in a single module scope.
+  const liveMintsForQuotes = useMemo(() => {
+    const mints = new Set(
+      liveSignalsForGrid.map((s) => s.mint).filter((m) => m && isProbableSolanaMint(m))
+    );
+    if (tacticalTab === "hot") {
+      for (const t of heatTokensForGrid) {
+        if (t?.mint && isProbableSolanaMint(t.mint)) mints.add(t.mint);
+      }
+    }
+    if (tacticalTab === "velocity") {
+      for (const t of visibleVelocityTokens) {
+        const m = t?.mint ?? t?.tokenAddress;
+        if (m && isProbableSolanaMint(m)) mints.add(m);
+      }
+    }
+    return [...mints];
+  }, [liveSignalsForGrid, heatTokensForGrid, visibleVelocityTokens, tacticalTab]);
+  const quotesQuery = useDecisionFeedQuotes(liveMintsForQuotes, {
+    isWarMode,
+    enabled: tacticalTab === "live" || tacticalTab === "hot" || tacticalTab === "velocity"
+  });
+  const tickerByMint = useMemo(() => {
+    const rows = quotesQuery.data?.data;
+    const o = {};
+    if (Array.isArray(rows)) {
+      for (const r of rows) {
+        if (r?.mint) o[r.mint] = r;
+      }
+    }
+    return o;
   }, [quotesQuery.data]);
 
-  useLayoutEffect(() => {
+  // Tracks rank changes between refetches so cards can render âN / âN / NEW
+  // badges when the live ordering moves. Pure client-side; no extra network.
+  const signalsRankDeltas = useRankDeltas(interpretedSignals, (s) => s?.mint);
+  const trendingRankDeltas = useRankDeltas(heatTokenPool, (t) => t?.mint);
+  const velocityRankDeltas = useRankDeltas(velocityTabTokens, (t) => t?.mint);
+  /**
+   * One-shot tab after tier resolves. LIVE is the default action surface for all users;
+   * PRO restores localStorage when present, otherwise stays on live.
+   */
+  useEffect(() => {
+    if (tierLoading || tierDefaultTabAppliedRef.current) return;
+    tierDefaultTabAppliedRef.current = true;
+
+    if (isFree) {
+      setTacticalTab("live");
+      return;
+    }
+
+    if (!isPro) return;
+
     if (typeof window === "undefined") return;
     try {
-      const saved = localStorage.getItem(TACTICAL_TAB_LS_KEY);
-      if (saved && ["live", "hot", "velocity", "track", "outlier"].includes(saved)) {
-        setTacticalTab(saved);
+      const tab = localStorage.getItem(TACTICAL_TAB_LS_KEY);
+      if (tab === "live" || tab === "hot" || tab === "velocity" || tab === "outlier" || tab === "track") {
+        setTacticalTab(tab);
+        return;
       }
-    } catch (_) {}
+      if (tab === "history") {
+        setTacticalTab("track");
+        return;
+      }
+      setTacticalTab("live");
+    } catch (_) {
+      setTacticalTab("live");
+    }
+  }, [tierLoading, isFree, isPro]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${getPublicApiUrl()}/api/v1/public/smart-money-activity?limit=12`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled) return;
+        const rows = Array.isArray(j?.rows) ? j.rows : [];
+        setAlerts(
+          rows
+            .filter((r) => r?.token)
+            .map((r) => ({
+              tokenAddress: r.token,
+              alertType: `${String(r.side || "activity")} Â· conf ${Math.round(Number(r.confidence || 0))}%`,
+              createdAt: r.createdAt || null
+            }))
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setAlerts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (!skipTacticalTabPersistRef.current) {
-      try {
-        localStorage.setItem(TACTICAL_TAB_LS_KEY, tacticalTab);
-      } catch (_) {}
-    } else {
+    if (typeof window === "undefined") return;
+    if (skipTacticalTabPersistRef.current) {
       skipTacticalTabPersistRef.current = false;
+      return;
     }
+    try {
+      localStorage.setItem(TACTICAL_TAB_LS_KEY, tacticalTab);
+    } catch (_) {}
   }, [tacticalTab]);
-
-  useEffect(() => {
-    if (tierLoading || tierDefaultTabAppliedRef.current) return;
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem(TACTICAL_TAB_LS_KEY);
-        if (saved) return;
-      } catch (_) {}
-    }
-    if (isFree) {
-      setTacticalTab("hot");
-    }
-    tierDefaultTabAppliedRef.current = true;
-  }, [isFree, tierLoading]);
-
   useEffect(() => {
     const timer = setInterval(() => {
-      setSignalCursor((v) => v + 1);
+      setSignalCursor((prev) => prev + 1);
     }, 9000);
     return () => clearInterval(timer);
   }, []);
@@ -878,23 +965,17 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   }, [tacticalTab]);
 
   const homeMetrics = useMemo(() => {
-    const visible = liveSignalPoolForFeed.filter((s) => s?.mint && isProbableSolanaMint(s.mint));
-    const scores = visible.map((s) => Number(s.signalStrength ?? s.sentinelScore)).filter(Number.isFinite);
+    const scores = interpretedSignals.map((s) => Number(s.signalStrength)).filter(Number.isFinite);
     const avgConfidence = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
     const bestSignal = scores.length ? Math.max(...scores) : null;
-    const tokensInFeed = visible.length;
-    const walletHitsInFeed = visible.reduce((sum, s) => {
-      const hits = Number(s.smartWallets ?? s.smartMoneyCount ?? s.smartMoneyCount ?? s.walletCount ?? 0);
-      return sum + (Number.isFinite(hits) && hits > 0 ? Math.round(hits) : 0);
-    }, 0);
+    const activeWallets = Number.isFinite(publicActiveWallets) ? publicActiveWallets : 0;
     return {
       signalsToday: publicSignalsToday,
-      tokensInFeed,
-      walletHitsInFeed,
+      activeWallets,
       avgConfidence,
       bestSignal
     };
-  }, [liveSignalPoolForFeed, publicSignalsToday]);
+  }, [interpretedSignals, publicSignalsToday, publicActiveWallets]);
 
   return (
     <>
@@ -910,9 +991,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               />
             </div>
             <HomeMetricStrip
+              t={t}
               signalsToday={homeMetrics.signalsToday}
-              tokensInFeed={homeMetrics.tokensInFeed}
-              walletHitsInFeed={homeMetrics.walletHitsInFeed}
+              activeWallets={homeMetrics.activeWallets}
               avgConfidence={homeMetrics.avgConfidence}
               bestSignal={homeMetrics.bestSignal}
             />
