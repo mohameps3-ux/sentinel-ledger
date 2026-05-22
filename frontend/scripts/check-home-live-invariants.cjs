@@ -81,14 +81,13 @@ if (/\b(?:const|let|var)\s+visibleTrending\b|=\s*visibleTrending|visibleTrending
   err("pages/index.js must not add a separate visibleTrending for Live; use the same `trending` from useLastGoodArray for hot-fill.");
 }
 
-// --- index.js: required anti-flicker markers and hysteresis implementation.
-// The liveN threshold comments were too brittle; assert the real threshold constants instead.
+// --- index.js: required doc markers (deleting the comments re-enables regression risk)
 const needIndex = [
   "No useRankingSnapshot here",
   "Hysteresis: toggling",
   "setUseLiveVirtualized",
-  "UI_CONFIG.VIRTUOSO_ENTER_THRESHOLD",
-  "UI_CONFIG.VIRTUOSO_EXIT_THRESHOLD"
+  "liveN > 50",
+  "liveN < 42"
 ];
 for (const s of needIndex) {
   if (!index.includes(s)) {
