@@ -19,7 +19,7 @@ export function GlobalStatusBar() {
           <span className="truncate text-[var(--sl-text-muted)]">last event {lastEventAgo}</span>
         </div>
         <div className="sl-status-bar__center truncate text-center">
-          Monitoring {Number.isFinite(walletCount) ? walletCount : 0} wallets · {signalsToday} signals today · Oracle active
+          Smart wallet universe {Number.isFinite(walletCount) ? walletCount : 0} · {signalsToday} signals today · Oracle active
         </div>
         <div className="sl-status-bar__right flex items-center justify-end gap-3 overflow-hidden">
           <span className="hidden sm:inline text-[var(--sl-text-muted)]">
