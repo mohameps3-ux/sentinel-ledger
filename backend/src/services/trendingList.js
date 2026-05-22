@@ -122,9 +122,13 @@ async function fetchTrendingList(limit = 6) {
       if (!market || !market.symbol) continue;
       const liq = Number(market?.liquidity || 0);
       const vol = Number(market?.volume24h || 0);
+      const early = isEarlyMemecoin(market);
       const normalized = {
         ...normalizeTrendingEntry(mint, market),
-        isEarly: isEarlyMemecoin(market)
+        // `false` is a hard exclusion for the VELOCITY tab on the frontend.
+        // Use null when the early-status is merely inconclusive so HOT data
+        // can still populate VELOCITY instead of showing an empty product tab.
+        isEarly: early ? true : null
       };
       if (liq >= STRICT_MIN_LIQUIDITY && vol >= STRICT_MIN_VOLUME_24H) strict.push(normalized);
       else if (liq >= RELAXED_MIN_LIQUIDITY && vol >= RELAXED_MIN_VOLUME_24H) relaxed.push(normalized);
