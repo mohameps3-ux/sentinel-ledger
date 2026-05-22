@@ -15,6 +15,7 @@ if (profile !== "strict") {
   // filters still remain in signalEmissionGate; this only replaces overly
   // conservative defaults that caused zero-emission windows.
   process.env.SIGNAL_GATE_MIN_LIQUIDITY_USD = "5000";
+  process.env.SIGNAL_EMISSION_MINT_COOLDOWN_MIN = "3";
   process.env.GATE_BLOCK_R03_CALM = "false";
   process.env.GATE_FILTER_WALLET_QUALITY = "false";
   process.env.RULE_NEWWALLET_ENABLED = "false";
