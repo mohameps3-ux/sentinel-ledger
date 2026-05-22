@@ -64,7 +64,7 @@ const BLOCK_META_LABEL_CAUTION =
 const GATE_BLOCK_R03_CALM =
   String(process.env.GATE_BLOCK_R03_CALM ?? "true").trim().toLowerCase() !== "false";
 const GATE_FILTER_WALLET_QUALITY =
-  String(process.env.GATE_FILTER_WALLET_QUALITY ?? "true").trim().toLowerCase() === "true";
+  String(process.env.GATE_FILTER_WALLET_QUALITY ?? "false").trim().toLowerCase() === "true";
 const GATE_MIN_WALLET_WIN_RATE = Math.max(0, Number(process.env.GATE_MIN_WALLET_WIN_RATE || 40));
 const GATE_MIN_WALLET_TRADES = Math.max(
   0,
