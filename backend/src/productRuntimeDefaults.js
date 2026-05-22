@@ -27,6 +27,11 @@ if (profile !== "strict") {
   process.env.TRENDING_RELAXED_MIN_LIQUIDITY_USD = "250";
   process.env.TRENDING_RELAXED_MIN_VOLUME_24H_USD = "100";
   process.env.TRENDING_STRICT_POOL_ONLY = "false";
+
+  // Wallet behavior is a profile refresh, not a per-transaction live feed.
+  // 15 minutes keeps profiles fresh while staying within existing service limits.
+  process.env.WALLET_BEHAVIOR_TICK_MS = "900000";
+  process.env.WALLET_BEHAVIOR_MAX_WALLETS = "1000";
 }
 
 module.exports = { profile };
