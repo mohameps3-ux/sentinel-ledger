@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { HomeCardSparkline } from "../../../components/home/HomeCardSparkline";
 import { RealtimeTokenCardShell } from "../../../components/home/RealtimeTokenCardShell";
@@ -75,34 +75,54 @@ function accentForType(label, score) {
   const n = Number(score) || 0;
   if (text.includes("STRONG") || n >= 95) {
     return {
-      border: "border-emerald-400/45",
+      border: "border-emerald-400/55",
       softBorder: "border-emerald-500/25",
       bg: "bg-emerald-500/10",
       text: "text-emerald-100",
       dot: "bg-emerald-400",
+      glow: "shadow-[0_0_30px_rgba(16,185,129,0.18)]",
+      cardBg: "from-emerald-500/[0.18] via-cyan-500/[0.06] to-transparent",
       bar: "from-emerald-500 via-emerald-300 to-cyan-200",
       ring: "ring-emerald-400/20",
-      hover: "hover:border-emerald-400/45 hover:bg-emerald-500/10"
+      hover: "hover:border-emerald-400/50 hover:bg-emerald-500/10"
     };
   }
   if (text.includes("BUILD") || n >= 80) {
     return {
-      border: "border-blue-400/45",
-      softBorder: "border-blue-500/25",
-      bg: "bg-blue-500/10",
-      text: "text-blue-100",
-      dot: "bg-blue-400",
+      border: "border-cyan-400/50",
+      softBorder: "border-cyan-500/25",
+      bg: "bg-cyan-500/10",
+      text: "text-cyan-100",
+      dot: "bg-cyan-300",
+      glow: "shadow-[0_0_30px_rgba(34,211,238,0.15)]",
+      cardBg: "from-cyan-500/[0.16] via-emerald-500/[0.05] to-transparent",
       bar: "from-blue-500 via-cyan-300 to-emerald-200",
-      ring: "ring-blue-400/20",
-      hover: "hover:border-blue-400/45 hover:bg-blue-500/10"
+      ring: "ring-cyan-400/20",
+      hover: "hover:border-cyan-400/45 hover:bg-cyan-500/10"
+    };
+  }
+  if (n <= 25) {
+    return {
+      border: "border-rose-400/45",
+      softBorder: "border-rose-500/25",
+      bg: "bg-rose-500/10",
+      text: "text-rose-100",
+      dot: "bg-rose-300",
+      glow: "shadow-[0_0_30px_rgba(244,63,94,0.14)]",
+      cardBg: "from-rose-500/[0.16] via-orange-500/[0.05] to-transparent",
+      bar: "from-rose-500 via-orange-400 to-amber-200",
+      ring: "ring-rose-400/20",
+      hover: "hover:border-rose-400/45 hover:bg-rose-500/10"
     };
   }
   return {
-    border: "border-amber-400/45",
+    border: "border-amber-400/50",
     softBorder: "border-amber-500/25",
     bg: "bg-amber-500/10",
     text: "text-amber-100",
-    dot: "bg-amber-400",
+    dot: "bg-amber-300",
+    glow: "shadow-[0_0_30px_rgba(245,158,11,0.14)]",
+    cardBg: "from-amber-500/[0.16] via-orange-500/[0.05] to-transparent",
     bar: "from-amber-500 via-orange-400 to-red-300",
     ring: "ring-amber-400/20",
     hover: "hover:border-amber-400/45 hover:bg-amber-500/10"
@@ -143,14 +163,48 @@ function formatPct(value) {
   return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 }
 
-function SignalAvatar({ tokenLike, symbol }) {
+function firstFinite(...values) {
+  for (const value of values) {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function verdictForSignal({ decision, score, stale }) {
+  if (stale) return score >= 70 ? "Monitor" : "Wait";
+  if (decision === "BUY" || score >= 80) return "Build position";
+  if (decision === "AVOID" || score < 30) return "Wait";
+  if (score >= 55) return "Watchlist";
+  return "Monitor";
+}
+
+function buildInsight({ walletCount, liquidity, chg24, chg5, stale, score, flags }) {
+  if (stale) {
+    return score < 40
+      ? "Stale market data. Wait for fresh confirmation before acting."
+      : "Signal is aging; verify fresh flow before acting."
+  }
+  if (Array.isArray(flags) && flags.length) {
+    const text = String(flags[0] || "").replace(/\.$/, "");
+    return `${text}. Use tighter risk controls.`;
+  }
+  const liqLabel = formatUsdCompact(liquidity) || "unknown liquidity";
+  const wallets = walletCount > 0 ? `${walletCount} smart wallets` : "Smart-money activity";
+  if (Number.isFinite(chg5) && chg5 > 1) return `${wallets} active; liquidity ${liqLabel}; 5m momentum rising.`;
+  if (Number.isFinite(chg24) && chg24 > 0) return `${wallets} detected; liquidity ${liqLabel}; positive 24h tape.`;
+  if (Number.isFinite(chg24) && chg24 < -20) return `${wallets} detected, but 24h trend is under pressure.`;
+  return `${wallets} detected; liquidity ${liqLabel}; awaiting stronger confirmation.`;
+}
+
+function SignalAvatar({ tokenLike, symbol, accent }) {
   const url = tokenLike?.token?.imageUrl || tokenLike?.imageUrl || tokenLike?._api?.imageUrl || null;
   const [broken, setBroken] = useState(false);
   const letter = String(symbol || "T").replace(/^\$/, "").trim().charAt(0).toUpperCase() || "T";
 
   if (!url || broken) {
     return (
-      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-zinc-800 text-xl font-bold text-zinc-200 ring-1 ring-white/[0.04]">
+      <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border ${accent?.softBorder || "border-white/10"} bg-gradient-to-br from-white/[0.12] to-white/[0.03] text-2xl font-black text-zinc-100 ring-1 ring-white/[0.05]`}>
         {letter}
       </div>
     );
@@ -165,7 +219,7 @@ function SignalAvatar({ tokenLike, symbol }) {
       loading="lazy"
       decoding="async"
       onError={() => setBroken(true)}
-      className="h-16 w-16 shrink-0 rounded-xl border border-white/10 bg-zinc-800 object-cover ring-1 ring-white/[0.04]"
+      className={`h-16 w-16 shrink-0 rounded-2xl border ${accent?.softBorder || "border-white/10"} bg-zinc-800 object-cover ring-1 ring-white/[0.05] shadow-[0_0_22px_rgba(16,185,129,0.14)]`}
     />
   );
 }
@@ -175,14 +229,19 @@ function ScoreGauge({ value, accent }) {
   const deg = Math.round(score * 3.6);
 
   return (
-    <div
-      className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${accent.text}`}
-      style={{
-        background: `conic-gradient(currentColor ${deg}deg, rgba(255,255,255,0.10) 0deg)`
-      }}
-    >
-      <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-zinc-950 text-[10px] font-bold tabular-nums text-zinc-100">
-        {Math.round(score)}
+    <div className="relative flex h-14 w-14 shrink-0 items-center justify-center">
+      <div
+        className={`absolute inset-0 rounded-full blur-sm opacity-60 ${accent.text}`}
+        style={{ background: `conic-gradient(currentColor ${deg}deg, transparent 0deg)` }}
+      />
+      <div
+        className={`relative flex h-14 w-14 items-center justify-center rounded-full ${accent.text}`}
+        style={{ background: `conic-gradient(currentColor ${deg}deg, rgba(255,255,255,0.08) 0deg)` }}
+      >
+        <div className="flex h-10 w-10 flex-col items-center justify-center rounded-full bg-zinc-950/95 text-center ring-1 ring-white/[0.06]">
+          <span className="font-mono text-sm font-black leading-none text-zinc-50 tabular-nums">{Math.round(score)}</span>
+          <span className="mt-0.5 text-[6px] font-bold uppercase tracking-[0.18em] text-zinc-500">score</span>
+        </div>
       </div>
     </div>
   );
@@ -230,8 +289,10 @@ export function LiveSignalCard({
   const sparkCh24 = Number(tick?.priceChange24h ?? sig.token?.change ?? sig._api?.spotChange24h);
   const sparkCh5 = Number(sig._api?.priceChange5m);
   const hasSparkCh5 = Number.isFinite(sparkCh5);
-  const safeLiq = Number(tick?.liquidity);
-  const hasLiq = Number.isFinite(safeLiq) && safeLiq > 0;
+  const safeLiq = firstFinite(tick?.liquidity, sig.liquidityUsd, sig.token?.liquidity, sig._api?.liquidityUsd);
+  const hasLiq = safeLiq != null && safeLiq > 0;
+  const vol24 = firstFinite(tick?.volume24h, sig.token?.volume24h, sig._api?.volume24h);
+  const hasVol24 = vol24 != null && vol24 > 0;
   const walletCount = Math.max(0, Math.round(Number(sig.smartWallets ?? sig.smartMoneyCount ?? 0) || 0));
   const typeLabel = confidenceTr(score);
   const accent = accentForType(typeLabel, score);
@@ -240,6 +301,11 @@ export function LiveSignalCard({
   const validMint = Boolean(sig.mint && isProbableSolanaMint(sig.mint));
   const redFlags = Array.isArray(sig._api?.redFlags) ? sig._api.redFlags.filter(Boolean).slice(0, 2) : [];
   const reportHref = validMint ? `/token/${sig.mint}` : "#";
+  const verdict = verdictForSignal({ decision: normalizedDecision, score, stale: isStaleCard });
+  const insight = useMemo(
+    () => buildInsight({ walletCount, liquidity: safeLiq, chg24: chg, chg5: sparkCh5, stale: isStaleCard, score, flags: redFlags }),
+    [walletCount, safeLiq, chg, sparkCh5, isStaleCard, score, redFlags]
+  );
 
   return (
     <RealtimeTokenCardShell
@@ -267,13 +333,13 @@ export function LiveSignalCard({
         });
       }}
       hideExecutionBar={isWarMode}
-      baseClassName={`terminal-card-interactive group mb-3 relative overflow-hidden border border-white/10 bg-zinc-900/90 p-0 text-zinc-100 shadow-[0_14px_36px_rgba(0,0,0,0.25)] transition-all duration-200 hover:border-white/20 hover:bg-zinc-900 ${
+      baseClassName={`terminal-card-interactive group mb-3 relative overflow-hidden rounded-xl border ${accent.border} bg-zinc-950/90 p-0 text-zinc-100 ${accent.glow} shadow-[0_18px_48px_rgba(0,0,0,0.35)] transition-all duration-200 hover:-translate-y-[1px] hover:border-white/25 hover:bg-zinc-900 ${
         isHeatFill ? "sl-terminal-shell--heat" : "sl-terminal-shell--live"
       } ${hot ? `ring-1 ${accent.ring}` : ""} ${validMint ? "cursor-pointer" : ""} ${
         selectedMint && sig.mint === selectedMint ? `ring-2 ${accent.ring}` : ""
       }`}
       style={{ minHeight: 280, maxHeight: 340 }}
-      watchedClassName={`ring-1 ${accent.ring} shadow-[0_0_18px_rgba(255,255,255,0.08)]`}
+      watchedClassName={`ring-1 ${accent.ring} shadow-[0_0_22px_rgba(255,255,255,0.10)]`}
     >
       {({ displayScore }) => {
         const displayScoreSafe = Number.isFinite(Number(displayScore))
@@ -385,21 +451,23 @@ export function LiveSignalCard({
         }
 
         return (
-          <div className="flex h-full min-h-[320px] flex-col p-4 sm:p-5">
-            <div className="flex items-start justify-between gap-3 border-b border-white/[0.08] pb-3">
+          <div className="relative flex h-full min-h-[320px] flex-col p-4 sm:p-5">
+            <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${accent.cardBg}`} aria-hidden />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" aria-hidden />
+            <div className="relative flex items-start justify-between gap-3 border-b border-white/[0.08] pb-3">
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] font-semibold text-zinc-300">
+                <span className="rounded-md border border-white/10 bg-white/[0.05] px-2 py-1 font-mono text-[10px] font-semibold text-zinc-300">
                   #{rankInfo.rank || idx + 1}
                 </span>
-                <span className="rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase text-emerald-100">
-                  SIGNAL
+                <span className="rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-emerald-100">
+                  Signal
                 </span>
                 {isStaleCard ? (
-                  <span className="rounded-md border border-rose-500/35 bg-rose-500/10 px-2 py-1 text-[10px] font-bold uppercase text-rose-100">
-                    STALE DATA
+                  <span className="rounded-md border border-rose-500/35 bg-rose-500/10 px-2 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-rose-100">
+                    Stale data
                   </span>
                 ) : null}
-                <span className={`rounded-md border px-2 py-1 text-[10px] font-bold uppercase ${accent.border} ${accent.bg} ${accent.text}`}>
+                <span className={`rounded-md border px-2 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${accent.border} ${accent.bg} ${accent.text}`}>
                   {typeLabel}
                 </span>
               </div>
@@ -407,25 +475,28 @@ export function LiveSignalCard({
                 <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-400">
                   {walletCount > 0 ? <span>{walletCount} wallets</span> : null}
                   {ago ? <span>{ago}</span> : null}
-                  <span className={`h-2 w-2 rounded-full ${accent.dot}`} aria-hidden />
+                  <span className={`h-2 w-2 rounded-full ${accent.dot} shadow-[0_0_10px_currentColor]`} aria-hidden />
                 </div>
               </div>
             </div>
 
-            <div className="flex min-w-0 items-center gap-4 pt-4">
-              <SignalAvatar tokenLike={{ ...sig, token: sig.token, _api: sig._api }} symbol={symbol} />
+            <div className="relative flex min-w-0 items-center gap-4 pt-4">
+              <SignalAvatar tokenLike={{ ...sig, token: sig.token, _api: sig._api }} symbol={symbol} accent={accent} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-2xl font-bold tracking-tight text-zinc-50" title={`$${symbol}`}>
+                <p className="truncate text-2xl font-black tracking-tight text-zinc-50" title={`$${symbol}`}>
                   ${symbol}
+                </p>
+                <p className="mt-0.5 truncate text-[11px] text-zinc-400">
+                  {sig.token?.name || sig._api?.name || sig._api?.tokenName || symbol}
                 </p>
                 <div className={`mt-2 min-w-0 font-mono text-sm ${quotesPricesFetching ? "opacity-80" : ""}`}>
                   <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <span className="text-zinc-100 tabular-nums">
+                    <span className="text-lg font-black text-zinc-100 tabular-nums">
                       {hasPx ? `$${formatTokenPrice(px)}` : "Price unavailable"}
                     </span>
                     {hasChg ? (
-                      <span className={`tabular-nums ${chg >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                        {formatPct(chg)}
+                      <span className={`text-sm font-bold tabular-nums ${chg >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                        {formatPct(chg)} <span className="text-[9px] font-semibold uppercase text-zinc-500">24h</span>
                       </span>
                     ) : null}
                   </div>
@@ -433,59 +504,51 @@ export function LiveSignalCard({
               </div>
               <div className="flex shrink-0 flex-col items-center gap-1">
                 <ScoreGauge value={displayScoreSafe} accent={accent} />
-                <span className="font-mono text-[9px] font-semibold uppercase text-zinc-500">Score</span>
               </div>
             </div>
 
-            <div className="mt-4 h-14 w-full overflow-hidden rounded-lg border border-white/10 bg-black/20">
-              <HomeCardSparkline
-                mint={sig.mint}
-                change24h={sparkCh24}
-                change5m={sparkCh5}
-                className="!h-14 !w-full rounded-lg bg-transparent ring-0 [&_svg]:!h-14 [&_svg]:!w-full"
-              />
+            <div className="relative mt-4 grid grid-cols-3 overflow-hidden rounded-lg border border-white/10 bg-black/25 shadow-inner shadow-black/40">
+              <div className="border-r border-white/[0.06] px-3 py-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">Liquidity</p>
+                <p className="mt-1 font-mono text-sm font-black text-zinc-100">{hasLiq ? formatUsdCompact(safeLiq) : "—"}</p>
+              </div>
+              <div className="border-r border-white/[0.06] px-3 py-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">5m change</p>
+                <p className={`mt-1 font-mono text-sm font-black ${hasSparkCh5 ? (sparkCh5 >= 0 ? "text-emerald-300" : "text-rose-300") : "text-zinc-500"}`}>
+                  {hasSparkCh5 ? formatPct(sparkCh5) : "—"}
+                </p>
+              </div>
+              <div className="px-3 py-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">24h volume</p>
+                <p className="mt-1 font-mono text-sm font-black text-zinc-100">{hasVol24 ? formatUsdCompact(vol24) : "—"}</p>
+              </div>
             </div>
 
-
-            {hasLiq || hasSparkCh5 || normalizedDecision ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {hasLiq ? (
-                  <div className="min-w-[6.5rem] flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                    <p className="text-[9px] font-semibold uppercase text-zinc-500">Liquidity</p>
-                    <p className="mt-1 font-mono text-xs font-bold text-zinc-100">{formatUsdCompact(safeLiq)}</p>
-                  </div>
-                ) : null}
-                {hasSparkCh5 ? (
-                  <div className="min-w-[5rem] flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                    <p className="text-[9px] font-semibold uppercase text-zinc-500">5m</p>
-                    <p className={`mt-1 font-mono text-xs font-bold ${sparkCh5 >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                      {formatPct(sparkCh5)}
-                    </p>
-                  </div>
-                ) : null}
-                {normalizedDecision ? (
-                  <div className="min-w-[6rem] flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                    <p className="text-[9px] font-semibold uppercase text-zinc-500">Decision</p>
-                    <p className={`mt-1 truncate font-mono text-xs font-bold ${accent.text}`}>{normalizedDecision}</p>
-                  </div>
-                ) : null}
+            <div className="relative mt-3 overflow-hidden rounded-lg border border-white/[0.08] bg-black/25 p-3">
+              <div className="flex items-start gap-2">
+                <span className={`mt-0.5 h-6 w-6 shrink-0 rounded-md border ${accent.softBorder} ${accent.bg}`} aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-zinc-500">Readout</p>
+                  <p className="mt-1 text-[11px] leading-snug text-zinc-300">{insight}</p>
+                </div>
               </div>
-            ) : null}
+            </div>
 
-            {redFlags.length ? (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {redFlags.map((flag, flagIdx) => (
-                  <span
-                    key={`${flag}-${flagIdx}`}
-                    className="rounded-md border border-rose-500/25 bg-rose-500/10 px-2 py-1 text-[10px] font-medium text-rose-100"
-                  >
-                    {String(flag)}
-                  </span>
-                ))}
-              </div>
-            ) : null}
+            <div className="relative mt-3 flex flex-wrap items-center gap-1.5">
+              <span className={`rounded-md border px-2 py-1 text-[10px] font-black ${accent.border} ${accent.bg} ${accent.text}`}>
+                {verdict}
+              </span>
+              {redFlags.map((flag, flagIdx) => (
+                <span
+                  key={`${flag}-${flagIdx}`}
+                  className="rounded-md border border-rose-500/25 bg-rose-500/10 px-2 py-1 text-[10px] font-semibold text-rose-100"
+                >
+                  {String(flag)}
+                </span>
+              ))}
+            </div>
 
-            <div className="mt-auto flex items-center gap-2 pt-4">
+            <div className="relative mt-auto flex items-center gap-2 pt-4">
               <button
                 type="button"
                 disabled={!validMint}
@@ -495,13 +558,13 @@ export function LiveSignalCard({
                   if (!validMint) return;
                   onSelectMint(sig.mint, { src: "live", tr: displayScoreSafe, sw: walletCount });
                 }}
-                className={`flex h-9 flex-1 items-center justify-center rounded-md border px-3 text-[11px] font-bold uppercase transition ${
+                className={`flex h-9 flex-1 items-center justify-center rounded-md border px-3 text-[11px] font-black uppercase tracking-[0.06em] transition ${
                   validMint
-                    ? `border-white/10 bg-white/[0.05] text-zinc-100 ${accent.hover}`
+                    ? `border-white/10 bg-white/[0.06] text-zinc-100 ${accent.hover}`
                     : "cursor-not-allowed border-white/5 bg-white/[0.02] text-zinc-600"
                 }`}
               >
-                Open chart
+                Open Intel
               </button>
               <Link
                 href={reportHref}
@@ -510,13 +573,13 @@ export function LiveSignalCard({
                   e.stopPropagation();
                   if (!validMint) e.preventDefault();
                 }}
-                className={`flex h-9 flex-1 items-center justify-center rounded-md border px-3 text-[11px] font-bold uppercase no-underline transition ${
+                className={`flex h-9 flex-1 items-center justify-center rounded-md border px-3 text-[11px] font-black uppercase tracking-[0.06em] no-underline transition ${
                   validMint
                     ? `${accent.border} ${accent.bg} ${accent.text} hover:bg-white/[0.08]`
                     : "pointer-events-none cursor-not-allowed border-white/5 bg-white/[0.02] text-zinc-600"
                 }`}
               >
-                View report
+                View Chart
               </Link>
             </div>
           </div>
