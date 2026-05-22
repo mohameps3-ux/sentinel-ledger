@@ -2,6 +2,7 @@
 import "../styles/globals.css";
 import "../styles/sentinel-design-system.css";
 import "../styles/apex-obsidian.css";
+import "../styles/live-cards-polish.css";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo } from "react";
@@ -58,137 +59,58 @@ export default function App({ Component, pageProps }) {
   const router = useRouter();
   const showDevUiBadge = process.env.NODE_ENV !== "production";
   const devUiStamp = "home-compact-v2";
-  const buildStamp = process.env.NEXT_PUBLIC_GIT_SHA || "local";
-  const endpoint = useMemo(() => getPublicSolanaRpcUrl(), []);
+
+  useTtaFirstAction({ enabled: process.env.NODE_ENV === "production" });
+
+  useEffect(() => {
+    if (shouldRunApiDiagnostics()) {
+      runApiDiagnostics();
+    }
+  }, []);
+
   const wallets = useMemo(() => createSolanaWalletAdapters(), []);
-  useTtaFirstAction(router);
-
-  useEffect(() => {
-    document.documentElement.dataset.sentinelClient = "1";
-  }, []);
-
-  useEffect(() => {
-    if (!shouldRunApiDiagnostics()) return;
-    runApiDiagnostics();
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    let sock = null;
-    let cancelled = false;
-    import("socket.io-client")
-      .then(({ default: io }) => {
-        if (cancelled) return;
-        sock = io(getPublicWsUrl(), {
-          transports: ["websocket", "polling"],
-          reconnection: true
-        });
-        sock.on("connect", () => {
-          sock.emit("join-user", { token });
-        });
-        sock.on("wallet-stalk", (event) => {
-          try {
-            const prev = Number(localStorage.getItem("walletStalkerUnread") || 0);
-            localStorage.setItem("walletStalkerUnread", String(prev + 1));
-            const existing = JSON.parse(localStorage.getItem("walletStalkerEvents") || "[]");
-            const next = [event, ...existing].slice(0, 40);
-            localStorage.setItem("walletStalkerEvents", JSON.stringify(next));
-            window.dispatchEvent(new Event("wallet-stalker-update"));
-          } catch (_) {}
-        });
-      })
-      .catch((e) => console.warn("[app] wallet-stalk socket load failed:", e?.message || e));
-    return () => {
-      cancelled = true;
-      if (sock) sock.close();
-    };
-  }, []);
+  const endpoint = useMemo(() => getPublicSolanaRpcUrl(), []);
 
   return (
     <>
       <Head>
-        {/* viewport: see pages/_document.js (single tag, avoids duplicates) */}
-        <meta name="theme-color" content="#070709" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <title>Sentinel Ledger</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-    <ConnectionProvider endpoint={endpoint}>
-      <MetaMaskSolanaInit rpcUrl={endpoint} />
-      <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>
+      <div className={`${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable}`}>
+        <AppErrorBoundary>
           <QueryClientProvider client={queryClient}>
-            <LocaleProvider>
-            <WarModeProvider>
-            <SubscriptionModalProvider>
-            <ScoreSocketProvider>
-            <div
-              className={`${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} ${inter.className} min-h-screen bg-[var(--sl-bg-base)] text-white antialiased selection:bg-emerald-500/25 selection:text-emerald-100`}
-              translate="no"
-            >
-              {!Component.standalone && <Navbar />}
-              {!Component.standalone && <GlobalStatusBar />}
-              {/* padding-top is derived from CSS variables published by the
-                  fixed top chrome (see :root in globals.css and the
-                  `data-has-tension-bar` contract in LiveTensionBar.jsx).
-                  This main no longer needs to know which page it is on. */}
-              {Component.standalone ? (
-                <Component {...pageProps} />
-              ) : (
-                <main
-                  style={{
-                    paddingTop:
-                      "calc(var(--sl-nav-actual, var(--sl-nav-h)) + var(--sl-status-h) + var(--sl-bar-h) + var(--sl-safe-gap))"
-                  }}
-                  className="pb-24 md:pb-14 safe-bottom-pad w-full max-w-[100vw] overflow-x-clip min-w-0"
-                >
-                  {router.pathname !== "/" &&
-                  router.pathname !== "/smart-money" &&
-                  router.pathname !== "/scanner" ? (
-                    <GlobalWayfinding />
-                  ) : null}
-                  <AppErrorBoundary>
-                    <Component {...pageProps} />
-                  </AppErrorBoundary>
-                </main>
-              )}
-              {!Component.standalone && <GlobalCommandHud />}
-              {!Component.standalone && <SiteFooter />}
-              {showDevUiBadge ? (
-                <div className="fixed left-2 bottom-2 z-[260] pointer-events-none select-none text-[10px] leading-tight px-2 py-1 rounded-md border border-[rgba(209,213,219,0.28)] bg-[#0a0a0a]/92 text-[#d1d5db] font-mono shadow-[0_0_14px_rgba(250,204,21,0.18)]">
-                  DEV · UI {devUiStamp} · BUILD {buildStamp}
-                </div>
-              ) : null}
-              <SentinelBot />
-              <Toaster
-                position="bottom-center"
-                containerStyle={{
-                  bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))"
-                }}
-                toastOptions={{
-                  duration: 3000,
-                  style: {
-                    background: "#13171A",
-                    color: "#F3F4F6",
-                    border: "1px solid #2A2F36",
-                    borderRadius: "14px",
-                    maxWidth: "min(100vw - 2rem, 24rem)"
-                  }
-                }}
-              />
-            </div>
-            </ScoreSocketProvider>
-            </SubscriptionModalProvider>
-            </WarModeProvider>
-            </LocaleProvider>
+            <ConnectionProvider endpoint={endpoint}>
+              <WalletProvider wallets={wallets} autoConnect>
+                <WalletModalProvider>
+                  <LocaleProvider>
+                    <WarModeProvider>
+                      <SubscriptionModalProvider>
+                        <ScoreSocketProvider wsUrl={getPublicWsUrl()}>
+                          <Navbar />
+                          <GlobalStatusBar />
+                          <GlobalWayfinding />
+                          <Component {...pageProps} />
+                          <SiteFooter />
+                          <GlobalCommandHud />
+                          <SentinelBot />
+                          <MetaMaskSolanaInit />
+                          <Toaster position="bottom-right" />
+                          {showDevUiBadge ? (
+                            <div className="fixed bottom-2 left-2 z-[9999] rounded border border-white/10 bg-black/70 px-2 py-1 font-mono text-[10px] text-white/60">
+                              {devUiStamp}
+                            </div>
+                          ) : null}
+                        </ScoreSocketProvider>
+                      </SubscriptionModalProvider>
+                    </WarModeProvider>
+                  </LocaleProvider>
+                </WalletModalProvider>
+              </WalletProvider>
+            </ConnectionProvider>
           </QueryClientProvider>
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
+        </AppErrorBoundary>
+      </div>
     </>
   );
 }
-
