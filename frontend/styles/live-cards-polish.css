@@ -1,0 +1,92 @@
+/* UI-only polish for Live Smart Money cards. No data/feed logic changes. */
+
+[data-testid="sl-war-live-card"] {
+  max-height: none !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at 14% 8%, rgba(16, 185, 129, 0.10), transparent 28%),
+    radial-gradient(circle at 92% 4%, rgba(250, 204, 21, 0.10), transparent 30%),
+    linear-gradient(145deg, rgba(16, 16, 18, 0.98), rgba(7, 8, 11, 0.96) 58%, rgba(10, 10, 10, 0.98)) !important;
+  box-shadow: 0 18px 44px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+
+[data-testid="sl-war-live-card"] > div {
+  min-height: 252px !important;
+  padding: 11px !important;
+}
+
+[data-testid="sl-war-live-card"] img,
+[data-testid="sl-war-live-card"] img + * {
+  border-radius: 15px !important;
+}
+
+[data-testid="sl-war-live-card"] a,
+[data-testid="sl-war-live-card"] button {
+  height: 32px !important;
+  border-radius: 12px !important;
+  font-size: 10px !important;
+  letter-spacing: .06em !important;
+  white-space: nowrap !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.055) !important;
+}
+
+[data-testid="sl-war-live-card"] p {
+  text-wrap: balance;
+}
+
+[data-testid="sl-war-live-card"] .font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+[data-testid="sl-war-live-card"] .text-2xl {
+  font-size: 1.18rem !important;
+  line-height: 1.04 !important;
+}
+
+[data-testid="sl-war-live-card"] .text-lg {
+  font-size: 1rem !important;
+  line-height: 1.1 !important;
+}
+
+[data-testid="sl-war-live-card"] .rounded-lg {
+  border-radius: 13px !important;
+}
+
+[data-testid="sl-war-live-card"] .rounded-md {
+  border-radius: 9px !important;
+}
+
+[data-testid="sl-war-live-card"] .mt-4 {
+  margin-top: .55rem !important;
+}
+
+[data-testid="sl-war-live-card"] .mt-3 {
+  margin-top: .46rem !important;
+}
+
+[data-testid="sl-war-live-card"] .pt-4 {
+  padding-top: .55rem !important;
+}
+
+[data-testid="sl-war-live-card"] .pb-3 {
+  padding-bottom: .5rem !important;
+}
+
+[data-testid="sl-war-live-card"] .px-3.py-2 {
+  padding: .44rem .55rem !important;
+}
+
+[data-testid="sl-war-live-card"] .p-3 {
+  padding: .55rem !important;
+}
+
+[data-testid="sl-war-live-card"] .leading-snug {
+  line-height: 1.24 !important;
+}
+
+@media (max-width: 900px) {
+  [data-testid="sl-war-live-card"] > div {
+    min-height: 238px !important;
+  }
+}
