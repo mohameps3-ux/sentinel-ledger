@@ -53,7 +53,7 @@ const CONFIG = {
   clusterMinWallets: Number(process.env.RULE_CLUSTER_MIN_WALLETS || 3),
   clusterWindowMs: Number(process.env.RULE_CLUSTER_WINDOW_MS || 40_000),
   clusterMinUsdEach: Number(process.env.RULE_CLUSTER_MIN_USD || 250),
-  newWalletEnabled: String(process.env.RULE_NEWWALLET_ENABLED || "true").toLowerCase() !== "false",
+  newWalletEnabled: String(process.env.RULE_NEWWALLET_ENABLED || "false").toLowerCase() === "true",
   newWalletMaxAgeMs: Number(process.env.RULE_NEWWALLET_MAX_AGE_MS || 24 * 60 * 60 * 1000),
   newWalletMinUsd: Number(process.env.RULE_NEWWALLET_MIN_USD || 1_000),
   velocityMultiplier: Number(process.env.RULE_VELOCITY_MULT || 3),
