@@ -15,9 +15,17 @@ if (profile !== "strict") {
   // filters still remain in signalEmissionGate; this only replaces overly
   // conservative defaults that caused zero-emission windows.
   process.env.SIGNAL_GATE_MIN_LIQUIDITY_USD = "5000";
-  process.env.SIGNAL_EMISSION_MINT_COOLDOWN_MIN = "3";
-  process.env.GATE_BLOCK_R03_CALM = "false";
-  process.env.GATE_FILTER_WALLET_QUALITY = "false";
+
+  // Quality pass: after observing live outcomes, reduce repeated low-conviction
+  // R03/calm spam and require at least a real signal combo from proven wallets.
+  // This makes the feed closer to a trader-facing intelligence product than a
+  // raw event mirror.
+  process.env.SIGNAL_EMISSION_MINT_COOLDOWN_MIN = "10";
+  process.env.GATE_BLOCK_R03_CALM = "true";
+  process.env.GATE_MIN_SIGNALS = "2";
+  process.env.GATE_FILTER_WALLET_QUALITY = "true";
+  process.env.GATE_MIN_WALLET_WIN_RATE = "45";
+  process.env.GATE_MIN_WALLET_TRADES = "5";
   process.env.RULE_NEWWALLET_ENABLED = "false";
 
   // HOT / VELOCITY are discovery surfaces, not verified trade calls. Keep them
