@@ -1,6 +1,7 @@
 "use strict";
 
 const { claimMintEmission } = require("./emissionMintCooldown");
+const { getSupabase } = require("../lib/supabase");
 
 function clamp(n, lo, hi) {
   const v = Number(n);
@@ -62,6 +63,13 @@ const BLOCK_META_LABEL_CAUTION =
   String(process.env.SIGNAL_GATE_META_BLOCK_CAUTION || "false").toLowerCase() === "true";
 const GATE_BLOCK_R03_CALM =
   String(process.env.GATE_BLOCK_R03_CALM ?? "true").trim().toLowerCase() !== "false";
+const GATE_FILTER_WALLET_QUALITY =
+  String(process.env.GATE_FILTER_WALLET_QUALITY ?? "true").trim().toLowerCase() === "true";
+const GATE_MIN_WALLET_WIN_RATE = Math.max(0, Number(process.env.GATE_MIN_WALLET_WIN_RATE || 40));
+const GATE_MIN_WALLET_TRADES = Math.max(
+  0,
+  Number(process.env.GATE_MIN_WALLET_TRADES || 30)
+);
 
 /** "New pair" cutoff for no-chasing (24h move vs pool age). Not env-tunable per product spec. */
 const NEW_TOKEN_POOL_AGE_MAX_MIN = 60;
@@ -343,11 +351,37 @@ function isR03DominatedEmission(score) {
   return !hasStrongOther;
 }
 
+async function loadSmartWalletStats(wallets) {
+  const addresses = [...new Set((wallets || []).map((w) => String(w || "").trim()).filter(Boolean))]
+    .slice(0, 20);
+
+  if (!addresses.length) return [];
+
+  let supabase;
+  try {
+    supabase = getSupabase();
+  } catch (_) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("smart_wallets")
+    .select("wallet_address, win_rate, total_trades")
+    .in("wallet_address", addresses)
+    .limit(addresses.length);
+
+  if (error) {
+    console.warn("[gate] wallet quality lookup failed:", error.message || error);
+    return [];
+  }
+
+  return Array.isArray(data) ? data : [];
+}
+
 async function evaluateSignalEmission(score, ctx = {}) {
   const asset = String(score?.asset || "");
 
   try {
-    const { getSupabase } = require("../lib/supabase");
     let supabase;
     try {
       supabase = getSupabase();
@@ -428,6 +462,26 @@ async function evaluateSignalEmission(score, ctx = {}) {
   const liqUsd = Number(ctx?.liquidityUsd);
   const us = computeUnifiedScore(score, ctx, cfg.minLiquidityUsd);
   const reasons = [];
+
+  if (cfg.enabled && GATE_FILTER_WALLET_QUALITY && Array.isArray(ctx?.wallets) && ctx.wallets.length > 0) {
+    const walletsData = await loadSmartWalletStats(ctx.wallets);
+    const anyQualifies = walletsData.some((wallet) => {
+      const winRate = Number(wallet?.win_rate || 0);
+      const totalTrades = Number(wallet?.total_trades || 0);
+      return winRate >= GATE_MIN_WALLET_WIN_RATE && totalTrades >= GATE_MIN_WALLET_TRADES;
+    });
+
+    if (!anyQualifies) {
+      const reason = "low_quality_wallet";
+      state.decisions += 1;
+      state.lastDecisionAt = nowIso;
+      state.blocked += 1;
+      bumpRegime(regime.key, false);
+      bumpBlocked(reason);
+      pushRecent({ at: nowIso, asset, allow: false, reasons: [reason], regime: { key: regime.key } });
+      return { allow: false, reasons: [reason] };
+    }
+  }
 
   if (cfg.enabled) {
     if (signals < cfg.minSignalsFired) reasons.push("insufficient_signals");
@@ -591,7 +645,14 @@ function getSignalGateOpsSnapshot() {
       effectivePreview: previewEffectiveByRegime()
     },
     alpha: alphaGateConfigSnapshot(),
-    calibration: { blockR03Calm: GATE_BLOCK_R03_CALM },
+    calibration: {
+      blockR03Calm: GATE_BLOCK_R03_CALM,
+      walletQuality: {
+        enabled: GATE_FILTER_WALLET_QUALITY,
+        minWinRate: GATE_MIN_WALLET_WIN_RATE,
+        minTrades: GATE_MIN_WALLET_TRADES
+      }
+    },
     stats: {
       startedAt: state.startedAt,
       decisions: state.decisions,
