@@ -25,7 +25,7 @@ export const HOME_PAGE_STRINGS = {
   "home.metricStrip.signalsToday": S("Signals today (UTC)", {
     es: "Señales hoy (UTC)"
   }),
-  "home.metricStrip.activeWallets": S("Active wallets", { es: "Wallets activas" }),
+  "home.metricStrip.activeWallets": S("Smart wallet universe", { es: "Universo smart wallets" }),
   "home.metricStrip.avgConfidence": S("Avg confidence", { es: "Conf. media" }),
   "home.metricStrip.bestSignal": S("Best signal", { es: "Mejor señal" }),
   "home.metricStrip.dash": S("—", { es: "—" })
