@@ -43,6 +43,14 @@ export function isIngestionLive(ingestion) {
   return Number.isFinite(ageMs) && ageMs <= 60_000;
 }
 
+function finiteNumber(...values) {
+  for (const value of values) {
+    const n = Number(value);
+    if (Number.isFinite(n) && n >= 0) return n;
+  }
+  return 0;
+}
+
 /**
  * Shared poller for SOL quote + sync/health/ingestion (same footprint as GlobalStatusBar).
  */
@@ -53,6 +61,7 @@ export function useTerminalInfrastructureStatus() {
     health: null,
     ingestion: null,
     stats: null,
+    smartWalletsTop: null,
     sol: null
   });
 
@@ -61,11 +70,12 @@ export function useTerminalInfrastructureStatus() {
     async function load() {
       try {
         const api = getPublicApiUrl();
-        const [syncRes, healthRes, ingestionRes, statsRes, solRes] = await Promise.allSettled([
+        const [syncRes, healthRes, ingestionRes, statsRes, smartWalletsRes, solRes] = await Promise.allSettled([
           fetch(`${api}/health/sync`, { cache: "no-store" }).then((r) => r.json()),
           fetch(`${api}/health`, { cache: "no-store" }).then((r) => r.json()),
           fetch(`${api}/health/ingestion`, { cache: "no-store" }).then((r) => r.json()),
           fetch(`${api}/api/v1/public/stats`, { cache: "no-store" }).then((r) => r.json()),
+          fetch(`${api}/api/v1/smart-wallets/top?limit=1`, { cache: "no-store" }).then((r) => r.json()),
           fetch(`${api}/api/v1/tokens/quotes?mints=${SOL_MINT}`, { cache: "no-store" }).then((r) => r.json())
         ]);
         if (!alive) return;
@@ -75,6 +85,7 @@ export function useTerminalInfrastructureStatus() {
           health: healthRes.status === "fulfilled" ? healthRes.value : null,
           ingestion: ingestionRes.status === "fulfilled" ? ingestionRes.value : null,
           stats: statsRes.status === "fulfilled" ? statsRes.value : null,
+          smartWalletsTop: smartWalletsRes.status === "fulfilled" ? smartWalletsRes.value : null,
           sol: solRes.status === "fulfilled" ? solRes.value?.data?.[0] : null
         });
       } catch {
@@ -103,13 +114,17 @@ export function useTerminalInfrastructureStatus() {
   }, [state.health, state.sync]);
 
   const signalsToday = Number(state.stats?.signalsToday || 0);
-  const walletCount = Number(
-    state.stats?.activeWallets ??
-      state.stats?.smartWallets ??
-      state.ingestion?.walletsTracked ??
-      state.ingestion?.walletCount ??
-      state.health?.smartWallets ??
-      0
+  const activeWallets24h = finiteNumber(
+    state.stats?.activeWallets,
+    state.ingestion?.walletsTracked,
+    state.ingestion?.walletCount
+  );
+  const walletCount = finiteNumber(
+    state.smartWalletsTop?.meta?.totalSmartWallets,
+    state.stats?.totalSmartWallets,
+    state.stats?.smartWallets,
+    state.health?.smartWallets,
+    activeWallets24h
   );
   const live = isIngestionLive(state.ingestion);
   const solPrice = Number(state.sol?.price);
@@ -120,6 +135,7 @@ export function useTerminalInfrastructureStatus() {
     service,
     signalsToday,
     walletCount,
+    activeWallets24h,
     live,
     solPrice,
     lastEventAgo: terminalStatusTimeAgo(ingestion?.lastEventAt, ingestion?.lastEventAgeMs)
