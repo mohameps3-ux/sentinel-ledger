@@ -1,0 +1,88 @@
+/* Home-only compact top layout. UI-only: no data, feed, or backend changes. */
+
+.kpi-strip {
+  min-height: 0 !important;
+  padding: 4px 8px !important;
+  gap: 6px !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.kpi-block {
+  min-height: 0 !important;
+  padding: 4px 8px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: baseline !important;
+  justify-content: flex-start !important;
+  gap: 7px !important;
+}
+
+.kpi-number {
+  order: 0 !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+}
+
+.kpi-label {
+  order: 1 !important;
+  font-size: 8px !important;
+  line-height: 1 !important;
+  letter-spacing: .09em !important;
+  opacity: .72 !important;
+  white-space: nowrap !important;
+}
+
+.home-control-shelf {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(18,18,22,.36);
+  padding: 6px 8px;
+}
+
+.home-control-group {
+  min-width: 0;
+}
+
+.home-control-title {
+  margin: 0 0 4px;
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: rgba(228,228,231,.84);
+}
+
+.home-control-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-control-shelf button {
+  padding: 3px 7px !important;
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+}
+
+.home-sound-toggle {
+  margin-left: auto;
+}
+
+.home-top-stack {
+  gap: 6px !important;
+}
+
+@media (max-width: 900px) {
+  .home-control-shelf {
+    grid-template-columns: 1fr;
+  }
+}
