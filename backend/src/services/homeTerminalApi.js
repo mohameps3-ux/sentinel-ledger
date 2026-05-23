@@ -1017,12 +1017,14 @@ async function buildLatestSignalsFeed(
     const spotPx = Number(md?.price);
     const spotChg = Number(md?.priceChange24h);
     const spotChg5m = Number(md?.priceChange5m);
+    const marketCap = Number(md?.marketCap);
     out.push({
       token: symbol.startsWith("$") ? symbol : `$${symbol}`,
       tokenAddress: mint,
       imageUrl: md?.imageUrl || md?.logoURI || null,
       smartWallets: walletCount,
       sentinelScore,
+      marketCap: Number.isFinite(marketCap) && marketCap > 0 ? marketCap : null,
       spotPriceUsd: Number.isFinite(spotPx) && spotPx > 0 ? spotPx : null,
       spotChange24h: Number.isFinite(spotChg) ? spotChg : null,
       priceChange5m: Number.isFinite(spotChg5m) ? spotChg5m : null,
