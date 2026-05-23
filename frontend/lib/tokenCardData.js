@@ -113,3 +113,20 @@ export function getChange(sig, window, tickerByMint = {}) {
 
   return null;
 }
+
+export function getActionBucket(sig) {
+  const score = Number(sig?.signalStrength ?? sig?.sentinelScore ?? 0);
+  const liquidity = Number(sig?._api?.liquidity ?? sig?.liquidity ?? 0);
+  const chg24 = Number(sig?._api?.change ?? sig?.change ?? 0);
+  const redFlags = Array.isArray(sig?._api?.redFlags) ? sig._api.redFlags : [];
+
+  // RISK takes precedence
+  if (redFlags.length > 0) return { key: "RISK", rank: 4 };
+  if (liquidity > 0 && liquidity < 15000) return { key: "RISK", rank: 4 };
+  if (chg24 < -25) return { key: "RISK", rank: 4 };
+
+  // Then by score
+  if (score >= 80) return { key: "BUILD", rank: 1 };
+  if (score >= 55) return { key: "WATCH", rank: 2 };
+  return { key: "LOW EDGE", rank: 3 };
+}
