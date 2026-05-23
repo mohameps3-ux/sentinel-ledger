@@ -6,6 +6,7 @@ import { isProbableSolanaMint } from "../../../lib/solanaMint.mjs";
 import { deriveApexState } from "../../../components/apex";
 import { cockpitCardClickTargetIsInteractive } from "../../../lib/cockpitCardClick.mjs";
 import { formatTokenPrice } from "../../../lib/formatStable";
+import { getMarketCap } from "@/lib/tokenCardData";
 
 function normalizeSignalDecision(action) {
   const raw = String(action || "").trim().toUpperCase();
@@ -170,6 +171,24 @@ function riskLabel({ stale, liquidity, score, chg24 }) {
   return "Needs confirmation";
 }
 
+function buildReason({ score, walletCount, liquidity, chg5, chg24, redFlags }) {
+  const firstFlag = Array.isArray(redFlags) && redFlags.length ? String(redFlags[0]) : "";
+  if (firstFlag) return `Risk flag: ${firstFlag}`.slice(0, 80);
+  if (Number(liquidity) > 0 && Number(liquidity) < 15000) {
+    return "Thin liquidity — high slippage risk";
+  }
+  if (Number(walletCount) >= 3 && Number(liquidity) >= 25000 && Number(chg5) > 0) {
+    return "Smart wallet cluster + liquidity + momentum";
+  }
+  if (Number(walletCount) >= 3 && Number(chg5) <= 0) {
+    return "Smart wallets accumulating despite 5m weakness";
+  }
+  if (Number(walletCount) < 3 && Number(chg24) > 50) {
+    return "Strong 24h move, weak smart wallet confirmation";
+  }
+  return `Score ${score} — see desk for full intel`;
+}
+
 export function LiveSignalCard({
   sig,
   idx,
@@ -201,6 +220,14 @@ export function LiveSignalCard({
   const liquidity = firstFinite(tick?.liquidity, sig.liquidityUsd, sig.token?.liquidity, sig._api?.liquidityUsd);
   const volume24h = firstFinite(tick?.volume24h, sig.token?.volume24h, sig._api?.volume24h, sig.volume24h);
   const walletCount = Math.max(0, Math.round(Number(sig.smartWallets ?? sig.smartMoneyCount ?? sig.walletCount ?? 0) || 0));
+  const marketCap = getMarketCap(sig);
+  const marketCapLabel = marketCap.source === "fdv" ? "FDV" : "MC";
+  const redFlags = Array.isArray(sig._api?.redFlags)
+    ? sig._api.redFlags
+    : Array.isArray(sig.redFlags)
+      ? sig.redFlags
+      : [];
+  const reason = buildReason({ score, walletCount, liquidity, chg5, chg24, redFlags });
   const symbol = String(sig.symbol || sig.token?.symbol || sig._api?.token || "TOKEN").replace(/^\$/, "").trim() || "TOKEN";
   const tokenName = sig.token?.name || sig._api?.name || sig._api?.tokenName || sig.name || symbol;
   const validMint = Boolean(sig.mint && isProbableSolanaMint(sig.mint));
@@ -266,6 +293,14 @@ export function LiveSignalCard({
                   <span className="text-sm font-black text-zinc-100 tabular-nums">{px != null && px > 0 ? `$${formatTokenPrice(px)}` : "Price —"}</span>
                   <span className={`text-xs font-bold tabular-nums ${Number(chg24) >= 0 ? "text-emerald-300" : "text-rose-300"}`}>{formatPct(chg24)}</span>
                 </div>
+                <p className="mt-1 flex items-baseline gap-1.5 font-mono">
+                  <span className="text-[9px] uppercase tracking-[0.14em] text-sl-muted">
+                    {marketCapLabel}
+                  </span>
+                  <span className="text-[11px] font-bold text-zinc-200 tabular-nums">
+                    {marketCap.value !== null ? formatUsdCompact(marketCap.value) : "—"}
+                  </span>
+                </p>
               </div>
               <div className="flex flex-col items-end gap-2">
                 <ScoreRing value={displayScoreSafe} tone={liveTone} />
@@ -297,6 +332,10 @@ export function LiveSignalCard({
               <Metric label="15m" value={formatPct(chg15)} good={Number(chg15) >= 0 ? true : Number.isFinite(Number(chg15)) ? false : null} />
               <Metric label="60m" value={formatPct(chg60)} good={Number(chg60) >= 0 ? true : Number.isFinite(Number(chg60)) ? false : null} />
             </div>
+
+            <p className="relative mt-2 truncate text-[10px] italic leading-snug text-sl-muted" title={reason}>
+              {reason}
+            </p>
 
             <div className="relative mt-2 flex min-w-0 items-center justify-between gap-2 text-[10px]">
               <span className={`truncate rounded-md border px-2 py-1 font-bold ${liveTone.chip}`}>{delayedRisk}</span>
