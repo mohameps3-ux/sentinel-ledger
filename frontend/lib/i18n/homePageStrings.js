@@ -8,6 +8,23 @@ export const HOME_PAGE_STRINGS = {
   "home.pageDesc": S("Track the highest win-rate wallets on Solana. Interpreted signals, not raw noise. Free to start.", {
     es: "Sigue las wallets con mayor win rate en Solana. Señales interpretadas, no ruido bruto. Empieza gratis."
   }),
+  "war.live.walletActivity": S("Smart Money", {
+    es: "Smart Money",
+    fr: "Smart Money",
+    de: "Smart Money",
+    it: "Smart Money",
+    ru: "Smart Money",
+    zh: "Smart Money",
+    ko: "Smart Money",
+    ja: "Smart Money",
+    ar: "Smart Money",
+    pt: "Smart Money",
+    nl: "Smart Money",
+    pl: "Smart Money",
+    tr: "Smart Money",
+    hi: "Smart Money",
+    vi: "Smart Money"
+  }),
   "home.context.heat": S("Heat (market), after DB signals", {
     es: "Calor (mercado), tras señales de BD"
   }),
