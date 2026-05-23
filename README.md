@@ -90,3 +90,4 @@ Tras **012–014** en Supabase (incl. **014** para RLS / Security Advisor) + red
 - **Señales / precios:** cron `SIGNAL_PRICE_*` en el backend enriquece `smart_wallet_signals` desde DexScreener. Estado en `GET /health` → `signalPrices`.
 - **Portfolio:** `GET /api/v1/portfolio/watchlist-markets` (auth) + página `/portfolio` — datos reales desde watchlist + Dex (no balances on-chain).
 
+<!-- redeploy: vercel rebuild after C4 + C5 helper -->
