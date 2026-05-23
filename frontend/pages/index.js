@@ -36,6 +36,7 @@ import {
   initialCountdownSec
 } from "@/lib/signalUtils";
 import { useMarketStore } from "@/lib/store/marketStore";
+import { getActionBucket } from "@/lib/tokenCardData";
 import { useSortedTokens } from "@/hooks/useSortedTokens";
 import { applyProfileFilter } from "@/lib/profileFilter";
 import { useWarMode } from "../contexts/WarModeContext";
@@ -56,6 +57,16 @@ function sortLiveSignalsNewestFirst(rows) {
     if (ams == null) return 1;
     if (bms == null) return -1;
     return bms - ams;
+  });
+}
+function sortByActionBucket(rows) {
+  return [...rows].sort((a, b) => {
+    const ra = getActionBucket(a).rank;
+    const rb = getActionBucket(b).rank;
+    if (ra !== rb) return ra - rb;
+    const sa = Number(a?.signalStrength ?? a?.sentinelScore ?? 0);
+    const sb = Number(b?.signalStrength ?? b?.sentinelScore ?? 0);
+    return sb - sa;
   });
 }
 
@@ -619,7 +630,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
 
     if (profile === "balanced") {
       const signalsOnly = liveSignalPoolForFeed.filter((t) => t._liveSource !== "hot_fill");
-      const sorted = sortLiveSignalsNewestFirst(signalsOnly);
+      const sorted = sortByActionBucket(signalsOnly);
       return sorted.slice(0, cap);
     }
 
