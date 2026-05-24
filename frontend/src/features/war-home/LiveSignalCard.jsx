@@ -351,7 +351,7 @@ export function LiveSignalCard({
               </div>
             </div>
 
-            <div className="relative mt-2 grid grid-cols-5 rounded-xl border border-white/[0.07] bg-black/15">
+            <div className="relative mt-2 grid grid-cols-3 gap-0 rounded-xl border border-white/[0.07] bg-black/15 sm:grid-cols-5">
               <Metric label="24h Vol" value={formatUsdCompact(volume24h)} />
               <Metric label="Liquidity" value={formatUsdCompact(liquidity)} />
               <Metric label="5m" value={formatPct(chg5)} good={Number(chg5) >= 0 ? true : Number.isFinite(Number(chg5)) ? false : null} />
