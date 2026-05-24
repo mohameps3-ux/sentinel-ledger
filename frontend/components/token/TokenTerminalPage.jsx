@@ -319,7 +319,6 @@ function TerminalCenter({
 
       <div id="chart" className="tpt-c-chart scroll-mt-[calc(var(--sl-nav-actual,52px)+0.75rem)]">
         <ChartPanel address={address} compact symbol={sym} />
-        <div className="tpt-c-chart-cover">{`SENTINEL · LIVE CHART · $${sym}`}</div>
       </div>
 
       <div className="tpt-c-analysis">
