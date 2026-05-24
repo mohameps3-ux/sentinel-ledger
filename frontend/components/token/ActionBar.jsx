@@ -30,7 +30,7 @@ export function ActionBar({ tokenAddress, symbol, market, isWatchlisted = false,
 
   return (
     <div className="glass-card p-4 flex flex-col lg:flex-row lg:items-center gap-3 justify-between border-emerald-500/20 bg-emerald-500/[0.03]">
-      <div className="text-xs text-gray-400 mono hidden md:block">
+      <div className="text-xs text-gray-400 mono">
         <span className="text-[10px] uppercase tracking-[0.16em] text-emerald-200/80 font-semibold">Execution scope</span>
         <br />
         Mint: {tokenAddress.slice(0, 6)}...{tokenAddress.slice(-6)}

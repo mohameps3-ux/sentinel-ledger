@@ -82,9 +82,21 @@ div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] p {
   white-space: nowrap !important;
 }
 
-/* Hide the long description that made a dead second line. */
-div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] p.text-sl-muted {
-  display: none !important;
+/* Settings descriptions visible on mobile (C8.C); hidden on desktop shelf. */
+@media (max-width: 768px) {
+  div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] p.text-sl-muted {
+    display: block !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
+    max-width: 14rem;
+    white-space: normal !important;
+  }
+}
+
+@media (min-width: 769px) {
+  div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] p.text-sl-muted {
+    display: none !important;
+  }
 }
 
 div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] p.text-\[11px\] {

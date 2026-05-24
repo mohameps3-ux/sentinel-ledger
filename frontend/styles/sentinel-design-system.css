@@ -352,16 +352,25 @@ a {
 
 @media (max-width: 768px) {
   .sl-status-bar__inner {
-    grid-template-columns: 1fr auto;
-    padding: 0 12px;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 6px 12px;
   }
 
   .sl-status-bar__center {
-    display: none;
+    display: block;
+    text-align: left;
+    font-size: 10px;
+    line-height: 1.35;
+    white-space: normal;
   }
 
   .sl-status-bar__right {
-    display: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
+    font-size: 10px;
   }
 }
 
