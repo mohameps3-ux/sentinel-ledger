@@ -74,16 +74,10 @@ export function ProofOfEdgeBlock({ mint, confidence, regime }) {
   return (
     <section
       className="border border-white/[0.08] bg-black/[0.22] px-3 py-2.5 sm:px-3.5 sm:py-3 shrink-0"
-      aria-label={t("cockpit.proof.title")}
+      aria-label={t("cockpit.proof.subtitle")}
     >
       <div className="flex flex-wrap items-start justify-between gap-2 gap-y-1 border-b border-white/[0.06] pb-2 mb-2.5">
         <div className="min-w-0">
-          <h3 className="text-[12px] sm:text-sm font-semibold text-gray-100 tracking-tight flex items-center gap-1.5">
-            <span className="select-none" aria-hidden>
-              🧠
-            </span>
-            {t("cockpit.proof.title")}
-          </h3>
           <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 italic leading-snug">{t("cockpit.proof.subtitle")}</p>
         </div>
         <div
@@ -111,16 +105,6 @@ export function ProofOfEdgeBlock({ mint, confidence, regime }) {
                 days: q.data?.meta?.lookbackDays ?? "—"
               })}
             </span>
-          </p>
-          {q.data?.criteriaLine ? (
-            <p className="text-[9px] sm:text-[10px] text-gray-600 leading-relaxed mt-2 border-t border-white/[0.05] pt-2">
-              {t("cockpit.proof.basedOn")} <span className="text-gray-500 font-mono">{q.data.criteriaLine}</span>
-            </p>
-          ) : null}
-          <p className="text-[9px] text-gray-600 font-mono mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5">
-            <span>{t("cockpit.proof.updated", { age: footerAge })}</span>
-            <span className="text-gray-700">·</span>
-            <span className="text-gray-500">{t("cockpit.proof.disclaimer")}</span>
           </p>
         </div>
       ) : (
