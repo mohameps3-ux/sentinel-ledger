@@ -460,7 +460,7 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
           <DeskMarketGrid token={token} tokenQuery={tokenQuery} t={t} />
         </DeskSection>
 
-        <DeskSection title="Sentinel analysis">
+        <DeskSection title="Signal Intelligence">
           <DeskSentinelAnalysis hasEngineScore={hasEngineScore} scores={scores} score={score} regime={regime} t={t} />
         </DeskSection>
 
