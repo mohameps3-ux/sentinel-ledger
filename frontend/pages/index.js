@@ -998,8 +998,8 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
   return (
     <>
       <PageHead title={t("home.pageTitle")} description={t("home.pageDesc")} />
-      <div className="flex gap-4 px-4 pb-4">
-        <div className="flex-1 flex flex-col gap-3 min-w-0">
+      <div className="flex flex-col gap-4 px-4 pb-4 lg:flex-row">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
             <div className="mb-2">
               <HomeSettings
                 strategyMode={strategyMode}
@@ -1067,13 +1067,28 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               trendingMinLiquidityUsd={trendingMeta.minLiquidityUsd}
               trendingRankDeltas={trendingRankDeltas}
             />
+            {selectedMint ? (
+              <div className="min-w-0 lg:hidden">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={selectedMint ?? "__desk_mobile__"}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                  >
+                    <TokenDesk mint={selectedMint} deskRadarHint={deskRadarHint} fallbackSignal={deskFallbackSignal} />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            ) : null}
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               <SmartWalletsPreview wallets={rankedWallets} labelFor={topWalletLabel} titleFor={topWalletTitle} />
               <RecentAlertsPreview alerts={alerts} />
             </div>
             <TrackRecordPanel />
         </div>
-        <div className="w-[340px] flex-shrink-0 hidden lg:block lg:self-start sticky top-0 h-screen overflow-y-auto flex flex-col gap-3">
+        <div className="hidden w-full flex-shrink-0 flex-col gap-3 lg:flex lg:w-[340px] lg:self-start sticky top-0 h-screen overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedMint ?? "__desk_none__"}
