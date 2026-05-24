@@ -296,14 +296,14 @@ export function LiveSignalCard({
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.045] via-transparent to-black/20" />
             <div className={`pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r ${liveTone.edge}`} />
 
-            <div className="relative flex items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <span className="rounded-md border border-white/10 bg-white/[0.05] px-1.5 py-1 font-mono text-[10px] font-black text-zinc-300">#{rankInfo.rank || idx + 1}</span>
-                <span className="rounded-md border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-emerald-300">Signal</span>
-                <span className={`rounded-md border px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${liveTone.chip}`}>{normalizedDecision === "BUILD" ? "Build" : liveTone.name}</span>
+            <div className="relative flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="shrink-0 rounded-md border border-white/10 bg-white/[0.05] px-1.5 py-1 font-mono text-[10px] font-black text-zinc-300">#{rankInfo.rank || idx + 1}</span>
+                <span className="shrink-0 rounded-md border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-emerald-300">Signal</span>
+                <span className={`shrink-0 rounded-md border px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${liveTone.chip}`}>{normalizedDecision === "BUILD" ? "Build" : liveTone.name}</span>
                 {stateChip ? <TokenStateChip state={stateChip} /> : null}
               </div>
-              <div className="flex items-center gap-1.5 text-right font-mono text-[10px] text-zinc-400">
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-1.5 gap-y-1 text-right font-mono text-[10px] text-zinc-400">
                 <span>{walletCount || "—"} wallets</span>
                 {ago ? <span>{ago}</span> : null}
                 <span className={`h-2 w-2 rounded-full ${displayScoreSafe >= 80 ? "bg-emerald-400" : displayScoreSafe >= 55 ? "bg-amber-300" : "bg-rose-400"} shadow-[0_0_10px_currentColor]`} />
