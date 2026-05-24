@@ -286,18 +286,33 @@ export default function WarHomeCombatPanels({
                     <span className="text-emerald-300 text-xs">+${formatUsdWhole(wallet.pnl30d)}</span>
                   </div>
                   <p className="text-xs text-sl-muted">{wallet.tooltip}</p>
-                  <div className="grid grid-cols-3 gap-2 text-xs text-sl-sub">
-                    <span>WR {wallet.winRate.toFixed(1)}%</span>
-                    <span>EE {wallet.earlyEntry}</span>
-                    <span>CS {wallet.cluster}</span>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-sl-sub sm:grid-cols-3">
+                    <span>
+                      {t("war.combat.thWin")} {wallet.winRate.toFixed(1)}%
+                    </span>
+                    <span>
+                      {t("war.combat.thEntry")} {wallet.earlyEntry}
+                    </span>
+                    <span>
+                      {t("war.combat.thCluster")} {wallet.cluster}
+                    </span>
+                    <span>
+                      {t("war.combat.thConsistency")} {wallet.consistency}
+                    </span>
+                    <span>
+                      {t("war.combat.thScore")} {wallet.signalStrength}
+                    </span>
+                    <span className="text-emerald-300">
+                      30d +${formatUsdWhole(wallet.pnl30d)}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2 text-[11px] text-sl-sub">
                       <span className={`h-2.5 w-2.5 rounded-full ${confidenceDot(wallet.signalStrength)}`} />
-                      {confidenceTr(wallet.signalStrength)}
+                      {t("war.combat.thConfidence")}: {confidenceTr(wallet.signalStrength)}
                     </span>
                     <span className={`text-[11px] px-2 py-1 rounded border ${actionTone(wallet.signalStrength)}`}>
-                      {walletActionLabel(suggestedAction(wallet.signalStrength, strategyMode, "wallet"))}
+                      {t("war.combat.thIdea")}: {walletActionLabel(suggestedAction(wallet.signalStrength, strategyMode, "wallet"))}
                     </span>
                   </div>
                   {openTopWallet === rowKey ? (
