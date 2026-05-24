@@ -50,7 +50,10 @@ function MiniBar({ label, value, gradient }) {
       <div className="flex-1 h-1 rounded-full bg-black/50 overflow-hidden ring-1 ring-white/5">
         <div className={`h-full rounded-full bg-gradient-to-r ${gradient}`} style={{ width: `${v}%` }} />
       </div>
-      <span className="w-7 text-right font-mono tabular-nums text-[10px] text-gray-300 shrink-0">{v}</span>
+      <span className="w-12 text-right font-mono tabular-nums text-[10px] text-gray-300 shrink-0 flex items-baseline justify-end gap-0.5">
+        <span>{v}</span>
+        <span className="text-[9px] text-gray-500 font-normal">/100</span>
+      </span>
     </div>
   );
 }
