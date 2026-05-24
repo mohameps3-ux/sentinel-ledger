@@ -261,6 +261,9 @@ function DeskSentinelAnalysis({ hasEngineScore, scores, score, regime, t }) {
         <MiniBar label="Risk" value={scores.risk} gradient="from-rose-500 via-red-500 to-orange-400" />
         <MiniBar label="Smart Money" value={scores.smart} gradient="from-emerald-400 via-lime-400 to-cyan-400" />
         <MiniBar label="Momentum" value={scores.momentum} gradient="from-amber-300 via-amber-400 to-orange-400" />
+        <p className="text-[9px] sm:text-[10px] text-gray-500 leading-snug mt-2 border-t border-white/[0.05] pt-2 font-mono">
+          {t("cockpit.desk.scoreLegend")}
+        </p>
       </div>
       {score.__verification ? (
         <p className="text-[10px] text-gray-500 font-mono">
@@ -292,6 +295,9 @@ function DeskSentinelAnalysis({ hasEngineScore, scores, score, regime, t }) {
               gradient="from-orange-500 to-red-500"
             />
           </div>
+          <p className="text-[9px] sm:text-[10px] text-gray-500 leading-snug mt-2 border-t border-white/[0.05] pt-2 font-mono">
+            {t("cockpit.desk.scoreLegend")}
+          </p>
           <p className="text-[10px] text-gray-400 leading-snug">
             {t(`cockpit.desk.tripleContext.${regime.contextLabelId}`) || regime.contextLabelId}
           </p>

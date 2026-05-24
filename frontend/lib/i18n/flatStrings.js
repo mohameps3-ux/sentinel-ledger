@@ -545,6 +545,9 @@ export const FLAT_STRINGS = {
   "cockpit.desk.barSignal": S("Technical Read", { es: "Lectura técnica" }),
   "cockpit.desk.barExecution": S("Execution", { es: "Ejecución" }),
   "cockpit.desk.barOverheat": S("Overheat", { es: "Sobrecalentamiento" }),
+  "cockpit.desk.scoreLegend": S("0–30 weak · 30–60 mixed · 60–100 strong", {
+    es: "0–30 débil · 30–60 mixto · 60–100 fuerte"
+  }),
   "cockpit.desk.tripleContext.illiquidSlippage": S("Illiquid / High Slippage", {
     es: "Iliquidez / slippage alto"
   }),
