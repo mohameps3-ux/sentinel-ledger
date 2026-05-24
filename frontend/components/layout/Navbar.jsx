@@ -213,8 +213,9 @@ export function Navbar() {
           </div>
         </div>
 
-        <div className="sm:hidden flex h-12 items-center justify-end gap-2 px-6 sm:px-8">
+        <div className="sm:hidden flex h-12 items-center justify-end gap-2 px-4 sm:px-8">
           <NavProAccess />
+          <WalletButton navCompact />
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
@@ -243,8 +244,11 @@ export function Navbar() {
                 </button>
               </div>
               {showTradingChrome ? <SearchBar compact /> : null}
-              <div className="mt-3">
+              <div className="mt-3 flex flex-col gap-2">
                 <NavProAccess className="w-full !max-w-none !justify-center" />
+                <div className="flex justify-center">
+                  <WalletButton navCompact />
+                </div>
               </div>
               <div className="mt-4 flex flex-col gap-1">
                 {APP_NAV_LINKS.filter((it) => !it.isSecondary && !(it.openSubscription && walletSubActive)).map((item) => {
