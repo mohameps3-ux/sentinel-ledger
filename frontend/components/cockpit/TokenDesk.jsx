@@ -6,7 +6,7 @@ import { useScoreRoom } from "@/hooks/useScoreRoom";
 import { useTokenData } from "../../hooks/useTokenData";
 import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 import { resolveTokenImageUrl } from "../../lib/resolveTokenImageUrl";
-import { formatTokenPrice, formatUsdWhole } from "../../lib/formatStable";
+import { formatTokenPrice, formatUsdWhole } from h"../../lib/formatStable";
 import {
   buildDexscreenerSolanaTokenUrl,
   buildMeteoraPoolUrl,
@@ -464,7 +464,7 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
           <DeskSentinelAnalysis hasEngineScore={hasEngineScore} scores={scores} score={score} regime={regime} t={t} />
         </DeskSection>
 
-        <DeskSection title="Track record">
+        <DeskSection title="Oracle Outcomes">
           <ProofOfEdgeBlock mint={mint} confidence={conf != null && Number.isFinite(Number(conf)) ? Number(conf) : null} regime={regimeKey} />
         </DeskSection>
 
