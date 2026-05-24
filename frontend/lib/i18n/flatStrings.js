@@ -645,7 +645,8 @@ export const FLAT_STRINGS = {
   }),
   "war.live.tokenSheetLink": S("Token page →", { es: "Ficha del token →", fr: "Fiche token →", de: "Token-Seite →", pt: "Página do token →" }),
 
-  "layout.menu": S("Menu", { es: "Menú", fr: "Menu", de: "Menü", it: "Menu", ru: "Меню", zh: "菜单", ko: "메뉴", ja: "メニュー", ar: "القائمة", pt: "Menu" }),
+  "layout.menu": S("Navigation menu", { es: "Menú de navegación", fr: "Menu", de: "Menü", it: "Menu", ru: "Меню", zh: "菜单", ko: "메뉴", ja: "メニュー", ar: "القائمة", pt: "Menu" }),
+  "layout.closeMenu": S("Close menu", { es: "Cerrar menú", fr: "Fermer le menu", de: "Menü schließen", it: "Chiudi menu", ru: "Закрыть меню", zh: "关闭菜单", ko: "메뉴 닫기", ja: "メニューを閉じる", ar: "إغلاق القائمة", pt: "Fechar menu" }),
 
   "nav.dash": S("Dashboard", { es: "Panel", fr: "Tableau de bord", de: "Dashboard", it: "Cruscotto", ru: "Панель", zh: "控制台", ko: "대시보드", ja: "ダッシュボード", ar: "لوحة التحكم", pt: "Painel" }),
   "nav.results": S("Results", { es: "Resultados", fr: "Résultats", de: "Ergebnisse", it: "Risultati", ru: "Результаты", zh: "结果", ko: "결과", ja: "結果", ar: "النتائج", pt: "Resultados" }),

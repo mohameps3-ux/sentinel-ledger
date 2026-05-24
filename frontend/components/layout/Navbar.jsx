@@ -163,7 +163,7 @@ export function Navbar() {
       data-sl-nav="slim"
       data-sl-ui="home-compact-v2"
       data-sentinel-build={process.env.NEXT_PUBLIC_GIT_SHA}
-      className="navbar-top fixed top-0 left-0 right-0 w-full z-50 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(8,9,15,0.95)] backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
+      className={`navbar-top fixed top-0 left-0 right-0 w-full border-b border-[rgba(255,255,255,0.06)] bg-[rgba(8,9,15,0.95)] backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.35)] ${menuOpen ? "z-[300]" : "z-50"}`}
     >
       <div ref={menuRef} className="relative w-full">
         <div className="hidden sm:flex items-center justify-between w-full h-12 px-8">
@@ -232,66 +232,78 @@ export function Navbar() {
         {menuOpen ? (
           <>
             <div
-              className="sm:hidden fixed inset-0 z-[210] bg-black/55 backdrop-blur-[1px]"
+              className="sm:hidden fixed inset-0 z-[290] bg-black/60 backdrop-blur-sm"
               onClick={() => setMenuOpen(false)}
               aria-hidden
             />
-            <div className="sm:hidden fixed inset-0 z-[220] bg-[#08090f]/98 backdrop-blur-xl p-4">
-              <div className="mb-5 flex items-center justify-between">
+            <div
+              className="sm:hidden fixed inset-y-0 right-0 z-[300] flex w-[min(85vw,320px)] flex-col border-l border-white/[0.08] bg-[#080a0e] shadow-2xl shadow-black/50 transition-transform duration-200 ease-out"
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("layout.menu")}
+            >
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.08] bg-[#080a0e] px-4 py-3">
                 <span className="font-mono text-sm font-extrabold tracking-[0.15em] text-white">SENTINEL</span>
-                <button type="button" onClick={() => setMenuOpen(false)} className="h-8 w-8 rounded-md border border-white/10 text-gray-300">
-                  <X size={16} className="mx-auto" />
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-white/10 text-gray-300"
+                  aria-label={t("layout.closeMenu")}
+                >
+                  <X size={16} />
                 </button>
               </div>
-              {showTradingChrome ? <SearchBar compact /> : null}
-              <div className="mt-3 flex flex-col gap-2">
-                <NavProAccess className="w-full !max-w-none !justify-center" />
-                <div className="flex justify-center">
-                  <WalletButton navCompact />
+              <div className="flex-1 overflow-y-auto p-4">
+                {showTradingChrome ? <SearchBar compact /> : null}
+                <div className="mt-3 flex flex-col gap-2">
+                  <NavProAccess className="w-full !max-w-none !justify-center" />
+                  <div className="flex justify-center">
+                    <WalletButton navCompact />
+                  </div>
                 </div>
-              </div>
-              <div className="mt-4 flex flex-col gap-1">
-                {APP_NAV_LINKS.filter((it) => !it.isSecondary && !(it.openSubscription && walletSubActive)).map((item) => {
-                  const active = item.openSubscription ? false : router.pathname === item.href;
-                  return renderAppNavItem(item, {
-                    router,
-                    t,
-                    stalkerUnread,
-                    className: `text-xs px-2.5 py-2 rounded-md border no-underline inline-flex items-center justify-between gap-2 w-full ${
-                      active
-                        ? "text-white border-white/20 bg-white/[0.08]"
-                        : "text-gray-300 border-transparent hover:border-white/10 hover:bg-white/[0.05]"
-                    }`,
-                    onAfterClick: () => {
-                      if (item.isStalker) clearStalker();
-                      setMenuOpen(false);
-                    }
-                  });
-                })}
-              </div>
-              <div className="mt-6">
-                <p className="px-1 mb-2 text-[10px] font-mono font-semibold uppercase tracking-[0.18em] text-gray-500">
-                  Information
-                </p>
-                <div className="flex flex-col gap-1">
-                  {APP_NAV_LINKS.filter((it) => it.isSecondary).map((item) => {
-                    const active = router.pathname === item.href;
-                    return (
-                      <Link
-                        key={item.key}
-                        href={item.href}
-                        onClick={() => setMenuOpen(false)}
-                        className={`text-[11px] px-2.5 py-1.5 rounded-md no-underline inline-flex items-center justify-between gap-2 ${
-                          active
-                            ? "text-white bg-white/[0.06]"
-                            : "text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]"
-                        }`}
-                        aria-current={active ? "page" : undefined}
-                      >
-                        <span className="truncate">{t(`nav.${item.key}`)}</span>
-                      </Link>
-                    );
+                <div className="mt-4 flex flex-col gap-1">
+                  {APP_NAV_LINKS.filter((it) => !it.isSecondary && !(it.openSubscription && walletSubActive)).map((item) => {
+                    const active = item.openSubscription ? false : router.pathname === item.href;
+                    return renderAppNavItem(item, {
+                      router,
+                      t,
+                      stalkerUnread,
+                      className: `text-xs px-2.5 py-2 rounded-md border no-underline inline-flex items-center justify-between gap-2 w-full ${
+                        active
+                          ? "text-white border-white/20 bg-white/[0.08]"
+                          : "text-gray-300 border-transparent hover:border-white/10 hover:bg-white/[0.05]"
+                      }`,
+                      onAfterClick: () => {
+                        if (item.isStalker) clearStalker();
+                        setMenuOpen(false);
+                      }
+                    });
                   })}
+                </div>
+                <div className="mt-6">
+                  <p className="px-1 mb-2 text-[10px] font-mono font-semibold uppercase tracking-[0.18em] text-gray-500">
+                    Information
+                  </p>
+                  <div className="flex flex-col gap-1">
+                    {APP_NAV_LINKS.filter((it) => it.isSecondary).map((item) => {
+                      const active = router.pathname === item.href;
+                      return (
+                        <Link
+                          key={item.key}
+                          href={item.href}
+                          onClick={() => setMenuOpen(false)}
+                          className={`text-[11px] px-2.5 py-1.5 rounded-md no-underline inline-flex items-center justify-between gap-2 ${
+                            active
+                              ? "text-white bg-white/[0.06]"
+                              : "text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]"
+                          }`}
+                          aria-current={active ? "page" : undefined}
+                        >
+                          <span className="truncate">{t(`nav.${item.key}`)}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
