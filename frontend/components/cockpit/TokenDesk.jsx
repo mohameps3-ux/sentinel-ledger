@@ -28,6 +28,8 @@ import {
 import { ProofOfEdgeBlock } from "@/components/cockpit/ProofOfEdgeBlock";
 import { useLocale } from "../../contexts/LocaleContext";
 import { buildRegimeAnalysisFromDesk } from "@/lib/tripleRiskRegime";
+import { resolveTokenStateChip } from "@/lib/tokenStateChip.mjs";
+import { TokenStateChip } from "@/components/cockpit/TokenStateChip";
 
 function clampPct(n) {
   const v = Number(n);
@@ -180,7 +182,7 @@ function DeskMintRow({ mint, copied, onCopy }) {
   );
 }
 
-function DeskVerdict({ hasEngineScore, conf, confLabel, regime, t, fallbackSignal }) {
+function DeskVerdict({ hasEngineScore, conf, confLabel, regime, t, fallbackSignal, stateChip }) {
   const usingFallback = !hasEngineScore && fallbackSignal?.confidence != null;
 
   if (!hasEngineScore && !usingFallback) {
@@ -211,11 +213,17 @@ function DeskVerdict({ hasEngineScore, conf, confLabel, regime, t, fallbackSigna
       }
     >
       {actionLabel ? (
-        <p className={`text-xl sm:text-2xl font-black tracking-tight leading-tight ${tripleActionTextClass(action)}`}>
-          {actionLabel}
-        </p>
+        <div className="flex flex-wrap items-start gap-2">
+          <p className={`text-xl sm:text-2xl font-black tracking-tight leading-tight flex-1 min-w-0 ${tripleActionTextClass(action)}`}>
+            {actionLabel}
+          </p>
+          {stateChip ? <TokenStateChip state={stateChip} className="mt-1" /> : null}
+        </div>
       ) : (
-        <p className="text-xl sm:text-2xl font-black tracking-tight text-gray-300 leading-tight">—</p>
+        <div className="flex flex-wrap items-start gap-2">
+          <p className="text-xl sm:text-2xl font-black tracking-tight text-gray-300 leading-tight flex-1 min-w-0">—</p>
+          {stateChip ? <TokenStateChip state={stateChip} className="mt-1" /> : null}
+        </div>
       )}
       <p className="text-xs text-gray-400 leading-snug">
         {t("cockpit.desk.confidence")}: {confPct}
@@ -415,6 +423,40 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
     return buildRegimeAnalysisFromDesk(token, score);
   }, [mint, token, score]);
 
+  const tokenStateChip = useMemo(() => {
+    if (!mint) return null;
+    const pairMs = pairCreatedRawToUnixMs(token?.market?.pairCreatedAt);
+    const poolAgeMinutes = pairMs != null ? poolAgeMinutesFromCreatedMs(pairMs) : null;
+    const conviction = hasEngineScore ? score?.confidence : fallbackSignal?.confidence;
+    const smartWalletCount =
+      fallbackSignal?.smartWallets ??
+      (deskRadarHint?.sw != null ? deskRadarHint.sw : flaggedWallets?.size > 0 ? flaggedWallets.size : null);
+    const change24Raw = token?.market?.priceChange24h ?? fallbackSignal?.priceChange24h;
+    const change24hPct = Number.isFinite(Number(change24Raw)) ? Number(change24Raw) : null;
+
+    return resolveTokenStateChip({
+      poolAgeMinutes,
+      smartWalletCount,
+      momentumScore: score?.scores?.momentum ?? null,
+      conviction: conviction != null ? Number(conviction) : null,
+      executionScore: regime?.executionScore ?? null,
+      volume5mChangePct: fallbackSignal?.priceChange5m ?? null,
+      signalAgeMinutes: fallbackSignal?.signalAgeMinutes ?? null,
+      change24hPct
+    });
+  }, [
+    mint,
+    token?.market?.pairCreatedAt,
+    token?.market?.priceChange24h,
+    hasEngineScore,
+    score?.confidence,
+    score?.scores?.momentum,
+    fallbackSignal,
+    deskRadarHint?.sw,
+    flaggedWallets,
+    regime?.executionScore
+  ]);
+
   const onCopyMint = useCallback(async () => {
     if (!mint || typeof navigator === "undefined" || !navigator.clipboard?.writeText) return;
     try {
@@ -486,6 +528,7 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
             regime={regime}
             t={t}
             fallbackSignal={fallbackSignal}
+            stateChip={tokenStateChip}
           />
           {narrative?.message ? (
             <div className="sentinel-narrative narrative-tactical text-[11px] leading-snug">{narrative.message}</div>

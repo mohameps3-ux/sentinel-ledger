@@ -7,6 +7,11 @@ import { deriveApexState } from "../../../components/apex";
 import { cockpitCardClickTargetIsInteractive } from "../../../lib/cockpitCardClick.mjs";
 import { formatTokenPrice } from "../../../lib/formatStable";
 import { getMarketCap } from "@/lib/tokenCardData";
+import { useMarketStore, scoreSnapshot } from "@/lib/store/marketStore";
+import { getLiveSignalEmittedAtMs } from "../../../lib/liveFeedAccess";
+import { pairCreatedRawToUnixMs, poolAgeMinutesFromCreatedMs } from "@/lib/pairTime";
+import { resolveTokenStateChip } from "@/lib/tokenStateChip.mjs";
+import { TokenStateChip } from "../../../components/cockpit/TokenStateChip";
 
 function normalizeSignalDecision(action) {
   const raw = String(action || "").trim().toUpperCase();
@@ -235,6 +240,9 @@ export function LiveSignalCard({
   const apexState = deriveApexState(score);
   const delayedRisk = riskLabel({ stale: isStaleCard, liquidity, score, chg24 });
 
+  const scoreEntry = useMarketStore((s) => (sig.mint ? s.scores.get(sig.mint) : undefined));
+  const liveEngineScore = scoreEntry?.scores ? scoreSnapshot(scoreEntry) : null;
+
   const tileGlow = useMemo(() => {
     if (score >= 80) return "hover:shadow-[0_0_34px_rgba(16,185,129,0.20)]";
     if (score >= 55) return "hover:shadow-[0_0_30px_rgba(245,158,11,0.18)]";
@@ -266,6 +274,23 @@ export function LiveSignalCard({
           ? Math.max(0, Math.min(100, Math.round(Number(displayScore))))
           : score;
         const liveTone = toneForScore(displayScoreSafe);
+        const pairMs = pairCreatedRawToUnixMs(sig._api?.pairCreatedAt ?? sig.token?.pairCreatedAt);
+        const poolAgeMinutes = pairMs != null ? poolAgeMinutesFromCreatedMs(pairMs) : null;
+        const emittedMs = getLiveSignalEmittedAtMs(sig);
+        const signalAgeMinutes =
+          emittedMs != null && Number.isFinite(emittedMs)
+            ? Math.max(0, Math.floor((Date.now() - emittedMs) / 60_000))
+            : null;
+        const stateChip = resolveTokenStateChip({
+          poolAgeMinutes,
+          smartWalletCount: walletCount,
+          momentumScore: liveEngineScore?.scores?.momentum ?? null,
+          conviction: displayScoreSafe,
+          executionScore: null,
+          volume5mChangePct: chg5,
+          signalAgeMinutes,
+          change24hPct: chg24
+        });
         return (
           <div className="relative flex min-h-[246px] flex-col p-3">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.045] via-transparent to-black/20" />
@@ -276,6 +301,7 @@ export function LiveSignalCard({
                 <span className="rounded-md border border-white/10 bg-white/[0.05] px-1.5 py-1 font-mono text-[10px] font-black text-zinc-300">#{rankInfo.rank || idx + 1}</span>
                 <span className="rounded-md border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-emerald-300">Signal</span>
                 <span className={`rounded-md border px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${liveTone.chip}`}>{normalizedDecision === "BUILD" ? "Build" : liveTone.name}</span>
+                {stateChip ? <TokenStateChip state={stateChip} /> : null}
               </div>
               <div className="flex items-center gap-1.5 text-right font-mono text-[10px] text-zinc-400">
                 <span>{walletCount || "—"} wallets</span>
