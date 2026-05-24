@@ -95,6 +95,12 @@ html[data-has-tension-bar="1"] {
   --sl-bar-h: 56px;
 }
 
+@media (max-width: 768px) {
+  :root {
+    --sl-status-h: 60px;
+  }
+}
+
 @media (min-width: 640px) {
   html[data-has-tension-bar="1"] {
     --sl-bar-h: 40px;
