@@ -441,7 +441,7 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
           <DeskMintRow mint={mint} copied={copied} onCopy={onCopyMint} />
         </DeskSection>
 
-        <DeskSection title="Verdict">
+        <DeskSection title="Conviction">
           <DeskVerdict hasEngineScore={hasEngineScore} conf={conf} confLabel={confLabel} regime={regime} t={t} />
           {narrative?.message ? (
             <div className="sentinel-narrative narrative-tactical text-[11px] leading-snug">{narrative.message}</div>
