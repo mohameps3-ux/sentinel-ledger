@@ -436,7 +436,7 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
 
         {deskRadarHint ? <DeskRadarHintStrip hint={deskRadarHint} /> : null}
 
-        <DeskSection title="Token">
+        <DeskSection title="Token overview">
           <DeskIdentity token={token} mint={mint} imageBroken={imageBroken} onImageError={() => setImageBroken(true)} />
           <DeskMintRow mint={mint} copied={copied} onCopy={onCopyMint} />
         </DeskSection>
@@ -460,6 +460,10 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
           <DeskMarketGrid token={token} tokenQuery={tokenQuery} t={t} />
         </DeskSection>
 
+        <AccordionSection title="Risk" summaryTone={antiTone} defaultOpen={false}>
+          <DeskAntiSignalBody token={token} />
+        </AccordionSection>
+
         <DeskSection title="Signal Intelligence">
           <DeskSentinelAnalysis hasEngineScore={hasEngineScore} scores={scores} score={score} regime={regime} t={t} />
         </DeskSection>
@@ -478,12 +482,6 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
         <DeskExternalLinks mint={mint} token={token} t={t} />
 
         <div className="flex flex-col gap-2 pt-1 border-t border-white/[0.06]">
-          
-
-          <AccordionSection title="Risk" summaryTone={antiTone} defaultOpen={false}>
-            <DeskAntiSignalBody token={token} />
-          </AccordionSection>
-
           <AccordionSection title={t("cockpit.desk.quickScan")} summaryTone="neutral" defaultOpen={false}>
             <DeskQuickScan currentMint={mint} />
           </AccordionSection>
