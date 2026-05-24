@@ -16,6 +16,7 @@ import { PageHead } from "../components/seo/PageHead";
 import { useWalletLabels } from "../hooks/useWalletLabels";
 import { TokenDesk } from "../components/cockpit/TokenDesk";
 import { isProbableSolanaMint } from "../lib/solanaMint.mjs";
+import { resolveDeskFallbackSignal } from "../lib/deskFallbackSignal.mjs";
 import {
   deskMintFromQuery,
   deskRadarQueryNeedsScrub,
@@ -701,6 +702,12 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     });
   }, [trending]);
 
+  const deskFallbackSignal = useMemo(
+    () =>
+      resolveDeskFallbackSignal(selectedMint, liveSignalsForGrid, heatTokenPool, deskRadarHint),
+    [selectedMint, liveSignalsForGrid, heatTokenPool, deskRadarHint]
+  );
+
   const velocityTabTokens = useMemo(() => {
     const byMint = new Map();
     for (const t of warRoomSignals) {
@@ -1076,7 +1083,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               transition={{ duration: 0.2, ease: "easeOut" }}
               style={{ height: "100%" }}
             >
-              <TokenDesk mint={selectedMint} deskRadarHint={deskRadarHint} />
+              <TokenDesk mint={selectedMint} deskRadarHint={deskRadarHint} fallbackSignal={deskFallbackSignal} />
             </motion.div>
           </AnimatePresence>
         </div>

@@ -42,6 +42,19 @@ function tripleActionTextClass(action) {
   return "text-rose-200";
 }
 
+function fallbackDecisionToAction(decision) {
+  const raw = String(decision || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_");
+  if (["BUILD", "BUY", "ACCUMULATE", "ENTER_NOW", "ENTER NOW", "LONG"].includes(raw)) return "BUY";
+  if (raw === "SCALP") return "SCALP";
+  if (["AVOID", "LOW_EDGE", "LOW EDGE", "TOO_LATE", "TOO LATE", "STAY_OUT", "STAY OUT", "MARKET_ONLY"].includes(raw)) {
+    return "AVOID";
+  }
+  return "WATCH";
+}
+
 function MiniBar({ label, value, gradient }) {
   const v = clampPct(value);
   return (
@@ -167,8 +180,10 @@ function DeskMintRow({ mint, copied, onCopy }) {
   );
 }
 
-function DeskVerdict({ hasEngineScore, conf, confLabel, regime, t }) {
-  if (!hasEngineScore) {
+function DeskVerdict({ hasEngineScore, conf, confLabel, regime, t, fallbackSignal }) {
+  const usingFallback = !hasEngineScore && fallbackSignal?.confidence != null;
+
+  if (!hasEngineScore && !usingFallback) {
     return (
       <div className="rounded-md border border-white/[0.08] bg-black/30 px-3 py-4 text-center">
         <p className="text-base font-semibold text-gray-200 tracking-tight">Not evaluated yet</p>
@@ -179,8 +194,11 @@ function DeskVerdict({ hasEngineScore, conf, confLabel, regime, t }) {
     );
   }
 
-  const confPct = conf != null && Number.isFinite(Number(conf)) ? `${Math.round(Number(conf))}%` : "—";
-  const action = regime?.action;
+  const effectiveConf = usingFallback ? fallbackSignal.confidence : conf;
+  const effectiveConfLabel = usingFallback ? fallbackSignal.confidenceLabel : confLabel;
+  const confPct =
+    effectiveConf != null && Number.isFinite(Number(effectiveConf)) ? `${Math.round(Number(effectiveConf))}%` : "—";
+  const action = hasEngineScore ? regime?.action : fallbackDecisionToAction(fallbackSignal?.decision);
   const actionLabel = action ? t(`cockpit.desk.tripleAction.${action}`) || action : null;
 
   return (
@@ -188,8 +206,8 @@ function DeskVerdict({ hasEngineScore, conf, confLabel, regime, t }) {
       className="rounded-md border border-white/[0.1] bg-gradient-to-b from-white/[0.04] to-black/40 px-3 py-3 space-y-1.5"
       aria-label={
         actionLabel
-          ? `${actionLabel}. ${t("cockpit.desk.confidence")} ${confPct}${confLabel ? `, ${confLabel} tier` : ""}`
-          : `${t("cockpit.desk.confidence")} ${confPct}${confLabel ? `, ${confLabel} tier` : ""}`
+          ? `${actionLabel}. ${t("cockpit.desk.confidence")} ${confPct}${effectiveConfLabel ? `, ${effectiveConfLabel} tier` : ""}`
+          : `${t("cockpit.desk.confidence")} ${confPct}${effectiveConfLabel ? `, ${effectiveConfLabel} tier` : ""}`
       }
     >
       {actionLabel ? (
@@ -201,14 +219,17 @@ function DeskVerdict({ hasEngineScore, conf, confLabel, regime, t }) {
       )}
       <p className="text-xs text-gray-400 leading-snug">
         {t("cockpit.desk.confidence")}: {confPct}
-        {confLabel ? (
+        {effectiveConfLabel ? (
           <>
             {" · "}
-            {String(confLabel)} tier
+            {String(effectiveConfLabel)} tier
           </>
         ) : null}
       </p>
-      {!regime ? (
+      {usingFallback ? (
+        <p className="text-[10px] text-gray-500 leading-snug pt-0.5">{t("cockpit.desk.feedSnapshotPending")}</p>
+      ) : null}
+      {!regime && !usingFallback ? (
         <p className="text-[10px] text-gray-500 leading-snug pt-0.5">Execution regime pending market context.</p>
       ) : null}
     </div>
@@ -369,7 +390,7 @@ function DeskExternalLinks({ mint, token, t }) {
  * Cockpit Zone C — Intel desk: live score from global marketStore plus lazy accordions
  * backed by `useTokenData` (one REST load per pinned mint for structural intel).
  */
-export function TokenDesk({ mint, deskRadarHint = null }) {
+export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null }) {
   const { t } = useLocale();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
@@ -458,7 +479,14 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
         </DeskSection>
 
         <DeskSection title="Conviction">
-          <DeskVerdict hasEngineScore={hasEngineScore} conf={conf} confLabel={confLabel} regime={regime} t={t} />
+          <DeskVerdict
+            hasEngineScore={hasEngineScore}
+            conf={conf}
+            confLabel={confLabel}
+            regime={regime}
+            t={t}
+            fallbackSignal={fallbackSignal}
+          />
           {narrative?.message ? (
             <div className="sentinel-narrative narrative-tactical text-[11px] leading-snug">{narrative.message}</div>
           ) : null}

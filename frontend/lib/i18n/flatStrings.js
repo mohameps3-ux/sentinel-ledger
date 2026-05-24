@@ -527,6 +527,9 @@ export const FLAT_STRINGS = {
   }),
   "cockpit.desk.waitingScore": S("Waiting for score…", { es: "Esperando score…" }),
   "cockpit.desk.confidence": S("Confidence", { es: "Confianza" }),
+  "cockpit.desk.feedSnapshotPending": S("Feed snapshot — live engine pending", {
+    es: "Instantánea del feed — motor en vivo pendiente"
+  }),
   "cockpit.desk.integrity": S("Integrity:", { es: "Integridad:" }),
   "cockpit.desk.jupiterTitle": S("Execution · Jupiter quick buy", { es: "Ejecución · compra rápida Jupiter" }),
   "cockpit.desk.marketsLink": S("Markets", { es: "Mercados" }),
