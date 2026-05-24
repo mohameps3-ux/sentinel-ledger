@@ -1510,35 +1510,46 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 }
 @media (max-width: 1280px) {
   .tpt-root {
-    display: flex;
-    flex-direction: column;
-    grid-template-columns: 1fr;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas:
+      "center"
+      "left"
+      "right";
+    grid-template-rows: auto auto auto;
+    align-items: stretch;
+    min-width: 0;
     height: auto;
     overflow: visible;
   }
 
   .tpt-center {
-    order: 1;
+    grid-area: center;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     overflow: visible;
-    flex-shrink: 0;
   }
 
   .tpt-left {
-    order: 2;
+    grid-area: left;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     border-right: none;
     border-top: 1px solid rgba(255, 255, 255, 0.07);
     max-height: min(480px, 55vh);
-    flex-shrink: 0;
+    overflow: hidden;
   }
 
   .tpt-right {
-    order: 3;
+    grid-area: right;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     border-left: none;
     border-top: 1px solid rgba(255, 255, 255, 0.07);
     overflow: visible;
-    flex-shrink: 0;
   }
 
   .tpt-r-tx-list {
