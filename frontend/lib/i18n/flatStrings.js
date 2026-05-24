@@ -535,7 +535,7 @@ export const FLAT_STRINGS = {
   "cockpit.desk.marketsLink": S("Markets", { es: "Mercados" }),
   "cockpit.desk.smartWallets": S("Smart wallets"),
   "cockpit.desk.antiSignal": S("Risk trap", { es: "Trampa de riesgo" }),
-  "cockpit.desk.quickScan": S("Command scan", { es: "Escaneo de comando" }),
+  "cockpit.desk.quickScan": S("Quick Scan", { es: "Escaneo rápido" }),
   "cockpit.desk.invalidMint": S("Invalid mint.", { es: "Mint no válido." }),
 
   "cockpit.desk.tripleTitle": S("Execution regime", { es: "Régimen de ejecución" }),
@@ -564,7 +564,6 @@ export const FLAT_STRINGS = {
   "cockpit.desk.tripleAction.SCALP": S("🟠 HIGH RISK SCALP", { es: "🟠 SCALP ALTO RIESGO" }),
   "cockpit.desk.tripleAction.AVOID": S("🔴 TOXIC / ILLIQUID", { es: "🔴 TÓXICO / ILÍQUIDO" }),
 
-  "cockpit.proof.title": S("Verified Track Record", { es: "Historial verificado" }),
   "cockpit.proof.subtitle": S("Historical performance of comparable signals", {
     es: "Rendimiento histórico de señales comparables",
     fr: "Performance historique de signaux comparables",
