@@ -35,11 +35,11 @@ function clampPct(n) {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
 
-function tripleActionClass(action) {
-  if (action === "BUY") return "border-emerald-500/40 bg-emerald-500/12 text-emerald-200";
-  if (action === "WATCH") return "border-amber-500/40 bg-amber-500/12 text-amber-200";
-  if (action === "SCALP") return "border-orange-500/40 bg-orange-500/12 text-orange-200";
-  return "border-rose-500/40 bg-rose-500/10 text-rose-200";
+function tripleActionTextClass(action) {
+  if (action === "BUY") return "text-emerald-200";
+  if (action === "WATCH") return "text-amber-200";
+  if (action === "SCALP") return "text-orange-200";
+  return "text-rose-200";
 }
 
 function MiniBar({ label, value, gradient }) {
@@ -184,27 +184,32 @@ function DeskVerdict({ hasEngineScore, conf, confLabel, regime, t }) {
   const actionLabel = action ? t(`cockpit.desk.tripleAction.${action}`) || action : null;
 
   return (
-    <div className="rounded-md border border-white/[0.1] bg-gradient-to-b from-white/[0.04] to-black/40 px-3 py-3 space-y-2">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500 font-semibold">{t("cockpit.desk.confidence")}</p>
-          <p className="text-3xl font-black font-mono tabular-nums text-white leading-none mt-1">{confPct}</p>
-        </div>
-        {actionLabel ? (
-          <div
-            className={`shrink-0 max-w-[48%] text-right text-[10px] sm:text-[11px] font-bold tracking-tight py-1.5 px-2 border leading-snug ${tripleActionClass(
-              action
-            )}`}
-          >
-            {actionLabel}
-          </div>
-        ) : (
-          <span className="text-[11px] text-gray-500 shrink-0">—</span>
-        )}
-      </div>
-      {confLabel ? <p className="text-[11px] text-gray-400 leading-snug">{String(confLabel)}</p> : null}
+    <div
+      className="rounded-md border border-white/[0.1] bg-gradient-to-b from-white/[0.04] to-black/40 px-3 py-3 space-y-1.5"
+      aria-label={
+        actionLabel
+          ? `${actionLabel}. ${t("cockpit.desk.confidence")} ${confPct}${confLabel ? `, ${confLabel} tier` : ""}`
+          : `${t("cockpit.desk.confidence")} ${confPct}${confLabel ? `, ${confLabel} tier` : ""}`
+      }
+    >
+      {actionLabel ? (
+        <p className={`text-xl sm:text-2xl font-black tracking-tight leading-tight ${tripleActionTextClass(action)}`}>
+          {actionLabel}
+        </p>
+      ) : (
+        <p className="text-xl sm:text-2xl font-black tracking-tight text-gray-300 leading-tight">—</p>
+      )}
+      <p className="text-xs text-gray-400 leading-snug">
+        {t("cockpit.desk.confidence")}: {confPct}
+        {confLabel ? (
+          <>
+            {" · "}
+            {String(confLabel)} tier
+          </>
+        ) : null}
+      </p>
       {!regime ? (
-        <p className="text-[10px] text-gray-500 leading-snug">Execution regime pending market context.</p>
+        <p className="text-[10px] text-gray-500 leading-snug pt-0.5">Execution regime pending market context.</p>
       ) : null}
     </div>
   );
