@@ -210,6 +210,7 @@ function TerminalCenter({
   pumpUrl,
   isWatchlisted
 }) {
+  const { t } = useLocale();
   const liveEntry = useMarketStore((s) => (address ? s.scores.get(address) : undefined));
   const liveNarrative = useMarketStore((s) => (address ? s.narratives.get(address) : undefined));
   const isFresh = liveEntry && Date.now() - (liveEntry._ts ?? 0) < 120_000;
@@ -317,7 +318,34 @@ function TerminalCenter({
         ))}
       </div>
 
-      <div id="chart" className="tpt-c-chart scroll-mt-[calc(var(--sl-nav-actual,52px)+0.75rem)]">
+      <nav
+        aria-label={t("token.nav.section")}
+        className="sticky top-[var(--sl-nav-actual,52px)] z-30 xl:hidden flex justify-center gap-1 px-2 py-2 bg-[#080a0e]/95 backdrop-blur-sm border-b border-white/[0.08]"
+      >
+        <a
+          href="#chart"
+          className="px-4 min-h-11 text-xs inline-flex items-center rounded-md bg-white/5 hover:bg-white/10"
+        >
+          {t("token.nav.chart")}
+        </a>
+        <a
+          href="#intel"
+          className="px-4 min-h-11 text-xs inline-flex items-center rounded-md bg-white/5 hover:bg-white/10"
+        >
+          {t("token.nav.intel")}
+        </a>
+        <a
+          href="#flow"
+          className="px-4 min-h-11 text-xs inline-flex items-center rounded-md bg-white/5 hover:bg-white/10"
+        >
+          {t("token.nav.flow")}
+        </a>
+      </nav>
+
+      <div
+        id="chart"
+        className="tpt-c-chart scroll-mt-[calc(var(--sl-nav-actual,52px)+var(--sl-token-section-nav-h,2.75rem))]"
+      >
         <ChartPanel address={address} compact symbol={sym} />
       </div>
 
@@ -365,7 +393,10 @@ function TerminalCenter({
         </div>
       </div>
 
-      <div id="intel" className="tpt-c-narrative scroll-mt-[calc(var(--sl-nav-actual,52px)+0.75rem)]">
+      <div
+        id="intel"
+        className="tpt-c-narrative scroll-mt-[calc(var(--sl-nav-actual,52px)+var(--sl-token-section-nav-h,2.75rem))]"
+      >
         <div className="tpt-c-np">
           <div className="tpt-c-np-title">
             SENTINEL NARRATIVE
@@ -459,7 +490,10 @@ function TerminalRight({ address, tokenData, recentTransactions, tokenPriceUsd, 
         <span>PRICE</span>
       </div>
 
-      <div id="flow" className="tpt-r-tx-list scroll-mt-24">
+      <div
+        id="flow"
+        className="tpt-r-tx-list scroll-mt-[calc(var(--sl-nav-actual,52px)+var(--sl-token-section-nav-h,2.75rem))]"
+      >
         <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={tokenPriceUsd} />
       </div>
 
@@ -784,24 +818,10 @@ export default function TokenTerminalPage() {
         />
       </div>
 
-      <div className="sl-container py-4 pb-28 lg:pb-10 space-y-4">
+      <div className="sl-container py-4 pb-10 space-y-4">
         {hasToken ? <NotesPanel tokenAddress={address} initialNote={note} /> : null}
         <Ticker />
         <FinancialDisclaimer />
-      </div>
-
-      <div className="fixed safe-bottom-offset left-1/2 -translate-x-1/2 z-40 xl:hidden">
-        <div className="glass-card px-2 py-1 flex items-center gap-1">
-          <a href="#chart" className="px-3 min-h-11 text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
-            {t("token.nav.chart")}
-          </a>
-          <a href="#intel" className="px-3 min-h-11 text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
-            {t("token.nav.intel")}
-          </a>
-          <a href="#flow" className="px-3 min-h-11 text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
-            {t("token.nav.flow")}
-          </a>
-        </div>
       </div>
     </>
   );

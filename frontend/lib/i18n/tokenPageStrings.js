@@ -104,5 +104,6 @@ export const TOKEN_PAGE_STRINGS = {
 
   "token.nav.chart": S("Chart", { es: "Gráfico", fr: "Graphique" }),
   "token.nav.intel": S("Intel", { es: "Intel" }),
-  "token.nav.flow": S("Flow", { es: "Flujo", fr: "Flux" })
+  "token.nav.flow": S("Flow", { es: "Flujo", fr: "Flux" }),
+  "token.nav.section": S("Token sections", { es: "Secciones del token" })
 };
