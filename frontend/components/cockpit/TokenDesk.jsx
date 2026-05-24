@@ -46,7 +46,7 @@ function MiniBar({ label, value, gradient }) {
   const v = clampPct(value);
   return (
     <div className="flex items-center gap-2">
-      <span className="w-8 text-[9px] uppercase tracking-wider text-gray-500 font-semibold shrink-0">{label}</span>
+      <span className="w-24 text-[9px] uppercase tracking-wider text-gray-500 font-semibold shrink-0">{label}</span>
       <div className="flex-1 h-1 rounded-full bg-black/50 overflow-hidden ring-1 ring-white/5">
         <div className={`h-full rounded-full bg-gradient-to-r ${gradient}`} style={{ width: `${v}%` }} />
       </div>
@@ -255,9 +255,9 @@ function DeskSentinelAnalysis({ hasEngineScore, scores, score, regime, t }) {
   return (
     <div className="space-y-2">
       <div className="space-y-2 border border-white/[0.08] bg-black/25 p-2.5 rounded-md">
-        <MiniBar label="RSK" value={scores.risk} gradient="from-rose-500 via-red-500 to-orange-400" />
-        <MiniBar label="SMT" value={scores.smart} gradient="from-emerald-400 via-lime-400 to-cyan-400" />
-        <MiniBar label="MOM" value={scores.momentum} gradient="from-amber-300 via-amber-400 to-orange-400" />
+        <MiniBar label="Risk" value={scores.risk} gradient="from-rose-500 via-red-500 to-orange-400" />
+        <MiniBar label="Smart Money" value={scores.smart} gradient="from-emerald-400 via-lime-400 to-cyan-400" />
+        <MiniBar label="Momentum" value={scores.momentum} gradient="from-amber-300 via-amber-400 to-orange-400" />
       </div>
       {score.__verification ? (
         <p className="text-[10px] text-gray-500 font-mono">
