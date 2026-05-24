@@ -1790,6 +1790,16 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   align-self: center;
   user-select: none;
 }
+@media (max-width: 1280px) {
+  .tpt-c-breadcrumb {
+    writing-mode: horizontal-tb;
+    text-orientation: mixed;
+    transform: none;
+    align-self: auto;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
 .tpt-c-token-img {
   width: 34px;
   height: 34px;
