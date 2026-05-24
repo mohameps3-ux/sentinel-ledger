@@ -269,7 +269,6 @@ function DeskSentinelAnalysis({ hasEngineScore, scores, score, regime, t }) {
           <p className="text-[9px] uppercase tracking-[0.1em] text-cyan-200/80 font-semibold leading-tight">
             {t("cockpit.desk.tripleTitle")}
           </p>
-          <p className="text-[9px] text-gray-500 leading-snug">{t("cockpit.desk.tripleAdvisory")}</p>
           {regime.missing?.includes("poolAge") ? (
             <p className="text-[9px] text-amber-200/80 leading-snug">{t("cockpit.desk.triplePoolAgeNote")}</p>
           ) : null}
@@ -292,6 +291,9 @@ function DeskSentinelAnalysis({ hasEngineScore, scores, score, regime, t }) {
           </div>
           <p className="text-[10px] text-gray-400 leading-snug">
             {t(`cockpit.desk.tripleContext.${regime.contextLabelId}`) || regime.contextLabelId}
+          </p>
+          <p className="text-[9px] sm:text-[10px] text-gray-600 leading-relaxed mt-2 border-t border-white/[0.05] pt-2 italic">
+            {t("cockpit.desk.tripleAdvisory")}
           </p>
         </div>
       ) : null}
