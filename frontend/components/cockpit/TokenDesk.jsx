@@ -480,7 +480,7 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
         <div className="flex flex-col gap-2 pt-1 border-t border-white/[0.06]">
           
 
-          <AccordionSection title={t("cockpit.desk.antiSignal")} summaryTone={antiTone} defaultOpen={false}>
+          <AccordionSection title="Risk" summaryTone={antiTone} defaultOpen={false}>
             <DeskAntiSignalBody token={token} />
           </AccordionSection>
 
