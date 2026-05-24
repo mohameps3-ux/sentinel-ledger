@@ -48,7 +48,7 @@ export const DeskJupiterLinks = memo(function DeskJupiterLinks({ mint }) {
             href={buildJupiterSwapUrl(mint, size)}
             target="_blank"
             rel={EXTERNAL_ANCHOR_REL}
-            className="text-[10px] px-2 py-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 font-mono inline-flex items-center gap-1"
+            className="text-[10px] px-2.5 min-h-11 rounded-md border border-emerald-500/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 font-mono inline-flex items-center gap-1"
           >
             {size} SOL
             <ExternalLink size={10} className="opacity-70" />
@@ -109,7 +109,7 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
         href={buildJupiterSwapUrl(mint)}
         target="_blank"
         rel={EXTERNAL_ANCHOR_REL}
-        className={`mt-2.5 flex w-full items-center justify-center border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] transition ${
+        className={`mt-2.5 flex w-full min-h-11 items-center justify-center border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] transition ${
           disabled
             ? "border-red-500/35 bg-red-500/[0.08] text-red-200/90"
             : "border-[rgba(16,185,129,0.4)] bg-emerald-500/[0.06] text-emerald-200/90 hover:border-emerald-400/55 hover:bg-emerald-500/[0.1]"
@@ -122,7 +122,7 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
           href={dexUrl}
           target="_blank"
           rel={EXTERNAL_ANCHOR_REL}
-          className="border border-white/[0.1] bg-white/[0.04] px-2 py-1.5 text-center text-[10px] font-semibold text-gray-200 hover:border-[rgba(250,204,21,0.35)]"
+          className="border border-white/[0.1] bg-white/[0.04] px-2 py-2 min-h-11 flex items-center justify-center text-center text-[10px] font-semibold text-gray-200 hover:border-[rgba(250,204,21,0.35)]"
         >
           {t("cockpit.desk.marketsLink")}
         </a>
@@ -130,7 +130,7 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
           href={solscanUrl}
           target="_blank"
           rel={EXTERNAL_ANCHOR_REL}
-          className="border border-white/10 bg-white/[0.04] px-2 py-1.5 text-center text-[10px] font-semibold text-gray-200"
+          className="border border-white/10 bg-white/[0.04] px-2 py-2 min-h-11 flex items-center justify-center text-center text-[10px] font-semibold text-gray-200"
         >
           Solscan
         </a>
@@ -139,7 +139,7 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
             href={pumpUrl}
             target="_blank"
             rel={EXTERNAL_ANCHOR_REL}
-            className="border border-fuchsia-500/25 bg-fuchsia-500/[0.07] px-2 py-1.5 text-center text-[10px] font-semibold text-fuchsia-100"
+            className="border border-fuchsia-500/25 bg-fuchsia-500/[0.07] px-2 py-2 min-h-11 flex items-center justify-center text-center text-[10px] font-semibold text-fuchsia-100"
           >
             Pump
           </a>
@@ -149,7 +149,7 @@ export const DeskExecutionScope = memo(function DeskExecutionScope({ mint, token
             href={meteoraUrl}
             target="_blank"
             rel={EXTERNAL_ANCHOR_REL}
-            className="border border-orange-500/25 bg-orange-500/[0.07] px-2 py-1.5 text-center text-[10px] font-semibold text-orange-100"
+            className="border border-orange-500/25 bg-orange-500/[0.07] px-2 py-2 min-h-11 flex items-center justify-center text-center text-[10px] font-semibold text-orange-100"
           >
             Meteora pool
           </a>

@@ -40,7 +40,7 @@ export function ActionBar({ tokenAddress, symbol, market, isWatchlisted = false,
         href={jupiterUrl}
         target="_blank"
         rel={EXTERNAL_ANCHOR_REL}
-        className="col-span-2 h-12 px-5 bg-emerald-400 text-black font-black uppercase tracking-[0.14em] inline-flex items-center justify-center gap-2 hover:bg-emerald-300 transition"
+        className="col-span-2 min-h-11 px-5 bg-emerald-400 text-black font-black uppercase tracking-[0.14em] inline-flex items-center justify-center gap-2 hover:bg-emerald-300 transition"
       >
         <ShoppingCart size={16} />
         Trade now {symbol || "Token"}
@@ -49,7 +49,7 @@ export function ActionBar({ tokenAddress, symbol, market, isWatchlisted = false,
         href={dexUrl}
         target="_blank"
         rel={EXTERNAL_ANCHOR_REL}
-        className="h-9 px-3 bg-[#13171A] border soft-divider text-cyan-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
+        className="min-h-11 px-3 bg-[#13171A] border soft-divider text-cyan-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
       >
         <LineChart size={14} />
         DEX
@@ -58,7 +58,7 @@ export function ActionBar({ tokenAddress, symbol, market, isWatchlisted = false,
         href={solscanUrl}
         target="_blank"
         rel={EXTERNAL_ANCHOR_REL}
-        className="h-9 px-3 bg-[#13171A] border soft-divider text-gray-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
+        className="min-h-11 px-3 bg-[#13171A] border soft-divider text-gray-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
       >
         <Search size={14} />
         Solscan
@@ -68,7 +68,7 @@ export function ActionBar({ tokenAddress, symbol, market, isWatchlisted = false,
           href={pumpUrl}
           target="_blank"
           rel={EXTERNAL_ANCHOR_REL}
-          className="h-9 px-3 bg-[#13171A] border soft-divider text-fuchsia-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
+          className="min-h-11 px-3 bg-[#13171A] border soft-divider text-fuchsia-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
         >
           Pump <ExternalLink size={12} />
         </a>
@@ -78,7 +78,7 @@ export function ActionBar({ tokenAddress, symbol, market, isWatchlisted = false,
           href={meteoraUrl}
           target="_blank"
           rel={EXTERNAL_ANCHOR_REL}
-          className="h-9 px-3 bg-[#13171A] border soft-divider text-orange-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
+          className="min-h-11 px-3 bg-[#13171A] border soft-divider text-orange-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
         >
           Meteora <ExternalLink size={12} />
         </a>
@@ -92,7 +92,7 @@ export function ActionBar({ tokenAddress, symbol, market, isWatchlisted = false,
             toast.error("Copy failed.");
           }
         }}
-        className="h-9 px-3 bg-[#13171A] border soft-divider text-gray-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
+        className="min-h-11 px-3 bg-[#13171A] border soft-divider text-gray-100 inline-flex items-center justify-center gap-2 hover:bg-white/5 transition text-xs font-semibold"
       >
         <Copy size={13} />
         Copy Mint

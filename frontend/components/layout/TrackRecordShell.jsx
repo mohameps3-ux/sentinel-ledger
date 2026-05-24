@@ -80,7 +80,7 @@ export function TrackRecordShell({ children }) {
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/60 text-slate-200"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/60 text-slate-200"
           aria-expanded={drawerOpen}
           aria-label="Open navigation"
         >
@@ -101,7 +101,7 @@ export function TrackRecordShell({ children }) {
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 text-slate-300"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-700 text-slate-300"
                 aria-label="Close navigation"
               >
                 <X size={18} />

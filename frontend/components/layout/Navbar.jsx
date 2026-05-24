@@ -219,7 +219,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            className="h-7 px-1.5 rounded-md border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] text-gray-200 inline-flex items-center gap-1"
+            className="min-h-11 min-w-11 px-2 rounded-md border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] text-gray-200 inline-flex items-center justify-center gap-1"
             aria-expanded={menuOpen}
             aria-haspopup="true"
             aria-label={t("layout.menu")}

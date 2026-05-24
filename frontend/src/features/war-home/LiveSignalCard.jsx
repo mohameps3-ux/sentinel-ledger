@@ -375,7 +375,7 @@ export function LiveSignalCard({
                     if (!validMint) return;
                     onSelectMint(sig.mint, { src: "live", tr: displayScoreSafe, sw: walletCount });
                   }}
-                  className={`h-7 rounded-md border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-black uppercase tracking-[0.08em] text-zinc-200 transition ${validMint ? "hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-emerald-100" : "cursor-not-allowed opacity-40"}`}
+                  className={`min-h-11 rounded-md border border-white/10 bg-white/[0.05] px-3 text-[9px] font-black uppercase tracking-[0.08em] text-zinc-200 transition ${validMint ? "hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-emerald-100" : "cursor-not-allowed opacity-40"}`}
                 >
                   Intel
                 </button>
@@ -386,7 +386,7 @@ export function LiveSignalCard({
                     e.stopPropagation();
                     if (!validMint) e.preventDefault();
                   }}
-                  className={`flex h-7 items-center rounded-md border px-2.5 text-[9px] font-black uppercase tracking-[0.08em] no-underline transition ${validMint ? `${liveTone.border} ${liveTone.bg} ${liveTone.text} hover:bg-white/[0.08]` : "pointer-events-none opacity-40"}`}
+                  className={`flex min-h-11 items-center rounded-md border px-3 text-[9px] font-black uppercase tracking-[0.08em] no-underline transition ${validMint ? `${liveTone.border} ${liveTone.bg} ${liveTone.text} hover:bg-white/[0.08]` : "pointer-events-none opacity-40"}`}
                 >
                   Chart
                 </Link>

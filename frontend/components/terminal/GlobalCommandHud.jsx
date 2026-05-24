@@ -172,7 +172,7 @@ export function GlobalCommandHud() {
         type="button"
         onClick={follow}
         disabled={!targetIsMint}
-        className="inline-flex h-8 items-center gap-1.5 border border-white/10 bg-white/[0.04] px-2.5 text-[11px] font-semibold text-gray-200 disabled:opacity-35 disabled:cursor-not-allowed"
+        className="inline-flex min-h-11 items-center gap-1.5 border border-white/10 bg-white/[0.04] px-3 text-[11px] font-semibold text-gray-200 disabled:opacity-35 disabled:cursor-not-allowed"
       >
         <Star size={13} /> {isFollowing ? "Following" : "Follow"}
       </button>

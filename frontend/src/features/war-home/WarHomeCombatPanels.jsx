@@ -233,7 +233,7 @@ export default function WarHomeCombatPanels({
                           {wallet.address ? (
                             <Link
                               href={`/wallet/${encodeURIComponent(wallet.address)}`}
-                              className="text-[11px] px-2 py-1 rounded border border-cyan-500/30 text-cyan-200 hover:bg-cyan-500/20"
+                              className="text-[11px] px-2.5 py-2 min-h-11 inline-flex items-center rounded border border-cyan-500/30 text-cyan-200 hover:bg-cyan-500/20"
                             >
                               {t("war.combat.walletSheet")}
                             </Link>
@@ -311,7 +311,7 @@ export default function WarHomeCombatPanels({
                       <span className={`h-2.5 w-2.5 rounded-full ${confidenceDot(wallet.signalStrength)}`} />
                       {t("war.combat.thConfidence")}: {confidenceTr(wallet.signalStrength)}
                     </span>
-                    <span className={`text-[11px] px-2 py-1 rounded border ${actionTone(wallet.signalStrength)}`}>
+                    <span className={`text-[11px] px-2.5 py-1.5 min-h-11 inline-flex items-center rounded border ${actionTone(wallet.signalStrength)}`}>
                       {t("war.combat.thIdea")}: {walletActionLabel(suggestedAction(wallet.signalStrength, strategyMode, "wallet"))}
                     </span>
                   </div>
@@ -327,7 +327,7 @@ export default function WarHomeCombatPanels({
                         {wallet.address ? (
                           <Link
                             href={`/wallet/${encodeURIComponent(wallet.address)}`}
-                            className="text-[10px] px-2 py-1 rounded border border-cyan-500/30 text-cyan-200"
+                            className="text-[10px] px-2.5 py-2 min-h-11 inline-flex items-center rounded border border-cyan-500/30 text-cyan-200"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {t("war.combat.walletSheet")}
@@ -335,7 +335,7 @@ export default function WarHomeCombatPanels({
                         ) : null}
                         <Link
                           href="/smart-money?limit=50"
-                          className="text-[10px] px-2 py-1 rounded border border-white/15 text-sl-sub"
+                          className="text-[10px] px-2.5 py-2 min-h-11 inline-flex items-center rounded border border-white/15 text-sl-sub"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {t("war.combat.top50")}

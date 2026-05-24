@@ -793,13 +793,13 @@ export default function TokenTerminalPage() {
 
       <div className="fixed safe-bottom-offset left-1/2 -translate-x-1/2 z-40 xl:hidden">
         <div className="glass-card px-2 py-1 flex items-center gap-1">
-          <a href="#chart" className="px-3 h-8 text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
+          <a href="#chart" className="px-3 min-h-11 text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
             {t("token.nav.chart")}
           </a>
-          <a href="#intel" className="px-3 h-8 text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
+          <a href="#intel" className="px-3 min-h-11 text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
             {t("token.nav.intel")}
           </a>
-          <a href="#flow" className="px-3 h-8 text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
+          <a href="#flow" className="px-3 min-h-11 text-xs inline-flex items-center bg-white/5 hover:bg-white/10">
             {t("token.nav.flow")}
           </a>
         </div>
