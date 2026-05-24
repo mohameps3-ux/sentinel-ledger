@@ -1501,13 +1501,39 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 }
 @media (max-width: 1280px) {
   .tpt-root {
+    display: flex;
+    flex-direction: column;
     grid-template-columns: 1fr;
     height: auto;
     overflow: visible;
   }
-  .tpt-left,
+
+  .tpt-center {
+    order: 1;
+    overflow: visible;
+    flex-shrink: 0;
+  }
+
+  .tpt-left {
+    order: 2;
+    width: 100%;
+    border-right: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    max-height: min(480px, 55vh);
+    flex-shrink: 0;
+  }
+
   .tpt-right {
-    display: none !important;
+    order: 3;
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    overflow: visible;
+    flex-shrink: 0;
+  }
+
+  .tpt-r-tx-list {
+    max-height: min(320px, 42vh);
   }
 }
 
