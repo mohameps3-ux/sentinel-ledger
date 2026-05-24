@@ -6,7 +6,7 @@ import { useScoreRoom } from "@/hooks/useScoreRoom";
 import { useTokenData } from "../../hooks/useTokenData";
 import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 import { resolveTokenImageUrl } from "../../lib/resolveTokenImageUrl";
-import { formatTokenPrice, formatUsdWhole } from h"../../lib/formatStable";
+import { formatTokenPrice, formatUsdWhole } from "../../lib/formatStable";
 import {
   buildDexscreenerSolanaTokenUrl,
   buildMeteoraPoolUrl,
