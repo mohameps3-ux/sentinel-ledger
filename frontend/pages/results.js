@@ -307,7 +307,11 @@ export default function ResultsPage() {
               </div>
               <p className="text-xs text-sl-muted">{r._time ? new Date(r._time).toLocaleString() : ""}</p>
               <p className="text-xs text-sl-muted">Rule {r.rule || "—"} · confidence {r.signalStrength != null ? Number(r.signalStrength).toFixed(0) : "—"}</p>
-              <p className="text-emerald-300">60m {fmtPct(r._resultPct)}</p>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                <span className="text-sl-sub">5m {fmtPct(pctFromFraction(r.outcome5m ?? r.outcome_5m))}</span>
+                <span className="text-sl-sub">15m {fmtPct(pctFromFraction(r.outcome15m ?? r.outcome_15m))}</span>
+                <span className="text-emerald-300">60m {fmtPct(r._resultPct)}</span>
+              </div>
             </div>
           ))}
         </div>
