@@ -447,8 +447,16 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
             <div className="sentinel-narrative narrative-tactical text-[11px] leading-snug">{narrative.message}</div>
           ) : null}
         </DeskSection>
+        <DeskSection title="Smart Money">
+          {isProbableSolanaMint(mint) ? (
+            <DeskSmartMoneyLazy mint={mint} flaggedWallets={flaggedWallets} />
+          ) : (
+            <p className="text-xs text-gray-500">{t("cockpit.desk.invalidMint")}</p>
+          )}
+        </DeskSection>
 
         <DeskSection title="Market">
+          
           <DeskMarketGrid token={token} tokenQuery={tokenQuery} t={t} />
         </DeskSection>
 
@@ -470,13 +478,7 @@ export function TokenDesk({ mint, deskRadarHint = null }) {
         <DeskExternalLinks mint={mint} token={token} t={t} />
 
         <div className="flex flex-col gap-2 pt-1 border-t border-white/[0.06]">
-          <AccordionSection title={t("cockpit.desk.smartWallets")} summaryTone="neutral" defaultOpen={false}>
-            {isProbableSolanaMint(mint) ? (
-              <DeskSmartMoneyLazy mint={mint} flaggedWallets={flaggedWallets} />
-            ) : (
-              <p className="text-xs text-gray-500">{t("cockpit.desk.invalidMint")}</p>
-            )}
-          </AccordionSection>
+          
 
           <AccordionSection title={t("cockpit.desk.antiSignal")} summaryTone={antiTone} defaultOpen={false}>
             <DeskAntiSignalBody token={token} />
