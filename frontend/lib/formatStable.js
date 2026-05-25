@@ -31,6 +31,22 @@ export function formatUsdWhole(value) {
   });
 }
 
+/**
+ * Compact USD for dense mobile layouts: $1.2M / $456K / $890
+ * Returns "—" for zero / null / NaN.
+ * @param {number|string|null|undefined} value
+ * @param {string} [prefix="$"]
+ */
+export function formatCompact(value, prefix = "$") {
+  const n = asNum(value);
+  if (!Number.isFinite(n) || n === 0) return "—";
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return `${prefix}${(n / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000)     return `${prefix}${(n / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000)         return `${prefix}${(n / 1_000).toFixed(0)}K`;
+  return `${prefix}${n.toFixed(0)}`;
+}
+
 /** Dollar amounts that may include cents (PnL, averages). */
 export function formatUsdAmount(value) {
   const n = asNum(value);

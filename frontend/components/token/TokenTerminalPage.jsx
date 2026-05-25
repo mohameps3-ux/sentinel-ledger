@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatCompact } from "../../lib/formatStable";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
@@ -246,12 +247,7 @@ function TerminalCenter({
   );
   const smartPctClamped = Math.min(95, Math.max(5, smartPct));
 
-  function fmtUsd(n) {
-    if (!n || n <= 0) return "—";
-    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-    return `$${n.toFixed(0)}`;
-  }
+  const fmtUsd = formatCompact;
 
   const sectionNavLinks = (
     <>

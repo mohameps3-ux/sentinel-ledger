@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { clampScore } from "../../lib/scannerTerminalModel.mjs";
 import { TerminalActionIcons } from "../terminal/TerminalActionIcons";
+import { formatCompact } from "../../lib/formatStable";
 
 function EmptyState({ status, t }) {
   const copy =
@@ -93,8 +94,8 @@ export function ScannerTokenTable({ rows, focusedMint, onFocusMint, t, status })
                 <td className="py-2.5 pr-3 text-right tabular-nums">
                   <span className={`inline-flex min-w-9 justify-center rounded-md border px-2 py-1 ${scoreCls}`}>{score}</span>
                 </td>
-                <td className="py-2.5 pr-3 text-right tabular-nums text-zinc-300">${liq.toLocaleString()}</td>
-                <td className="py-2.5 pr-3 text-right tabular-nums text-zinc-300">${vol.toLocaleString()}</td>
+                <td className="py-2.5 pr-3 text-right tabular-nums text-zinc-300">{formatCompact(liq)}</td>
+                <td className="py-2.5 pr-3 text-right tabular-nums text-zinc-300">{formatCompact(vol)}</td>
                 <td className={`py-2.5 pr-3 text-right tabular-nums ${chgCls}`}>
                   {Number.isFinite(change) ? `${change >= 0 ? "+" : ""}${change.toFixed(2)}%` : "-"}
                 </td>
