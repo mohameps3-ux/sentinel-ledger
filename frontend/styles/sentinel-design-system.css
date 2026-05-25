@@ -2111,6 +2111,81 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   font-size: 8px;
   color: rgba(255, 255, 255, 0.35);
 }
+
+/* C9 FASE 7 — SignalEdgeTag */
+.tpt-signal-edge-tag {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 4px 8px;
+  margin-top: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+.tpt-signal-edge-rule {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 700;
+}
+.tpt-signal-edge-sep {
+  color: rgba(255, 255, 255, 0.2);
+}
+.tpt-signal-edge-wr {
+  font-weight: 700;
+}
+.tpt-signal-edge-n {
+  color: rgba(255, 255, 255, 0.35);
+}
+.tpt-signal-edge-regime {
+  padding: 1px 5px;
+  border: 1px solid;
+  border-radius: 2px;
+  font-size: 7px;
+  font-weight: 700;
+}
+.tpt-signal-edge-uncal {
+  color: rgba(255, 255, 255, 0.25);
+  font-style: italic;
+}
+
+/* C9 FASE 7 — RegimeCautionBanner */
+.tpt-regime-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid;
+  border-radius: 4px;
+  margin: 6px 0;
+  font-family: "JetBrains Mono", monospace;
+}
+.tpt-regime-banner__icon {
+  font-size: 11px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.tpt-regime-banner__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tpt-regime-banner__label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.tpt-regime-banner__body {
+  font-size: 8px;
+  line-height: 1.4;
+  opacity: 0.75;
+  white-space: normal;
+}
+
 .tpt-c-metric {
   flex-shrink: 0;
   min-width: 68px;

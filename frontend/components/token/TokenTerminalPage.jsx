@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatCompact } from "../../lib/formatStable";
+import { SignalEdgeTag } from "./SignalEdgeTag";
+import { RegimeCautionBanner } from "./RegimeCautionBanner";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
@@ -346,6 +348,18 @@ function TerminalCenter({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* C9 FASE 7 — signal edge + regime context */}
+      <div className="px-3 pb-1">
+        <SignalEdgeTag
+          rule={score?.primarySignal ?? score?.signals?.[0] ?? "cluster_buy"}
+          winRate={score?.signalWinRate ?? null}
+          samples={score?.signalSamples ?? null}
+          regime={score?.marketRegime ?? null}
+          calibrated={false}
+        />
+        <RegimeCautionBanner regime={score?.marketRegime ?? null} />
       </div>
 
       <nav
