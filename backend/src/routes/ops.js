@@ -53,7 +53,8 @@ const {
 const {
   getAutoDiscoveryStatus,
   listAutoDiscoveryCandidates,
-  runPromotionTick
+  runPromotionTick,
+  runBatchDiscovery
 } = require("../workers/autoDiscovery");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 
@@ -358,6 +359,13 @@ router.get("/auto-discovery/candidates", assertOpsAuth, async (req, res) => {
 router.post("/auto-discovery/promote/run", assertOpsAuth, async (_req, res) => {
   const stats = await runPromotionTick();
   return res.json({ ok: true, data: { stats, status: getAutoDiscoveryStatus() } });
+});
+
+router.post("/auto-discovery/batch-discover/run", assertOpsAuth, async (req, res) => {
+  const lookbackHours = Math.max(1, Math.min(168, Number(req.body?.lookbackHours ?? 48)));
+  const minWinPct = Math.max(0, Number(req.body?.minWinPct ?? 1.0));
+  const result = await runBatchDiscovery({ lookbackHours, minWinPct });
+  return res.json({ ok: true, data: { result, status: getAutoDiscoveryStatus() } });
 });
 
 router.get("/signal-performance/calibration", assertOpsAuth, (_req, res) => {

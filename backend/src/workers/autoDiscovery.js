@@ -39,8 +39,9 @@ function toIso(value) {
 function candidateScoreFromOutcome(outcomePct) {
   const outcome = Number(outcomePct);
   if (!Number.isFinite(outcome)) return 0;
-  // Map +5%..+50% validation outcome into a conservative 0.1..1.0 candidate score.
-  return Math.max(0, Math.min(1, outcome / 0.5));
+  // Map +1%..+30% validation outcome → 0.1..1.0 candidate score.
+  // Old mapping was +5%..+50% which excluded the 1-5% win band entirely.
+  return Math.max(0, Math.min(1, (outcome - 1) / 29 + 0.1));
 }
 
 function promotionEligible(row) {
@@ -226,7 +227,10 @@ function startPromotionCron() {
     console.log("[auto-discovery] promotion cron disabled");
     return;
   }
-  runPromotionTick().catch((e) => console.warn("[auto-discovery] bootstrap promotion:", e?.message || e));
+  // On startup: backfill candidates from recent wins, then promote.
+  runBatchDiscovery({ lookbackHours: 48, minWinPct: 1.0 })
+    .then(() => runPromotionTick())
+    .catch((e) => console.warn("[auto-discovery] bootstrap batch+promotion:", e?.message || e));
   promotionIntervalRef = setInterval(() => {
     runPromotionTick().catch((e) => console.warn("[auto-discovery] promotion tick:", e?.message || e));
   }, PROMOTION_TICK_MS);
@@ -251,8 +255,64 @@ function getAutoDiscoveryStatus() {
   };
 }
 
+/**
+ * Batch-process recent winners from signal_performance → auto_discovered_wallets.
+ * Runs on-demand (from /ops) and on each promotion cron startup to backfill.
+ * Processes last `lookbackHours` hours of resolved wins (outcome_pct >= minWinPct).
+ */
+async function runBatchDiscovery({ lookbackHours = 48, minWinPct = 1.0, limit = 200 } = {}) {
+  if (!isEnabled()) return { ok: false, reason: "disabled", processed: 0, totalCandidates: 0 };
+  const supabase = await safeSupabase();
+  if (!supabase) return { ok: false, reason: "supabase_unconfigured", processed: 0, totalCandidates: 0 };
+
+  const since = new Date(Date.now() - lookbackHours * 3600_000).toISOString();
+  const { data: winners, error } = await supabase
+    .from("signal_performance")
+    .select("id,asset,emitted_at,signals,outcome_pct")
+    .eq("status", "resolved")
+    .gte("outcome_pct", minWinPct)
+    .gte("emitted_at", since)
+    .order("outcome_pct", { ascending: false })
+    .limit(limit);
+  if (error) return { ok: false, reason: error.message || "query_failed", processed: 0, totalCandidates: 0 };
+
+  const RULE_ID_MAP = {
+    whale_accumulation: "R01", liquidity_shock: "R02",
+    cluster_buy: "R03", cluster_probing: "R03",
+    new_wallet_confidence: "R04", velocity_spike: "R05"
+  };
+  function firstRuleId(signals) {
+    for (const tag of (Array.isArray(signals) ? signals : [])) {
+      const rid = RULE_ID_MAP[String(tag || "").trim()];
+      if (rid) return rid;
+    }
+    return null;
+  }
+
+  let processed = 0;
+  let totalCandidates = 0;
+  for (const row of winners || []) {
+    try {
+      const result = await discoverFromSignal({
+        mint: row.asset,
+        signal_id: row.id,
+        rule_id: firstRuleId(row.signals) || "unknown",
+        outcome_pct: Number(row.outcome_pct),
+        timestamp: row.emitted_at
+      });
+      processed += 1;
+      totalCandidates += result?.candidates || 0;
+    } catch (err) {
+      console.warn("[auto-discovery] batch:", err?.message || err);
+    }
+  }
+  console.log(`[auto-discovery] batch: processed=${processed} totalCandidates=${totalCandidates}`);
+  return { ok: true, processed, totalCandidates };
+}
+
 module.exports = {
   discoverFromSignal,
+  runBatchDiscovery,
   getAutoDiscoveryStatus,
   listAutoDiscoveryCandidates,
   runPromotionTick,

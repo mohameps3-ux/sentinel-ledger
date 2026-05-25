@@ -22,7 +22,9 @@ const RULE_ID_BY_SIGNAL = {
 const SIGNAL_BY_RULE_ID = Object.fromEntries(Object.entries(RULE_ID_BY_SIGNAL).map(([signal, id]) => [id, signal]));
 const ORACLE_TICK_MS = Math.max(60_000, Number(process.env.VALIDATION_ORACLE_TICK_MS || 5 * 60 * 1000));
 const ORACLE_BATCH = Math.max(1, Math.min(200, Number(process.env.VALIDATION_ORACLE_BATCH || 80)));
-const SUCCESS_THRESHOLD_60M = Number(process.env.VALIDATION_ORACLE_SUCCESS_60M || 0.05);
+// Aligned with SIGNAL_PERF_SUCCESS_MIN_PCT (1%) — a win is ≥1% gain, not 5%.
+// Old 5% threshold missed many valid winners and starved auto-discovery.
+const SUCCESS_THRESHOLD_60M = Number(process.env.VALIDATION_ORACLE_SUCCESS_60M || 0.01);
 const DRAWDOWN_WARN_THRESHOLD = Number(process.env.VALIDATION_ORACLE_DRAWDOWN_WARN || -0.1);
 
 let intervalRef = null;

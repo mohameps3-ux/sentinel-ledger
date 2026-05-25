@@ -6,6 +6,28 @@ const { isSystemMint } = require("../lib/systemMints");
 const { shouldKillSignal } = require("./signalEmissionGate");
 const { resolveBaseSentinelScoreAtEmission } = require("./signalCardScore");
 
+// Lazy-require to avoid circular dep — autoDiscovery has no dep on signalPerformance.
+function getAutoDiscovery() {
+  try { return require("../workers/autoDiscovery"); } catch (_) { return null; }
+}
+
+// Map signal tag → rule ID (mirrors validationOracle.RULE_ID_BY_SIGNAL).
+const RULE_ID_BY_SIGNAL = {
+  whale_accumulation: "R01",
+  liquidity_shock: "R02",
+  cluster_buy: "R03",
+  cluster_probing: "R03",
+  new_wallet_confidence: "R04",
+  velocity_spike: "R05"
+};
+function primaryRuleIdFromSignals(signals) {
+  for (const tag of (Array.isArray(signals) ? signals : [])) {
+    const rid = RULE_ID_BY_SIGNAL[String(tag || "").trim()];
+    if (rid) return rid;
+  }
+  return null;
+}
+
 const DEFAULT_HORIZON_MIN = Number(process.env.SIGNAL_PERF_HORIZON_MIN || 10);
 const SUCCESS_MIN_PCT = Number(process.env.SIGNAL_PERF_SUCCESS_MIN_PCT || 1.0);
 const WINSORIZE_CAP_PCT = Math.max(0, Number(process.env.SIGNAL_PERF_WINSORIZE_CAP_PCT ?? 200));
@@ -446,6 +468,26 @@ async function runSignalOutcomeResolutionOnce(options = {}) {
       continue;
     }
     resolved += 1;
+
+    // Trigger wallet auto-discovery for every WIN (≥1%) — fire-and-forget.
+    if (isSuccess) {
+      const ad = getAutoDiscovery();
+      if (ad?.discoverFromSignal) {
+        const ruleId = primaryRuleIdFromSignals(row.signals);
+        setImmediate(() => {
+          ad.discoverFromSignal({
+            mint: row.asset,
+            signal_id: row.id,
+            rule_id: ruleId || "unknown",
+            outcome_pct: outcomePct,
+            timestamp: row.emitted_at
+          }).catch((err) =>
+            console.warn("[signal-perf] auto-discovery silent fail:", err?.message || err)
+          );
+        });
+      }
+    }
+
     await syncSignalOutcomesFromPerformanceRow(supabase, row, {
       outcomePriceUsd: outcomePrice,
       outcomePctPercent: outcomePct,
