@@ -205,11 +205,18 @@ function readRegimeEnvOverrides(regimeUpper) {
 
 function defaultRegimePatch(regimeKey, baseCfg) {
   const b = baseCfg;
+  // volatile has proven edge (WR 31%) — lower bar vs base.
+  // calm has no edge (WR 4.7%) — raise bar vs base so env override to 101 dominates.
   if (regimeKey === "volatile") {
     return {
-      minConfidence: Math.min(99, b.minConfidence + 7),
-      minUnifiedScore: clamp(b.minUnifiedScore + 0.05, 0, 1),
-      maxRiskScore: clamp(b.maxRiskScore - 5, 0, 100)
+      minConfidence: Math.max(0, b.minConfidence - 5),
+      minUnifiedScore: clamp(b.minUnifiedScore - 0.05, 0, 1)
+    };
+  }
+  if (regimeKey === "calm") {
+    return {
+      minConfidence: Math.min(99, b.minConfidence + 20),
+      minUnifiedScore: clamp(b.minUnifiedScore + 0.15, 0, 1)
     };
   }
   if (regimeKey === "trending") {

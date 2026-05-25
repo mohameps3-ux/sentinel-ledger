@@ -96,6 +96,7 @@ function ruleWhaleAccumulation(ctx) {
 
 /** 2. Swap moves > 5% of pool liquidity. Requires liquidity context (else null). */
 function ruleLiquidityShock(ctx) {
+  if (String(process.env.RULE_LIQUIDITYSHOCK_ENABLED || "true").trim().toLowerCase() === "false") return null;
   if (!ctx.amountUsd || !ctx.liquidityUsd) return null;
   if (ctx.amountUsd < CONFIG.liquidityShockMinUsd) return null;
   const pct = ctx.amountUsd / ctx.liquidityUsd;
