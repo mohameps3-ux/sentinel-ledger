@@ -91,7 +91,8 @@ function winRateBadgeClass(wr) {
   return "bg-rose-950/30 text-rose-400/85 ring-1 ring-rose-900/30";
 }
 
-const INACTIVITY_DECAY_TOOLTIP = "Ranking includes inactivity decay";
+const INACTIVITY_DECAY_TOOLTIP =
+  "Ranking decay uses last on-chain activity (wallet_tokens.bought_at) when available, falling back to last gated signal.";
 
 /** Server fields `daysInactive` / `decayMultiplier`; label tiers match leaderboard decay bands. */
 function inactivityDecayBadge(row) {
@@ -122,6 +123,17 @@ function inactivityDecayBadge(row) {
 /** Poll time for table column; until first poll after deploy, fall back to last trade time. */
 function leaderboardCheckedIso(row) {
   return row?.lastCheckedAt || row?.lastSeen || null;
+}
+
+/** Honest "last seen trading" timestamp: prefer real on-chain activity (wallet_tokens.bought_at)
+ *  over the gated last_seen which only ticks when our system emits a signal for the wallet. */
+function leaderboardActivityIso(row) {
+  const onchain = row?.lastOnchainActivityAt;
+  const lastSeen = row?.lastSeen;
+  if (onchain && lastSeen) {
+    return new Date(onchain).getTime() >= new Date(lastSeen).getTime() ? onchain : lastSeen;
+  }
+  return onchain || lastSeen || null;
 }
 
 function StatusDot({ tone }) {
@@ -745,9 +757,21 @@ export function SmartMoneyLeaderboardConsole({
                             <td className="px-5 py-5 font-mono text-[12px] tabular-nums text-zinc-500">{pf}</td>
                             <td className="px-5 py-5 font-mono text-[11px] tabular-nums text-zinc-500">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="whitespace-nowrap">
+                                <span className="whitespace-nowrap" title="Last time Sentinel polled this wallet (last_checked_at).">
                                   {leaderboardCheckedIso(w) ? formatDateTime(leaderboardCheckedIso(w)) : "—"}
                                 </span>
+                                {(() => {
+                                  const activityIso = leaderboardActivityIso(w);
+                                  if (!activityIso) return null;
+                                  return (
+                                    <span
+                                      className="whitespace-nowrap text-[10px] text-emerald-500/70"
+                                      title="Last on-chain activity (wallet_tokens.bought_at) — updated by Helius webhook on every tx, regardless of our signal gating."
+                                    >
+                                      · on-chain {relShort(activityIso)}
+                                    </span>
+                                  );
+                                })()}
                                 {(() => {
                                   const badge = inactivityDecayBadge(w);
                                   if (!badge) return null;
