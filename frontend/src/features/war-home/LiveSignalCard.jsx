@@ -12,6 +12,7 @@ import { getLiveSignalEmittedAtMs } from "../../../lib/liveFeedAccess";
 import { pairCreatedRawToUnixMs, poolAgeMinutesFromCreatedMs } from "@/lib/pairTime";
 import { resolveTokenStateChip } from "@/lib/tokenStateChip.mjs";
 import { TokenStateChip } from "../../../components/cockpit/TokenStateChip";
+import { SignalEdgeTag } from "../../../components/token/SignalEdgeTag";
 
 function normalizeSignalDecision(action) {
   const raw = String(action || "").trim().toUpperCase();
@@ -43,6 +44,35 @@ function formatPct(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";
   return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
+}
+
+/** Map signal tag to display label */
+function ruleLabel(signal, ruleId) {
+  const map = {
+    cluster_buy:     "R03 · Cluster Buy",
+    cluster_probing: "R03 · Cluster Probe",
+    whale_accumulation: "R01 · Whale Acc.",
+    liquidity_shock: "R02 · Liq. Shock",
+    velocity_spike:  "R05 · Velocity"
+  };
+  if (signal && map[signal]) return map[signal];
+  if (ruleId) return ruleId;
+  return null;
+}
+
+/**
+ * Classify the CURRENT market regime from available price/volume/liquidity data.
+ * Mirrors the backend classifyMarketRegime logic — volatile ≥12% 24h or vol/liq ≥10.
+ */
+function classifyCardRegime(chg24, volume24h, liquidity) {
+  const absChg = Number.isFinite(Number(chg24)) ? Math.abs(Number(chg24)) : null;
+  const vol = Number(volume24h);
+  const liq = Number(liquidity);
+  const volLiq = Number.isFinite(vol) && Number.isFinite(liq) && liq > 0 ? vol / liq : null;
+  if ((absChg != null && absChg >= 12) || (volLiq != null && volLiq >= 10)) return "volatile";
+  if (absChg != null && absChg >= 5) return "trending";
+  if (absChg != null) return "calm";
+  return null;
 }
 
 function signalCardEmittedMs(sig) {
@@ -244,11 +274,17 @@ export function LiveSignalCard({
   const scoreEntry = useMarketStore((s) => (sig.mint ? s.scores.get(sig.mint) : undefined));
   const liveEngineScore = scoreEntry?.scores ? scoreSnapshot(scoreEntry) : null;
 
+  // Regime classification from current market data (mirrors backend classifyMarketRegime)
+  const cardRegime = classifyCardRegime(chg24, volume24h, liquidity);
+
   const tileGlow = useMemo(() => {
     if (score >= 80) return "hover:shadow-[0_0_34px_rgba(16,185,129,0.20)]";
     if (score >= 55) return "hover:shadow-[0_0_30px_rgba(245,158,11,0.18)]";
     return "hover:shadow-[0_0_26px_rgba(248,113,113,0.16)]";
   }, [score]);
+
+  // Volatile regime gets subtle amber accent border to signal high-edge opportunity
+  const regimeBorderAccent = cardRegime === "volatile" ? "shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]" : "";
 
   return (
     <RealtimeTokenCardShell
@@ -266,7 +302,7 @@ export function LiveSignalCard({
         onSelectMint(sig.mint, { src: sig._liveSource === "hot_fill" ? "heat" : "live", tr: score, sw: walletCount });
       }}
       hideExecutionBar={isWarMode}
-      baseClassName={`terminal-card-interactive group relative mb-3 overflow-hidden rounded-xl border ${tone.border} bg-[#080b10] p-0 text-zinc-100 transition-all duration-200 hover:-translate-y-[1px] ${tileGlow} ${hot ? "ring-1 ring-white/10" : ""} ${selectedMint && sig.mint === selectedMint ? "ring-2 ring-blue-400/35" : ""} ${validMint ? "cursor-pointer" : ""}`}
+      baseClassName={`terminal-card-interactive group relative mb-3 overflow-hidden rounded-xl border ${tone.border} bg-[#080b10] p-0 text-zinc-100 transition-all duration-200 hover:-translate-y-[1px] ${tileGlow} ${regimeBorderAccent} ${hot ? "ring-1 ring-white/10" : ""} ${selectedMint && sig.mint === selectedMint ? "ring-2 ring-blue-400/35" : ""} ${validMint ? "cursor-pointer" : ""}`}
       style={{ minHeight: 246 }}
       watchedClassName="ring-1 ring-emerald-400/25"
     >
@@ -292,6 +328,17 @@ export function LiveSignalCard({
           signalAgeMinutes,
           change24hPct: chg24
         });
+
+        // Phase 7: honest signal edge data
+        const rulePerf = sig._api?.rulePerformance ?? null;
+        const ruleSamples = rulePerf?.totalSignals != null ? Number(rulePerf.totalSignals) : null;
+        const ruleWr =
+          ruleSamples != null && ruleSamples > 0 && rulePerf?.successCount60m != null
+            ? Number((rulePerf.successCount60m / ruleSamples) * 100)
+            : null;
+        const ruleCalibrated = ruleSamples != null && ruleSamples >= 80;
+        const edgeLabel = ruleLabel(rulePerf?.signal, rulePerf?.ruleId);
+        const showEdgeTag = edgeLabel != null || cardRegime != null;
         return (
           <div className="relative flex min-h-[246px] flex-col p-3">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.045] via-transparent to-black/20" />
@@ -360,7 +407,19 @@ export function LiveSignalCard({
               <Metric label="1h" value={formatPct(chg60)} good={chg60 == null ? null : Number(chg60) >= 0 ? true : false} />
             </div>
 
-            <p className="relative mt-2 truncate text-[10px] italic leading-snug text-sl-muted" title={reason}>
+            {showEdgeTag && (
+              <div className="relative mt-2">
+                <SignalEdgeTag
+                  rule={edgeLabel}
+                  winRate={ruleWr}
+                  samples={ruleSamples}
+                  regime={cardRegime}
+                  calibrated={ruleCalibrated}
+                />
+              </div>
+            )}
+
+            <p className="relative mt-1.5 truncate text-[10px] italic leading-snug text-sl-muted" title={reason}>
               {reason}
             </p>
 
