@@ -13,6 +13,7 @@ import { pairCreatedRawToUnixMs, poolAgeMinutesFromCreatedMs } from "@/lib/pairT
 import { resolveTokenStateChip } from "@/lib/tokenStateChip.mjs";
 import { TokenStateChip } from "../../../components/cockpit/TokenStateChip";
 import { SignalEdgeTag } from "../../../components/token/SignalEdgeTag";
+import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../lib/terminalLinks";
 
 function normalizeSignalDecision(action) {
   const raw = String(action || "").trim().toUpperCase();
@@ -423,6 +424,26 @@ export function LiveSignalCard({
               </div>
             )}
 
+            {sig._api?.topWallet && Number(sig._api.topWallet.winRate) >= 40 && (
+              <div className="relative mt-1.5 flex min-w-0 items-center gap-1.5 text-[10px] font-mono">
+                <span className="shrink-0 text-[9px] uppercase tracking-[0.1em] text-zinc-500">Top wallet</span>
+                <Link
+                  href={`/wallet-stalker?w=${encodeURIComponent(sig._api.topWallet.addressFull || "")}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-sky-400/25 bg-sky-500/[0.06] text-sky-200 no-underline transition hover:border-sky-400/50 hover:bg-sky-500/12"
+                  title={`Track wallet ${sig._api.topWallet.addressFull}`}
+                >
+                  <span className="font-bold">{sig._api.topWallet.address}…</span>
+                  <span className="text-emerald-300 font-bold">
+                    WR {Math.round(Number(sig._api.topWallet.winRate))}%
+                  </span>
+                  {Number(sig._api.topWallet.trades) > 0 && (
+                    <span className="text-zinc-500">n={sig._api.topWallet.trades}</span>
+                  )}
+                </Link>
+              </div>
+            )}
+
             <p className="relative mt-1.5 truncate text-[10px] italic leading-snug text-sl-muted" title={reason}>
               {reason}
             </p>
@@ -456,6 +477,28 @@ export function LiveSignalCard({
                 </Link>
               </div>
             </div>
+
+            {/* Phase 7c — Quick-buy preset chips. Each chip deep-links to
+                Jupiter pre-filled. Reduces signal→action friction (HUGE for memecoins)
+                — Photon/GMGN have this, we now match it. */}
+            {validMint && (
+              <div className="relative mt-1.5 flex min-w-0 items-center gap-1.5 text-[10px]">
+                <span className="shrink-0 text-[9px] uppercase tracking-[0.1em] text-zinc-500">Quick buy</span>
+                {[0.1, 0.5, 1].map((amount) => (
+                  <a
+                    key={amount}
+                    href={buildJupiterSwapUrl(sig.mint, amount)}
+                    target="_blank"
+                    rel={EXTERNAL_ANCHOR_REL}
+                    onClick={(e) => e.stopPropagation()}
+                    title={`Buy ${amount} SOL of ${symbol} on Jupiter`}
+                    className="min-h-9 px-2.5 py-1 rounded border border-emerald-400/25 bg-emerald-500/[0.08] text-[10px] font-mono font-bold text-emerald-200 no-underline transition hover:border-emerald-400/50 hover:bg-emerald-500/15 hover:text-emerald-100"
+                  >
+                    {amount} SOL
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         );
       }}

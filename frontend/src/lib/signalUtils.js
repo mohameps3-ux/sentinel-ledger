@@ -313,6 +313,7 @@ export function mapTrendRowToLiveSignal(row, context = "", { velocityIntent = fa
       evidenceChips: evidence.length ? evidence : [String(row.grade || "HEAT").slice(0, 6)],
       contextHistory: row.contextHistory || context,
       rulePerformance: row.rulePerformance || null,
+      topWallet: row.topWallet || null,
       createdAt: row.createdAt || row._api?.createdAt || new Date().toISOString(),
       volume24h: Number(row.volume24h ?? row.token?.volume24h ?? 0),
       change24h: Number.isFinite(change24h) ? change24h : 0,

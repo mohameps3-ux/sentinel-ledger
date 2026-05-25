@@ -410,6 +410,73 @@ router.get("/track-record", async (req, res) => {
 });
 
 /** GET /api/v1/public/signals-24h — home history mode */
+/**
+ * GET /api/v1/public/sentinel-edge
+ * Aggregate 24h signal performance for the home banner.
+ *
+ * The "Sentinel Edge" badge is a unique differentiator vs competitors:
+ *   Photon, GMGN, BullX show "smart money buying" but never prove
+ *   what % of signals actually win or by how much. This endpoint
+ *   surfaces resolved-outcome statistics that users can trust.
+ */
+router.get("/sentinel-edge", async (_req, res) => {
+  const supabase = safeSupabase();
+  if (!supabase) {
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured" });
+  }
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  try {
+    const { data: perfRows, error } = await supabase
+      .from("signal_performance")
+      .select("id, asset, outcome_pct, emitted_at, status, signals")
+      .eq("status", "resolved")
+      .gte("emitted_at", since)
+      .order("outcome_pct", { ascending: false })
+      .limit(500);
+    if (error) throw error;
+
+    const resolved = (perfRows || []).filter((r) => Number.isFinite(Number(r.outcome_pct)));
+    const total = resolved.length;
+    const wins = resolved.filter((r) => Number(r.outcome_pct) >= 1.0);
+    const winRate = total > 0 ? (wins.length / total) * 100 : 0;
+    const avgWinReturn = wins.length > 0
+      ? wins.reduce((sum, r) => sum + Number(r.outcome_pct), 0) / wins.length
+      : 0;
+    const top = resolved[0] || null;
+    let bestSignal = null;
+    if (top && Number(top.outcome_pct) > 0) {
+      let symbol = null;
+      try {
+        const { data: snap } = await supabase
+          .from("market_snapshots")
+          .select("symbol")
+          .eq("mint", top.asset)
+          .maybeSingle();
+        symbol = snap?.symbol || null;
+      } catch (_) { /* non-fatal */ }
+      const ageMin = Math.max(0, Math.floor((Date.now() - Date.parse(top.emitted_at)) / 60000));
+      bestSignal = {
+        symbol: symbol || (top.asset ? String(top.asset).slice(0, 6) : "?"),
+        mint: top.asset || null,
+        returnPct: Number(top.outcome_pct),
+        ageMinutes: ageMin
+      };
+    }
+
+    return res.json({
+      ok: true,
+      windowHours: 24,
+      winRate: Math.round(winRate * 10) / 10,
+      avgWinReturn: Math.round(avgWinReturn * 10) / 10,
+      totalWinners: wins.length,
+      totalResolved: total,
+      bestSignal
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || "sentinel_edge_failed" });
+  }
+});
+
 router.get("/signals-24h", async (_req, res) => {
   const supabase = safeSupabase();
   if (!supabase) {

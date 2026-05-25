@@ -8,6 +8,7 @@ import { useWarMode } from "../../../../contexts/WarModeContext";
 import { useIngestionPulse } from "../../../../hooks/useIngestionPulse";
 import { LiveDelayedFeedCard } from "../../../../components/access/LiveDelayedFeedCard";
 import { LiveSignalCard } from "../LiveSignalCard";
+import { SentinelEdgeBanner } from "../../../../components/home/SentinelEdgeBanner";
 
 /**
  * War Home — Live tab (grid / Virtuoso). Parent `index.js` controls merge + hysteresis; this file only renders.
@@ -109,6 +110,7 @@ export function LiveTab({
         ) : (
           <LiveDelayedFeedCard />
         )}
+        <SentinelEdgeBanner />
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <p className="sl-label text-[9px] inline-flex items-center gap-1.5 !text-sl-muted">

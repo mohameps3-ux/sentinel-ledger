@@ -981,20 +981,36 @@ async function buildLatestSignalsFeed(
     const symbol = md.symbol || mint.slice(0, 4).toUpperCase();
     const persistedBase = Number(row.persisted_sentinel_score);
     let sentinelScore;
+    let walletsForCard = [];
     if (Number.isFinite(persistedBase)) {
       sentinelScore = Math.min(100, Math.max(35, Math.round(persistedBase)));
-    } else {
-      let wallets = [];
+      // Still fetch wallets so we can surface the top one in the response.
       try {
-        wallets = await fetchWalletRows(supabase, walletList);
+        walletsForCard = await fetchWalletRows(supabase, walletList);
       } catch (_) {
-        wallets = [];
+        walletsForCard = [];
       }
-      sentinelScore = avgWalletSentinel(wallets);
+    } else {
+      try {
+        walletsForCard = await fetchWalletRows(supabase, walletList);
+      } catch (_) {
+        walletsForCard = [];
+      }
+      sentinelScore = avgWalletSentinel(walletsForCard);
       if (sentinelScore == null) {
         sentinelScore = Math.min(100, Math.max(40, Math.round(Number(row.confidence || 70) * 0.92)));
       }
     }
+    // Pick top wallet by win_rate (filter min_trades to avoid one-trade fluke wallets).
+    const topWalletRow = (walletsForCard || [])
+      .filter((w) => Number(w?.total_trades || w?.closed_trades || 0) >= 5)
+      .sort((a, b) => Number(b?.win_rate || 0) - Number(a?.win_rate || 0))[0] || null;
+    const topWallet = topWalletRow ? {
+      address: String(topWalletRow.wallet_address || "").slice(0, 6),
+      addressFull: String(topWalletRow.wallet_address || ""),
+      winRate: Number(topWalletRow.win_rate || 0),
+      trades: Number(topWalletRow.total_trades || topWalletRow.closed_trades || 0)
+    } : null;
     const baseSentinelScore = sentinelScore;
     const perfW = combinedPerformanceWeight(row.signal_tags, weightMap);
     const primaryRuleId = (Array.isArray(row.signal_tags) ? row.signal_tags : []).map(asRuleId).find(Boolean) || null;
@@ -1055,7 +1071,8 @@ async function buildLatestSignalsFeed(
         recencyWeight: Math.round(recW * 10000) / 10000,
         stack: Math.round(stack * 10000) / 10000
       },
-      rulePerformance
+      rulePerformance,
+      topWallet
     });
   }
 

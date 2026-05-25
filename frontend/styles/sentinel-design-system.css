@@ -2186,6 +2186,83 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   white-space: normal;
 }
 
+/* Phase 7c — Sentinel Edge banner (proof-of-edge) */
+.sl-edge-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  margin: 6px 0;
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.06) 0%, rgba(6, 12, 22, 0.5) 100%);
+  font-family: "JetBrains Mono", monospace;
+}
+.sl-edge-banner--loading,
+.sl-edge-banner--pending {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+.sl-edge-banner__label {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgb(110, 231, 183);
+  padding: 2px 6px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 3px;
+  background: rgba(16, 185, 129, 0.08);
+}
+.sl-edge-banner--loading .sl-edge-banner__label,
+.sl-edge-banner--pending .sl-edge-banner__label {
+  color: rgba(255, 255, 255, 0.5);
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+}
+.sl-edge-banner__loading,
+.sl-edge-banner__pending {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  font-style: italic;
+}
+.sl-edge-banner__stats {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sl-edge-banner__stat {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.sl-edge-banner__stat-num {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: -0.02em;
+}
+.sl-edge-banner__stat-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sl-edge-good { color: rgb(110, 231, 183) !important; }
+.sl-edge-ok { color: rgb(252, 211, 77) !important; }
+.sl-edge-weak { color: rgb(252, 165, 165) !important; }
+.sl-edge-banner__sep {
+  color: rgba(255, 255, 255, 0.18);
+  font-size: 12px;
+}
+@media (max-width: 640px) {
+  .sl-edge-banner__sep--hide-mobile { display: none; }
+  .sl-edge-banner__stat-num { font-size: 12px; }
+  .sl-edge-banner__stat-label { font-size: 8px; }
+}
+
 .tpt-c-metric {
   flex-shrink: 0;
   min-width: 68px;
