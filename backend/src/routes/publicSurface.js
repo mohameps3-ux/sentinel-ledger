@@ -761,4 +761,43 @@ router.get("/smart-money-activity", async (req, res) => {
   }
 });
 
+/** GET /api/v1/public/token-flow/:address — recent smart-wallet signals for a specific mint.
+ *  Provides a REST fallback for the LiveFlowPanel when the WebSocket has no live data. */
+router.get("/token-flow/:address", async (req, res) => {
+  const address = String(req.params.address || "").trim();
+  const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
+  if (!address || !isProbableSolanaPubkey(address)) {
+    return res.status(400).json({ ok: false, error: "invalid_address", rows: [] });
+  }
+  const supabase = safeSupabase();
+  if (!supabase) {
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured", rows: [] });
+  }
+  const lookbackHours = Math.min(24, Math.max(1, Number(req.query.hours || 4)));
+  const sinceIso = new Date(Date.now() - lookbackHours * 3600_000).toISOString();
+  const limit = Math.min(50, Math.max(5, Number(req.query.limit || 30)));
+  try {
+    const { data, error } = await supabase
+      .from("smart_wallet_signals")
+      .select("id, wallet_address, last_action, confidence, created_at")
+      .eq("token_address", address)
+      .gte("created_at", sinceIso)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    const rows = (data || []).map((r) => ({
+      id: r.id,
+      wallet: r.wallet_address,
+      type: String(r.last_action || "buy").toLowerCase(),
+      amount: 0,
+      timestamp: r.created_at,
+      confidence: Number(r.confidence || 0),
+      source: "rest"
+    }));
+    return res.json({ ok: true, rows, meta: { source: "smart_wallet_signals", count: rows.length, lookbackHours } });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message, rows: [] });
+  }
+});
+
 module.exports = router;

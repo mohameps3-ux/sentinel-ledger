@@ -20,7 +20,7 @@ function isWhaleTx(tx, tokenPriceUsd) {
   return amt * price >= WHALE_USD_MIN;
 }
 
-export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
+export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0, isLive = false }) {
   const flowWalletAddrs = useMemo(() => {
     const s = new Set();
     transactions.forEach((tx) => {
@@ -43,9 +43,25 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
     <div className="border border-[#2a2f36] overflow-hidden">
       <div className="px-3 py-2.5 bg-[#0E1318] border-b border-[#2a2f36] flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
-          <span>
-            Speed: <span className="text-gray-200 font-semibold">{txPerMinute}</span> tx/min
-          </span>
+          {isLive ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-emerald-300 font-semibold text-[11px] uppercase tracking-wide">Live</span>
+              <span className="text-gray-600">·</span>
+              <span>Speed: <span className="text-gray-200 font-semibold">{txPerMinute}</span> tx/min</span>
+            </span>
+          ) : transactions.length > 0 ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400/70" />
+              <span className="text-amber-300/80 font-semibold text-[11px] uppercase tracking-wide">Recent</span>
+              <span className="text-gray-600 text-[10px]">· Last 4h smart wallet activity</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-gray-600 animate-pulse" />
+              <span className="text-gray-600 text-[11px] uppercase tracking-wide">Listening…</span>
+            </span>
+          )}
           {Number(tokenPriceUsd) > 0 ? (
             <span className="text-[10px] text-gray-600">
               Whale ≥ ${formatUsdWhole(WHALE_USD_MIN)} notional
@@ -77,11 +93,11 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
         {transactions.length === 0 && (
           <div className="flex flex-col items-center gap-3 py-10 text-center">
             <span className="relative flex h-8 w-8">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/30" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/20" style={{ animationDuration: "2s" }} />
               <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-base">⟳</span>
             </span>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-gray-500">Listening for swaps</p>
-            <p className="text-[11px] text-gray-600 max-w-[200px]">Transactions appear here in real-time as smart wallets trade this token.</p>
+            <p className="text-[11px] text-gray-600 max-w-[220px]">No smart wallet activity on this token in the last 4 hours. Try a more active token.</p>
           </div>
         )}
         {transactions.map((tx, idx) => {
@@ -124,7 +140,9 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
                       Whale
                     </span>
                   ) : null}
-                  {tx.isMock ? (
+                  {tx.source === "rest" ? (
+                    <span className="text-[9px] font-semibold uppercase tracking-wide text-amber-400/70">hist.</span>
+                  ) : tx.isMock ? (
                     <span className="text-[9px] font-bold uppercase tracking-wide text-cyan-200/90">🔬 Simulated</span>
                   ) : null}
                 </div>

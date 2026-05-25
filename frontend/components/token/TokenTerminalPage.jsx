@@ -7,6 +7,7 @@ import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import { useTokenData } from "../../hooks/useTokenData";
 import { useWebSocket } from "../../hooks/useWebSocket";
+import { useTokenFlow } from "../../hooks/useTokenFlow";
 import { TokenSkeleton } from "./TokenSkeleton";
 import { ChartPanel } from "./ChartPanel";
 import { RecentTokensSidebar } from "./RecentTokensSidebar";
@@ -530,7 +531,7 @@ function TerminalRight({ address, tokenData, recentTransactions, tokenPriceUsd, 
         id="flow"
         className="tpt-r-tx-list scroll-mt-[calc(var(--sl-nav-actual,52px)+var(--sl-token-section-nav-h,2.75rem))]"
       >
-        <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={tokenPriceUsd} />
+        <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={tokenPriceUsd} isLive={transactions.length > 0} />
       </div>
 
       <div className="tpt-r-view-all">VIEW ALL TRANSACTIONS →</div>
@@ -646,6 +647,7 @@ export default function TokenTerminalPage() {
   const address = normalizeAddress(router.query);
   const query = useTokenData(address);
   const { transactions } = useWebSocket(address || undefined);
+  const { rows: flowRows } = useTokenFlow(address || undefined);
   const [hasToken, setHasToken] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const prevTopTxRef = useRef(null);
@@ -675,7 +677,12 @@ export default function TokenTerminalPage() {
     }
     return set;
   }, [walletIntel]);
-  const recentTransactions = useMemo(() => transactions.slice(0, 30), [transactions]);
+  // Live WebSocket transactions take priority; REST fallback fills the gap when the
+  // socket has received nothing yet (token inactive or WS warming up).
+  const recentTransactions = useMemo(() => {
+    if (transactions.length > 0) return transactions.slice(0, 30);
+    return flowRows.slice(0, 30);
+  }, [transactions, flowRows]);
 
   useEffect(() => {
     const symbol = query.data?.data?.market?.symbol || "";
