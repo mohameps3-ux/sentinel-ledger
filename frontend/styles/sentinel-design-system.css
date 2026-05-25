@@ -1785,13 +1785,70 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 }
 .tpt-c-header {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
   padding: 6px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   flex-shrink: 0;
   background: #0a0c12;
-  overflow-x: auto;
+  overflow-x: visible;
+}
+.tpt-c-header-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.tpt-c-header-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+@media (min-width: 640px) {
+  .tpt-c-header {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+  .tpt-c-header-stats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    width: auto;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+  }
+}
+@media (max-width: 639px) {
+  .tpt-c-name {
+    min-width: 0;
+    flex: 1 1 120px;
+  }
+  .tpt-c-grade,
+  .tpt-c-regime,
+  .tpt-c-metric {
+    flex-shrink: 1;
+    min-width: 0;
+    border-left: none;
+    padding: 8px;
+  }
+  .tpt-c-metric {
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
+  }
+  .tpt-c-grade-label,
+  .tpt-c-regime-label,
+  .tpt-c-metric-label {
+    font-size: 10px;
+  }
+  .tpt-c-regime-exec {
+    font-size: 10px;
+    white-space: normal;
+  }
 }
 .tpt-c-breadcrumb {
   font-family: "JetBrains Mono", monospace;

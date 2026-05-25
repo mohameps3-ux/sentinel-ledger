@@ -256,66 +256,70 @@ function TerminalCenter({
   return (
     <div className="tpt-center">
       <div className="tpt-c-header">
-        <div className="tpt-c-breadcrumb">TOKEN · TERMINAL</div>
-        <div className="tpt-c-token-img">
-          {img ? (
-            <img src={img} alt={sym} onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          ) : (
-            <span>{sym.slice(0, 2).toUpperCase()}</span>
-          )}
-        </div>
+        <div className="tpt-c-header-identity">
+          <div className="tpt-c-breadcrumb">TOKEN · TERMINAL</div>
+          <div className="tpt-c-token-img">
+            {img ? (
+              <img src={img} alt={sym} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+            ) : (
+              <span>{sym.slice(0, 2).toUpperCase()}</span>
+            )}
+          </div>
 
-        <div className="tpt-c-name">
-          <div className="tpt-c-sym">${sym}</div>
-          <div className="tpt-c-fullname">{name}</div>
-          <div className="tpt-c-badges">
-            <span className="tpt-c-chain">SOLANA</span>
-            <button
-              type="button"
-              className="tpt-c-mint"
-              onClick={() => navigator.clipboard?.writeText(address)}
-            >
-              {address.slice(0, 4)}…{address.slice(-4)} ⧉
-            </button>
+          <div className="tpt-c-name">
+            <div className="tpt-c-sym">${sym}</div>
+            <div className="tpt-c-fullname">{name}</div>
+            <div className="tpt-c-badges">
+              <span className="tpt-c-chain">SOLANA</span>
+              <button
+                type="button"
+                className="tpt-c-mint"
+                onClick={() => navigator.clipboard?.writeText(address)}
+              >
+                {address.slice(0, 4)}…{address.slice(-4)} ⧉
+              </button>
+            </div>
+          </div>
+
+          <div className="tpt-c-price-block">
+            <div className="tpt-c-price">{price > 0 ? `$${price < 0.001 ? price.toFixed(6) : price.toFixed(4)}` : "—"}</div>
+            <div className={chg >= 0 ? "tpt-c-chg-pos" : "tpt-c-chg-neg"}>
+              {chg >= 0 ? "+" : ""}
+              {chg.toFixed(2)}% 24H
+            </div>
           </div>
         </div>
 
-        <div className="tpt-c-price-block">
-          <div className="tpt-c-price">{price > 0 ? `$${price < 0.001 ? price.toFixed(6) : price.toFixed(4)}` : "—"}</div>
-          <div className={chg >= 0 ? "tpt-c-chg-pos" : "tpt-c-chg-neg"}>
-            {chg >= 0 ? "+" : ""}
-            {chg.toFixed(2)}% 24H
+        <div className="tpt-c-header-stats">
+          <div className="tpt-c-grade">
+            <div className="tpt-c-grade-label">SENTINEL GRADE</div>
+            <div className="tpt-c-grade-val">{score?.grade ?? "A+"}</div>
+            <div className="tpt-c-grade-sub">{displayScore} / 100</div>
           </div>
-        </div>
 
-        <div className="tpt-c-grade">
-          <div className="tpt-c-grade-label">SENTINEL GRADE</div>
-          <div className="tpt-c-grade-val">{score?.grade ?? "A+"}</div>
-          <div className="tpt-c-grade-sub">{displayScore} / 100</div>
-        </div>
+          <div className={`tpt-c-regime ${regimeClass}`}>
+            <div className="tpt-c-regime-label">TACTICAL REGIME</div>
+            <div className="tpt-c-regime-action">{regimeAction}</div>
+            <div className="tpt-c-regime-entry">
+              {entryWindow === "EARLY" ? "EARLY ENTRY" : entryWindow === "MID" ? "MID ENTRY" : "LATE — CAUTION"}
+            </div>
+            <div className="tpt-c-regime-exec">
+              Execution: {score?.execution ?? score?.executionScore ?? tokenData?.terminal?.executionScore ?? 82}
+            </div>
+          </div>
 
-        <div className={`tpt-c-regime ${regimeClass}`}>
-          <div className="tpt-c-regime-label">TACTICAL REGIME</div>
-          <div className="tpt-c-regime-action">{regimeAction}</div>
-          <div className="tpt-c-regime-entry">
-            {entryWindow === "EARLY" ? "EARLY ENTRY" : entryWindow === "MID" ? "MID ENTRY" : "LATE — CAUTION"}
-          </div>
-          <div className="tpt-c-regime-exec">
-            Execution: {score?.execution ?? score?.executionScore ?? tokenData?.terminal?.executionScore ?? 82}
-          </div>
+          {[
+            { label: "LIQUIDITY", val: fmtUsd(liq) },
+            { label: "VOLUME 24H", val: fmtUsd(vol) },
+            { label: "M. CAP", val: fmtUsd(mcap) },
+            { label: "FDV", val: fmtUsd(fdv) }
+          ].map((m) => (
+            <div key={m.label} className="tpt-c-metric">
+              <div className="tpt-c-metric-label">{m.label}</div>
+              <div className="tpt-c-metric-val">{m.val}</div>
+            </div>
+          ))}
         </div>
-
-        {[
-          { label: "LIQUIDITY", val: fmtUsd(liq) },
-          { label: "VOLUME 24H", val: fmtUsd(vol) },
-          { label: "M. CAP", val: fmtUsd(mcap) },
-          { label: "FDV", val: fmtUsd(fdv) }
-        ].map((m) => (
-          <div key={m.label} className="tpt-c-metric">
-            <div className="tpt-c-metric-label">{m.label}</div>
-            <div className="tpt-c-metric-val">{m.val}</div>
-          </div>
-        ))}
       </div>
 
       <nav
