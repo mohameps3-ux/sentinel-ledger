@@ -353,9 +353,20 @@ function isR03DominatedEmission(score) {
     ? score.signals.map((s) => String(s).trim()).filter(Boolean)
     : [];
   const hasR03 = tags.includes("cluster_buy") || tags.includes("cluster_probing");
-  if (!hasR03) return false;
-  const hasStrongOther = tags.some((t) => STRONG_NON_R03_SIGNALS.has(t));
-  return !hasStrongOther;
+  if (hasR03) {
+    const hasStrongOther = tags.some((t) => STRONG_NON_R03_SIGNALS.has(t));
+    return !hasStrongOther;
+  }
+  // Fallback: untagged emissions with cluster-like wallet activity in window.
+  // This catches the 523 insufficient_signals blocks where score.signals is empty
+  // (tags didn't fire due to threshold edges) but the underlying clustering
+  // detection saw multiple wallets converging. Treating these as R03-eligible
+  // lets the volatile-regime bypass route them through.
+  if (tags.length === 0) {
+    const uniqueWallets = Number(score?.meta?.uniqueWalletsInWindow ?? 0);
+    return uniqueWallets >= 2;
+  }
+  return false;
 }
 
 async function loadSmartWalletStats(wallets) {
