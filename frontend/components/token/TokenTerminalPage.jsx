@@ -324,7 +324,7 @@ function TerminalCenter({
 
       <nav
         aria-label={t("token.nav.section")}
-        className="sticky top-[var(--sl-nav-actual,52px)] z-30 xl:hidden flex justify-center gap-1 px-2 py-2 bg-[#080a0e]/95 backdrop-blur-sm border-b border-white/[0.08]"
+        className="tpt-c-section-nav sticky top-[var(--sl-nav-actual,52px)] z-30 xl:hidden flex justify-center gap-1 px-2 bg-[#080a0e]/95 backdrop-blur-sm border-b border-white/[0.08]"
       >
         <a
           href="#chart"

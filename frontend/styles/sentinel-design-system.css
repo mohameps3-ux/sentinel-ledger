@@ -1824,6 +1824,17 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   }
 }
 @media (max-width: 639px) {
+  .tpt-c-header {
+    gap: 6px;
+    padding: 4px 12px;
+  }
+  .tpt-c-header-identity {
+    gap: 6px;
+    padding-block: 4px;
+  }
+  .tpt-c-header-stats {
+    gap: 6px;
+  }
   .tpt-c-name {
     min-width: 0;
     flex: 1 1 120px;
@@ -1834,10 +1845,10 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
     flex-shrink: 1;
     min-width: 0;
     border-left: none;
-    padding: 8px;
+    padding: 6px;
   }
   .tpt-c-metric {
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 6px;
   }
   .tpt-c-grade-label,
@@ -1848,6 +1859,13 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   .tpt-c-regime-exec {
     font-size: 10px;
     white-space: normal;
+  }
+  .tpt-c-section-nav {
+    padding-block: 0.25rem;
+  }
+  .tpt-c-chart .sl-chart-header {
+    padding: 6px 12px;
+    gap: 8px;
   }
 }
 .tpt-c-breadcrumb {

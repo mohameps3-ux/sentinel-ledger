@@ -120,6 +120,12 @@ html {
   --sl-token-section-nav-h: 2.75rem;
 }
 
+@media (max-width: 639px) {
+  :root {
+    --sl-token-section-nav-h: 2.25rem;
+  }
+}
+
 body {
   /* Do not set overflow-x on body — it clips fixed wallet modals/dropdowns on mobile. */
   background-color: theme('colors.sl-root');
