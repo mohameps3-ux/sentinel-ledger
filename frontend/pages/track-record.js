@@ -13,6 +13,21 @@ const TR_DECISIVE_WIN = 0.05;
 const TR_DECISIVE_LOSS = -0.05;
 
 function pct(v, d = 1) { const n = Number(v); return Number.isFinite(n) ? `${(n * 100).toFixed(d)}%` : "—"; }
+/**
+ * Format a fractional return (e.g., 0.05 = 5%, 22.9 = 2290%) cleanly:
+ * - >= 1000% (10x)  → "+23x" (multiplier form for pump.fun outliers)
+ * - >= 100%  (1x)   → "+150%"
+ * - otherwise       → "+5.2%"
+ */
+function formatBigPct(v, sign = true) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  const absN = Math.abs(n);
+  const s = sign && n > 0 ? "+" : n < 0 ? "-" : "";
+  if (absN >= 10) return `${s}${Math.round(absN)}x`;
+  if (absN >= 1) return `${s}${(absN * 100).toFixed(0)}%`;
+  return `${s}${(absN * 100).toFixed(1)}%`;
+}
 function shortMint(mint) { const s = String(mint || ""); return s.length > 12 ? `${s.slice(0, 4)}…${s.slice(-4)}` : s || "—"; }
 function clamp01(v) { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0; }
 function outcomeState(v) {
@@ -104,12 +119,14 @@ function Kpi({ label, value, detail, tone = "default", tooltip }) {
  */
 function BestSignalHero({ topWin, lastUpdated }) {
   if (!topWin || !Number.isFinite(Number(topWin.outcome_60m))) return null;
-  const outcome = Number(topWin.outcome_60m) * 100;
+  const outcomeFrac = Number(topWin.outcome_60m);
   const ageMs = topWin.created_at ? Date.now() - Date.parse(topWin.created_at) : null;
   const ageStr = ageMs != null ? (ageMs < 60_000 ? `${Math.round(ageMs / 1000)}s` : ageMs < 3600_000 ? `${Math.round(ageMs / 60_000)}m` : `${Math.round(ageMs / 3600_000)}h`) : "—";
   const symbol = topWin.symbol || topWin.asset || (topWin.mint ? String(topWin.mint).slice(0, 6) : "?");
   const ruleId = String(topWin.rule_id || topWin.rule_snapshot?.ruleId || "—").toUpperCase();
   const regime = String(topWin.regime || topWin.emission_regime || "—").toLowerCase();
+  const moveDisplay = formatBigPct(outcomeFrac);
+  const isExtreme = Math.abs(outcomeFrac) >= 10; // 1000%+ — usually pump.fun microcap
   return (
     <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-[#06101a] to-[#06101a] p-5">
       <div className="absolute right-4 top-4 flex items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-emerald-300/80">
@@ -125,9 +142,11 @@ function BestSignalHero({ topWin, lastUpdated }) {
         <div>
           <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Resolved Move</div>
           <div className="mt-1 font-mono text-4xl font-black text-emerald-300">
-            +{outcome.toFixed(1)}%
+            {moveDisplay}
           </div>
-          <div className="mt-1 text-xs text-slate-500">vs entry · 30m horizon</div>
+          <div className="mt-1 text-xs text-slate-500">
+            vs entry · 30m {isExtreme ? <span className="text-amber-300/80">· microcap pump</span> : null}
+          </div>
         </div>
         <div>
           <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Signal Age</div>
@@ -288,20 +307,26 @@ function TrackRecordPage() {
   const pending = Math.max(0, total - resolved);
   const winRate = data && data.win_rate_60m != null && Number.isFinite(Number(data.win_rate_60m)) ? Number(data.win_rate_60m) : 0;
   const avgReturn = data && data.avg_return != null && Number.isFinite(Number(data.avg_return)) ? Number(data.avg_return) : 0;
+  const medianReturn = data && data.median_return != null && Number.isFinite(Number(data.median_return)) ? Number(data.median_return) : null;
   const flatNeutral = data && Number.isFinite(Number(data.flat_resolved_signals)) ? Number(data.flat_resolved_signals) : NaN;
   const avgRows = Number(meta.avg_return_sample_rows || 0);
   const perfMirrorAgg = meta.stats_basis === "signal_performance_mirror";
   const rollingDays = Number(meta.rolling_metrics_days || 7);
   const winDetail = `win ÷ (win+loss), move ±5%, last ${rollingDays}d`;
-  const avgDetail = perfMirrorAgg
-    ? `mean resolved outcomes · last ${rollingDays}d`
-    : avgRows > 0
-      ? `last ${rollingDays}d · sample ${avgRows.toLocaleString()} rows`
-      : `mean resolved · last ${rollingDays}d`;
+  // Median is the headline (robust to pump.fun outliers); mean is shown as secondary context.
+  const useMedian = medianReturn != null;
+  const headlineReturn = useMedian ? medianReturn : avgReturn;
+  const avgDetail = useMedian
+    ? `median · mean ${formatBigPct(avgReturn)} (incl. outliers)`
+    : perfMirrorAgg
+      ? `mean resolved outcomes · last ${rollingDays}d`
+      : avgRows > 0
+        ? `last ${rollingDays}d · sample ${avgRows.toLocaleString()} rows`
+        : `mean resolved · last ${rollingDays}d`;
   const ddDetail = `worst case at 30m · last ${rollingDays}d`;
   // Track Record uses institutional ±5% threshold; Home banner uses ±1% — both honest, different lens.
   const winTooltip = "Institutional methodology: a signal counts as WIN only if the token moves +5% or more within 30 minutes of emission. Smaller moves count as flat (excluded from WR denominator), losses as -5% or worse. This is stricter than Home banner (±1%).";
-  const avgTooltip = "Mean realized outcome 30 minutes after each signal, including winners, losers, and flats. Negative = signals on average move against the entry within 30m (typical for memecoins).";
+  const avgTooltip = "MEDIAN return — the typical signal outcome at 30m. Robust to pump.fun outliers (a single +2000x microcap doesn't distort the headline). The MEAN is shown as a secondary number for transparency: it includes those extreme winners and is naturally much higher.";
   const ddTooltip = "Single worst realized outcome at 30m in the rolling window — captures the rug-pull risk you're exposed to if you blindly chase every signal.";
 
   const topWin = useMemo(() => {
@@ -469,15 +494,15 @@ function TrackRecordPage() {
               tooltip={winTooltip}
             />
             <Kpi
-              label="Avg Return (7d)"
-              value={hideNumericKpis ? "…" : pct(avgReturn, 2)}
+              label={useMedian ? "Median Return (7d)" : "Avg Return (7d)"}
+              value={hideNumericKpis ? "…" : formatBigPct(headlineReturn)}
               detail={avgDetail}
-              tone="good"
+              tone={Math.abs(headlineReturn) < 0.005 ? "default" : headlineReturn >= 0 ? "good" : "bad"}
               tooltip={avgTooltip}
             />
             <Kpi
               label="Worst 30m (7d)"
-              value={hideNumericKpis ? "…" : pct(data?.max_drawdown, 2)}
+              value={hideNumericKpis ? "…" : formatBigPct(data?.max_drawdown)}
               detail={ddDetail}
               tone="bad"
               tooltip={ddTooltip}
@@ -485,7 +510,7 @@ function TrackRecordPage() {
           </div>
           <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_360px]">
             <LineChart title="Win Rate Over Time (30m)" subtitle={hideNumericKpis ? "cargando…" : `${chartRows.length} oracle rows (tape + top wins)`} value={hideNumericKpis ? "…" : pct(winRate, 1)} rows={chartRows} mode="win" color="#22d3ee" />
-            <LineChart title="Avg Return Over Time" subtitle="rolling average from real outcomes" value={hideNumericKpis ? "…" : pct(avgReturn, 2)} rows={chartRows} mode="avg" color="#3b82f6" />
+            <LineChart title="Avg Return Over Time" subtitle="rolling average from real outcomes" value={hideNumericKpis ? "…" : formatBigPct(avgReturn)} rows={chartRows} mode="avg" color="#3b82f6" />
             {hideNumericKpis ? (
               <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4 flex min-h-[170px] items-center justify-center font-mono text-slate-500">
                 …

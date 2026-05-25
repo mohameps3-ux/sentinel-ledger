@@ -278,6 +278,15 @@ async function resolveSignalPerformanceLedgerAggregates(supabase, opts = {}) {
     .filter((row) => Number(row.outcome_pct) > winPctThresh)
     .map((row) => Number(row.outcome_pct) / 100)
     .filter(Number.isFinite);
+  // Median is robust to pump.fun outliers (e.g., a single +2290x signal would otherwise pull mean to +228%).
+  const sortedReturns = [...returns].sort((a, b) => a - b);
+  let medianReturn = null;
+  if (sortedReturns.length) {
+    const mid = Math.floor(sortedReturns.length / 2);
+    medianReturn = sortedReturns.length % 2 === 0
+      ? (sortedReturns[mid - 1] + sortedReturns[mid]) / 2
+      : sortedReturns[mid];
+  }
   return {
     total_signals: Number(totalRes.count || 0),
     resolved_signals: resolvedTotal,
@@ -286,6 +295,7 @@ async function resolveSignalPerformanceLedgerAggregates(supabase, opts = {}) {
     decisive,
     flatResolved,
     avg_return: returns.length ? returns.reduce((a, b) => a + b, 0) / returns.length : null,
+    median_return: medianReturn,
     max_drawdown: returns.length ? Math.min(...returns) : null,
     avg_return_wins: winReturnsFromSample.length
       ? winReturnsFromSample.reduce((a, b) => a + b, 0) / winReturnsFromSample.length
@@ -880,6 +890,7 @@ async function buildTrackRecordPayload(
     flat_resolved_signals: ledger.flatResolved,
     win_rate_60m: metricsDecisive ? metricsWins / metricsDecisive : null,
     avg_return: metricsLedger.avg_return,
+    median_return: metricsLedger.median_return ?? null,
     avg_return_wins: metricsLedger.avg_return_wins,
     max_drawdown: metricsLedger.max_drawdown,
     best_call: bestCallOut,
@@ -1042,7 +1053,7 @@ router.get("/track-record", async (req, res) => {
   } catch (error) {
     console.warn("[track-record] cache gen read failed:", error?.message || error);
   }
-  const cacheKey = `signals:track-record:v13:g${cacheGen}:${filter}:${page}:${pageSize}:cp${chartPages}`;
+  const cacheKey = `signals:track-record:v14:g${cacheGen}:${filter}:${page}:${pageSize}:cp${chartPages}`;
   const cacheSec = trackRecordCacheSeconds();
   try {
     const cached = await redis.get(cacheKey);
