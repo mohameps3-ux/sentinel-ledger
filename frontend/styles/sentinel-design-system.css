@@ -1997,6 +1997,28 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   flex-shrink: 0;
   text-align: right;
 }
+.tpt-c-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 5px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(99, 179, 237, 0.9);
+  background: rgba(99, 179, 237, 0.08);
+  border: 1px solid rgba(99, 179, 237, 0.2);
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tpt-c-share-btn:hover,
+.tpt-c-share-btn:active {
+  background: rgba(99, 179, 237, 0.18);
+  color: #90cdf4;
+}
 .tpt-c-price {
   font-size: 17px;
   font-weight: 700;

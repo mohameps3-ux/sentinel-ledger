@@ -297,6 +297,22 @@ function TerminalCenter({
               {chg >= 0 ? "+" : ""}
               {chg.toFixed(2)}% 24H
             </div>
+            {typeof navigator !== "undefined" && navigator.share && (
+              <button
+                type="button"
+                aria-label="Share token"
+                className="tpt-c-share-btn"
+                onClick={() =>
+                  navigator.share({
+                    title: `$${sym} on Sentinel Ledger`,
+                    text: `${name} — Score ${displayScore}/100 · ${chg >= 0 ? "+" : ""}${chg.toFixed(2)}% 24H`,
+                    url: window.location.href
+                  }).catch(() => {})
+                }
+              >
+                ↑ Share
+              </button>
+            )}
           </div>
         </div>
 
