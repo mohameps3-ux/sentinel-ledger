@@ -778,6 +778,30 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
 
     const sorted = enriched.sort((a, b) => b.rankingScore - a.rankingScore);
 
+    // Compute freshness signals so the UI can display "Updated Xm ago" without guessing.
+    let dataComputedAt = null;
+    for (const r of sorted) {
+      const candidates = [r.lastCheckedAt, r.smartWalletRowUpdatedAt, r.profile?.computedAt];
+      for (const iso of candidates) {
+        if (!iso) continue;
+        if (dataComputedAt == null || new Date(iso).getTime() > new Date(dataComputedAt).getTime()) {
+          dataComputedAt = iso;
+        }
+      }
+    }
+
+    // Total universe size (independent of page limit + filters) so "Total tracked wallets"
+    // reflects reality instead of always echoing the page size.
+    let totalSmartWallets = null;
+    try {
+      const { count, error: cErr } = await supabase
+        .from("smart_wallets")
+        .select("wallet_address", { count: "exact", head: true });
+      if (!cErr && Number.isFinite(Number(count))) totalSmartWallets = Number(count);
+    } catch (_) {
+      totalSmartWallets = null;
+    }
+
     return res.json({
       ok: true,
       rows: sorted,
@@ -786,6 +810,8 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
         count: sorted.length,
         limit: pageLimit,
         chain: chain === "all" ? "all" : "solana",
+        totalSmartWallets,
+        dataComputedAt,
         filters: {
           minWinRate: minWr,
           minTrades,
@@ -801,13 +827,44 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
   }
 });
 
-/** GET /api/v1/public/smart-money-activity — latest smart-wallet touches */
+/** GET /api/v1/public/smart-money-activity — latest smart-wallet touches.
+ *  Returns up to `limit` rows for the table + meta.activeProbes24h / activeProbes7d
+ *  counted server-side (NOT capped by the page limit) so the UI shows the real volume. */
 router.get("/smart-money-activity", async (req, res) => {
   const supabase = safeSupabase();
   if (!supabase) {
     return res.status(503).json({ ok: false, error: "supabase_unconfigured", rows: [] });
   }
   const limit = Math.min(100, Math.max(1, Number(req.query.limit || 48)));
+  const now = Date.now();
+  const since24hIso = new Date(now - 86_400_000).toISOString();
+  const since7dIso = new Date(now - 7 * 86_400_000).toISOString();
+
+  async function countTouches(table, timeColumn) {
+    try {
+      const [c24, c7d] = await Promise.all([
+        supabase.from(table).select(timeColumn, { count: "exact", head: true }).gte(timeColumn, since24hIso),
+        supabase.from(table).select(timeColumn, { count: "exact", head: true }).gte(timeColumn, since7dIso)
+      ]);
+      return {
+        activeProbes24h: Number.isFinite(Number(c24?.count)) ? Number(c24.count) : null,
+        activeProbes7d: Number.isFinite(Number(c7d?.count)) ? Number(c7d.count) : null
+      };
+    } catch (_) {
+      return { activeProbes24h: null, activeProbes7d: null };
+    }
+  }
+
+  function freshestIso(rows, isoField) {
+    let best = null;
+    for (const r of rows || []) {
+      const iso = r?.[isoField];
+      if (!iso) continue;
+      if (best == null || new Date(iso).getTime() > new Date(best).getTime()) best = iso;
+    }
+    return best;
+  }
+
   try {
     const perfSelect = "asset, emitted_at, confidence, signals, outcome_pct, status";
     const { data: perfData, error: perfError } = await supabase
@@ -817,10 +874,18 @@ router.get("/smart-money-activity", async (req, res) => {
       .limit(limit);
     if (!perfError && Array.isArray(perfData) && perfData.length > 0) {
       const rows = perfData.map(mapPerfRowToSmartMoneyActivity);
+      const counts = await countTouches("signal_performance", "emitted_at");
       return res.json({
         ok: true,
         rows,
-        meta: { source: "signal_performance", count: rows.length }
+        meta: {
+          source: "signal_performance",
+          count: rows.length,
+          activeProbes24h: counts.activeProbes24h,
+          activeProbes7d: counts.activeProbes7d,
+          dataComputedAt: freshestIso(perfData, "emitted_at"),
+          windowHoursForActiveProbes: 24
+        }
       });
     }
     if (perfError) {
@@ -850,7 +915,19 @@ router.get("/smart-money-activity", async (req, res) => {
       createdAt: r.created_at,
       resultPct: r.result_pct != null ? Number(r.result_pct) : null
     }));
-    return res.json({ ok: true, rows, meta: { source: "smart_wallet_signals", count: rows.length } });
+    const counts = await countTouches("smart_wallet_signals", "created_at");
+    return res.json({
+      ok: true,
+      rows,
+      meta: {
+        source: "smart_wallet_signals",
+        count: rows.length,
+        activeProbes24h: counts.activeProbes24h,
+        activeProbes7d: counts.activeProbes7d,
+        dataComputedAt: freshestIso(data, "created_at"),
+        windowHoursForActiveProbes: 24
+      }
+    });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message, rows: [] });
   }
