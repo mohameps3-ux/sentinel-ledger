@@ -690,20 +690,25 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     }));
   }, [interpretedSignals]);
 
-  /** Free / disconnected wallets: client-side 30 min delay on top of API tier. */
+  /**
+   * Free / disconnected wallets: client-side 30 min delay on top of API tier.
+   * Every signal-derived view (LIVE, VELOCITY, OUTLIER) should consume this pool,
+   * not the raw `liveSignalPool`, or the paywall leaks. HOT TRACKED stays raw —
+   * it's a volume leaderboard (commodity), not a Sentinel signal.
+   */
   const liveSignalPoolForFeed = useMemo(() => {
     if (isPro) return liveSignalPool;
     return filterLiveSignalsForFreeTier(liveSignalPool);
   }, [liveSignalPool, isPro]);
 
   const warRoomSignals = useMemo(
-    () => liveSignalPool.filter((t) => t._liveSource !== "hot_fill"),
-    [liveSignalPool]
+    () => liveSignalPoolForFeed.filter((t) => t._liveSource !== "hot_fill"),
+    [liveSignalPoolForFeed]
   );
 
-  /** OUTLIER tab only — unchanged score sort; LIVE grid uses `liveTabTokens`. */
-  const sortedSignalPool = useSortedTokens(liveSignalPool);
-  const sortedLiveFeedPool = useSortedTokens(liveSignalPoolForFeed);
+  /** Both OUTLIER and LIVE feed sorts derive from the tier-aware pool now. */
+  const sortedSignalPool = useSortedTokens(liveSignalPoolForFeed);
+  const sortedLiveFeedPool = sortedSignalPool;
 
   /** LIVE grid: engine signals only. Do not backfill with hot_fill trending rows. */
   const liveTabTokens = useMemo(() => {

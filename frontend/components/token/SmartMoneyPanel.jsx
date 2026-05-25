@@ -2,11 +2,100 @@ import { useMemo } from "react";
 import { useSmartMoney } from "../../hooks/useSmartMoney";
 import { useClientAuthToken } from "../../hooks/useClientAuthToken";
 import { useWalletLabels } from "../../hooks/useWalletLabels";
-import { Activity, Copy, Radio, Shield, Trophy, Wallet, Zap } from "lucide-react";
+import { useAccessTier } from "../../hooks/useAccessTier";
+import { useSubscriptionModal } from "../../contexts/SubscriptionModalContext";
+import { Activity, Copy, Lock, Radio, Shield, Trophy, Wallet, Zap } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatDateTime, formatUsdAmount } from "../../lib/formatStable";
 import { TerminalActionIcons } from "../terminal/TerminalActionIcons";
 import { buildSolscanAccountUrl, EXTERNAL_ANCHOR_REL } from "../../lib/terminalLinks";
+
+/**
+ * Locked preview shown to free users. Sapphire-themed; opens the unified
+ * SubscriptionModal so we never lose a click trying to convert.
+ */
+function SmartMoneyLockedPreview({ reason = "free" }) {
+  const { openSubscriptionModal } = useSubscriptionModal();
+  const headline =
+    reason === "no-session"
+      ? "Connect wallet to unlock smart wallets"
+      : "Smart wallets on this mint are PRO";
+  const sub =
+    reason === "no-session"
+      ? "Sign once with your wallet, then upgrade in two clicks."
+      : "See the exact wallets accumulating this token, their tier, Birdeye PnL and entry timing.";
+  return (
+    <div
+      className="sl-card-premium sl-shine-edge relative overflow-hidden p-5"
+      style={{
+        borderColor: "rgba(96,165,250,0.40)",
+        boxShadow:
+          "0 0 0 1px rgba(96,165,250,0.18) inset, 0 14px 36px -12px rgba(37,99,235,0.55), 0 0 28px -6px rgba(37,99,235,0.25)"
+      }}
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[rgba(96,165,250,0.5)] bg-[rgba(37,99,235,0.15)] text-[var(--sl-diamond)] shadow-[0_0_18px_rgba(37,99,235,0.4)]">
+          <Lock size={18} strokeWidth={2.2} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="sl-eyebrow flex items-center gap-2 text-[var(--sl-sapphire-hi)]">
+            <span className="sl-live-dot" />
+            Sentinel PRO
+          </div>
+          <h3 className="sl-display mt-1 text-lg font-bold text-[var(--sl-text-primary)]">{headline}</h3>
+          <p className="mt-1.5 max-w-md text-[12.5px] leading-relaxed text-[var(--sl-text-secondary)]">{sub}</p>
+        </div>
+      </div>
+
+      <ul className="mt-4 grid gap-2 text-[12px] text-[var(--sl-text-secondary)] sm:grid-cols-2">
+        <li className="flex items-center gap-2">
+          <span className="sl-live-dot sl-live-dot--win" />
+          Ranked wallet list per token
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="sl-live-dot sl-live-dot--win" />
+          Birdeye PnL + entry timing
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="sl-live-dot sl-live-dot--win" />
+          Realtime signals (no 30m delay)
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="sl-live-dot sl-live-dot--win" />
+          Telegram + push alerts
+        </li>
+      </ul>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={openSubscriptionModal}
+          className="sl-shine-edge inline-flex h-10 items-center gap-2 rounded-lg border border-[rgba(147,197,253,0.85)] bg-gradient-to-br from-[rgba(37,99,235,0.32)] to-[rgba(29,78,216,0.18)] px-4 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--sl-diamond-bright)] shadow-[0_0_0_1px_rgba(147,197,253,0.4)_inset,0_12px_30px_-10px_rgba(37,99,235,0.85)] transition-all hover:from-[rgba(37,99,235,0.45)] hover:to-[rgba(29,78,216,0.28)] hover:shadow-[0_0_0_1px_rgba(191,219,254,0.55)_inset,0_18px_38px_-10px_rgba(37,99,235,1)]"
+        >
+          <span className="sl-live-dot" style={{ width: "5px", height: "5px" }} />
+          Unlock smart wallets
+        </button>
+        <span className="sl-num text-[11px] text-[var(--sl-text-muted)]">10 USDC · 7d · 29 USDC · 30d</span>
+      </div>
+
+      {/* Decorative blurred preview rows */}
+      <div className="mt-5 grid gap-2 opacity-60 [filter:blur(2.5px)] pointer-events-none select-none" aria-hidden>
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="flex items-center justify-between rounded-lg border border-[var(--sl-border)] bg-[var(--sl-bg-surface)] px-3 py-2.5"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="h-7 w-7 rounded-full bg-gradient-to-br from-[rgba(37,99,235,0.4)] to-[rgba(96,165,250,0.2)]" />
+              <span className="sl-num text-[11px] text-[var(--sl-text-secondary)]">▮▮▮▮…▮▮▮▮</span>
+            </div>
+            <span className="sl-num text-[12px] font-bold text-[var(--sl-diamond)]">▮▮.▮%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function compactWallet(wallet) {
   if (!wallet) return "unknown";
@@ -26,7 +115,9 @@ function metricValue(value) {
 
 export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
   const token = useClientAuthToken();
-  const { data: payload, isLoading, error } = useSmartMoney(tokenAddress, token);
+  const { isPro } = useAccessTier();
+  const enabled = Boolean(token) && isPro;
+  const { data: payload, isLoading, error } = useSmartMoney(tokenAddress, enabled ? token : null);
   const wallets = payload?.data || [];
   const walletAddresses = useMemo(() => wallets.map((w) => w.wallet).filter(Boolean), [wallets]);
   const { labelFor, titleFor } = useWalletLabels(walletAddresses);
@@ -38,37 +129,33 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
   if (!tokenAddress) {
     return <div className="text-gray-500 text-sm text-center py-6">Token address missing</div>;
   }
-  if (!token) {
-    return (
-      <div className="text-gray-400 text-sm text-center py-6 border border-dashed border-gray-700 ">
-        Connect wallet and sign in to view PRO smart wallets.
-      </div>
-    );
+
+  // Free users (or users without a signed session) get the sapphire upgrade preview
+  // instead of a raw error / dead text — drives conversion and removes confusion.
+  if (!isPro) {
+    return <SmartMoneyLockedPreview reason={token ? "free" : "no-session"} />;
   }
 
   if (isLoading) {
     return (
-      <div className="border border-dashed border-[#2a2f36] px-4 py-10 text-center space-y-2">
-        <div className="inline-flex h-8 w-8 border-2 border-purple-500/40 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-gray-400">Ranking wallets for this mint…</p>
+      <div className="sl-card-premium px-4 py-10 text-center space-y-2">
+        <div className="inline-flex h-8 w-8 border-2 border-[rgba(96,165,250,0.5)] border-t-transparent rounded-full animate-spin mx-auto shadow-[0_0_18px_rgba(37,99,235,0.4)]" />
+        <p className="sl-num text-[12px] text-[var(--sl-text-secondary)]">Ranking wallets for this mint…</p>
       </div>
     );
   }
 
   if (error) {
+    // 403 here means a PRO wallet+JWT mismatch — re-sign covers it.
     const isProGate = /upgrade to pro/i.test(error.message || "");
     if (isProGate) {
-      return (
-        <div className="border border-dashed border-amber-500/30 bg-amber-500/[0.05] px-4 py-6 text-center space-y-2">
-          <p className="text-amber-300 text-[13px] font-semibold">Session verification failed</p>
-          <p className="text-gray-400 text-[12px] leading-relaxed max-w-xs mx-auto">
-            Your wallet shows an active PRO plan but the server couldn&apos;t verify it via your current session.
-            Disconnect and reconnect your wallet to refresh the auth token.
-          </p>
-        </div>
-      );
+      return <SmartMoneyLockedPreview reason="no-session" />;
     }
-    return <div className="text-red-400 text-sm text-center py-6">{error.message || "Failed to load smart money data"}</div>;
+    return (
+      <div className="rounded-lg border border-rose-500/35 bg-rose-500/10 px-4 py-4 text-center text-[12.5px] text-rose-200">
+        {error.message || "Failed to load smart money data"}
+      </div>
+    );
   }
 
   if (!wallets.length) {
