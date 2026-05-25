@@ -148,9 +148,10 @@ export function LiveTab({
               <Link
                 href="/wallet-stalker"
                 className="sl-glow-info w-[5cm] max-w-[62vw] h-7 px-2 border border-blue-500/30 bg-blue-500/[0.08] text-blue-100 no-underline inline-flex items-center justify-between gap-1"
+                title="Smart wallet signals in current feed"
               >
                 <span className="text-[10px] uppercase tracking-wide truncate">{t("war.live.walletActivity")}</span>
-                <span className="text-[10px] font-mono shrink-0">{stalkerUnread > 0 ? `+${stalkerUnread}` : "0"}</span>
+                <span className="text-[10px] font-mono shrink-0">{dbSignalCount > 0 ? dbSignalCount : stalkerUnread > 0 ? `+${stalkerUnread}` : "—"}</span>
               </Link>
             </div>
             <div className="flex flex-wrap items-center justify-start md:justify-end gap-1">
