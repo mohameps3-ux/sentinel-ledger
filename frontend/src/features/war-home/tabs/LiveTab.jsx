@@ -97,19 +97,8 @@ export function LiveTab({
       className={`sl-section${isWarMode ? " war-mode-active" : ""}`}
     >
       <div className="mb-3 space-y-2">
-        {isProFeed ? (
-          <div
-            className="flex flex-wrap items-center gap-2 px-2.5 py-1.5 border border-emerald-500/35 bg-emerald-500/10"
-            data-testid="sl-live-feed-tier-badge"
-          >
-            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-400 animate-pulse" aria-hidden />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200">
-              {t("war.live.accessLive")}
-            </span>
-          </div>
-        ) : (
-          <LiveDelayedFeedCard />
-        )}
+        {/* PRO users: no redundant 'ACCESS LIVE' strip — the LIVE tab + PRO badge already convey state. */}
+        {!isProFeed ? <LiveDelayedFeedCard /> : null}
         <SentinelEdgeBanner />
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>

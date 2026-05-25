@@ -181,7 +181,7 @@ export function WalletButton({ navCompact = false }) {
           >
             {connected ? (
               <>
-                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-emerald-500/40 bg-emerald-500/15 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.25)]">
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-[rgba(96,165,250,0.55)] bg-[rgba(37,99,235,0.18)] text-[var(--sl-diamond)] shadow-[0_0_10px_rgba(37,99,235,0.35)]">
                   <ShieldCheck size={11} strokeWidth={2.4} aria-hidden />
                 </span>
                 <span className="sl-num min-w-0 truncate text-[10.5px] font-bold normal-case tracking-normal text-[var(--sl-text-primary)]">
