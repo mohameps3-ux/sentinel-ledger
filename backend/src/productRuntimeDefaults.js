@@ -16,6 +16,12 @@ if (profile !== "strict") {
   // contaminated pre-Phase-1 calm data while volatile signals accumulate.
   process.env.SIGNAL_GATE_ADAPTIVE_COOLDOWN_BYPASS_ON_TIGHTEN = "false";
 
+  // Phase 4b: WR floor — do not tighten any bucket with WR ≥ 20%.
+  // After excluding calm+trending, volatile (WR 33%) is the only bucket.
+  // Tightening volatile undoes Phase 1. Floor set to 20% so the tuner
+  // only acts when things are genuinely bad.
+  process.env.SIGNAL_GATE_ADAPTIVE_TIGHTEN_FLOOR_WR = "20";
+
   // ─── Phase 2: Outcome resolution horizon (May 2026) ────────────────────
   // Top wallets peak WR at 30m (Fuz4rV: 63.6%), not at 10m (18.2%).
   // Evaluating at 10m marks winners as losses → corrupts calibrator learning.
