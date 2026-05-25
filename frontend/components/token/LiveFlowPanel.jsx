@@ -75,7 +75,14 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0 }) {
           <span className="text-right">View</span>
         </div>
         {transactions.length === 0 && (
-          <div className="text-gray-500 text-sm text-center py-8">Waiting for swaps…</div>
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <span className="relative flex h-8 w-8">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/30" />
+              <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-base">⟳</span>
+            </span>
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-gray-500">Listening for swaps</p>
+            <p className="text-[11px] text-gray-600 max-w-[200px]">Transactions appear here in real-time as smart wallets trade this token.</p>
+          </div>
         )}
         {transactions.map((tx, idx) => {
           const whale = isWhaleTx(tx, tokenPriceUsd);

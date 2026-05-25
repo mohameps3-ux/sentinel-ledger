@@ -4,33 +4,25 @@ import { TerminalActionIcons } from "../terminal/TerminalActionIcons";
 import { formatCompact } from "../../lib/formatStable";
 
 function EmptyState({ status, t }) {
+  const isError = status?.kind && status.kind !== "no_data";
   const copy =
     status?.kind === "backend_offline"
-      ? {
-          title: "Backend offline",
-          body: "The trading API is not reachable from this frontend session. Check the backend process or API proxy target."
-        }
+      ? { icon: "⚡", title: "Backend offline", body: "The trading API is unreachable. Try refreshing in a moment." }
       : status?.kind === "wrong_endpoint"
-        ? {
-            title: "Wrong API endpoint",
-            body: "The API route returned 404. The frontend is probably pointed at the wrong origin or proxy target."
-          }
+        ? { icon: "⚠", title: "Wrong endpoint", body: "API returned 404. The frontend may be pointed at the wrong origin." }
         : status?.kind === "backend_error"
-          ? {
-              title: "Backend error",
-              body: "The API responded, but the service returned an error while loading the scanner universe."
-            }
-          : {
-              title: "No data",
-              body: t("scanner.table.empty")
-            };
+          ? { icon: "✕", title: "Backend error", body: "The service returned an error while loading the scanner universe." }
+          : { icon: "◎", title: "Scanning universe", body: t("scanner.table.empty") };
   return (
-    <div className="px-3 py-8 text-center">
+    <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+      <span className={`flex h-10 w-10 items-center justify-center rounded-full border text-lg ${isError ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-cyan-500/20 bg-cyan-500/08 text-cyan-500 animate-pulse"}`}>
+        {copy.icon}
+      </span>
       <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-300">{copy.title}</p>
-      <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-zinc-600">{copy.body}</p>
-      {status?.status != null ? (
-        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-700">
-          status={status.status} kind={status.kind}
+      <p className="mx-auto max-w-xs text-[11px] leading-relaxed text-zinc-600">{copy.body}</p>
+      {status?.status != null && isError ? (
+        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-700">
+          {status.kind}
         </p>
       ) : null}
     </div>
