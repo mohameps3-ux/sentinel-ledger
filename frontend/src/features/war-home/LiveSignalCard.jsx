@@ -337,8 +337,11 @@ export function LiveSignalCard({
           ruleSamples != null && ruleSamples > 0 && rulePerf?.successCount60m != null
             ? Number((rulePerf.successCount60m / ruleSamples) * 100)
             : null;
+        // rulePerf.avgReturn60m is stored as decimal (0.06 = +6%) because
+        // validationOracle.pctFromPrices returns (later-entry)/entry directly.
+        // We display as %, so multiply by 100.
         const ruleAvgReturn = rulePerf?.avgReturn60m != null && Number.isFinite(Number(rulePerf.avgReturn60m))
-          ? Number(rulePerf.avgReturn60m)
+          ? Number(rulePerf.avgReturn60m) * 100
           : null;
         const ruleCalibrated = ruleSamples != null && ruleSamples >= 80;
         const edgeLabel = ruleLabel(rulePerf?.signal, rulePerf?.ruleId);
