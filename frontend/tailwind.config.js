@@ -65,15 +65,18 @@ module.exports = {
         'sl-blue':   '#2563EB',
         'sl-blue-lt': '#60A5FA',
 
-        // Override Tailwind built-ins — cool legacy hues → sapphire scale
+        // Override Tailwind built-ins — every cool/blue hue family resolves to the institutional
+        // sapphire scale so existing utilities (text-blue-300, border-cyan-500, etc.) render the
+        // brand color everywhere without touching component files.
         teal:    sapphireHueRamp,
         cyan:    sapphireHueRamp,
         indigo:  sapphireHueRamp,
         purple:  sapphireHueRamp,
         violet:  sapphireHueRamp,
         fuchsia: sapphireHueRamp,
-        sky:     neutralRamp,
-        blue:    neutralRamp,
+        sky:     sapphireHueRamp,
+        blue:    sapphireHueRamp,
+        // Slate stays as a true neutral slate (text colors, surfaces).
       },
       fontFamily: {
         'display': ['var(--font-space-grotesk)', 'sans-serif'],

@@ -185,7 +185,7 @@ h3.sl-h {
 
 /* ───────── Illuminated ring on hover (institutional card feel) ───────── */
 .sl-ring-hover {
-  transition: box-shadow 0.45s ease, border-color 0.35s ease, transform 0.35s ease;
+  transition: box-shadow 0.45s ease, border-color 0.35s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .sl-ring-hover:hover {
   border-color: rgba(var(--sl-sapphire-hi-rgb), 0.45) !important;
@@ -193,6 +193,15 @@ h3.sl-h {
     0 0 0 1px rgba(var(--sl-sapphire-hi-rgb), 0.35),
     0 0 26px -2px rgba(var(--sl-sapphire-rgb), 0.28),
     0 14px 36px -8px rgba(0, 0, 0, 0.55);
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sl-ring-hover {
+    transition: none;
+  }
+  .sl-ring-hover:hover {
+    transform: none;
+  }
 }
 
 /* Combined utility — every premium card should have this */

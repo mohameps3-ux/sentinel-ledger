@@ -30,8 +30,10 @@ const WATCHED_SAPPHIRE_CHROME =
 export function WatchedCardShell({ mint, baseClassName = "", watchedClassName = "", ...rest }) {
   const entry = useTerminalMemoryEntry(mint);
   const watched = entry?.isWatched === true;
+  // Every home card automatically picks up the diamond shine + sapphire ring on hover.
+  const base = `${baseClassName} sl-shine-edge sl-ring-hover`.trim();
   const cls = watched
-    ? `${baseClassName} ${watchedClassName} ${WATCHED_SAPPHIRE_CHROME}`.trim()
-    : baseClassName;
+    ? `${base} ${watchedClassName} ${WATCHED_SAPPHIRE_CHROME}`.trim()
+    : base;
   return <div data-watched={watched ? "1" : undefined} className={cls} {...rest} />;
 }
