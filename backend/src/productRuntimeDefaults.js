@@ -12,6 +12,12 @@ if (profile !== "strict") {
   process.env.SIGNAL_GATE_ADAPTIVE_REGIME_AWARE = "true";
   process.env.SIGNAL_GATE_REGIME_ENABLED = "true";
 
+  // ─── Phase 2: Outcome resolution horizon (May 2026) ────────────────────
+  // Top wallets peak WR at 30m (Fuz4rV: 63.6%), not at 10m (18.2%).
+  // Evaluating at 10m marks winners as losses → corrupts calibrator learning.
+  // Only affects new signals; existing rows keep their stored resolve_after.
+  process.env.SIGNAL_PERF_HORIZON_MIN = "30";
+
   // ─── Phase 1: Regime gate surgery (May 2026) ────────────────────────────
   //
   // Data (998 resolved signals):
