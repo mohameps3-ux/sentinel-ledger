@@ -258,6 +258,26 @@ function buildSuggestion(summary, gateSnap) {
     };
   }
 
+  // Safety floor: don't let the tuner tighten a bucket that is actually performing.
+  // After Phase 1 excluded calm+trending, volatile is the only remaining bucket.
+  // With volatile WR ~33% and PF ~0.80, tightening would undo Phase 1's unlocking.
+  // A regime with WR ≥ 20% is doing well — hold, don't tighten.
+  const TIGHTEN_FLOOR_WR = Number(process.env.SIGNAL_GATE_ADAPTIVE_TIGHTEN_FLOOR_WR ?? 20);
+  const worstWr = Number(worst.winRatePct || 0);
+  if (worstWr >= TIGHTEN_FLOOR_WR) {
+    regimeTuning.skipReason = `worst_bucket_above_floor_wr_${TIGHTEN_FLOOR_WR}pct`;
+    regimeTuning.worstQualified = { regime: worst.regime, metrics: { winRatePct: worstWr }, regimeSuggestionMode: "hold_floor" };
+    return {
+      suggestion: {
+        mode: "hold",
+        overrides: {},
+        evidence: { ...(globalSugg.evidence || {}), regimeBranch: "worst_above_floor_hold" }
+      },
+      regimes,
+      regimeTuning
+    };
+  }
+
   const wm = {
     winRatePct: worst.winRatePct,
     profitFactor: worst.profitFactor,
