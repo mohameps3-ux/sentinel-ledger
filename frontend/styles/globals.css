@@ -95,7 +95,8 @@ html[data-has-tension-bar="1"] {
   --sl-bar-h: 56px;
 }
 
-@media (max-width: 768px) {
+/* C8.7 — keep status-h tall enough for stacked bar up to tablet */
+@media (max-width: 1023px) {
   :root {
     --sl-status-h: 56px;
   }

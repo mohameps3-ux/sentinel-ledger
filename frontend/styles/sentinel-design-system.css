@@ -350,7 +350,8 @@ a {
   background: var(--sl-loss);
 }
 
-@media (max-width: 768px) {
+/* C8.7 — extend status-bar stacking from mobile up to tablet (640-1023px) */
+@media (max-width: 1023px) {
   .sl-status-bar {
     height: auto;
     min-height: var(--sl-status-h, 24px);
