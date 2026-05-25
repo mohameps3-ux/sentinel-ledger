@@ -73,17 +73,21 @@ router.get("/quotes", publicTerminalLimiter, async (req, res) => {
           const m = await getMarketData(mint);
           const price = Number(m?.price);
           const priceChange24h = Number(m?.priceChange24h);
+          const priceChange5m = m?.priceChange5m != null && Number.isFinite(Number(m.priceChange5m)) ? Number(m.priceChange5m) : null;
+          const priceChange1h = m?.priceChange1h != null && Number.isFinite(Number(m.priceChange1h)) ? Number(m.priceChange1h) : null;
           return {
             mint,
             symbol: m?.symbol || null,
             price: Number.isFinite(price) && price > 0 ? price : null,
+            priceChange5m,
+            priceChange1h,
             priceChange24h: Number.isFinite(priceChange24h) ? priceChange24h : null,
             liquidity: Number.isFinite(Number(m?.liquidity)) ? Number(m.liquidity) : null,
             volume24h: Number.isFinite(Number(m?.volume24h)) ? Number(m.volume24h) : null,
             providerUsed: m?._provider || null
           };
         } catch {
-          return { mint, symbol: null, price: null, priceChange24h: null, liquidity: null, volume24h: null, providerUsed: null };
+          return { mint, symbol: null, price: null, priceChange5m: null, priceChange1h: null, priceChange24h: null, liquidity: null, volume24h: null, providerUsed: null };
         }
       })
     );

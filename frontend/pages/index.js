@@ -395,7 +395,8 @@ function mapHotTrendToLiveFill(row, heatContext) {
       volume24h: Number(row.volume24h || 0),
       change24h: Number(row.change ?? row.change24h ?? 0),
       imageUrl: row.imageUrl || null,
-      priceChange5m: row.priceChange5m != null && Number.isFinite(Number(row.priceChange5m)) ? Number(row.priceChange5m) : null
+      priceChange5m: row.priceChange5m != null && Number.isFinite(Number(row.priceChange5m)) ? Number(row.priceChange5m) : null,
+      priceChange1h: row.priceChange1h != null && Number.isFinite(Number(row.priceChange1h)) ? Number(row.priceChange1h) : null
     }
   };
 }

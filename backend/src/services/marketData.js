@@ -221,12 +221,15 @@ function buildMarketDataFromDex(address, data) {
   const pairCreatedAt = pairCreatedRawToUnixMs(pairCreatedRaw);
   const pc = bestPair.priceChange;
   const m5Raw = pc && pc.m5 != null && pc.m5 !== "" ? Number(pc.m5) : null;
+  const h1Raw = pc && pc.h1 != null && pc.h1 !== "" ? Number(pc.h1) : null;
   const priceChange5m = Number.isFinite(m5Raw) ? m5Raw : null;
+  const priceChange1h = Number.isFinite(h1Raw) ? h1Raw : null;
   return {
     marketData: {
       price: Number(bestPair.priceUsd) || 0,
       priceChange24h: bestPair.priceChange?.h24 || 0,
       priceChange5m,
+      priceChange1h,
       volume24h: Number(bestPair.volume?.h24) || 0,
       marketCap: pair0Fdv || bestPairFdv || null,
       liquidity: Number(bestPair.liquidity?.usd) || 0,

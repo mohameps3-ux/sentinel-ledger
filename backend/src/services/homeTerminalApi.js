@@ -1017,6 +1017,7 @@ async function buildLatestSignalsFeed(
     const spotPx = Number(md?.price);
     const spotChg = Number(md?.priceChange24h);
     const spotChg5m = Number(md?.priceChange5m);
+    const spotChg1h = Number(md?.priceChange1h);
     const marketCap = Number(md?.marketCap);
     out.push({
       token: symbol.startsWith("$") ? symbol : `$${symbol}`,
@@ -1028,6 +1029,7 @@ async function buildLatestSignalsFeed(
       spotPriceUsd: Number.isFinite(spotPx) && spotPx > 0 ? spotPx : null,
       spotChange24h: Number.isFinite(spotChg) ? spotChg : null,
       priceChange5m: Number.isFinite(spotChg5m) ? spotChg5m : null,
+      priceChange1h: Number.isFinite(spotChg1h) ? spotChg1h : null,
       degraded: !md?.symbol,
       providerUsed: md?._provider || null,
       decision,

@@ -323,6 +323,12 @@ export function mapTrendRowToLiveSignal(row, context = "", { velocityIntent = fa
           : row._api?.priceChange5m != null && Number.isFinite(Number(row._api.priceChange5m))
             ? Number(row._api.priceChange5m)
             : null,
+      priceChange1h:
+        row.priceChange1h != null && Number.isFinite(Number(row.priceChange1h))
+          ? Number(row.priceChange1h)
+          : row._api?.priceChange1h != null && Number.isFinite(Number(row._api.priceChange1h))
+            ? Number(row._api.priceChange1h)
+            : null,
       spotChange24h: Number.isFinite(change24h) ? change24h : undefined,
       spotPriceUsd: (() => {
         const p = Number(row.price ?? row.token?.price);

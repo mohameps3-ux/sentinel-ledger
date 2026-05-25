@@ -39,6 +39,7 @@ function formatUsdCompact(value) {
 }
 
 function formatPct(value) {
+  if (value == null) return "—";
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";
   return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
@@ -221,7 +222,7 @@ export function LiveSignalCard({
   const chg24 = firstFinite(tick?.priceChange24h, sig.token?.change, sig.change, sig.priceChange24h, sig._api?.spotChange24h);
   const chg5 = firstFinite(sig._api?.priceChange5m, sig.priceChange5m, tick?.priceChange5m);
   const chg15 = firstFinite(sig._api?.outcome_15m, sig._api?.priceChange15m, sig.priceChange15m);
-  const chg60 = firstFinite(sig._api?.outcome_60m, sig._api?.priceChange60m, sig.priceChange60m);
+  const chg60 = firstFinite(tick?.priceChange1h, sig._api?.priceChange1h, sig._api?.outcome_60m, sig._api?.priceChange60m, sig.priceChange60m);
   const liquidity = firstFinite(tick?.liquidity, sig.liquidityUsd, sig.token?.liquidity, sig._api?.liquidityUsd);
   const volume24h = firstFinite(tick?.volume24h, sig.token?.volume24h, sig._api?.volume24h, sig.volume24h);
   const walletCount = Math.max(0, Math.round(Number(sig.smartWallets ?? sig.smartMoneyCount ?? sig.walletCount ?? 0) || 0));
@@ -354,9 +355,9 @@ export function LiveSignalCard({
             <div className="relative mt-2 grid grid-cols-3 gap-0 rounded-xl border border-white/[0.07] bg-black/15 sm:grid-cols-5">
               <Metric label="24h Vol" value={formatUsdCompact(volume24h)} />
               <Metric label="Liquidity" value={formatUsdCompact(liquidity)} />
-              <Metric label="5m" value={formatPct(chg5)} good={Number(chg5) >= 0 ? true : Number.isFinite(Number(chg5)) ? false : null} />
-              <Metric label="15m" value={formatPct(chg15)} good={Number(chg15) >= 0 ? true : Number.isFinite(Number(chg15)) ? false : null} />
-              <Metric label="60m" value={formatPct(chg60)} good={Number(chg60) >= 0 ? true : Number.isFinite(Number(chg60)) ? false : null} />
+              <Metric label="5m" value={formatPct(chg5)} good={chg5 == null ? null : Number(chg5) >= 0 ? true : false} />
+              <Metric label="15m" value={formatPct(chg15)} good={chg15 == null ? null : Number(chg15) >= 0 ? true : false} />
+              <Metric label="1h" value={formatPct(chg60)} good={chg60 == null ? null : Number(chg60) >= 0 ? true : false} />
             </div>
 
             <p className="relative mt-2 truncate text-[10px] italic leading-snug text-sl-muted" title={reason}>
