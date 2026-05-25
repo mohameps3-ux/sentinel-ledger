@@ -3,6 +3,8 @@ import "../styles/globals.css";
 import "../styles/sentinel-design-system.css";
 import "../styles/apex-obsidian.css";
 import "../styles/home-compact-top.css";
+/* Sapphire institutional override — MUST stay last so it wins over gold/amber legacy. */
+import "../styles/sentinel-sapphire.css";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo } from "react";

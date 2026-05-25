@@ -1,0 +1,413 @@
+/* ==========================================================================
+   SENTINEL · SAPPHIRE — Institutional design override (final layer)
+   ==========================================================================
+   Loaded LAST in _app.jsx so it wins against any prior token (gold, amber,
+   champagne) shipped from sentinel-design-system.css / apex-obsidian.css.
+
+   Palette inspired by Bloomberg / Nansen / Hyperliquid — deep obsidian
+   surfaces, sapphire-blue primary, electric blue glows, diamond highlights.
+   Wins stay emerald, losses stay rose (universal finance semantics).
+   ========================================================================== */
+
+:root,
+:root[data-theme],
+html {
+  /* ───────── Surfaces ───────── */
+  --sl-bg-base: #04060a;
+  --sl-bg-surface: #060b15;
+  --sl-bg-elevated: #08101d;
+  --sl-bg-overlay: #0b1626;
+  --sl-bg-panel: #060b15;
+  --sl-surface: #08101d;
+  --sl-surface-2: #0b1626;
+
+  /* ───────── Sapphire primary (replaces every gold/amber token) ───────── */
+  --sl-sapphire-deep: #1e3a8a;     /* blue-900 */
+  --sl-sapphire: #1d4ed8;          /* blue-700 */
+  --sl-sapphire-mid: #2563eb;      /* blue-600 — main accent */
+  --sl-sapphire-bright: #3b82f6;   /* blue-500 */
+  --sl-sapphire-hi: #60a5fa;       /* blue-400 — highlights */
+  --sl-sapphire-pale: #93c5fd;     /* blue-300 */
+  --sl-diamond: #bfdbfe;           /* blue-200 — diamond shine */
+  --sl-diamond-bright: #dbeafe;    /* blue-100 — brightest shine */
+
+  --sl-sapphire-rgb: 37, 99, 235;
+  --sl-sapphire-hi-rgb: 96, 165, 250;
+  --sl-diamond-rgb: 191, 219, 254;
+
+  /* Override legacy gold tokens (used across components) */
+  --sl-gold-hi: var(--sl-sapphire-hi);
+  --sl-gold: var(--sl-sapphire-mid);
+  --sl-gold-mid: var(--sl-sapphire-mid);
+  --sl-gold-dim: var(--sl-sapphire);
+  --sl-gold-rgb: var(--sl-sapphire-rgb);
+  --sl-gold-hi-rgb: var(--sl-sapphire-hi-rgb);
+  --sl-violet: var(--sl-sapphire-mid);
+  --sl-color-violet: var(--sl-sapphire-mid);
+  --sl-indigo: var(--sl-sapphire-mid);
+  --sl-indigo-dim: rgba(var(--sl-sapphire-rgb), 0.14);
+  --sl-purple: var(--sl-sapphire-mid);
+  --sl-cyan: var(--sl-sapphire-hi);
+  --sl-cyan-dim: rgba(var(--sl-sapphire-hi-rgb), 0.10);
+  --sl-text-accent: var(--sl-sapphire-hi);
+
+  /* Override apex gold (used by .apex-card etc.) */
+  --apex-gold-pale: var(--sl-diamond-bright);
+  --apex-gold-bright: var(--sl-diamond);
+  --apex-gold: var(--sl-sapphire-mid);
+  --apex-gold-mid: var(--sl-sapphire);
+  --apex-gold-dim: var(--sl-sapphire-deep);
+
+  --accent: var(--sl-sapphire-mid);
+  --accent-lt: var(--sl-sapphire-hi);
+  --accent-glow: rgba(var(--sl-sapphire-rgb), 0.25);
+  --current-accent: var(--sl-sapphire-mid);
+
+  /* ───────── Semantic (universal finance) ───────── */
+  --sl-win: #10b981;
+  --sl-win-dim: rgba(16, 185, 129, 0.12);
+  --sl-loss: #f43f5e;
+  --sl-loss-dim: rgba(244, 63, 94, 0.12);
+  --sl-warn: #f59e0b;
+  --sl-warn-dim: rgba(245, 158, 11, 0.12);
+
+  /* ───────── Borders ───────── */
+  --sl-border: rgba(var(--sl-sapphire-rgb), 0.14);
+  --sl-border-bright: rgba(var(--sl-sapphire-hi-rgb), 0.45);
+  --sl-border-accent: rgba(var(--sl-sapphire-rgb), 0.3);
+  --sl-border-strong: rgba(var(--sl-sapphire-hi-rgb), 0.22);
+
+  /* ───────── Text hierarchy (Nansen/Bloomberg readable) ───────── */
+  --sl-text-primary: #f4f7fb;
+  --sl-text-secondary: #c8d3e1;
+  --sl-text-muted: #7c8aa0;
+  --sl-text: var(--sl-text-primary);
+  --sl-sub: var(--sl-text-secondary);
+  --sl-muted: var(--sl-text-muted);
+  --sl-color-text: var(--sl-text-primary);
+  --sl-color-sub: var(--sl-text-secondary);
+  --sl-color-muted: var(--sl-text-muted);
+  --sl-fg: var(--sl-text-primary);
+  --sl-fg-muted: var(--sl-text-secondary);
+  --sl-fg-soft: var(--sl-text-muted);
+
+  /* ───────── Typography stacks ───────── */
+  --sl-font-sans: var(--font-inter), "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sl-font-display: var(--font-space-grotesk), "Space Grotesk", var(--font-inter), sans-serif;
+  --sl-font-mono: var(--font-jetbrains-mono), "JetBrains Mono", "Fira Code", "SF Mono", monospace;
+}
+
+/* ───────── Body baseline (kill amber gradients from prior layers) ───────── */
+html,
+body {
+  background: var(--sl-bg-base);
+  color: var(--sl-text-primary);
+  font-family: var(--sl-font-sans);
+  font-feature-settings: "cv11", "ss01", "ss03";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.005em;
+}
+body {
+  background-image:
+    radial-gradient(ellipse 70% 50% at 12% 0%, rgba(var(--sl-sapphire-rgb), 0.06), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 88% 100%, rgba(var(--sl-sapphire-hi-rgb), 0.04), transparent 55%),
+    linear-gradient(180deg, var(--sl-bg-base) 0%, #02040a 100%);
+}
+
+/* ───────── Display/headline class (futuristic high-standing) ───────── */
+.sl-display,
+.sl-headline,
+h1.sl-h,
+h2.sl-h,
+h3.sl-h {
+  font-family: var(--sl-font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--sl-text-primary);
+}
+.sl-eyebrow {
+  font-family: var(--sl-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(var(--sl-sapphire-hi-rgb), 0.7);
+}
+.sl-num {
+  font-family: var(--sl-font-mono);
+  font-feature-settings: "tnum", "zero";
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ───────── DIAMOND SHINE — diagonal sweep from bottom-right to top-left on hover ───────── */
+.sl-shine-edge {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.sl-shine-edge::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    transparent 42%,
+    rgba(var(--sl-diamond-rgb), 0.0) 50%,
+    transparent 58%,
+    transparent 100%
+  );
+  background-size: 220% 220%;
+  background-position: 100% 100%;
+  pointer-events: none;
+  transition: background 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              background-position 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 1;
+  mix-blend-mode: screen;
+}
+.sl-shine-edge:hover::after {
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(var(--sl-diamond-rgb), 0.16) 48%,
+    rgba(var(--sl-diamond-rgb), 0.22) 50%,
+    rgba(var(--sl-diamond-rgb), 0.16) 52%,
+    transparent 62%,
+    transparent 100%
+  );
+  background-size: 220% 220%;
+  background-position: 0% 0%;
+}
+
+/* ───────── Illuminated ring on hover (institutional card feel) ───────── */
+.sl-ring-hover {
+  transition: box-shadow 0.45s ease, border-color 0.35s ease, transform 0.35s ease;
+}
+.sl-ring-hover:hover {
+  border-color: rgba(var(--sl-sapphire-hi-rgb), 0.45) !important;
+  box-shadow:
+    0 0 0 1px rgba(var(--sl-sapphire-hi-rgb), 0.35),
+    0 0 26px -2px rgba(var(--sl-sapphire-rgb), 0.28),
+    0 14px 36px -8px rgba(0, 0, 0, 0.55);
+}
+
+/* Combined utility — every premium card should have this */
+.sl-card-premium {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(var(--sl-sapphire-rgb), 0.15);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 40%),
+    linear-gradient(180deg, var(--sl-bg-elevated), var(--sl-bg-surface));
+  border-radius: 14px;
+  box-shadow:
+    0 1px 0 0 rgba(var(--sl-sapphire-hi-rgb), 0.06) inset,
+    0 10px 30px -12px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(var(--sl-sapphire-rgb), 0.04);
+  transition: box-shadow 0.45s ease, border-color 0.35s ease;
+}
+.sl-card-premium::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(var(--sl-sapphire-hi-rgb), 0.5) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+.sl-card-premium:hover {
+  border-color: rgba(var(--sl-sapphire-hi-rgb), 0.4);
+  box-shadow:
+    0 1px 0 0 rgba(var(--sl-sapphire-hi-rgb), 0.12) inset,
+    0 0 0 1px rgba(var(--sl-sapphire-hi-rgb), 0.3),
+    0 0 28px -4px rgba(var(--sl-sapphire-rgb), 0.32),
+    0 18px 42px -12px rgba(0, 0, 0, 0.7);
+}
+
+/* ───────── Premium button — sapphire with depth ───────── */
+.sl-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.7rem 1.4rem;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--sl-sapphire-hi-rgb), 0.45);
+  background: linear-gradient(135deg,
+    rgba(var(--sl-sapphire-rgb), 0.18),
+    rgba(var(--sl-sapphire-rgb), 0.08) 100%);
+  color: rgb(220, 232, 248);
+  font-family: var(--sl-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  box-shadow:
+    0 1px 0 0 rgba(var(--sl-sapphire-hi-rgb), 0.18) inset,
+    0 6px 18px -6px rgba(var(--sl-sapphire-rgb), 0.4),
+    0 0 0 1px rgba(var(--sl-sapphire-rgb), 0.06);
+  transition: all 0.3s ease;
+}
+.sl-btn-primary:hover {
+  border-color: rgba(var(--sl-sapphire-hi-rgb), 0.7);
+  background: linear-gradient(135deg,
+    rgba(var(--sl-sapphire-rgb), 0.28),
+    rgba(var(--sl-sapphire-rgb), 0.12) 100%);
+  box-shadow:
+    0 1px 0 0 rgba(var(--sl-sapphire-hi-rgb), 0.3) inset,
+    0 10px 28px -6px rgba(var(--sl-sapphire-rgb), 0.55),
+    0 0 0 1px rgba(var(--sl-sapphire-hi-rgb), 0.2);
+  color: var(--sl-diamond-bright);
+  transform: translateY(-1px);
+}
+.sl-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.sl-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.7rem 1.4rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.5);
+  color: var(--sl-text-secondary);
+  font-family: var(--sl-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+}
+.sl-btn-ghost:hover {
+  border-color: rgba(var(--sl-sapphire-hi-rgb), 0.4);
+  background: rgba(var(--sl-sapphire-rgb), 0.06);
+  color: var(--sl-diamond);
+  box-shadow:
+    0 0 0 1px rgba(var(--sl-sapphire-hi-rgb), 0.2),
+    0 8px 22px -8px rgba(var(--sl-sapphire-rgb), 0.35);
+}
+
+/* ───────── Pill/badge primitives ───────── */
+.sl-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--sl-sapphire-rgb), 0.3);
+  background: rgba(var(--sl-sapphire-rgb), 0.08);
+  color: var(--sl-sapphire-hi);
+  font-family: var(--sl-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.sl-pill-win {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.1);
+  color: #6ee7b7;
+}
+.sl-pill-loss {
+  border-color: rgba(244, 63, 94, 0.4);
+  background: rgba(244, 63, 94, 0.1);
+  color: #fda4af;
+}
+
+/* ───────── Live dot (glowing) ───────── */
+.sl-live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--sl-sapphire-hi);
+  box-shadow: 0 0 10px rgba(var(--sl-sapphire-hi-rgb), 0.85);
+  animation: sl-pulse-glow 1.8s ease-in-out infinite;
+}
+.sl-live-dot--win {
+  background: #34d399;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.85);
+}
+.sl-live-dot--loss {
+  background: #fb7185;
+  box-shadow: 0 0 10px rgba(251, 113, 133, 0.85);
+}
+
+@keyframes sl-pulse-glow {
+  0%, 100% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.92);
+  }
+}
+
+/* ───────── Aurora background sweep (for hero sections) ───────── */
+.sl-aurora {
+  position: relative;
+  overflow: hidden;
+}
+.sl-aurora::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(
+    ellipse 50% 35% at 50% 50%,
+    rgba(var(--sl-sapphire-rgb), 0.18) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 0;
+  animation: sl-aurora-drift 22s ease-in-out infinite alternate;
+}
+@keyframes sl-aurora-drift {
+  0% { transform: translate(-8%, -4%) scale(1); }
+  100% { transform: translate(8%, 4%) scale(1.08); }
+}
+
+/* ───────── Sober global selection ───────── */
+::selection {
+  background: rgba(var(--sl-sapphire-rgb), 0.35);
+  color: var(--sl-diamond-bright);
+}
+
+/* ───────── Scrollbar — slim sapphire ───────── */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: rgba(8, 16, 29, 0.5);
+}
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(var(--sl-sapphire-rgb), 0.6), rgba(var(--sl-sapphire-rgb), 0.3));
+  border-radius: 999px;
+  border: 2px solid rgba(8, 16, 29, 0.6);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(var(--sl-sapphire-hi-rgb), 0.8), rgba(var(--sl-sapphire-rgb), 0.5));
+}
+
+/* ───────── Heading typography baseline (kill <h1>/<h2> defaults) ───────── */
+h1, h2, h3 {
+  font-family: var(--sl-font-display);
+  letter-spacing: -0.02em;
+}
