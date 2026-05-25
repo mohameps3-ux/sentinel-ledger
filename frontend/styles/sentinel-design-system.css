@@ -2240,6 +2240,23 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   flex-shrink: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
+
+/* C8.NA — 2-col on mobile: NARRATIVE + KEY REASONS side-by-side, ENTRY WINDOW full-width below */
+@media (max-width: 639px) {
+  .tpt-c-narrative {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tpt-c-np:nth-child(2) {
+    border-right: none !important;
+  }
+
+  .tpt-c-np:nth-child(3) {
+    grid-column: 1 / -1;
+    border-right: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+}
 .tpt-c-np {
   padding: 7px 10px;
   border-right: 1px solid rgba(255, 255, 255, 0.07);
