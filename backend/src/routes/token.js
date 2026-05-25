@@ -15,6 +15,17 @@ const { pairCreatedRawToUnixMs } = require("../lib/pairTime");
 const { getLatestRulePerformanceForMint } = require("../workers/validationOracle");
 
 const router = express.Router();
+
+// System-level authorities that are program PDAs, not real deployer wallets.
+const SYSTEM_AUTHORITIES = new Set([
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", // SPL Token program
+  "11111111111111111111111111111111",               // System program
+  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bmd", // Associated Token program
+]);
+function isSystemMintAuthority(addr) {
+  if (!addr || typeof addr !== "string") return true;
+  return SYSTEM_AUTHORITIES.has(addr);
+}
 const { fetchTrendingList } = require("../services/trendingList");
 
 const TOKEN_ROUTE_FAST_TIMEOUT_MS = Math.max(350, Number(process.env.TOKEN_ROUTE_FAST_TIMEOUT_MS || 650));
@@ -124,7 +135,14 @@ router.get("/:address", async (req, res) => {
       console.error("Telegram alert send failed:", e.message)
     );
 
-    const deployerAddress = marketData.deployerAddress || null;
+    // DexScreener often omits deployerAddress for pump.fun / new tokens.
+    // Fall back to the on-chain mint authority, which equals the original deployer
+    // on tokens where it hasn't been burned yet.
+    const deployerAddress =
+      marketData.deployerAddress ||
+      (tokenOnChainSec?.mintAuthority && !isSystemMintAuthority(tokenOnChainSec.mintAuthority)
+        ? tokenOnChainSec.mintAuthority
+        : null);
 
     let deployerData = null;
     if (deployerAddress) {
@@ -138,6 +156,8 @@ router.get("/:address", async (req, res) => {
         "deployer_info"
       );
       if (!deployerData) {
+        const isPump = String(deployerAddress || "").toLowerCase().endsWith("pump") ||
+          String(marketData?.pairUrl || "").includes("pump.fun");
         deployerData = {
           address: deployerAddress,
           totalLaunches: 0,
@@ -145,8 +165,9 @@ router.get("/:address", async (req, res) => {
           riskScore: 0,
           successRate: 0,
           averageHoursToRug: null,
-          deployerLabel: "First Launch",
-          launchSampleSize: 0
+          deployerLabel: isPump ? "pump.fun deployer" : "First Launch",
+          launchSampleSize: 0,
+          noHistory: true
         };
       }
     }

@@ -1,10 +1,66 @@
 import { buildSolscanAccountUrl, EXTERNAL_ANCHOR_REL } from "../../lib/terminalLinks";
 
-export function DeployerPanel({ deployer }) {
+export function DeployerPanel({ deployer, tokenMint }) {
   if (!deployer) {
     return (
-      <div className="text-gray-500 text-sm border border-dashed border-gray-700 p-4 text-center">
-        Data not available
+      <div className="border border-dashed border-[#2a2f36] p-4 space-y-3">
+        <p className="text-[11px] text-gray-500 leading-relaxed">
+          Deployer address not indexed by DexScreener for this token.
+          Check on-chain directly:
+        </p>
+        {tokenMint ? (
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={buildSolscanAccountUrl(tokenMint)}
+              target="_blank"
+              rel={EXTERNAL_ANCHOR_REL}
+              className="text-[11px] text-blue-300 hover:text-blue-200 border border-blue-500/25 bg-blue-500/[0.06] px-2.5 py-1.5 inline-flex items-center gap-1"
+            >
+              Solscan →
+            </a>
+            <a
+              href={`https://pump.fun/coin/${tokenMint}`}
+              target="_blank"
+              rel={EXTERNAL_ANCHOR_REL}
+              className="text-[11px] text-fuchsia-300 hover:text-fuchsia-200 border border-fuchsia-500/25 bg-fuchsia-500/[0.06] px-2.5 py-1.5 inline-flex items-center gap-1"
+            >
+              pump.fun →
+            </a>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (deployer.noHistory) {
+    return (
+      <div className="space-y-3">
+        <div className="border border-dashed border-[#2a2f36] px-3 py-2.5 space-y-1">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500 font-semibold">
+            {deployer.deployerLabel || "First Launch"}
+          </p>
+          <p className="text-[11px] text-gray-400 leading-relaxed">
+            No previous launches found in Sentinel&apos;s deployer history. This may be a new or anonymous deployer.
+          </p>
+        </div>
+        {deployer.address ? (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] uppercase tracking-wide text-gray-600 font-semibold">Deployer address</span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[11px] text-gray-300">
+                {deployer.address.slice(0, 8)}…{deployer.address.slice(-6)}
+              </span>
+              <a
+                href={buildSolscanAccountUrl(deployer.address)}
+                target="_blank"
+                rel={EXTERNAL_ANCHOR_REL}
+                className="text-[11px] text-blue-300 hover:text-blue-200 shrink-0"
+              >
+                Solscan →
+              </a>
+            </div>
+          </div>
+        ) : null}
       </div>
     );
   }

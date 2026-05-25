@@ -18,7 +18,11 @@ async function getTokenSecurity(mintAddress) {
           parsedData.mintAuthority !== undefined,
         freezeEnabled:
           parsedData.freezeAuthority !== null &&
-          parsedData.freezeAuthority !== undefined
+          parsedData.freezeAuthority !== undefined,
+        // Non-null before renouncement — used as deployer fallback when DexScreener omits it
+        mintAuthority: parsedData.mintAuthority || null,
+        decimals: parsedData.decimals ?? null,
+        supply: parsedData.supply ?? null
       };
     } catch (error) {
       console.error(`Token security RPC error (${rpcUrl}):`, error.message);

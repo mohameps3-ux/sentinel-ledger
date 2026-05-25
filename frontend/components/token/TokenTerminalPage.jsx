@@ -581,7 +581,9 @@ function TerminalRight({ address, tokenData, recentTransactions, tokenPriceUsd, 
               <div>
                 <div className="tpt-r-accord-title">DEPLOYER INTEL</div>
                 <div className="tpt-r-accord-sub">
-                  {deployerAddr ? `${deployerAddr.slice(0, 4)}…${deployerAddr.slice(-4)}` : shortMint(address)}
+                  {deployerAddr
+                    ? `${deployerAddr.slice(0, 4)}…${deployerAddr.slice(-4)}`
+                    : tokenData?.deployer?.deployerLabel || "Not indexed"}
                 </div>
               </div>
             </div>
@@ -590,7 +592,7 @@ function TerminalRight({ address, tokenData, recentTransactions, tokenPriceUsd, 
             </div>
           </summary>
           <div className="tpt-r-accord-body">
-            <DeployerPanel deployer={tokenData?.deployer} />
+            <DeployerPanel deployer={tokenData?.deployer} tokenMint={address} />
           </div>
         </details>
 
