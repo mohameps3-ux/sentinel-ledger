@@ -468,7 +468,7 @@ async function evaluateSignalEmission(score, ctx = {}) {
   const risk = clamp(Number(score?.scores?.risk || 0), 0, 100);
   const liqUsd = Number(ctx?.liquidityUsd);
   const us = computeUnifiedScore(score, ctx, cfg.minLiquidityUsd);
-  const reasons = [];
+  let reasons = [];
 
   if (cfg.enabled && GATE_FILTER_WALLET_QUALITY && Array.isArray(ctx?.wallets) && ctx.wallets.length > 0) {
     const walletsData = await loadSmartWalletStats(ctx.wallets);
@@ -541,6 +541,22 @@ async function evaluateSignalEmission(score, ctx = {}) {
     appendAlphaLayerGateReasons(score, reasons);
     if (GATE_BLOCK_R03_CALM && regime.key === "calm" && isR03DominatedEmission(score)) {
       reasons.push("r03_calm_blocked");
+    }
+  }
+
+  // Phase 3 bypass: R03 (cluster_buy) in volatile regime.
+  // Confidence has Pearson correlation ≈ 0.015 with returns — it's noise.
+  // Unified score inherits the same noisy confidence component.
+  // For this specific combo (proven edge: WR 31%, AVG +6% at 60m) we skip
+  // those two checks so the cluster signal can reach the cooldown gate.
+  const PHASE3_BYPASS_ENABLED =
+    String(process.env.SIGNAL_GATE_R03_VOLATILE_BYPASS ?? "true").toLowerCase() !== "false";
+  if (PHASE3_BYPASS_ENABLED && regime.key === "volatile" && isR03DominatedEmission(score)) {
+    const bypassed = new Set(["low_confidence", "low_unified_score"]);
+    const before = reasons.length;
+    reasons = reasons.filter((r) => !bypassed.has(r));
+    if (reasons.length < before) {
+      console.log(`[gate] Phase3 R03+volatile bypass removed ${before - reasons.length} block(s) on ${asset}`);
     }
   }
 
