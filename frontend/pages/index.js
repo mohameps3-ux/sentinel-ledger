@@ -690,7 +690,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     }));
   }, [interpretedSignals]);
 
-  /** Free / disconnected wallets: client-side 15 min delay on top of API tier. */
+  /** Free / disconnected wallets: client-side 30 min delay on top of API tier. */
   const liveSignalPoolForFeed = useMemo(() => {
     if (isPro) return liveSignalPool;
     return filterLiveSignalsForFreeTier(liveSignalPool);

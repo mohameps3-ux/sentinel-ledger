@@ -129,8 +129,9 @@ const SIGNALS_LATEST_FEED_TIERS = ["realtime", "delayed"];
 const SIGNALS_LATEST_LIMITS = [8, 10, 12, 16, 24, 32, 50, 56, 64];
 
 function signalFeedFreeDelayMinutes() {
-  const n = Number(process.env.SIGNAL_FEED_FREE_DELAY_MINUTES ?? 15);
-  if (!Number.isFinite(n) || n < 0) return 15;
+  // Default 30 min for non-PRO. Set SIGNAL_FEED_FREE_DELAY_MINUTES env to override.
+  const n = Number(process.env.SIGNAL_FEED_FREE_DELAY_MINUTES ?? 30);
+  if (!Number.isFinite(n) || n < 0) return 30;
   return Math.min(24 * 60, Math.floor(n));
 }
 

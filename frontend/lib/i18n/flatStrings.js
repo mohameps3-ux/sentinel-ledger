@@ -233,12 +233,12 @@ export const FLAT_STRINGS = {
   "war.live.statusDegraded": S("Degraded", { es: "Degradado", fr: "Dégradé", de: "Eingeschränkt", it: "Degradato", ru: "Ограничено", zh: "降级", ko: "저하", ja: "劣化", ar: "مخفض", pt: "Degradado" }),
   "war.live.statusLive": S("Live", { es: "En vivo", fr: "En direct", de: "Live", it: "Live", ru: "Онлайн", zh: "实时", ko: "라이브", ja: "ライブ", ar: "مباشر", pt: "Ao vivo" }),
   "war.live.accessLive": S("LIVE", { es: "EN VIVO" }),
-  "war.live.delayedCard.badge": S("DELAYED · 15min", { es: "RETRASO · 15min" }),
+  "war.live.delayedCard.badge": S("DELAYED · 30min", { es: "RETRASO · 30min" }),
   "war.live.delayedCard.title": S("Delayed live feed", { es: "Feed en vivo con retraso" }),
   "war.live.delayedCard.body": S(
-    "You're viewing the feed with a 15-minute delay. Pro subscribers see it in real time.",
+    "You're viewing the feed with a 30-minute delay. Pro subscribers see it in real time.",
     {
-      es: "Estás viendo el feed con un retraso de 15 minutos. Los suscriptores Pro lo ven en tiempo real."
+      es: "Estás viendo el feed con un retraso de 30 minutos. Los suscriptores Pro lo ven en tiempo real."
     }
   ),
   "war.live.delayedCard.cta": S("Go Pro", { es: "Hazte Pro" }),

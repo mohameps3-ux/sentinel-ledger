@@ -3,8 +3,8 @@
 const PRO_NARRATIVE_ROOM = "pro";
 
 function signalFeedFreeDelayMinutes() {
-  const n = Number(process.env.SIGNAL_FEED_FREE_DELAY_MINUTES ?? 15);
-  if (!Number.isFinite(n) || n < 0) return 15;
+  const n = Number(process.env.SIGNAL_FEED_FREE_DELAY_MINUTES ?? 30);
+  if (!Number.isFinite(n) || n < 0) return 30;
   return Math.min(24 * 60, Math.floor(n));
 }
 

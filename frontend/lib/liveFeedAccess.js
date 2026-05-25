@@ -1,5 +1,6 @@
 /** Free-tier live feed delay — must match backend SIGNAL_FEED_FREE_DELAY_MINUTES default. */
-export const LIVE_FEED_FREE_DELAY_MS = 15 * 60 * 1000;
+export const LIVE_FEED_FREE_DELAY_MS = 30 * 60 * 1000;
+export const LIVE_FEED_FREE_DELAY_MIN = 30;
 
 export function getLiveSignalEmittedAtMs(sig) {
   const raw = sig?._api?.createdAt ?? sig?._api?.signalAt ?? sig?.createdAt ?? sig?.signalAt ?? null;
@@ -8,7 +9,7 @@ export function getLiveSignalEmittedAtMs(sig) {
   return Number.isFinite(ms) ? ms : null;
 }
 
-/** Free / no-wallet users only see signals at least 15 minutes old. */
+/** Free / no-wallet users only see signals at least 30 minutes old. */
 export function filterLiveSignalsForFreeTier(signals, nowMs = Date.now()) {
   const cutoffMs = nowMs - LIVE_FEED_FREE_DELAY_MS;
   return (signals || []).filter((sig) => {

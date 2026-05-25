@@ -22,10 +22,13 @@ const router = express.Router();
 const MAX_HELIUS_BODY_BYTES = 512 * 1024;
 
 // ── USDC PRO subscription constants ────────────────────────────────────────
+// DEPRECATED: legacy auto-activation kept disabled below. The canonical PRO
+// activation path is now POST /api/v1/subscription/verify (10 USDC = 7d trial,
+// 29 USDC = 30d pro) verified server-side via subscriptionVerifier.js.
 const USDC_MINT = process.env.USDC_MINT || "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const OWNER_WALLET = process.env.OWNER_WALLET_ADDRESS || "";
-const PRO_PRICE_LAMPORTS = 19_000_000; // 19 USDC with 6 decimals
-const PRO_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const PRO_PRICE_LAMPORTS = 19_000_000; // legacy 19 USDC — no longer auto-grants PRO
+const PRO_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
 const heliusLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -216,8 +219,10 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
                   });
           }
 
-      // ── USDC PRO payment detection (runs before signal processing) ──────────
-      await maybeActivateProSubscription(events);
+      // ── PRO activation no longer runs from this webhook ─────────────────────
+      // PRO subscriptions are activated exclusively via POST /api/v1/subscription/verify
+      // after the user pays through the SubscriptionModal (10 USDC = 7d, 29 USDC = 30d).
+      // The maybeActivateProSubscription helper below is kept for reference / rollback only.
 
       let emitted = 0;
           let queued = 0;
