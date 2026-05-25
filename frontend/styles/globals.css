@@ -97,7 +97,7 @@ html[data-has-tension-bar="1"] {
 
 @media (max-width: 768px) {
   :root {
-    --sl-status-h: 60px;
+    --sl-status-h: 56px;
   }
 }
 

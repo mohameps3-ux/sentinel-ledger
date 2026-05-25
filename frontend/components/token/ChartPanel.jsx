@@ -98,7 +98,7 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
     <div ref={panelRef} className="sl-chart-shell">
       <div ref={containerRef} className={`sl-chart-container ${isFullscreen ? "sl-chart-container--fs" : ""}`}>
         <div className="sl-chart-header">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="sl-chart-header-brand flex items-center gap-2.5 min-w-0">
             <span className="sl-chart-mark" aria-hidden>
               <svg viewBox="0 0 32 32" width="18" height="18">
                 <polygon

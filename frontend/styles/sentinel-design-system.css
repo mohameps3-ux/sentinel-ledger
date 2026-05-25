@@ -360,9 +360,9 @@ a {
     height: auto;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
     align-items: flex-start;
-    padding: 4px 12px;
+    padding: 2px 12px;
   }
 
   .sl-status-bar__inner > .sl-status-indicator,
@@ -1834,6 +1834,7 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   }
   .tpt-c-header-stats {
     gap: 6px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .tpt-c-name {
     min-width: 0;
@@ -1855,17 +1856,25 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   .tpt-c-regime-label,
   .tpt-c-metric-label {
     font-size: 10px;
+    line-height: 1.2;
   }
+  .tpt-c-regime-entry,
   .tpt-c-regime-exec {
     font-size: 10px;
     white-space: normal;
+    line-height: 1.15;
+    margin-top: 0;
   }
   .tpt-c-section-nav {
     padding-block: 0.25rem;
   }
+  .tpt-c-chart .sl-chart-header-brand {
+    display: none;
+  }
   .tpt-c-chart .sl-chart-header {
-    padding: 6px 12px;
-    gap: 8px;
+    justify-content: flex-end;
+    padding: 4px 12px;
+    gap: 6px;
   }
 }
 .tpt-c-breadcrumb {
