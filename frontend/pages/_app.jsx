@@ -21,6 +21,7 @@ import { Navbar } from "../components/layout/Navbar";
 import { GlobalStatusBar } from "../components/layout/GlobalStatusBar";
 import { GlobalWayfinding } from "../components/layout/GlobalWayfinding";
 import { SiteFooter } from "../components/layout/SiteFooter";
+import { BottomNav } from "../components/layout/BottomNav";
 import { GlobalCommandHud } from "../components/terminal/GlobalCommandHud";
 import { MetaMaskSolanaInit } from "../components/wallet/MetaMaskSolanaInit";
 
@@ -93,6 +94,7 @@ export default function App({ Component, pageProps }) {
                           <Component {...pageProps} />
                           <SiteFooter />
                           <GlobalCommandHud />
+                          <BottomNav />
                           <SentinelBot />
                           <MetaMaskSolanaInit />
                           <Toaster position="bottom-right" />
