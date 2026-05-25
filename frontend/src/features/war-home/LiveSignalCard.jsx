@@ -336,6 +336,9 @@ export function LiveSignalCard({
           ruleSamples != null && ruleSamples > 0 && rulePerf?.successCount60m != null
             ? Number((rulePerf.successCount60m / ruleSamples) * 100)
             : null;
+        const ruleAvgReturn = rulePerf?.avgReturn60m != null && Number.isFinite(Number(rulePerf.avgReturn60m))
+          ? Number(rulePerf.avgReturn60m)
+          : null;
         const ruleCalibrated = ruleSamples != null && ruleSamples >= 80;
         const edgeLabel = ruleLabel(rulePerf?.signal, rulePerf?.ruleId);
         const showEdgeTag = edgeLabel != null || cardRegime != null;
@@ -413,6 +416,7 @@ export function LiveSignalCard({
                   rule={edgeLabel}
                   winRate={ruleWr}
                   samples={ruleSamples}
+                  avgReturn={ruleAvgReturn}
                   regime={cardRegime}
                   calibrated={ruleCalibrated}
                 />

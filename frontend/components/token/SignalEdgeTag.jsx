@@ -1,15 +1,16 @@
 /**
  * C9 Phase 7 — Honest signal edge display.
- * Shows which rule fired + historical WR + current market regime.
+ * Shows which rule fired + historical WR + avg upside + current regime.
  *
  * Props:
  *   rule       {string}   label, e.g. "R03 · Cluster"
  *   winRate    {number}   0-100, e.g. 32.68 — null if unknown
  *   samples    {number}   resolved row count — null if unknown
+ *   avgReturn  {number}   e.g. 6.0 (% — historical avg return for this rule)
  *   regime     {string}   "volatile" | "trending" | "calm" | null
  *   calibrated {boolean}  true once ≥80 resolved rows exist
  */
-export function SignalEdgeTag({ rule, winRate, samples, regime, calibrated = false }) {
+export function SignalEdgeTag({ rule, winRate, samples, avgReturn, regime, calibrated = false }) {
   if (!rule && !regime) return null;
 
   const regimeMeta = {
@@ -29,6 +30,12 @@ export function SignalEdgeTag({ rule, winRate, samples, regime, calibrated = fal
           ? "text-amber-300"
           : "text-rose-300/80";
 
+  // Historical avg return — green if positive, red if negative.
+  // This is the differentiator: competitors show "smart money buying" but never
+  // an expected upside backed by resolved-outcome statistics.
+  const avgNum = Number.isFinite(Number(avgReturn)) ? Number(avgReturn) : null;
+  const avgColor = avgNum == null ? "" : avgNum >= 0 ? "text-emerald-300" : "text-rose-300/80";
+
   return (
     <div className="tpt-signal-edge-tag">
       {rule && (
@@ -38,9 +45,17 @@ export function SignalEdgeTag({ rule, winRate, samples, regime, calibrated = fal
         <span className="tpt-signal-edge-sep">·</span>
       )}
       {wrNum != null && (
-        <span className={`tpt-signal-edge-wr ${wrColor}`}>
+        <span className={`tpt-signal-edge-wr ${wrColor}`} title="Historical win rate at 60-minute horizon">
           WR {wrNum.toFixed(0)}%
         </span>
+      )}
+      {avgNum != null && wrNum != null && (
+        <>
+          <span className="tpt-signal-edge-sep">·</span>
+          <span className={`tpt-signal-edge-wr ${avgColor}`} title="Historical average return at 60-minute horizon">
+            {avgNum >= 0 ? "+" : ""}{avgNum.toFixed(1)}%
+          </span>
+        </>
       )}
       {wrNum != null && samples != null && Number.isFinite(samples) && samples > 0 && (
         <>

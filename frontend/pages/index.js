@@ -99,14 +99,55 @@ function signalRecencyScore(sig) {
   return floor + (1 - floor) * Math.exp(-ageMin / tau);
 }
 
+/**
+ * Phase 7c: "Money-making likelihood" multiplier from rule performance + regime.
+ * Higher = historically better entry. Drives card ordering for max user EV.
+ *
+ *   Rule WR ≥ 30% (proven edge) → ×1.4
+ *   Rule WR ≥ 25%               → ×1.15
+ *   Rule WR < 15%               → ×0.7  (penalize bad rules)
+ *   Volatile regime             → ×1.25 (the only proven-edge regime)
+ *   Calm regime                 → ×0.6  (historically WR ~3%)
+ *   Default                     → ×1.0
+ */
+function ruleEdgeMultiplier(sig) {
+  const perf = sig?._api?.rulePerformance;
+  let mult = 1.0;
+  if (perf?.totalSignals != null && Number(perf.totalSignals) > 0 && perf?.successCount60m != null) {
+    const wr = (Number(perf.successCount60m) / Number(perf.totalSignals)) * 100;
+    if (wr >= 30) mult *= 1.4;
+    else if (wr >= 25) mult *= 1.15;
+    else if (wr < 15) mult *= 0.7;
+  }
+  const chg24 = Number(sig?.change ?? sig?.priceChange24h ?? sig?._api?.spotChange24h);
+  const vol = Number(sig?.volume24h ?? sig?._api?.volume24h);
+  const liq = Number(sig?.liquidityUsd ?? sig?._api?.liquidityUsd);
+  if (Number.isFinite(chg24)) {
+    const abs = Math.abs(chg24);
+    const volLiq = Number.isFinite(vol) && Number.isFinite(liq) && liq > 0 ? vol / liq : null;
+    if (abs >= 12 || (volLiq != null && volLiq >= 10)) mult *= 1.25;
+    else if (abs >= 5) mult *= 1.0;
+    else mult *= 0.6;
+  }
+  return mult;
+}
+
 function sortByActionBucket(rows) {
   return [...rows].sort((a, b) => {
     const ra = getActionBucket(a).rank;
     const rb = getActionBucket(b).rank;
     if (ra !== rb) return ra - rb;
-    // Within same action bucket: recency × score composite
-    const sa = Number(a?.signalStrength ?? a?.sentinelScore ?? 0) * signalRecencyScore(a);
-    const sb = Number(b?.signalStrength ?? b?.sentinelScore ?? 0) * signalRecencyScore(b);
+    // Within same action bucket: score × recency × edge multiplier.
+    // Edge multiplier prioritizes proven-WR rules in proven-edge regimes —
+    // these are the cards most likely to make the user money.
+    const sa =
+      Number(a?.signalStrength ?? a?.sentinelScore ?? 0) *
+      signalRecencyScore(a) *
+      ruleEdgeMultiplier(a);
+    const sb =
+      Number(b?.signalStrength ?? b?.sentinelScore ?? 0) *
+      signalRecencyScore(b) *
+      ruleEdgeMultiplier(b);
     return sb - sa;
   });
 }
