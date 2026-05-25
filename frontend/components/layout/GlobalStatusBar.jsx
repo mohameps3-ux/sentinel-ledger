@@ -19,10 +19,11 @@ export function GlobalStatusBar() {
           <span className="truncate text-[var(--sl-text-muted)]">last event {lastEventAgo}</span>
         </div>
         <div className="sl-status-bar__center truncate text-center">
-          {activeWallets24h > 0
-            ? <>{activeWallets24h.toLocaleString()} wallets active 24h · {signalsToday.toLocaleString()} signals today · {walletCount > 0 ? `${walletCount.toLocaleString()} universe` : "Oracle active"}</>
-            : <>Smart wallet universe {walletCount > 0 ? walletCount.toLocaleString() : "—"} · {signalsToday.toLocaleString()} signals today · Oracle active</>
-          }
+          {walletCount > 0 ? walletCount.toLocaleString() : "—"} wallets monitored
+          {" · "}
+          {signalsToday > 0 ? signalsToday.toLocaleString() : "0"} signals today
+          {" · "}
+          Oracle active
         </div>
         <div className="sl-status-bar__right flex items-center justify-end gap-3 overflow-hidden">
           <span className="hidden sm:inline text-[var(--sl-text-muted)]">
