@@ -11,6 +11,10 @@ if (profile !== "strict") {
   process.env.SIGNAL_GATE_ADAPTIVE_ENABLED = "true";
   process.env.SIGNAL_GATE_ADAPTIVE_REGIME_AWARE = "true";
   process.env.SIGNAL_GATE_REGIME_ENABLED = "true";
+  // Phase 4: enforce 48h cooldown even on tighten (default bypasses it).
+  // Prevents the tuner from re-tightening every cron cycle based on
+  // contaminated pre-Phase-1 calm data while volatile signals accumulate.
+  process.env.SIGNAL_GATE_ADAPTIVE_COOLDOWN_BYPASS_ON_TIGHTEN = "false";
 
   // ─── Phase 2: Outcome resolution horizon (May 2026) ────────────────────
   // Top wallets peak WR at 30m (Fuz4rV: 63.6%), not at 10m (18.2%).
