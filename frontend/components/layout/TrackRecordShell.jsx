@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import { createPortal } from "react-dom";
 import { Menu, X } from "lucide-react";
 import { PageHead } from "../seo/PageHead";
 import { TrackRecordNavGroup, TRACK_RECORD_NAV_OPEN_PRO } from "./TrackRecordNavGroup";
@@ -88,31 +89,39 @@ export function TrackRecordShell({ children }) {
         </button>
       </div>
 
-      {drawerOpen ? (
-        <>
-          <div
-            className="fixed inset-0 z-[210] bg-black/60 backdrop-blur-[1px] xl:hidden"
-            onClick={() => setDrawerOpen(false)}
-            aria-hidden
-          />
-          <div className="fixed inset-y-0 left-0 z-[220] flex w-[min(300px,88vw)] flex-col border-r border-slate-800/80 bg-[#050b12]/98 backdrop-blur-xl xl:hidden">
-            <div className="flex items-center justify-between border-b border-slate-800/70 px-5 py-4">
-              <span className="text-xs font-black tracking-[0.2em] text-slate-300">NAVIGATION</span>
-              <button
-                type="button"
+      {drawerOpen && typeof document !== "undefined"
+        ? createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-[210] bg-black/60 backdrop-blur-[1px] xl:hidden"
                 onClick={() => setDrawerOpen(false)}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-700 text-slate-300"
-                aria-label="Close navigation"
+                aria-hidden
+              />
+              <div
+                className="fixed inset-y-0 left-0 z-[220] flex w-[min(300px,88vw)] flex-col border-r border-slate-800/80 bg-[#050b12] xl:hidden"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Navigation"
               >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="flex-1 space-y-7 overflow-y-auto px-5 py-6">
-              <SidebarNav />
-            </div>
-          </div>
-        </>
-      ) : null}
+                <div className="flex items-center justify-between border-b border-slate-800/70 px-5 py-4">
+                  <span className="text-xs font-black tracking-[0.2em] text-slate-300">NAVIGATION</span>
+                  <button
+                    type="button"
+                    onClick={() => setDrawerOpen(false)}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-700 text-slate-300"
+                    aria-label="Close navigation"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="flex-1 space-y-7 overflow-y-auto px-5 py-6">
+                  <SidebarNav />
+                </div>
+              </div>
+            </>,
+            document.body
+          )
+        : null}
 
       <main className="xl:pl-[276px]">{children}</main>
     </div>
