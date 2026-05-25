@@ -426,13 +426,15 @@ router.get("/sentinel-edge", async (_req, res) => {
   }
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   try {
+    // CRITICAL: order by emitted_at, NOT outcome_pct. Ordering by outcome and
+    // limiting biases the sample to winners — would show fake WR ~89% vs real ~20%.
     const { data: perfRows, error } = await supabase
       .from("signal_performance")
       .select("id, asset, outcome_pct, emitted_at, status, signals")
       .eq("status", "resolved")
       .gte("emitted_at", since)
-      .order("outcome_pct", { ascending: false })
-      .limit(500);
+      .order("emitted_at", { ascending: false })
+      .limit(2000);
     if (error) throw error;
 
     const resolved = (perfRows || []).filter((r) => Number.isFinite(Number(r.outcome_pct)));
@@ -442,7 +444,11 @@ router.get("/sentinel-edge", async (_req, res) => {
     const avgWinReturn = wins.length > 0
       ? wins.reduce((sum, r) => sum + Number(r.outcome_pct), 0) / wins.length
       : 0;
-    const top = resolved[0] || null;
+
+    // Best winner found independently (no order bias on the sample)
+    const top = wins.length > 0
+      ? [...wins].sort((a, b) => Number(b.outcome_pct) - Number(a.outcome_pct))[0]
+      : null;
     let bestSignal = null;
     if (top && Number(top.outcome_pct) > 0) {
       let symbol = null;
