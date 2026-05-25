@@ -98,7 +98,7 @@ export default function SentinelBot() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-4 right-4 z-[200] min-h-11 min-w-11 w-11 h-11 bg-sl-card border border-sl-border flex items-center justify-center transition-all duration-150 hover:border-sl-violet hover:shadow-lg md:bottom-6 md:right-6 md:w-12 md:h-12"
+        className="fixed bottom-[calc(var(--sl-bottom-nav-h,0px)+1rem)] right-4 z-[200] min-h-11 min-w-11 w-11 h-11 bg-sl-card border border-sl-border flex items-center justify-center transition-all duration-150 hover:border-sl-violet hover:shadow-lg md:bottom-6 md:right-6 md:w-12 md:h-12"
         style={{ borderRadius: "50%" }}
         title="Sentinel Assistant"
       >
@@ -119,7 +119,7 @@ export default function SentinelBot() {
 
       {open && (
         <div
-          className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] right-4 z-[199] w-[360px] bg-sl-panel border border-sl-border flex flex-col overflow-hidden max-w-[calc(100vw-1.5rem)] md:bottom-20 md:right-6"
+          className="fixed bottom-[calc(var(--sl-bottom-nav-h,0px)+4rem+env(safe-area-inset-bottom,0px))] right-4 z-[199] w-[360px] bg-sl-panel border border-sl-border flex flex-col overflow-hidden max-w-[calc(100vw-1.5rem)] md:bottom-20 md:right-6"
           style={{
             height: "480px",
             borderRadius: "8px",
