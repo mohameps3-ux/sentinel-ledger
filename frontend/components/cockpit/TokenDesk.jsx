@@ -30,6 +30,25 @@ import { useLocale } from "../../contexts/LocaleContext";
 import { buildRegimeAnalysisFromDesk } from "@/lib/tripleRiskRegime";
 import { resolveTokenStateChip } from "@/lib/tokenStateChip.mjs";
 import { TokenStateChip } from "@/components/cockpit/TokenStateChip";
+import { RegimeCautionBanner } from "@/components/token/RegimeCautionBanner";
+
+/**
+ * Classify current market regime from price/volume/liquidity.
+ * Mirrors backend classifyMarketRegime — volatile ≥12% 24h or vol/liq ≥10.
+ */
+function classifyDeskRegime(token) {
+  const market = token?.market;
+  if (!market) return null;
+  const chg24Raw = market?.priceChange24h;
+  const absChg = Number.isFinite(Number(chg24Raw)) ? Math.abs(Number(chg24Raw)) : null;
+  const vol = Number(market?.volume24hUsd ?? market?.volume24h);
+  const liq = Number(market?.liquidityUsd ?? market?.liquidity);
+  const volLiq = Number.isFinite(vol) && Number.isFinite(liq) && liq > 0 ? vol / liq : null;
+  if ((absChg != null && absChg >= 12) || (volLiq != null && volLiq >= 10)) return "volatile";
+  if (absChg != null && absChg >= 5) return "trending";
+  if (absChg != null) return "calm";
+  return null;
+}
 
 function clampPct(n) {
   const v = Number(n);
@@ -514,6 +533,8 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
         </div>
 
         {deskRadarHint ? <DeskRadarHintStrip hint={deskRadarHint} /> : null}
+
+        <RegimeCautionBanner regime={classifyDeskRegime(token)} />
 
         <DeskSection title="Token overview">
           <DeskIdentity token={token} mint={mint} imageBroken={imageBroken} onImageError={() => setImageBroken(true)} />

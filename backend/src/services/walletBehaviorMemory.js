@@ -151,6 +151,32 @@ async function getActiveWallets(limit = 200) {
   const supabase = safeSupabase();
   if (!supabase) return { ok: false, reason: "supabase_unconfigured", rows: [] };
   const lim = Math.min(1000, Math.max(10, Math.floor(Number(limit) || 200)));
+
+  // Prefer wallets that recently emitted signals (last 7d) — these are the
+  // ones that actually matter for behavior memory. Stale wallets in smart_wallets
+  // by updated_at often have no recent activity and waste tick budget.
+  const since7d = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+  const { data: recent, error: recentErr } = await supabase
+    .from("smart_wallet_signals")
+    .select("wallet_address")
+    .gte("created_at", since7d)
+    .order("created_at", { ascending: false })
+    .limit(lim * 3); // overfetch then dedupe
+
+  if (!recentErr && Array.isArray(recent) && recent.length > 0) {
+    const seen = new Set();
+    const rows = [];
+    for (const r of recent) {
+      const w = String(r?.wallet_address || "").trim();
+      if (!w || seen.has(w)) continue;
+      seen.add(w);
+      rows.push(w);
+      if (rows.length >= lim) break;
+    }
+    if (rows.length > 0) return { ok: true, rows };
+  }
+
+  // Fallback: smart_wallets ordered by updated_at (original behavior).
   const { data, error } = await supabase
     .from("smart_wallets")
     .select("wallet_address")

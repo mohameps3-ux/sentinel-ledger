@@ -62,7 +62,10 @@ if (profile !== "strict") {
   process.env.TRENDING_STRICT_POOL_ONLY = "false";
 
   process.env.WALLET_BEHAVIOR_TICK_MS = "900000";
-  process.env.WALLET_BEHAVIOR_MAX_WALLETS = "1000";
+  // Reduced from 1000 → 100. With 1000, each tick took ~10min and often hung,
+  // leaving "Last tick: —" in OPS. 100 completes in seconds and still covers
+  // the most active wallets (prioritized by recent signal activity).
+  process.env.WALLET_BEHAVIOR_MAX_WALLETS = "100";
 }
 
 module.exports = { profile };
