@@ -555,16 +555,18 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
             <div className="sentinel-narrative narrative-tactical text-[11px] leading-snug">{narrative.message}</div>
           ) : null}
         </DeskSection>
-        <DeskSection title="Smart Money">
-          {isProbableSolanaMint(mint) ? (
-            <DeskSmartMoneyLazy mint={mint} flaggedWallets={flaggedWallets} />
-          ) : (
-            <p className="text-xs text-gray-500">{t("cockpit.desk.invalidMint")}</p>
-          )}
-        </DeskSection>
+        {/*
+          Right-rail order (top-to-bottom):
+            Identity / Mint -> Conviction -> Market -> Risk ->
+            Signal Intelligence -> Oracle Outcomes ->
+            Actions -> External links -> Smart Money (PRO panel)
+          Smart Money sits last because it can render a tall PRO upgrade
+          preview for free / un-signed users — putting it on top pushed
+          every other piece of intel below the fold. Quick Scan was removed
+          (Ctrl-K + the global terminal cover the same paste-mint workflow).
+        */}
 
         <DeskSection title="Market">
-          
           <DeskMarketGrid token={token} tokenQuery={tokenQuery} t={t} />
         </DeskSection>
 
@@ -589,11 +591,13 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
 
         <DeskExternalLinks mint={mint} token={token} t={t} />
 
-        <div className="flex flex-col gap-2 pt-1 border-t border-white/[0.06]">
-          <AccordionSection title={t("cockpit.desk.quickScan")} summaryTone="neutral" defaultOpen={false}>
-            <DeskQuickScan currentMint={mint} />
-          </AccordionSection>
-        </div>
+        <DeskSection title="Smart Money">
+          {isProbableSolanaMint(mint) ? (
+            <DeskSmartMoneyLazy mint={mint} flaggedWallets={flaggedWallets} />
+          ) : (
+            <p className="text-xs text-gray-500">{t("cockpit.desk.invalidMint")}</p>
+          )}
+        </DeskSection>
       </div>
     </div>
   );
