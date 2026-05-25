@@ -165,6 +165,9 @@ export function SmartMoneyLeaderboardConsole({
   avgPnl30,
   avgUnifiedScore,
   activeProbes24h,
+  totalSmartWallets,
+  dataComputedAt,
+  onRefreshAll,
   rawRowCount,
   onClearFavoritesFilter,
   t
@@ -432,17 +435,35 @@ export function SmartMoneyLeaderboardConsole({
             {[
               {
                 k: "Total tracked wallets",
-                v:
-                  displayedRanked.length != null ? (
+                tooltip:
+                  "Smart wallets stored in the universe. The leaderboard below shows only the current page (top N).",
+                v: (() => {
+                  const shown = Array.isArray(displayedRanked) ? displayedRanked.length : 0;
+                  const total = Number.isFinite(Number(totalSmartWallets))
+                    ? Number(totalSmartWallets)
+                    : null;
+                  if (total != null && total > 0) {
+                    return (
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-50">
+                          {total}
+                        </span>
+                        <span className="font-mono text-xs tabular-nums text-zinc-500">· top {shown} shown</span>
+                      </div>
+                    );
+                  }
+                  return shown > 0 ? (
                     <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-50">
-                      {displayedRanked.length}
+                      {shown}
                     </span>
                   ) : (
                     "—"
-                  )
+                  );
+                })()
               },
               {
                 k: "Median win rate",
+                tooltip: "Median of win_rate across the wallets currently shown (rolling 30-day window).",
                 v:
                   medianWinRate != null ? (
                     <div className="space-y-3">
@@ -463,6 +484,7 @@ export function SmartMoneyLeaderboardConsole({
               },
               {
                 k: "Avg 30D PnL",
+                tooltip: "Average net PnL across the wallets currently shown, over the last 30 days.",
                 v:
                   avgPnl30 != null ? (
                     <span
@@ -478,6 +500,8 @@ export function SmartMoneyLeaderboardConsole({
               },
               {
                 k: "Avg Unified Score",
+                tooltip:
+                  "Composite ranking score (0-100): 50% win rate + 30% trades confidence + 20% PnL influence.",
                 v:
                   avgUnifiedScore != null ? (
                     <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-50">
@@ -489,6 +513,8 @@ export function SmartMoneyLeaderboardConsole({
               },
               {
                 k: "Active probes",
+                tooltip:
+                  "Smart-wallet emissions tracked in the last 24h (counted server-side over the whole universe, not capped by page size).",
                 v:
                   activeProbes24h != null ? (
                     <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-200">
@@ -502,12 +528,47 @@ export function SmartMoneyLeaderboardConsole({
             ].map((item, i) => (
               <div
                 key={item.k}
+                title={item.tooltip || undefined}
                 className={`min-w-0 flex-1 ${i > 0 ? "lg:border-l lg:border-white/[0.05] lg:pl-12" : ""}`}
               >
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">{item.k}</p>
                 <div className="mt-3">{item.v}</div>
               </div>
             ))}
+          </div>
+
+          {/* Freshness footer — answers "are these numbers live?" honestly. */}
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.04] pt-4">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium tracking-wide text-zinc-500">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500/70" aria-hidden />
+                <span>
+                  Universe updated{" "}
+                  <span className="font-mono tabular-nums text-zinc-300">
+                    {dataComputedAt ? relShort(dataComputedAt) : "—"}
+                  </span>{" "}
+                  ago
+                </span>
+              </span>
+              <span className="hidden text-zinc-700 sm:inline">·</span>
+              <span className="text-zinc-500">Aggregates refresh every 6h (auto-discovery + behavior cron)</span>
+              <span className="hidden text-zinc-700 sm:inline">·</span>
+              <span className="text-zinc-500">Cache TTL 3 min</span>
+            </div>
+            {typeof onRefreshAll === "function" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onRefreshAll();
+                  toast("Refreshing universe…");
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-[#0D1118]/90 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-300 transition hover:border-white/[0.12] hover:text-zinc-100"
+                title="Force a refresh now (clears client cache)"
+              >
+                <RefreshCw className="h-3 w-3" aria-hidden />
+                Refresh
+              </button>
+            ) : null}
           </div>
         </div>
 

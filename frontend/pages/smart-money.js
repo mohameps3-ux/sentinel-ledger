@@ -94,6 +94,29 @@ export default function SmartMoneyPage() {
   const rows = Array.isArray(data?.rows) ? data.rows : [];
   const actRows = Array.isArray(activity.data?.rows) ? activity.data.rows : [];
 
+  // Server-reported universe size (independent of page limit) so the hero strip
+  // shows the real total instead of always echoing the page size (50).
+  const totalSmartWallets = useMemo(() => {
+    const n = Number(data?.meta?.totalSmartWallets);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [data?.meta?.totalSmartWallets]);
+
+  // Server-counted active probes in the last 24h (NOT capped by the activity page limit).
+  const activeProbes24hServer = useMemo(() => {
+    const n = Number(activity.data?.meta?.activeProbes24h);
+    return Number.isFinite(n) ? n : null;
+  }, [activity.data?.meta?.activeProbes24h]);
+
+  // Freshness: when was the underlying smart-money universe last computed?
+  // Pick the freshest of leaderboard.meta.dataComputedAt and activity.meta.dataComputedAt.
+  const dataComputedAt = useMemo(() => {
+    const a = data?.meta?.dataComputedAt;
+    const b = activity.data?.meta?.dataComputedAt;
+    if (!a) return b || null;
+    if (!b) return a;
+    return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
+  }, [data?.meta?.dataComputedAt, activity.data?.meta?.dataComputedAt]);
+
   const addresses = useMemo(() => rows.map((r) => r.wallet).filter(Boolean), [rows]);
   const { labelFor, titleFor } = useWalletLabels(addresses);
 
@@ -144,10 +167,18 @@ export default function SmartMoneyPage() {
     return nums.reduce((a, b) => a + b, 0) / nums.length;
   }, [displayedRanked]);
 
-  const activeProbes24h = useMemo(
-    () => actRows.filter((r) => activityInTimeframe(r.createdAt, "24h")).length,
-    [actRows]
-  );
+  // Prefer the server-counted value (never capped). Fall back to a client-side count
+  // (capped at activity page limit) only if the server didn't provide one.
+  const activeProbes24h = useMemo(() => {
+    if (activeProbes24hServer != null) return activeProbes24hServer;
+    return actRows.filter((r) => activityInTimeframe(r.createdAt, "24h")).length;
+  }, [activeProbes24hServer, actRows]);
+
+  // Compose a single "refresh everything" action so the UI can offer a manual cache-bust.
+  const refreshAll = useCallback(() => {
+    try { refetch?.(); } catch (_) {}
+    try { activity.refetch?.(); } catch (_) {}
+  }, [refetch, activity.refetch]);
 
   return (
     <>
@@ -185,6 +216,9 @@ export default function SmartMoneyPage() {
           avgPnl30={avgPnl30}
           avgUnifiedScore={avgUnifiedScore}
           activeProbes24h={activeProbes24h}
+          totalSmartWallets={totalSmartWallets}
+          dataComputedAt={dataComputedAt}
+          onRefreshAll={refreshAll}
           rawRowCount={rows.length}
           onClearFavoritesFilter={() => pushQuery({ favorites: undefined })}
           t={t}
