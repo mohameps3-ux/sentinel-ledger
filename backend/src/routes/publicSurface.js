@@ -426,45 +426,66 @@ router.get("/sentinel-edge", async (_req, res) => {
   }
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   try {
-    // CRITICAL: order by emitted_at, NOT outcome_pct. Ordering by outcome and
-    // limiting biases the sample to winners — would show fake WR ~89% vs real ~20%.
-    const { data: perfRows, error } = await supabase
-      .from("signal_performance")
-      .select("id, asset, outcome_pct, emitted_at, status, signals")
-      .eq("status", "resolved")
-      .gte("emitted_at", since)
-      .order("emitted_at", { ascending: false })
-      .limit(2000);
-    if (error) throw error;
+    // Supabase REST has a hard max_rows of 1000 by default. `.limit(2000)` was
+    // being silently capped at 1000, producing a stuck "1000 signals" display.
+    // Use count: "exact" with head: true to get true counts without fetching rows.
+    const [totalCountRes, winsCountRes, sampleRes] = await Promise.all([
+      supabase
+        .from("signal_performance")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "resolved")
+        .gte("emitted_at", since),
+      supabase
+        .from("signal_performance")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "resolved")
+        .gte("emitted_at", since)
+        .gte("outcome_pct", 1.0),
+      // Sample rows for avg-winner and best-signal calculations.
+      // Order by emitted_at to keep the sample unbiased.
+      supabase
+        .from("signal_performance")
+        .select("asset, outcome_pct, emitted_at")
+        .eq("status", "resolved")
+        .gte("emitted_at", since)
+        .order("emitted_at", { ascending: false })
+        .limit(1000)
+    ]);
+    if (totalCountRes.error) throw totalCountRes.error;
+    if (winsCountRes.error) throw winsCountRes.error;
+    if (sampleRes.error) throw sampleRes.error;
 
-    const resolved = (perfRows || []).filter((r) => Number.isFinite(Number(r.outcome_pct)));
-    const total = resolved.length;
-    const wins = resolved.filter((r) => Number(r.outcome_pct) >= 1.0);
-    const winRate = total > 0 ? (wins.length / total) * 100 : 0;
-    const avgWinReturn = wins.length > 0
-      ? wins.reduce((sum, r) => sum + Number(r.outcome_pct), 0) / wins.length
+    const totalResolved = Number(totalCountRes.count || 0);
+    const totalWinners = Number(winsCountRes.count || 0);
+    const winRate = totalResolved > 0 ? (totalWinners / totalResolved) * 100 : 0;
+
+    const sample = (sampleRes.data || []).filter((r) => Number.isFinite(Number(r.outcome_pct)));
+    const sampleWins = sample.filter((r) => Number(r.outcome_pct) >= 1.0);
+    const avgWinReturn = sampleWins.length > 0
+      ? sampleWins.reduce((sum, r) => sum + Number(r.outcome_pct), 0) / sampleWins.length
       : 0;
 
-    // Best winner found independently (no order bias on the sample)
-    const top = wins.length > 0
-      ? [...wins].sort((a, b) => Number(b.outcome_pct) - Number(a.outcome_pct))[0]
+    // Best winner from the sample (may not be the all-time 24h best if >1000 signals,
+    // but representative). For exact best we'd need a separate ORDER BY query.
+    const topRow = sampleWins.length > 0
+      ? [...sampleWins].sort((a, b) => Number(b.outcome_pct) - Number(a.outcome_pct))[0]
       : null;
     let bestSignal = null;
-    if (top && Number(top.outcome_pct) > 0) {
+    if (topRow && Number(topRow.outcome_pct) > 0) {
       let symbol = null;
       try {
         const { data: snap } = await supabase
           .from("market_snapshots")
           .select("symbol")
-          .eq("mint", top.asset)
+          .eq("mint", topRow.asset)
           .maybeSingle();
         symbol = snap?.symbol || null;
       } catch (_) { /* non-fatal */ }
-      const ageMin = Math.max(0, Math.floor((Date.now() - Date.parse(top.emitted_at)) / 60000));
+      const ageMin = Math.max(0, Math.floor((Date.now() - Date.parse(topRow.emitted_at)) / 60000));
       bestSignal = {
-        symbol: symbol || (top.asset ? String(top.asset).slice(0, 6) : "?"),
-        mint: top.asset || null,
-        returnPct: Number(top.outcome_pct),
+        symbol: symbol || (topRow.asset ? String(topRow.asset).slice(0, 6) : "?"),
+        mint: topRow.asset || null,
+        returnPct: Number(topRow.outcome_pct),
         ageMinutes: ageMin
       };
     }
@@ -474,9 +495,10 @@ router.get("/sentinel-edge", async (_req, res) => {
       windowHours: 24,
       winRate: Math.round(winRate * 10) / 10,
       avgWinReturn: Math.round(avgWinReturn * 10) / 10,
-      totalWinners: wins.length,
-      totalResolved: total,
-      bestSignal
+      totalWinners,
+      totalResolved,
+      bestSignal,
+      sampleSize: sample.length
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || "sentinel_edge_failed" });
