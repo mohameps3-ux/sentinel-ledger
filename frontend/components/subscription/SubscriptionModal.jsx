@@ -227,7 +227,7 @@ export default function SubscriptionModal({ isOpen, onClose, onSuccess }) {
 
   return (
     <div
-      className="fixed inset-0 z-[180] flex items-end sm:items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-[1px]"
+      className="fixed inset-0 z-[180] flex items-end justify-center bg-black/75 p-3 backdrop-blur-md sm:items-center sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="subscription-modal-title"
@@ -236,59 +236,68 @@ export default function SubscriptionModal({ isOpen, onClose, onSuccess }) {
       }}
     >
       <div
-        className="w-full max-w-lg rounded border border-zinc-700/90 bg-[#0b0c0f] shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+        className="sl-card-premium sl-aurora relative w-full max-w-lg p-0"
+        style={{ animation: "sl-modal-in 0.35s cubic-bezier(0.22, 1, 0.36, 1)" }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
-          <h2
-            id="subscription-modal-title"
-            className="font-mono text-sm font-semibold uppercase tracking-wide text-zinc-100 pr-2"
-          >
-            Acceso completo a Sentinel
-          </h2>
+        <style jsx>{`
+          @keyframes sl-modal-in {
+            from { opacity: 0; transform: translateY(12px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+          }
+        `}</style>
+
+        <div className="relative z-10 flex items-start justify-between gap-3 border-b border-[var(--sl-border)] px-6 py-4">
+          <div>
+            <div className="sl-eyebrow flex items-center gap-2 text-[var(--sl-sapphire-hi)]">
+              <span className="sl-live-dot" />
+              Sentinel PRO
+            </div>
+            <h2 id="subscription-modal-title" className="sl-display mt-1.5 text-xl font-bold text-[var(--sl-text-primary)]">
+              Unlock the full edge
+            </h2>
+          </div>
           <button
             type="button"
             onClick={handleClose}
-            className="font-mono text-zinc-500 hover:text-zinc-300 px-2 py-0.5 -mr-1 transition-colors"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--sl-border)] text-[var(--sl-text-muted)] transition-colors hover:border-[var(--sl-sapphire-hi)] hover:text-[var(--sl-diamond)]"
             aria-label="Cerrar"
           >
             ✕
           </button>
         </div>
 
-        <div className="p-4 space-y-4">
+        <div className="relative z-10 space-y-4 p-6">
           {phase === "verifying" ? (
-            <p className="font-mono text-xs text-zinc-400">Verifying payment…</p>
+            <p className="sl-num text-[12px] text-[var(--sl-sapphire-hi)]">
+              <span className="inline-block animate-spin">◐</span> Verifying on-chain payment…
+            </p>
           ) : null}
 
           {inlineError ? (
-            <div
-              className="font-mono text-xs text-zinc-300 border border-zinc-700 bg-zinc-900/60 rounded px-3 py-2"
-              role="alert"
-            >
+            <div className="sl-num rounded-lg border border-rose-500/40 bg-rose-500/10 px-3.5 py-2.5 text-[12px] text-rose-200" role="alert">
               {inlineError}
             </div>
           ) : null}
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
               disabled={anyBusy}
               onClick={() => pay(TRIAL_AMOUNT, "trial")}
-              className="flex-1 w-full text-left rounded border border-zinc-700/90 bg-zinc-900/35
-                         hover:border-zinc-500 hover:bg-zinc-800/40 transition-colors px-4 py-3
-                         disabled:opacity-45 disabled:pointer-events-none"
+              className="sl-card-premium sl-shine-edge group relative w-full p-5 text-left disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <div className="font-mono text-xs font-semibold uppercase tracking-wide text-zinc-100">
-                Probar 7 días
+              <div className="sl-eyebrow">Trial</div>
+              <div className="sl-display mt-1 text-2xl font-bold text-[var(--sl-text-primary)]">7 days</div>
+              <div className="mt-3 flex items-baseline gap-1.5">
+                <span className="sl-num text-3xl font-bold text-[var(--sl-diamond)]">10</span>
+                <span className="sl-num text-xs font-bold text-[var(--sl-text-muted)]">USDC</span>
               </div>
-              <div className="font-mono text-[10px] text-zinc-500 mt-1.5 leading-snug">
-                10 USDC · red Solana
-              </div>
+              <div className="mt-2 text-[11px] text-[var(--sl-text-muted)]">Solana mainnet · one-time</div>
               {busyCard === "trial" ? (
-                <div className="font-mono text-[10px] text-zinc-400 mt-2">
-                  {phase === "signing" ? "Firmando en Phantom…" : null}
-                  {phase === "verifying" ? "Verificando pago…" : null}
+                <div className="sl-num mt-3 flex items-center gap-2 text-[11px] text-[var(--sl-sapphire-hi)]">
+                  <span className="inline-block animate-spin">◐</span>
+                  {phase === "signing" ? "Sign in Phantom…" : phase === "verifying" ? "Verifying…" : "…"}
                 </div>
               ) : null}
             </button>
@@ -297,28 +306,49 @@ export default function SubscriptionModal({ isOpen, onClose, onSuccess }) {
               type="button"
               disabled={anyBusy}
               onClick={() => pay(PRO_AMOUNT, "pro")}
-              className="flex-1 w-full text-left rounded border border-zinc-700/90 bg-zinc-900/35
-                         hover:border-zinc-500 hover:bg-zinc-800/40 transition-colors px-4 py-3
-                         disabled:opacity-45 disabled:pointer-events-none"
+              className="sl-card-premium sl-shine-edge group relative w-full p-5 text-left disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                borderColor: "rgba(var(--sl-sapphire-hi-rgb), 0.45)",
+                boxShadow: "0 0 0 1px rgba(var(--sl-sapphire-hi-rgb), 0.25), 0 16px 36px -12px rgba(0,0,0,0.6), 0 0 28px -4px rgba(var(--sl-sapphire-rgb), 0.35)"
+              }}
             >
-              <div className="font-mono text-xs font-semibold uppercase tracking-wide text-zinc-100">
-                Acceso completo 30 días
+              <div className="absolute right-3 top-3 sl-pill" style={{ padding: "2px 8px", fontSize: "9px" }}>
+                Best value
               </div>
-              <div className="font-mono text-[10px] text-zinc-500 mt-1.5 leading-snug">
-                29 USDC · red Solana
+              <div className="sl-eyebrow text-[var(--sl-sapphire-hi)]">Pro</div>
+              <div className="sl-display mt-1 text-2xl font-bold text-[var(--sl-text-primary)]">30 days</div>
+              <div className="mt-3 flex items-baseline gap-1.5">
+                <span className="sl-num text-3xl font-bold text-[var(--sl-diamond-bright)] drop-shadow-[0_0_12px_rgba(96,165,250,0.45)]">29</span>
+                <span className="sl-num text-xs font-bold text-[var(--sl-text-muted)]">USDC</span>
               </div>
+              <div className="mt-2 text-[11px] text-[var(--sl-text-muted)]">Solana mainnet · one-time</div>
               {busyCard === "pro" ? (
-                <div className="font-mono text-[10px] text-zinc-400 mt-2">
-                  {phase === "signing" ? "Firmando en Phantom…" : null}
-                  {phase === "verifying" ? "Verificando pago…" : null}
+                <div className="sl-num mt-3 flex items-center gap-2 text-[11px] text-[var(--sl-sapphire-hi)]">
+                  <span className="inline-block animate-spin">◐</span>
+                  {phase === "signing" ? "Sign in Phantom…" : phase === "verifying" ? "Verifying…" : "…"}
                 </div>
               ) : null}
             </button>
           </div>
 
-          <p className="font-mono text-[10px] text-zinc-600 leading-relaxed">
-            Mainnet · USDC ({USDC_MINT.slice(0, 4)}…). Envío a tesorería Sentinel; la activación se confirma en el
-            servidor tras la transacción.
+          <ul className="grid gap-2 rounded-lg border border-[var(--sl-border)] bg-[var(--sl-bg-base)]/40 p-3.5 text-[12px] text-[var(--sl-text-secondary)]">
+            <li className="flex items-center gap-2">
+              <span className="sl-live-dot sl-live-dot--win" />
+              Real-time signal feed (no 30-minute delay)
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="sl-live-dot sl-live-dot--win" />
+              Smart Money per-token panels + alerts
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="sl-live-dot sl-live-dot--win" />
+              Wallet Stalker · unlimited
+            </li>
+          </ul>
+
+          <p className="sl-num text-[10.5px] leading-relaxed text-[var(--sl-text-muted)]">
+            Solana mainnet · USDC ({USDC_MINT.slice(0, 4)}…). Direct transfer to the Sentinel treasury; activation is
+            confirmed server-side after the transaction.
           </p>
         </div>
       </div>

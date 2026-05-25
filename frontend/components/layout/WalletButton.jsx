@@ -8,9 +8,9 @@ import toast from "react-hot-toast";
 import { getPublicApiUrl } from "../../lib/publicRuntime";
 
 const walletMultiButtonClass =
-  "!bg-sl-violet hover:!opacity-95 !rounded-[2px] !h-7 !min-h-0 !text-[9px] !min-w-0 !max-w-[5.25rem] !justify-center !truncate !px-1.5 !py-0 !leading-tight !font-semibold";
+  "!bg-gradient-to-br !from-[rgba(37,99,235,0.95)] !to-[rgba(29,78,216,0.95)] hover:!from-[rgba(59,130,246,1)] hover:!to-[rgba(37,99,235,1)] !rounded-lg !h-8 !min-h-0 !text-[10px] !min-w-0 !max-w-[6rem] !justify-center !truncate !px-2.5 !py-0 !leading-tight !font-bold !tracking-[0.1em] !uppercase !shadow-[0_0_0_1px_rgba(96,165,250,0.4)_inset,0_8px_22px_-8px_rgba(37,99,235,0.7)] hover:!shadow-[0_0_0_1px_rgba(147,197,253,0.55)_inset,0_12px_30px_-8px_rgba(37,99,235,0.85)] !transition-all";
 const navWalletClass =
-  "!btn-ghost-sm !h-7 !min-h-0 !rounded-[2px] !border !border-sl-border !bg-transparent hover:!border-sl-hover !px-2 !py-0 !font-mono !text-2xs !font-medium !uppercase !tracking-[0.08em] !text-sl-muted hover:!text-sl-sub !shadow-none";
+  "!inline-flex !h-8 !min-h-0 !rounded-lg !border !border-[var(--sl-border)] !bg-[var(--sl-bg-surface)] hover:!border-[rgba(96,165,250,0.55)] hover:!bg-[rgba(37,99,235,0.08)] !px-2.5 !py-0 !font-mono !text-[10.5px] !font-bold !uppercase !tracking-[0.12em] !text-[var(--sl-text-secondary)] hover:!text-[var(--sl-diamond)] !transition-all sl-shine-edge";
 
 const CONNECTING_STUCK_MS = 40000;
 
@@ -165,7 +165,7 @@ export function WalletButton({ navCompact = false }) {
   const showConnectingLabel = connecting || buttonState === "connecting";
 
   const menuItemClass =
-    "w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-mono text-sl-sub transition hover:bg-white/5";
+    "w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] font-mono font-semibold uppercase tracking-[0.08em] text-[var(--sl-text-secondary)] transition-colors hover:bg-[rgba(37,99,235,0.10)] hover:text-[var(--sl-diamond)]";
 
   return (
     <div ref={wrapRef} className="relative z-[200] flex items-center justify-end gap-1 min-w-0 shrink-0">
@@ -181,14 +181,16 @@ export function WalletButton({ navCompact = false }) {
           >
             {connected ? (
               <>
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-sl-border bg-sl-card text-emerald-400/90">
-                  <ShieldCheck size={15} strokeWidth={2} aria-hidden />
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-emerald-500/40 bg-emerald-500/15 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.25)]">
+                  <ShieldCheck size={11} strokeWidth={2.4} aria-hidden />
                 </span>
-                <span className="min-w-0 truncate normal-case tracking-normal">{shortWallet}</span>
+                <span className="sl-num min-w-0 truncate text-[10.5px] font-bold normal-case tracking-normal text-[var(--sl-text-primary)]">
+                  {shortWallet}
+                </span>
               </>
             ) : (
               <>
-                <Wallet size={14} className="shrink-0 text-sl-sub opacity-85" aria-hidden />
+                <Wallet size={13} className="shrink-0 text-[var(--sl-sapphire-hi)]" aria-hidden />
                 <span>Wallet</span>
               </>
             )}
@@ -202,8 +204,21 @@ export function WalletButton({ navCompact = false }) {
           {open ? (
             <div
               role="menu"
-              className="absolute right-0 top-[calc(100%+6px)] z-[500] min-w-[11rem] rounded-[2px] border border-sl-border bg-sl-card py-1 shadow-2xl"
+              className="sl-card-premium absolute right-0 top-[calc(100%+8px)] z-[500] min-w-[12rem] overflow-hidden py-1.5"
+              style={{ animation: "sl-dropdown-in 0.18s cubic-bezier(0.22, 1, 0.36, 1)" }}
             >
+              <style jsx>{`
+                @keyframes sl-dropdown-in {
+                  from { opacity: 0; transform: translateY(-4px); }
+                  to   { opacity: 1; transform: translateY(0); }
+                }
+              `}</style>
+              {connected ? (
+                <div className="px-3 py-2 border-b border-[var(--sl-border)] mb-1">
+                  <div className="sl-eyebrow text-[var(--sl-sapphire-hi)]">Connected</div>
+                  <div className="sl-num mt-0.5 text-[11px] font-bold text-[var(--sl-text-primary)]">{shortWallet}</div>
+                </div>
+              ) : null}
               {connected ? (
                 <button type="button" role="menuitem" onClick={handleLogout} className={menuItemClass}>
                   <LogOut size={14} className="shrink-0 opacity-80" aria-hidden />
@@ -274,7 +289,7 @@ export function WalletButton({ navCompact = false }) {
       ) : null}
 
       {loading && (
-        <div className="w-4 h-4 border-2 border-[#2563EB] border-t-transparent rounded-full animate-spin ml-1" />
+        <div className="ml-1 h-4 w-4 animate-spin rounded-full border-2 border-[var(--sl-sapphire-hi)] border-t-transparent shadow-[0_0_10px_rgba(96,165,250,0.45)]" />
       )}
     </div>
   );
