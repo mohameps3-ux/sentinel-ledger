@@ -80,12 +80,36 @@ async function walletsForWinningMint(supabase, mint, timestamp) {
   if (error) throw new Error(error.message || "smart_wallet_signals_query_failed");
 
   const seen = new Set();
-  return (data || []).filter((row) => {
+  const primary = (data || []).filter((row) => {
     const wallet = String(row?.wallet_address || "").trim();
     if (!isProbableSolanaPubkey(wallet) || seen.has(wallet)) return false;
     seen.add(wallet);
     return true;
   });
+
+  // If smart_wallet_signals has no entries for this mint (older signals or
+  // signals sourced from a different pipeline path), fall back to wallet_tokens
+  // which tracks all on-chain wallet↔mint relationships.
+  if (primary.length === 0) {
+    const { data: wt, error: wtErr } = await supabase
+      .from("wallet_tokens")
+      .select("wallet_address, created_at")
+      .eq("token_address", mint)
+      .order("created_at", { ascending: false })
+      .limit(MAX_WALLETS_PER_SIGNAL);
+    if (!wtErr && Array.isArray(wt) && wt.length > 0) {
+      const fallback = [];
+      for (const row of wt) {
+        const wallet = String(row?.wallet_address || "").trim();
+        if (!isProbableSolanaPubkey(wallet) || seen.has(wallet)) continue;
+        seen.add(wallet);
+        fallback.push({ wallet_address: wallet, confidence: 50, created_at: row.created_at });
+      }
+      return fallback;
+    }
+  }
+
+  return primary;
 }
 
 async function discoverFromSignal({ mint, signal_id, rule_id = "unknown", outcome_pct, timestamp } = {}) {

@@ -547,12 +547,15 @@ async function evaluateSignalEmission(score, ctx = {}) {
   // Phase 3 bypass: R03 (cluster_buy) in volatile regime.
   // Confidence has Pearson correlation ≈ 0.015 with returns — it's noise.
   // Unified score inherits the same noisy confidence component.
-  // For this specific combo (proven edge: WR 31%, AVG +6% at 60m) we skip
-  // those two checks so the cluster signal can reach the cooldown gate.
+  // Also bypass insufficient_signals: when score.signals is empty/untagged
+  // (e.g. signal entered via a path that didn't populate rule tags), the
+  // cluster logic already ran and determined there IS a cluster — the tag
+  // absence is a pipeline gap, not a quality signal. WR 43% in volatile
+  // confirms these signals have real edge.
   const PHASE3_BYPASS_ENABLED =
     String(process.env.SIGNAL_GATE_R03_VOLATILE_BYPASS ?? "true").toLowerCase() !== "false";
   if (PHASE3_BYPASS_ENABLED && regime.key === "volatile" && isR03DominatedEmission(score)) {
-    const bypassed = new Set(["low_confidence", "low_unified_score"]);
+    const bypassed = new Set(["low_confidence", "low_unified_score", "insufficient_signals"]);
     const before = reasons.length;
     reasons = reasons.filter((r) => !bypassed.has(r));
     if (reasons.length < before) {

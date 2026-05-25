@@ -160,11 +160,16 @@ function suggestFromMetrics(metrics = {}, gate = {}) {
 }
 
 function pickWorstRegime(regimes, minN) {
-  // Phase 4: exclude calm — it is already hard-gated by Phase 1 env overrides
-  // (SIGNAL_GATE_REGIME_CALM_MIN_CONFIDENCE=101). Using it as the worst bucket
-  // makes the tuner tighten the base from contaminated pre-Phase-1 calm data,
-  // which then leaks into volatile/trending thresholds via the base config.
-  const EXCLUDED_REGIMES = new Set(["legacy", "calm"]);
+  // Exclude regimes that are already gated or whose data would corrupt the base:
+  //   calm     — hard-blocked by Phase 1 (SIGNAL_GATE_REGIME_CALM_MIN_CONFIDENCE=101).
+  //              Pre-Phase-1 calm data is poisoned; using it as worst bucket bleeds
+  //              into volatile/trending thresholds via base config.
+  //   trending — WR 15.74%, PF 0.39 — below-average but NOT the actionable edge.
+  //              volatile is the only regime with real edge (WR 33%, PF 0.81).
+  //              Tightening base from trending data restricts volatile emissions,
+  //              which is the opposite of what Phase 1 achieved. Exclude until
+  //              trending accumulates enough Phase-1-clean data to trust (~72h).
+  const EXCLUDED_REGIMES = new Set(["legacy", "calm", "trending"]);
   const qualified = (regimes || []).filter(
     (r) => Number(r.total) >= minN && !EXCLUDED_REGIMES.has(String(r.regime || "").toLowerCase())
   );
