@@ -175,7 +175,11 @@ function statusFromPct(pct) {
 function trackResultFromOutcome(outcome60m) {
   const n = Number(outcome60m);
   if (!Number.isFinite(n)) return "PENDING";
-  return n > 0.05 ? "WIN" : "LOSS";
+  // Aligns with signal_performance SUCCESS_MIN_PCT = 1%.
+  // outcome_60m is stored as a fraction (0.01 = +1%).
+  if (n >= 0.01) return "WIN";
+  if (n < -0.01) return "LOSS";
+  return "FLAT"; // -1% to +1% is within noise / fee range
 }
 
 function actionFromOracle(row = {}) {

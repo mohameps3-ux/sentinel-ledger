@@ -11,8 +11,9 @@ function normalizeResultStatus(row = {}) {
   if (raw === "NEUTRAL" || raw === "FLAT") return "FLAT";
   const pct = normalizedResultPct(row);
   if (pct == null) return "PENDING";
-  if (pct > 5) return "WIN";
-  if (pct < -5) return "LOSS";
+  // 1% threshold aligns with signal_performance SUCCESS_MIN_PCT backend constant
+  if (pct >= 1) return "WIN";
+  if (pct < -1) return "LOSS";
   return "FLAT";
 }
 
@@ -161,12 +162,14 @@ export default function ResultsPage() {
   const badge = useMemo(() => {
     if (data.loading) return "Loading saved outcomes…";
     if (data.error) return "Results API degraded — review the request error below.";
-    if (!resolvedRows.length && pendingRows.length) {
+    if (!resolvedRows.length && !flatRows.length && pendingRows.length) {
       return `${pendingRows.length} pending rows visible · no resolved outcomes in this public sample yet`;
     }
-    if (!resolvedRows.length) return "No resolved outcomes in this public sample yet";
-    return `Win rate ${headlineWinRate == null ? "—" : `${headlineWinRate.toFixed(1)}%`} · ${resolvedRows.length} resolved rows visible`;
-  }, [data.loading, data.error, resolvedRows.length, pendingRows.length, headlineWinRate]);
+    if (!resolvedRows.length && !flatRows.length) return "No resolved outcomes in this public sample yet";
+    const wrPart = headlineWinRate == null ? "—" : `${headlineWinRate.toFixed(1)}%`;
+    const flatPart = flatRows.length ? ` · ${flatRows.length} flat (±1%)` : "";
+    return `Win rate ${wrPart} · ${resolvedRows.length} resolved rows visible${flatPart}`;
+  }, [data.loading, data.error, resolvedRows.length, pendingRows.length, flatRows.length, headlineWinRate]);
 
   return (
     <>
@@ -219,6 +222,7 @@ export default function ResultsPage() {
           <div className="terminal-panel px-4 py-3">
             <span className="section-title">NEUTRAL / FLAT</span>
             <p className="mt-2 font-mono text-xl text-slate-200">{flatRows.length}</p>
+            <p className="mt-1 text-[11px] text-sl-muted">Within ±1% at 60m</p>
           </div>
         </section>
 
