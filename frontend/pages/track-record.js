@@ -83,7 +83,107 @@ async function fetchTrackRecord() {
 function Shell({ children }) {
   return <TrackRecordShell>{children}</TrackRecordShell>;
 }
-function Kpi({ label, value, detail, tone = "default" }) { const color = tone === "good" ? "text-emerald-300" : tone === "bad" ? "text-rose-300" : tone === "blue" ? "text-sky-300" : "text-slate-100"; const dot = tone === "bad" ? "bg-rose-400" : tone === "blue" ? "bg-sky-400" : "bg-emerald-400"; return <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4"><div className="flex items-start justify-between gap-3"><div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{label}</div><span className={`h-2 w-2 rounded-full ${dot}`} /></div><div className={`mt-4 font-mono text-2xl font-black ${color}`}>{value}</div><div className="mt-2 text-sm text-slate-400">{detail}</div></div>; }
+function Kpi({ label, value, detail, tone = "default", tooltip }) {
+  const color = tone === "good" ? "text-emerald-300" : tone === "bad" ? "text-rose-300" : tone === "blue" ? "text-sky-300" : "text-slate-100";
+  const dot = tone === "bad" ? "bg-rose-400" : tone === "blue" ? "bg-sky-400" : "bg-emerald-400";
+  return (
+    <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4 transition hover:border-slate-700" title={tooltip || undefined}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{label}</div>
+        <span className={`h-2 w-2 rounded-full ${dot} ${tone === "good" || tone === "blue" ? "animate-pulse" : ""}`} />
+      </div>
+      <div className={`mt-4 font-mono text-2xl font-black ${color}`}>{value}</div>
+      <div className="mt-2 text-sm text-slate-400">{detail}</div>
+    </div>
+  );
+}
+
+/**
+ * Hero card showing the top recent win prominently. This is the emotional anchor
+ * — "Sentinel just made someone +X% on $TOKEN." Photon/GMGN don't show this.
+ */
+function BestSignalHero({ topWin, lastUpdated }) {
+  if (!topWin || !Number.isFinite(Number(topWin.outcome_60m))) return null;
+  const outcome = Number(topWin.outcome_60m) * 100;
+  const ageMs = topWin.created_at ? Date.now() - Date.parse(topWin.created_at) : null;
+  const ageStr = ageMs != null ? (ageMs < 60_000 ? `${Math.round(ageMs / 1000)}s` : ageMs < 3600_000 ? `${Math.round(ageMs / 60_000)}m` : `${Math.round(ageMs / 3600_000)}h`) : "—";
+  const symbol = topWin.symbol || topWin.asset || (topWin.mint ? String(topWin.mint).slice(0, 6) : "?");
+  const ruleId = String(topWin.rule_id || topWin.rule_snapshot?.ruleId || "—").toUpperCase();
+  const regime = String(topWin.regime || topWin.emission_regime || "—").toLowerCase();
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-[#06101a] to-[#06101a] p-5">
+      <div className="absolute right-4 top-4 flex items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-emerald-300/80">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+        <span>BEST SIGNAL · LAST 7D</span>
+      </div>
+      <div className="flex flex-wrap items-end gap-6">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Token</div>
+          <div className="mt-1 text-3xl font-black text-white">${symbol}</div>
+          <div className="mt-1 font-mono text-xs text-slate-500">{shortMint(topWin.mint)}</div>
+        </div>
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Resolved Move</div>
+          <div className="mt-1 font-mono text-4xl font-black text-emerald-300">
+            +{outcome.toFixed(1)}%
+          </div>
+          <div className="mt-1 text-xs text-slate-500">vs entry · 30m horizon</div>
+        </div>
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Signal Age</div>
+          <div className="mt-1 font-mono text-2xl font-black text-slate-200">{ageStr}</div>
+          <div className="mt-1 text-xs text-slate-500">since emission</div>
+        </div>
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Source</div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="font-mono text-base font-bold text-cyan-200">{ruleId}</span>
+            <span className="text-xs text-slate-500">· {regime}</span>
+          </div>
+          <div className="mt-1 text-xs text-slate-500">rule · regime</div>
+        </div>
+        <div className="ml-auto">
+          <Link
+            href={`/token/${topWin.mint || ""}`}
+            className="inline-block rounded border border-emerald-400/40 bg-emerald-400/10 px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.16em] text-emerald-200 hover:bg-emerald-400/20"
+          >
+            View Token →
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Differentiator strip — what makes Sentinel different vs competitors.
+ * Photon, GMGN, BullX don't expose this kind of resolved-outcome track record.
+ */
+function DifferentiatorStrip() {
+  return (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {[
+        { label: "Photon", value: "no public WR", note: "no resolved outcomes" },
+        { label: "GMGN.ai", value: "no public WR", note: "smart-money only" },
+        { label: "DexScreener", value: "no signals", note: "data aggregator" },
+        { label: "Sentinel", value: "verified", note: "this page · live data", highlight: true }
+      ].map((item) => (
+        <div
+          key={item.label}
+          className={`rounded-lg border p-3 ${item.highlight ? "border-cyan-400/40 bg-cyan-400/[0.06]" : "border-slate-800 bg-[#08111a]/60"}`}
+        >
+          <div className={`text-[10px] font-bold uppercase tracking-[0.12em] ${item.highlight ? "text-cyan-300" : "text-slate-500"}`}>
+            {item.label}
+          </div>
+          <div className={`mt-1 font-mono text-sm font-black ${item.highlight ? "text-cyan-200" : "text-slate-400"}`}>
+            {item.value}
+          </div>
+          <div className="mt-0.5 text-[10px] text-slate-500">{item.note}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function makeSeries(rows, mode) {
   const resolved = [...(rows || [])].filter((r) => Number.isFinite(Number(r?.outcome_60m))).slice(-160);
@@ -198,7 +298,26 @@ function TrackRecordPage() {
     : avgRows > 0
       ? `last ${rollingDays}d · sample ${avgRows.toLocaleString()} rows`
       : `mean resolved · last ${rollingDays}d`;
-  const ddDetail = `worst 10m among resolved · last ${rollingDays}d`;
+  const ddDetail = `worst case at 30m · last ${rollingDays}d`;
+  // Track Record uses institutional ±5% threshold; Home banner uses ±1% — both honest, different lens.
+  const winTooltip = "Institutional methodology: a signal counts as WIN only if the token moves +5% or more within 30 minutes of emission. Smaller moves count as flat (excluded from WR denominator), losses as -5% or worse. This is stricter than Home banner (±1%).";
+  const avgTooltip = "Mean realized outcome 30 minutes after each signal, including winners, losers, and flats. Negative = signals on average move against the entry within 30m (typical for memecoins).";
+  const ddTooltip = "Single worst realized outcome at 30m in the rolling window — captures the rug-pull risk you're exposed to if you blindly chase every signal.";
+
+  const topWin = useMemo(() => {
+    const wins = Array.isArray(data?.top_wins) ? data.top_wins : [];
+    if (wins.length) return wins[0];
+    const sorted = chartRows.filter((r) => Number.isFinite(Number(r?.outcome_60m))).sort((a, b) => Number(b.outcome_60m) - Number(a.outcome_60m));
+    return sorted[0] || null;
+  }, [data, chartRows]);
+  const lastUpdatedAgo = useMemo(() => {
+    const ts = lastLivePushAt || (data?.last_updated ? Date.parse(data.last_updated) : null);
+    if (!ts) return null;
+    const diff = Date.now() - ts;
+    if (diff < 0 || !Number.isFinite(diff)) return null;
+    if (diff < 60_000) return `${Math.max(1, Math.round(diff / 1000))}s ago`;
+    return `${Math.round(diff / 60_000)}m ago`;
+  }, [lastLivePushAt, data?.last_updated]);
   const apiBase = getPublicApiUrl();
   const donutDistribution = useMemo(() => {
     if (!data) return { wins: 0, losses: 0, flats: 0, resolved: 0 };
@@ -258,34 +377,139 @@ function TrackRecordPage() {
       ) : null}
       {perfMirror && !emptyLedger && query.isSuccess ? (
         <div className="border-b border-cyan-500/25 bg-cyan-950/20 px-6 py-3 text-sm text-cyan-50 xl:px-8">
-          <b className="text-cyan-200">Automated resolution.</b> Metrics resolve at 10m using live DEX prices—every
-          number on this page reflects real post-signal market moves.
+          <b className="text-cyan-200">Automated resolution.</b> Metrics resolve at 30m using live DEX prices—every
+          number on this page reflects real post-signal market moves, not back-tested curves.
         </div>
       ) : null}
-      <div className="border-b border-slate-800 bg-[#030712]/85 px-6 py-4 backdrop-blur-xl xl:px-8"><div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400"><span>YOU ARE HERE&nbsp;&nbsp; <b className="text-slate-200">Sentinel</b> › <b className="text-slate-200">Track Record</b></span><span>
-            Oracle · KPIs {hideNumericKpis ? "…" : "live"} · chart {hideNumericKpis ? "—" : chartRows.length} rows ·{" "}
-            <span className="text-emerald-300">●</span> live data
-          </span></div></div><div className="space-y-4 p-6 xl:p-8"><section className="grid gap-6 xl:grid-cols-[1fr_360px]"><div><span className="rounded border border-cyan-400/30 bg-cyan-400/5 px-3 py-1 font-mono text-xs uppercase tracking-[0.16em] text-cyan-300">Performance Verified · 10m</span><h1 className="mt-4 text-4xl font-black tracking-tight text-white">Sentinel Validation Engine</h1><h2 className="mt-2 text-2xl font-black text-cyan-300">Track Record Institutional</h2><p className="mt-3 max-w-2xl text-slate-400">
-            {perfMirror ? (
-              <>
-                Every headline metric and chart row is backed by automated 10-minute resolution against live DEX
-                prices. Win rate and average return use the same resolved outcomes across the tape and charts—not demo
-                curves.
-              </>
+      <div className="border-b border-slate-800 bg-[#030712]/85 px-6 py-4 backdrop-blur-xl xl:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
+          <span>YOU ARE HERE&nbsp;&nbsp; <b className="text-slate-200">Sentinel</b> › <b className="text-slate-200">Track Record</b></span>
+          <span className="flex items-center gap-2">
+            Oracle · KPIs {hideNumericKpis ? "…" : "live"} · chart {hideNumericKpis ? "—" : chartRows.length} rows ·
+            {wsConnected ? (
+              <span className="flex items-center gap-1 text-emerald-300">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+                live stream
+              </span>
             ) : (
-              <>
-                Headline KPIs and charts use signal outcomes resolved at 10m with live DEX prices (real resolved rows,
-                not demo curves). With the WebSocket stream connected, numbers refresh when new resolutions land—not
-                only on the HTTP poll.
-              </>
+              <span className="text-slate-500">poll only</span>
             )}
-          </p></div><div className="flex items-center justify-end gap-3"><button onClick={() => query.refetch()} className="rounded border border-cyan-400/40 bg-cyan-400/5 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-cyan-200 hover:bg-cyan-400/10">↻ Refresh</button><Link href="/scanner" className="rounded border border-slate-700 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-slate-200 hover:border-cyan-400/40">Alpha Radar</Link></div></section><section className="rounded-2xl border border-slate-800 bg-[#06101a]/80 p-4"><div className="mb-4 flex flex-wrap items-center gap-3 text-sm"><b className="text-cyan-300">LIVE ORACLE</b><span>Validation Engine · Real Chart Series</span>{wsConnected ? (<span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-300">Real-time stream</span>) : (<span className="rounded-full border border-slate-600 bg-slate-800/60 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Stream idle · poll only</span>)}{lastLivePushAt ? (<span className={`font-mono text-[11px] uppercase tracking-[0.12em] ${Date.now() - lastLivePushAt < 15000 ? "animate-pulse text-emerald-300" : "text-slate-500"}`}>Ledger push {new Date(lastLivePushAt).toLocaleTimeString()}</span>) : null}<span className="font-mono text-slate-500">HTTP {data?.last_updated ? new Date(data.last_updated).toLocaleTimeString() : "—"}</span></div><div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6"><Kpi label="Total Signals" value={hideNumericKpis ? "…" : total.toLocaleString()} detail={perfMirror ? "automated 10m resolution" : "resolved at 10m"} /><Kpi label="Resolved" value={hideNumericKpis ? "…" : resolved.toLocaleString()} detail={hideNumericKpis ? "—" : Number.isFinite(flatNeutral) ? `resolved @ 10m · ±5% neutral: ${flatNeutral.toLocaleString()}` : "resolved @ 10m"} tone="blue" /><Kpi label="Pending" value={hideNumericKpis ? "…" : pending.toLocaleString()} detail="awaiting 10m resolution" /><Kpi label="Win Rate (7d)" value={hideNumericKpis ? "…" : pct(winRate, 1)} detail={winDetail} tone="good" /><Kpi label="Avg Return (7d)" value={hideNumericKpis ? "…" : pct(avgReturn, 2)} detail={avgDetail} tone="good" /><Kpi label="Worst 10m (7d)" value={hideNumericKpis ? "…" : pct(data?.max_drawdown, 2)} detail={ddDetail} tone="bad" /></div><div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_360px]"><LineChart title="Win Rate Over Time (10m)" subtitle={hideNumericKpis ? "cargando…" : `${chartRows.length} oracle rows (tape + top wins)`} value={hideNumericKpis ? "…" : pct(winRate, 1)} rows={chartRows} mode="win" color="#22d3ee" /><LineChart title="Avg Return Over Time" subtitle="rolling average from real outcomes" value={hideNumericKpis ? "…" : pct(avgReturn, 2)} rows={chartRows} mode="avg" color="#3b82f6" />{hideNumericKpis ? (
-                <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4 flex min-h-[170px] items-center justify-center font-mono text-slate-500">
-                  …
-                </div>
+            {lastUpdatedAgo ? <span className="font-mono text-[11px] text-slate-500">· updated {lastUpdatedAgo}</span> : null}
+          </span>
+        </div>
+      </div>
+      <div className="space-y-4 p-6 xl:p-8">
+        <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
+          <div>
+            <span className="rounded border border-cyan-400/30 bg-cyan-400/5 px-3 py-1 font-mono text-xs uppercase tracking-[0.16em] text-cyan-300">Performance Verified · 30m</span>
+            <h1 className="mt-4 text-4xl font-black tracking-tight text-white">Sentinel Validation Engine</h1>
+            <h2 className="mt-2 text-2xl font-black text-cyan-300">Track Record Institutional</h2>
+            <p className="mt-3 max-w-2xl text-slate-400">
+              {perfMirror ? (
+                <>
+                  Every headline metric and chart row is backed by automated 30-minute resolution against live DEX
+                  prices. Win rate uses the institutional ±5% threshold — a signal only counts as a win if the token moves
+                  +5% or more after emission. <b className="text-slate-200">This is the dataset competitors hide.</b>
+                </>
               ) : (
-                <Donut distribution={donutDistribution} />
-              )}</div></section><section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#06101a]/80"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 p-4"><div><h3 className="text-lg font-bold">Live Signal Tape</h3><p className="text-sm text-slate-500">Recent validated signals</p></div><div className="flex gap-2 text-sm"><span className="rounded-full bg-slate-800 px-3 py-1">{rows.length} visible</span><span className="rounded-full bg-cyan-400/10 px-3 py-1 text-cyan-300">{chartRows.length} chart rows</span><span className="rounded-full bg-sky-400/10 px-3 py-1 text-sky-300">{hideNumericKpis ? "…" : pending} pending</span></div></div><div className="overflow-x-auto"><table className="w-full min-w-[1040px] text-left text-sm"><thead className="border-b border-slate-800 text-[11px] uppercase tracking-[0.16em] text-slate-500"><tr><th className="px-4 py-3">Token</th><th className="px-4 py-3">Mint</th><th className="px-4 py-3">Regime</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Confidence</th><th className="px-4 py-3">State</th><th className="px-4 py-3">Outcome 10m</th><th className="px-4 py-3">Timestamp</th></tr></thead><tbody>{rows.length ? rows.map((r) => <SignalRow key={r.id || `${r.mint}-${r.created_at}`} row={r} />) : <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">{loadFailed ? "Fix the error above — zeros here are not a real ledger read." : showSkeleton ? "Cargando señales…" : emptyLedger ? "Ledger vacío en este API — revisa NEXT_PUBLIC_API_URL en Vercel y el backend Railway." : !total ? "No verified signals on this page yet. Metrics update automatically as outcomes resolve." : "No rows on this page."}</td></tr>}</tbody></table></div></section></div>
+                <>
+                  Headline KPIs and charts use signal outcomes resolved at 30m with live DEX prices. The WebSocket
+                  stream refreshes numbers when new resolutions land — not only on the HTTP poll.
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <button onClick={() => query.refetch()} className="rounded border border-cyan-400/40 bg-cyan-400/5 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-cyan-200 hover:bg-cyan-400/10">↻ Refresh</button>
+            <Link href="/scanner" className="rounded border border-slate-700 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-slate-200 hover:border-cyan-400/40">Alpha Radar</Link>
+          </div>
+        </section>
+
+        {!hideNumericKpis && topWin ? <BestSignalHero topWin={topWin} lastUpdated={data?.last_updated} /> : null}
+
+        <section className="rounded-2xl border border-slate-800 bg-[#06101a]/80 p-4">
+          <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+            <b className="text-cyan-300">LIVE ORACLE</b>
+            <span>Validation Engine · Real Chart Series</span>
+            {wsConnected ? (
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-300">Real-time stream</span>
+            ) : (
+              <span className="rounded-full border border-slate-600 bg-slate-800/60 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Stream idle · poll only</span>
+            )}
+            {lastLivePushAt ? (
+              <span className={`font-mono text-[11px] uppercase tracking-[0.12em] ${Date.now() - lastLivePushAt < 15000 ? "animate-pulse text-emerald-300" : "text-slate-500"}`}>Ledger push {new Date(lastLivePushAt).toLocaleTimeString()}</span>
+            ) : null}
+            <span className="font-mono text-slate-500">HTTP {data?.last_updated ? new Date(data.last_updated).toLocaleTimeString() : "—"}</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <Kpi
+              label="Total Signals"
+              value={hideNumericKpis ? "…" : total.toLocaleString()}
+              detail={perfMirror ? "automated 30m resolution" : "resolved at 30m"}
+              tooltip="Lifetime count of signals emitted and tracked in the validation ledger."
+            />
+            <Kpi
+              label="Resolved"
+              value={hideNumericKpis ? "…" : resolved.toLocaleString()}
+              detail={hideNumericKpis ? "—" : Number.isFinite(flatNeutral) ? `resolved @ 30m · ±5% neutral: ${flatNeutral.toLocaleString()}` : "resolved @ 30m"}
+              tone="blue"
+              tooltip="Signals that have completed the 30m resolution window. Each one has a real, live-DEX outcome."
+            />
+            <Kpi
+              label="Pending"
+              value={hideNumericKpis ? "…" : pending.toLocaleString()}
+              detail="awaiting 30m resolution"
+              tooltip="Signals emitted in the last 30 minutes, still being scored against live DEX prices."
+            />
+            <Kpi
+              label="Win Rate (7d)"
+              value={hideNumericKpis ? "…" : pct(winRate, 1)}
+              detail={winDetail}
+              tone="good"
+              tooltip={winTooltip}
+            />
+            <Kpi
+              label="Avg Return (7d)"
+              value={hideNumericKpis ? "…" : pct(avgReturn, 2)}
+              detail={avgDetail}
+              tone="good"
+              tooltip={avgTooltip}
+            />
+            <Kpi
+              label="Worst 30m (7d)"
+              value={hideNumericKpis ? "…" : pct(data?.max_drawdown, 2)}
+              detail={ddDetail}
+              tone="bad"
+              tooltip={ddTooltip}
+            />
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_360px]">
+            <LineChart title="Win Rate Over Time (30m)" subtitle={hideNumericKpis ? "cargando…" : `${chartRows.length} oracle rows (tape + top wins)`} value={hideNumericKpis ? "…" : pct(winRate, 1)} rows={chartRows} mode="win" color="#22d3ee" />
+            <LineChart title="Avg Return Over Time" subtitle="rolling average from real outcomes" value={hideNumericKpis ? "…" : pct(avgReturn, 2)} rows={chartRows} mode="avg" color="#3b82f6" />
+            {hideNumericKpis ? (
+              <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4 flex min-h-[170px] items-center justify-center font-mono text-slate-500">
+                …
+              </div>
+            ) : (
+              <Donut distribution={donutDistribution} />
+            )}
+          </div>
+        </section>
+
+        {!hideNumericKpis ? (
+          <section className="rounded-2xl border border-slate-800 bg-[#06101a]/80 p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-white">Why Sentinel</h3>
+                <p className="text-xs text-slate-500">No competitor publishes a verified, live-resolved track record. Sentinel does.</p>
+              </div>
+              <span className="hidden rounded-full border border-cyan-400/30 bg-cyan-400/5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-300 md:inline-block">
+                Differentiator
+              </span>
+            </div>
+            <DifferentiatorStrip />
+          </section>
+        ) : null}<section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#06101a]/80"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 p-4"><div><h3 className="text-lg font-bold">Live Signal Tape</h3><p className="text-sm text-slate-500">Recent validated signals</p></div><div className="flex gap-2 text-sm"><span className="rounded-full bg-slate-800 px-3 py-1">{rows.length} visible</span><span className="rounded-full bg-cyan-400/10 px-3 py-1 text-cyan-300">{chartRows.length} chart rows</span><span className="rounded-full bg-sky-400/10 px-3 py-1 text-sky-300">{hideNumericKpis ? "…" : pending} pending</span></div></div><div className="overflow-x-auto"><table className="w-full min-w-[1040px] text-left text-sm"><thead className="border-b border-slate-800 text-[11px] uppercase tracking-[0.16em] text-slate-500"><tr><th className="px-4 py-3">Token</th><th className="px-4 py-3">Mint</th><th className="px-4 py-3">Regime</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Confidence</th><th className="px-4 py-3">State</th><th className="px-4 py-3">Outcome 30m</th><th className="px-4 py-3">Timestamp</th></tr></thead><tbody>{rows.length ? rows.map((r) => <SignalRow key={r.id || `${r.mint}-${r.created_at}`} row={r} />) : <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">{loadFailed ? "Fix the error above — zeros here are not a real ledger read." : showSkeleton ? "Cargando señales…" : emptyLedger ? "Ledger vacío en este API — revisa NEXT_PUBLIC_API_URL en Vercel y el backend Railway." : !total ? "No verified signals on this page yet. Metrics update automatically as outcomes resolve." : "No rows on this page."}</td></tr>}</tbody></table></div></section></div>
     </Shell>
   );
 }
