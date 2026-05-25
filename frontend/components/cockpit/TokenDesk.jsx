@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { useMarketStore, scoreSnapshot } from "@/lib/store/marketStore";
@@ -7,18 +6,10 @@ import { useTokenData } from "../../hooks/useTokenData";
 import { isProbableSolanaMint } from "../../lib/solanaMint.mjs";
 import { resolveTokenImageUrl } from "../../lib/resolveTokenImageUrl";
 import { formatTokenPrice, formatUsdWhole } from "../../lib/formatStable";
-import {
-  buildDexscreenerSolanaTokenUrl,
-  buildMeteoraPoolUrl,
-  buildPumpFunTokenUrl,
-  buildSolscanTokenUrl,
-  EXTERNAL_ANCHOR_REL
-} from "../../lib/terminalLinks";
 import { pairCreatedRawToUnixMs, poolAgeMinutesFromCreatedMs } from "@/lib/pairTime";
 import { AccordionSection } from "./AccordionSection";
 import {
   DeskAntiSignalBody,
-  DeskJupiterLinks,
   DeskQuickScan,
   DeskRadarHintStrip,
   DeskSmartMoneyLazy,
@@ -136,18 +127,6 @@ function marketPrice(value) {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
   return `$${formatTokenPrice(n)}`;
-}
-
-function findMeteoraPool(token) {
-  const pairs = Array.isArray(token?.market?.dexPairs) ? token.market.dexPairs : [];
-  const pair = pairs.find((p) => String(p?.dexId || "").toLowerCase().includes("meteora") && p?.pairAddress);
-  return pair?.pairAddress || null;
-}
-
-function hasPumpRoute(token) {
-  const pairs = Array.isArray(token?.market?.dexPairs) ? token.market.dexPairs : [];
-  const pairUrl = String(token?.market?.pairUrl || "").toLowerCase();
-  return pairUrl.includes("pump.fun") || pairs.some((p) => String(p?.dexId || "").toLowerCase().includes("pump"));
 }
 
 function DeskIdentity({ token, mint, imageBroken, onImageError }) {
@@ -363,56 +342,6 @@ function DeskSentinelAnalysis({ hasEngineScore, scores, score, regime, t }) {
   );
 }
 
-function DeskExternalLinks({ mint, token, t }) {
-  if (!mint || !isProbableSolanaMint(mint)) return null;
-  const dexUrl = buildDexscreenerSolanaTokenUrl(mint);
-  const solscanUrl = buildSolscanTokenUrl(mint);
-  const pumpUrl = hasPumpRoute(token) ? buildPumpFunTokenUrl(mint) : null;
-  const meteoraUrl = buildMeteoraPoolUrl(findMeteoraPool(token));
-  const linkClass =
-    "text-[10px] text-gray-500 hover:text-gray-300 underline underline-offset-2 decoration-white/20";
-
-  return (
-    <div className="pt-2 border-t border-white/[0.06] space-y-2">
-      <p className="text-[9px] uppercase tracking-[0.14em] text-gray-600 font-semibold">External</p>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <a href={dexUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className={linkClass}>
-          {t("cockpit.desk.marketsLink")}
-        </a>
-        <span className="text-gray-700 text-[10px]" aria-hidden>
-          ·
-        </span>
-        <a href={solscanUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className={linkClass}>
-          Solscan
-        </a>
-        {pumpUrl ? (
-          <>
-            <span className="text-gray-700 text-[10px]" aria-hidden>
-              ·
-            </span>
-            <a href={pumpUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className={linkClass}>
-              Pump
-            </a>
-          </>
-        ) : null}
-        {meteoraUrl ? (
-          <>
-            <span className="text-gray-700 text-[10px]" aria-hidden>
-              ·
-            </span>
-            <a href={meteoraUrl} target="_blank" rel={EXTERNAL_ANCHOR_REL} className={linkClass}>
-              Meteora
-            </a>
-          </>
-        ) : null}
-      </div>
-      <Link href={`/token/${encodeURIComponent(mint)}`} className={`inline-block ${linkClass}`}>
-        {t("cockpit.desk.openTerminal")} →
-      </Link>
-    </div>
-  );
-}
-
 /**
  * Cockpit Zone C — Intel desk: live score from global marketStore plus lazy accordions
  * backed by `useTokenData` (one REST load per pinned mint for structural intel).
@@ -558,12 +487,13 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
         {/*
           Right-rail order (top-to-bottom):
             Identity / Mint -> Conviction -> Market -> Risk ->
-            Signal Intelligence -> Oracle Outcomes ->
-            Actions -> External links -> Smart Money (PRO panel)
-          Smart Money sits last because it can render a tall PRO upgrade
-          preview for free / un-signed users — putting it on top pushed
-          every other piece of intel below the fold. Quick Scan was removed
-          (Ctrl-K + the global terminal cover the same paste-mint workflow).
+            Signal Intelligence -> Oracle Outcomes -> Smart Money (PRO)
+          The "Actions" (Jupiter quick-buy) and "External links" sections
+          were removed: every LIVE card in the feed already exposes the
+          same Quick Buy chips (0.1 / 0.5 / 1 SOL) plus INTEL and CHART
+          buttons, and the global terminal bar (Token / JUP / DEX / DESK /
+          Follow / LIVE) covers the same external destinations. Keeping
+          them in the right rail was noise.
         */}
 
         <DeskSection title="Market">
@@ -581,15 +511,6 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
         <DeskSection title="Oracle Outcomes">
           <ProofOfEdgeBlock mint={mint} confidence={conf != null && Number.isFinite(Number(conf)) ? Number(conf) : null} regime={regimeKey} />
         </DeskSection>
-
-        <DeskSection title="Actions">
-          <div className="border border-white/[0.08] bg-black/[0.18] px-3 py-2.5 rounded-md">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 font-semibold mb-2">{t("cockpit.desk.jupiterTitle")}</p>
-            <DeskJupiterLinks mint={mint} />
-          </div>
-        </DeskSection>
-
-        <DeskExternalLinks mint={mint} token={token} t={t} />
 
         <DeskSection title="Smart Money">
           {isProbableSolanaMint(mint) ? (
