@@ -228,14 +228,6 @@ export function GlobalCommandHud() {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setPaletteOpen(true)}
-        className="fixed bottom-20 right-3 z-[210] inline-flex h-11 items-center gap-2 rounded-full border border-cyan-500/35 bg-[#07090d]/95 px-3 text-xs font-semibold text-cyan-100 shadow-[0_12px_34px_rgba(0,0,0,0.5)] md:hidden"
-      >
-        <Command size={15} /> Command
-      </button>
-
       {paletteOpen ? (
         <div className="fixed inset-0 z-[260] bg-black/65 p-3 backdrop-blur-sm" role="dialog" aria-modal="true">
           <div className="mx-auto mt-[12vh] max-w-2xl border border-white/10 bg-[#090b10] p-4 shadow-2xl shadow-black/70">
