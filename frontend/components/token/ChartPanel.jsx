@@ -22,7 +22,7 @@ import {
  * Data: embed in iframe (no backend change; UI does not name the vendor).
  * A Sentinel-owned chart is queued for a later phase.
  */
-export function ChartPanel({ address, compact = false, symbol = "" }) {
+export function ChartPanel({ address, compact = false, symbol = "", sectionNavSlot = null }) {
   const [timeframe, setTimeframe] = useState("1h");
   const [shouldLoad, setShouldLoad] = useState(false);
   const [isFrameLoading, setIsFrameLoading] = useState(false);
@@ -129,22 +129,29 @@ export function ChartPanel({ address, compact = false, symbol = "" }) {
             ) : null}
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {timeframes.map((tf) => (
-              <button
-                key={tf}
-                type="button"
-                onClick={() => setTimeframe(tf)}
-                className={`sl-chart-tf-pill ${timeframe === tf ? "sl-chart-tf-pill--active" : ""}`}
-                aria-pressed={timeframe === tf}
-              >
-                {tf.toUpperCase()}
-              </button>
-            ))}
+          <div className="sl-chart-header-toolbar flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+            <div className="sl-chart-header-tfs flex items-center gap-1.5 shrink-0">
+              {timeframes.map((tf) => (
+                <button
+                  key={tf}
+                  type="button"
+                  onClick={() => setTimeframe(tf)}
+                  className={`sl-chart-tf-pill ${timeframe === tf ? "sl-chart-tf-pill--active" : ""}`}
+                  aria-pressed={timeframe === tf}
+                >
+                  {tf.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            {sectionNavSlot ? (
+              <div className="sl-chart-header-section-nav min-w-0 flex flex-1 justify-center">
+                {sectionNavSlot}
+              </div>
+            ) : null}
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="sl-chart-fs-btn"
+              className="sl-chart-fs-btn shrink-0"
               title={isFullscreen ? "Exit fullscreen" : "Fullscreen chart"}
               aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
             >

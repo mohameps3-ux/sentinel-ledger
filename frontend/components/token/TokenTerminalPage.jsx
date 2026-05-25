@@ -253,6 +253,20 @@ function TerminalCenter({
     return `$${n.toFixed(0)}`;
   }
 
+  const sectionNavLinks = (
+    <>
+      <a href="#chart" className="tpt-c-section-nav-link">
+        {t("token.nav.chart")}
+      </a>
+      <a href="#intel" className="tpt-c-section-nav-link">
+        {t("token.nav.intel")}
+      </a>
+      <a href="#flow" className="tpt-c-section-nav-link">
+        {t("token.nav.flow")}
+      </a>
+    </>
+  );
+
   return (
     <div className="tpt-center">
       <div className="tpt-c-header">
@@ -324,33 +338,25 @@ function TerminalCenter({
 
       <nav
         aria-label={t("token.nav.section")}
-        className="tpt-c-section-nav sticky top-[var(--sl-nav-actual,52px)] z-30 xl:hidden flex justify-center gap-1 px-2 bg-[#080a0e]/95 backdrop-blur-sm border-b border-white/[0.08]"
+        className="tpt-c-section-nav sticky top-[var(--sl-nav-actual,52px)] z-30 hidden sm:flex xl:hidden justify-center gap-1 px-2 bg-[#080a0e]/95 backdrop-blur-sm border-b border-white/[0.08]"
       >
-        <a
-          href="#chart"
-          className="px-4 min-h-11 text-xs inline-flex items-center rounded-md bg-white/5 hover:bg-white/10"
-        >
-          {t("token.nav.chart")}
-        </a>
-        <a
-          href="#intel"
-          className="px-4 min-h-11 text-xs inline-flex items-center rounded-md bg-white/5 hover:bg-white/10"
-        >
-          {t("token.nav.intel")}
-        </a>
-        <a
-          href="#flow"
-          className="px-4 min-h-11 text-xs inline-flex items-center rounded-md bg-white/5 hover:bg-white/10"
-        >
-          {t("token.nav.flow")}
-        </a>
+        {sectionNavLinks}
       </nav>
 
       <div
         id="chart"
         className="tpt-c-chart scroll-mt-[calc(var(--sl-nav-actual,52px)+var(--sl-token-section-nav-h,2.75rem))]"
       >
-        <ChartPanel address={address} compact symbol={sym} />
+        <ChartPanel
+          address={address}
+          compact
+          symbol={sym}
+          sectionNavSlot={
+            <nav aria-label={t("token.nav.section")} className="tpt-c-section-nav-inline sm:hidden">
+              {sectionNavLinks}
+            </nav>
+          }
+        />
       </div>
 
       <div className="tpt-c-analysis">
