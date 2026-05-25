@@ -2084,7 +2084,7 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 }
 .tpt-c-analysis {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   flex-shrink: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
@@ -2137,6 +2137,37 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
   font-size: 7px;
   color: rgba(255, 255, 255, 0.3);
   margin-top: 2px;
+}
+@media (max-width: 639px) {
+  .tpt-c-analysis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tpt-c-ap {
+    padding: 8px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  }
+  .tpt-c-ap:nth-child(odd) {
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+  }
+  .tpt-c-ap:nth-last-child(-n + 2) {
+    border-bottom: none;
+  }
+  .tpt-c-ap-title {
+    font-size: 10px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .tpt-c-ap-muted,
+  .tpt-c-sub,
+  .tpt-c-live {
+    font-size: 10px;
+  }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .tpt-c-analysis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .tpt-c-pbar {
   display: flex;
