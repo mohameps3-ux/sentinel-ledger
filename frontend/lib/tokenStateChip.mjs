@@ -1,8 +1,8 @@
-/** @typedef {'TOO_LATE' | 'LOW_EDGE' | 'CROWDED' | 'ACCELERATING' | 'EARLY'} TokenStateChipId */
+/** @typedef {'TOO_LATE' | 'CROWDED' | 'ACCELERATING' | 'EARLY'} TokenStateChipId */
 
 // TODO: wire smartWalletTrend (stalled/declining) when backend exposes wallet-flow trend.
 
-const STATE_CHIP_PRIORITY = /** @type {const} */ (["TOO_LATE", "LOW_EDGE", "CROWDED", "ACCELERATING", "EARLY"]);
+const STATE_CHIP_PRIORITY = /** @type {const} */ (["TOO_LATE", "CROWDED", "ACCELERATING", "EARLY"]);
 
 /**
  * @param {object | null | undefined} input
@@ -14,7 +14,6 @@ export function resolveTokenStateChip(input) {
   const poolAgeMinutes = finiteOrNull(input.poolAgeMinutes);
   const smartWalletCount = finiteOrNull(input.smartWalletCount);
   const momentumScore = finiteOrNull(input.momentumScore);
-  const conviction = finiteOrNull(input.conviction);
   const volume5mChangePct = finiteOrNull(input.volume5mChangePct);
   const signalAgeMinutes = finiteOrNull(input.signalAgeMinutes);
   const change24hPct = finiteOrNull(input.change24hPct);
@@ -22,7 +21,6 @@ export function resolveTokenStateChip(input) {
   /** @type {Record<TokenStateChipId, boolean>} */
   const rules = {
     TOO_LATE: change24hPct != null && change24hPct > 200 && momentumScore != null && momentumScore < 50,
-    LOW_EDGE: conviction != null && conviction < 30,
     CROWDED:
       signalAgeMinutes != null &&
       signalAgeMinutes > 360 &&
@@ -73,8 +71,6 @@ export function tokenStateChipClass(state) {
       return "border-orange-500/35 text-orange-200 bg-orange-500/10";
     case "TOO_LATE":
       return "border-rose-500/35 text-rose-200 bg-rose-500/10";
-    case "LOW_EDGE":
-      return "border-gray-500/35 text-gray-400 bg-gray-500/10";
     default:
       return "border-white/10 text-gray-500 bg-black/20";
   }
