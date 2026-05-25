@@ -531,7 +531,7 @@ function TerminalRight({ address, tokenData, recentTransactions, tokenPriceUsd, 
         id="flow"
         className="tpt-r-tx-list scroll-mt-[calc(var(--sl-nav-actual,52px)+var(--sl-token-section-nav-h,2.75rem))]"
       >
-        <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={tokenPriceUsd} isLive={transactions.length > 0} />
+        <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={tokenPriceUsd} isLive={recentTransactions.length > 0} />
       </div>
 
       <div className="tpt-r-view-all">VIEW ALL TRANSACTIONS →</div>
