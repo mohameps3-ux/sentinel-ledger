@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Component, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
@@ -46,6 +46,35 @@ import { useWebSocket } from "../hooks/useWebSocket";
 import { useLastGoodArray } from "../hooks/useLastGoodArray";
 import { useTerminalInfrastructureStatus } from "../hooks/useTerminalInfrastructureStatus";
 import { motion, AnimatePresence } from "framer-motion";
+
+/** Isolates Intel Desk crashes so they don't bring down the whole home page. */
+class IntelDeskBoundary extends Component {
+  state = { error: null };
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) {
+    console.error("[Sentinel] Intel Desk error:", error, info?.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex flex-col items-center justify-center gap-3 p-6 text-center border border-red-500/20 bg-red-500/[0.04]">
+          <p className="text-sm font-semibold text-red-300">Intel panel failed to render</p>
+          <p className="text-[11px] text-gray-500 leading-relaxed max-w-[18rem]">
+            Check the browser console (F12) for details.
+          </p>
+          <button
+            type="button"
+            className="text-[11px] px-3 py-1.5 border border-white/15 text-gray-400 hover:text-gray-200"
+            onClick={() => this.setState({ error: null })}
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /** Matches LiveTab war-mode visible cap (first N of grid before score re-sort). */
 const WAR_TAB_VISIBLE_MAX = 6;
@@ -1078,7 +1107,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.2, ease: "easeOut" }}
                   >
-                    <TokenDesk mint={selectedMint} deskRadarHint={deskRadarHint} fallbackSignal={deskFallbackSignal} />
+                    <IntelDeskBoundary>
+                      <TokenDesk mint={selectedMint} deskRadarHint={deskRadarHint} fallbackSignal={deskFallbackSignal} />
+                    </IntelDeskBoundary>
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -1099,7 +1130,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               transition={{ duration: 0.2, ease: "easeOut" }}
               style={{ height: "100%" }}
             >
-              <TokenDesk mint={selectedMint} deskRadarHint={deskRadarHint} fallbackSignal={deskFallbackSignal} />
+              <IntelDeskBoundary>
+                <TokenDesk mint={selectedMint} deskRadarHint={deskRadarHint} fallbackSignal={deskFallbackSignal} />
+              </IntelDeskBoundary>
             </motion.div>
           </AnimatePresence>
         </div>
