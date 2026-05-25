@@ -200,11 +200,17 @@ function Metric({ label, value, good }) {
   );
 }
 
-function riskLabel({ stale, liquidity, score, chg24 }) {
-  if (stale) return "Delayed feed";
+/**
+ * Card risk pill copy. NEVER returns "Delayed feed" — that used to fire for any
+ * signal older than 60 s and confused PRO users (their cards looked locked).
+ * The free-tier 30 min delay is communicated by the LiveDelayedFeedCard banner
+ * above the grid, not by the per-card risk chip.
+ */
+function riskLabel({ liquidity, score, chg24 }) {
   if (Number(liquidity) > 0 && Number(liquidity) < 15000) return "Thin liquidity";
   if (Number(chg24) < -25) return "Downtrend risk";
   if (score >= 80) return "High conviction";
+  if (score < 45) return "Low conviction";
   return "Needs confirmation";
 }
 
@@ -246,7 +252,6 @@ export function LiveSignalCard({
   const hot = idx === signalCursor % Math.max(1, displaySignalCount);
   const emittedMs = signalCardEmittedMs(sig);
   const ago = formatAgo(emittedMs);
-  const isStaleCard = emittedMs != null && Date.now() - emittedMs > 60_000;
   const rankInfo = signalsRankDeltas.get(sig.mint) || { rank: idx + 1, delta: 0, isNew: false };
   const tick = sig.mint ? tickerByMint[sig.mint] : null;
   const px = firstFinite(tick?.price, sig.token?.price, sig.price);
@@ -270,7 +275,7 @@ export function LiveSignalCard({
   const validMint = Boolean(sig.mint && isProbableSolanaMint(sig.mint));
   const reportHref = validMint ? `/token/${sig.mint}` : "#";
   const apexState = deriveApexState(score);
-  const delayedRisk = riskLabel({ stale: isStaleCard, liquidity, score, chg24 });
+  const delayedRisk = riskLabel({ liquidity, score, chg24 });
 
   const scoreEntry = useMarketStore((s) => (sig.mint ? s.scores.get(sig.mint) : undefined));
   const liveEngineScore = scoreEntry?.scores ? scoreSnapshot(scoreEntry) : null;
@@ -347,7 +352,7 @@ export function LiveSignalCard({
         const edgeLabel = ruleLabel(rulePerf?.signal, rulePerf?.ruleId);
         const showEdgeTag = edgeLabel != null || cardRegime != null;
         return (
-          <div className="relative flex min-h-[246px] flex-col p-3">
+          <div className="relative flex h-full min-h-[246px] flex-col p-3">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.045] via-transparent to-black/20" />
             <div className={`pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r ${liveTone.edge}`} />
 
@@ -450,6 +455,10 @@ export function LiveSignalCard({
             <p className="relative mt-1.5 truncate text-[10px] italic leading-snug text-sl-muted" title={reason}>
               {reason}
             </p>
+
+            {/* Push the action bar to the card bottom so a 6-section card
+                and a 9-section card line up identically in a grid. */}
+            <div className="relative flex-1" aria-hidden />
 
             <div className="relative mt-2 flex min-w-0 items-center justify-between gap-2 text-[10px]">
               <span className={`truncate rounded-md border px-2 py-1 font-bold ${liveTone.chip}`}>{delayedRisk}</span>
