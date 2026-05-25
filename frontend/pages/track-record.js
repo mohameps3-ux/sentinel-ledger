@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHead } from "../components/seo/PageHead";
@@ -65,13 +65,14 @@ function mergeChartRowsFromPayload(first, pagedRecent) {
   return dedupeChartRows([...pagedRecent, ...extra]);
 }
 
-async function fetchTrackRecord() {
+async function fetchTrackRecord({ force = false } = {}) {
   const qs = new URLSearchParams({
     filter: "all",
     limit: "50",
     page: "1",
     chart_pages: String(CHART_PAGES)
   });
+  if (force) qs.set("force", String(Date.now()));
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_MS);
   try {
@@ -99,16 +100,34 @@ function Shell({ children }) {
   return <TrackRecordShell>{children}</TrackRecordShell>;
 }
 function Kpi({ label, value, detail, tone = "default", tooltip }) {
-  const color = tone === "good" ? "text-emerald-300" : tone === "bad" ? "text-rose-300" : tone === "blue" ? "text-sky-300" : "text-slate-100";
-  const dot = tone === "bad" ? "bg-rose-400" : tone === "blue" ? "bg-sky-400" : "bg-emerald-400";
+  const color =
+    tone === "good"
+      ? "text-emerald-300"
+      : tone === "bad"
+        ? "text-rose-300"
+        : tone === "blue"
+          ? "text-blue-200"
+          : "text-white";
+  const dot =
+    tone === "bad" ? "bg-rose-400" : tone === "blue" ? "bg-blue-400" : tone === "good" ? "bg-emerald-400" : "bg-blue-400";
+  const glow =
+    tone === "bad"
+      ? "shadow-rose-500/10"
+      : tone === "good"
+        ? "shadow-emerald-500/10"
+        : "shadow-blue-500/10";
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4 transition hover:border-slate-700" title={tooltip || undefined}>
+    <div
+      className={`group relative overflow-hidden rounded-xl border border-blue-500/15 bg-gradient-to-br from-[#0a1426]/90 to-[#040810]/95 p-4 shadow-lg ${glow} transition-all hover:border-blue-400/30 hover:shadow-blue-400/20`}
+      title={tooltip || undefined}
+    >
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/40 to-transparent opacity-60" />
       <div className="flex items-start justify-between gap-3">
-        <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{label}</div>
-        <span className={`h-2 w-2 rounded-full ${dot} ${tone === "good" || tone === "blue" ? "animate-pulse" : ""}`} />
+        <div className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-blue-200/60">{label}</div>
+        <span className={`h-2 w-2 rounded-full ${dot} animate-pulse shadow-[0_0_8px_currentColor]`} />
       </div>
-      <div className={`mt-4 font-mono text-2xl font-black ${color}`}>{value}</div>
-      <div className="mt-2 text-sm text-slate-400">{detail}</div>
+      <div className={`mt-4 font-mono text-[26px] font-bold tracking-tight ${color}`}>{value}</div>
+      <div className="mt-2 text-[12.5px] text-slate-300/80">{detail}</div>
     </div>
   );
 }
@@ -128,45 +147,49 @@ function BestSignalHero({ topWin, lastUpdated }) {
   const moveDisplay = formatBigPct(outcomeFrac);
   const isExtreme = Math.abs(outcomeFrac) >= 10; // 1000%+ — usually pump.fun microcap
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-[#06101a] to-[#06101a] p-5">
-      <div className="absolute right-4 top-4 flex items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-emerald-300/80">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+    <div className="relative overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-950/40 via-[#06101a] to-[#06101a] p-6 shadow-2xl shadow-blue-500/10">
+      {/* Top illuminated edge */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/70 to-transparent" />
+      {/* Corner glow */}
+      <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+      <div className="absolute right-5 top-5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-200/90">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.8)]" />
         <span>BEST SIGNAL · LAST 7D</span>
       </div>
-      <div className="flex flex-wrap items-end gap-6">
+      <div className="relative flex flex-wrap items-end gap-x-8 gap-y-4">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Token</div>
-          <div className="mt-1 text-3xl font-black text-white">${symbol}</div>
-          <div className="mt-1 font-mono text-xs text-slate-500">{shortMint(topWin.mint)}</div>
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-blue-200/60">Token</div>
+          <div className="mt-1 text-3xl font-bold tracking-tight text-white">${symbol}</div>
+          <div className="mt-1 font-mono text-[11px] text-slate-400">{shortMint(topWin.mint)}</div>
         </div>
         <div>
-          <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Resolved Move</div>
-          <div className="mt-1 font-mono text-4xl font-black text-emerald-300">
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-blue-200/60">Resolved Move</div>
+          <div className="mt-1 font-mono text-[40px] font-bold tracking-tight text-emerald-300 drop-shadow-[0_0_18px_rgba(52,211,153,0.4)]">
             {moveDisplay}
           </div>
-          <div className="mt-1 text-xs text-slate-500">
-            vs entry · 30m {isExtreme ? <span className="text-amber-300/80">· microcap pump</span> : null}
+          <div className="mt-1 text-[11px] text-slate-400">
+            vs entry · 30m {isExtreme ? <span className="text-amber-300/90">· microcap pump</span> : null}
           </div>
         </div>
         <div>
-          <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Signal Age</div>
-          <div className="mt-1 font-mono text-2xl font-black text-slate-200">{ageStr}</div>
-          <div className="mt-1 text-xs text-slate-500">since emission</div>
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-blue-200/60">Signal Age</div>
+          <div className="mt-1 font-mono text-2xl font-bold tracking-tight text-blue-100">{ageStr}</div>
+          <div className="mt-1 text-[11px] text-slate-400">since emission</div>
         </div>
         <div>
-          <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Source</div>
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-blue-200/60">Source</div>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-mono text-base font-bold text-cyan-200">{ruleId}</span>
-            <span className="text-xs text-slate-500">· {regime}</span>
+            <span className="font-mono text-base font-bold text-blue-200">{ruleId}</span>
+            <span className="text-[11px] text-slate-400">· {regime}</span>
           </div>
-          <div className="mt-1 text-xs text-slate-500">rule · regime</div>
+          <div className="mt-1 text-[11px] text-slate-400">rule · regime</div>
         </div>
         <div className="ml-auto">
           <Link
             href={`/token/${topWin.mint || ""}`}
-            className="inline-block rounded border border-emerald-400/40 bg-emerald-400/10 px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.16em] text-emerald-200 hover:bg-emerald-400/20"
+            className="inline-flex items-center gap-2 rounded-xl border border-blue-400/50 bg-gradient-to-br from-blue-500/15 to-blue-600/10 px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.16em] text-blue-100 shadow-lg shadow-blue-500/20 transition-all hover:border-blue-300/70 hover:from-blue-500/25 hover:shadow-blue-400/40"
           >
-            View Token →
+            View Token <span className="text-base">→</span>
           </Link>
         </div>
       </div>
@@ -189,38 +212,66 @@ function DifferentiatorStrip() {
       ].map((item) => (
         <div
           key={item.label}
-          className={`rounded-lg border p-3 ${item.highlight ? "border-cyan-400/40 bg-cyan-400/[0.06]" : "border-slate-800 bg-[#08111a]/60"}`}
+          className={
+            item.highlight
+              ? "relative overflow-hidden rounded-xl border border-blue-400/50 bg-gradient-to-br from-blue-500/15 to-blue-600/10 p-4 shadow-lg shadow-blue-500/20"
+              : "rounded-xl border border-slate-800/70 bg-[#08111a]/60 p-4 transition hover:border-slate-700"
+          }
         >
-          <div className={`text-[10px] font-bold uppercase tracking-[0.12em] ${item.highlight ? "text-cyan-300" : "text-slate-500"}`}>
+          {item.highlight ? (
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-300/70 to-transparent" />
+          ) : null}
+          <div
+            className={`text-[10.5px] font-bold uppercase tracking-[0.16em] ${item.highlight ? "text-blue-300" : "text-slate-400"}`}
+          >
             {item.label}
           </div>
-          <div className={`mt-1 font-mono text-sm font-black ${item.highlight ? "text-cyan-200" : "text-slate-400"}`}>
+          <div
+            className={`mt-1.5 font-mono text-sm font-bold ${item.highlight ? "text-blue-100" : "text-slate-300"}`}
+          >
             {item.value}
           </div>
-          <div className="mt-0.5 text-[10px] text-slate-500">{item.note}</div>
+          <div className="mt-1 text-[11px] text-slate-400/80">{item.note}</div>
         </div>
       ))}
     </div>
   );
 }
 
+/**
+ * Build a chart series using a sliding window so the line stays dynamic.
+ * - mode "win": rolling decisive WR over the last N rows (responds to recent shifts).
+ * - mode "avg": rolling mean of outcomes, with per-point clamp to ±100% so a single
+ *   pump.fun outlier (+2290x) doesn't flatten the line by domination of the y-scale.
+ */
 function makeSeries(rows, mode) {
   const resolved = [...(rows || [])].filter((r) => Number.isFinite(Number(r?.outcome_60m))).slice(-160);
   if (resolved.length < 1) return [];
-  let acc = 0;
-  let wins = 0;
-  let decisive = 0;
-  return resolved.map((r) => {
-    const out = Number(r.outcome_60m);
-    acc += out;
-    const isWin = out > TR_DECISIVE_WIN;
-    const isLoss = out < TR_DECISIVE_LOSS;
-    if (isWin || isLoss) decisive += 1;
-    if (isWin) wins += 1;
-    if (mode === "win") return decisive ? wins / decisive : 0;
-    if (mode === "avg") return acc / Math.max(1, resolved.indexOf(r) + 1);
-    return acc;
-  });
+  const WINDOW = 30;
+  const out = [];
+  for (let i = 0; i < resolved.length; i++) {
+    const start = Math.max(0, i - WINDOW + 1);
+    const slice = resolved.slice(start, i + 1);
+    if (mode === "win") {
+      let w = 0;
+      let d = 0;
+      for (const r of slice) {
+        const o = Number(r.outcome_60m);
+        if (o > TR_DECISIVE_WIN) { w += 1; d += 1; }
+        else if (o < TR_DECISIVE_LOSS) { d += 1; }
+      }
+      out.push(d ? w / d : 0);
+    } else {
+      let sum = 0;
+      let n = 0;
+      for (const r of slice) {
+        const o = Math.max(-1, Math.min(1, Number(r.outcome_60m)));
+        if (Number.isFinite(o)) { sum += o; n += 1; }
+      }
+      out.push(n ? sum / n : 0);
+    }
+  }
+  return out;
 }
 function pathFrom(values, w = 420, h = 150, pad = 18) {
   if (!values.length) return "";
@@ -236,8 +287,108 @@ function pathFrom(values, w = 420, h = 150, pad = 18) {
     })
     .join(" ");
 }
-function LineChart({ title, subtitle, value, rows, mode = "equity", color = "#22d3ee" }) { const values = useMemo(() => makeSeries(rows, mode), [rows, mode]); const d = pathFrom(values); return <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4"><div className="mb-3 flex items-start justify-between gap-3"><div><div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-300">{title}</div><div className="text-sm text-slate-500">{subtitle}</div></div><div className="rounded-lg border border-cyan-400/20 bg-cyan-400/5 px-2.5 py-1 font-mono text-sm text-cyan-200">{value}</div></div><svg viewBox="0 0 420 150" className="h-[150px] w-full overflow-visible">{[0,1,2,3].map((i)=><line key={i} x1="18" x2="402" y1={22+i*34} y2={22+i*34} stroke="rgba(148,163,184,.12)" />)}{d ? <path d={d} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" /> : <text x="210" y="80" textAnchor="middle" fill="rgba(148,163,184,.55)" fontSize="12">insufficient real series</text>}</svg></div>; }
-function Donut({ distribution }) { const r = 54, c = 2 * Math.PI * r; const wins = Number(distribution?.wins || 0), losses = Number(distribution?.losses || 0), flats = Number(distribution?.flats || 0); const total = Math.max(1, wins + losses + flats); const w = wins / total, l = losses / total, f = flats / total; return <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4"><div className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-300">Resolved Outcomes</div><div className="grid grid-cols-[150px_1fr] items-center gap-4"><svg viewBox="0 0 150 150" className="h-[150px] w-[150px] -rotate-90"><circle cx="75" cy="75" r={r} fill="none" stroke="rgba(148,163,184,.18)" strokeWidth="22" /><circle cx="75" cy="75" r={r} fill="none" stroke="#10b981" strokeWidth="22" strokeDasharray={`${c*w} ${c}`} /><circle cx="75" cy="75" r={r} fill="none" stroke="#fb7185" strokeWidth="22" strokeDasharray={`${c*l} ${c}`} strokeDashoffset={-c*w} /><circle cx="75" cy="75" r={r} fill="none" stroke="#64748b" strokeWidth="22" strokeDasharray={`${c*f} ${c}`} strokeDashoffset={-c*(w+l)} /></svg><div className="space-y-3 text-sm"><div className="font-mono text-2xl font-black text-white">{(wins+losses+flats).toLocaleString()}</div><div className="text-slate-500">{distribution?.fromLedger ? "Ledger (±5%)" : "Chart sample"}</div><div className="flex justify-between"><span className="text-emerald-300">Wins</span><span className="font-mono">{wins.toLocaleString()}</span></div><div className="flex justify-between"><span className="text-rose-300">Losses</span><span className="font-mono">{losses.toLocaleString()}</span></div><div className="flex justify-between"><span className="text-slate-400">Flat</span><span className="font-mono">{flats.toLocaleString()}</span></div></div></div></div>; }
+function LineChart({ title, subtitle, value, rows, mode = "equity", color = "#60a5fa", gradientId }) {
+  const values = useMemo(() => makeSeries(rows, mode), [rows, mode]);
+  const d = pathFrom(values);
+  // Area path below the line for fill effect.
+  const areaD = useMemo(() => {
+    if (!values.length) return "";
+    const vals = values.length === 1 ? [values[0], values[0]] : values;
+    const min = Math.min(...vals, 0);
+    const max = Math.max(...vals, 0.001);
+    const range = max - min || 1;
+    const w = 420;
+    const h = 150;
+    const pad = 18;
+    const pts = vals.map((v, i) => {
+      const x = pad + (i / Math.max(vals.length - 1, 1)) * (w - pad * 2);
+      const y = h - pad - ((v - min) / range) * (h - pad * 2);
+      return `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+    });
+    pts.push(`L${(w - pad).toFixed(1)} ${(h - pad).toFixed(1)}`);
+    pts.push(`L${pad.toFixed(1)} ${(h - pad).toFixed(1)}`);
+    pts.push("Z");
+    return pts.join(" ");
+  }, [values]);
+  const gid = gradientId || `lc-grad-${title.replace(/\s+/g, "")}`;
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-blue-500/15 bg-gradient-to-br from-[#0a1426]/90 to-[#040810]/95 p-4 shadow-lg shadow-blue-500/10">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/40 to-transparent" />
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-blue-200/70">{title}</div>
+          <div className="mt-0.5 text-[12px] text-slate-400">{subtitle}</div>
+        </div>
+        <div className="rounded-lg border border-blue-400/30 bg-blue-500/10 px-3 py-1 font-mono text-sm font-bold text-blue-100 shadow-md shadow-blue-500/10">
+          {value}
+        </div>
+      </div>
+      <svg viewBox="0 0 420 150" className="h-[150px] w-full overflow-visible">
+        <defs>
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0, 1, 2, 3].map((i) => (
+          <line key={i} x1="18" x2="402" y1={22 + i * 34} y2={22 + i * 34} stroke="rgba(96,165,250,.10)" strokeDasharray="2 4" />
+        ))}
+        {d ? (
+          <>
+            <path d={areaD} fill={`url(#${gid})`} />
+            <path d={d} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+          </>
+        ) : (
+          <text x="210" y="80" textAnchor="middle" fill="rgba(148,163,184,.55)" fontSize="12">
+            insufficient real series
+          </text>
+        )}
+      </svg>
+    </div>
+  );
+}
+
+function Donut({ distribution }) {
+  const r = 54;
+  const c = 2 * Math.PI * r;
+  const wins = Number(distribution?.wins || 0);
+  const losses = Number(distribution?.losses || 0);
+  const flats = Number(distribution?.flats || 0);
+  const total = Math.max(1, wins + losses + flats);
+  const w = wins / total;
+  const l = losses / total;
+  const f = flats / total;
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-blue-500/15 bg-gradient-to-br from-[#0a1426]/90 to-[#040810]/95 p-4 shadow-lg shadow-blue-500/10">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/40 to-transparent" />
+      <div className="mb-3 text-[10.5px] font-bold uppercase tracking-[0.18em] text-blue-200/70">Resolved Outcomes</div>
+      <div className="grid grid-cols-[150px_1fr] items-center gap-4">
+        <svg viewBox="0 0 150 150" className="h-[150px] w-[150px] -rotate-90 drop-shadow-[0_0_18px_rgba(96,165,250,0.18)]">
+          <circle cx="75" cy="75" r={r} fill="none" stroke="rgba(96,165,250,.10)" strokeWidth="22" />
+          <circle cx="75" cy="75" r={r} fill="none" stroke="#10b981" strokeWidth="22" strokeDasharray={`${c * w} ${c}`} strokeLinecap="round" />
+          <circle cx="75" cy="75" r={r} fill="none" stroke="#fb7185" strokeWidth="22" strokeDasharray={`${c * l} ${c}`} strokeDashoffset={-c * w} strokeLinecap="round" />
+          <circle cx="75" cy="75" r={r} fill="none" stroke="#475569" strokeWidth="22" strokeDasharray={`${c * f} ${c}`} strokeDashoffset={-c * (w + l)} strokeLinecap="round" />
+        </svg>
+        <div className="space-y-2 text-sm">
+          <div className="font-mono text-2xl font-bold tracking-tight text-white">{(wins + losses + flats).toLocaleString()}</div>
+          <div className="text-[11px] text-slate-400">{distribution?.fromLedger ? "Ledger (±5%)" : "Chart sample"}</div>
+          <div className="flex justify-between border-t border-blue-500/10 pt-2">
+            <span className="text-emerald-300">Wins</span>
+            <span className="font-mono text-emerald-200">{wins.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-rose-300">Losses</span>
+            <span className="font-mono text-rose-200">{losses.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Flat</span>
+            <span className="font-mono text-slate-300">{flats.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 function SignalRow({ row }) {
   const outcome = Number(row?.outcome_60m);
   const status = !Number.isFinite(outcome)
@@ -249,27 +400,42 @@ function SignalRow({ row }) {
         : "FLAT";
   const tone =
     outcome < TR_DECISIVE_LOSS ? "text-rose-300" : outcome > TR_DECISIVE_WIN ? "text-emerald-300" : "text-slate-300";
+  const statusPill =
+    status === "WIN"
+      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+      : status === "LOSS"
+        ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+        : status === "PENDING"
+          ? "border-blue-400/30 bg-blue-500/10 text-blue-200"
+          : "border-slate-700/60 bg-slate-800/40 text-slate-300";
   return (
-    <tr className="border-b border-slate-800/70 hover:bg-slate-800/30">
+    <tr className="border-b border-blue-500/[0.06] transition hover:bg-blue-500/[0.04]">
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
-          <span className="rounded-md bg-sky-400/10 px-2 py-1 font-mono text-xs text-sky-300">
+          <span className="rounded-md border border-blue-400/30 bg-blue-500/10 px-2 py-1 font-mono text-[10.5px] font-bold uppercase text-blue-200">
             {(row?.symbol || "?").slice(0, 2).toUpperCase()}
           </span>
-          <span>{row?.symbol || row?.asset || shortMint(row?.mint)}</span>
+          <span className="text-slate-100">{row?.symbol || row?.asset || shortMint(row?.mint)}</span>
         </div>
       </td>
       <td className="px-4 py-3 font-mono text-slate-400">{shortMint(row?.mint || row?.token_address)}</td>
-      <td className="px-4 py-3">
-        <span className="text-sky-300">●</span> {row?.regime || "unknown"}
+      <td className="px-4 py-3 text-slate-300">
+        <span className="mr-1 text-blue-400">●</span>
+        {row?.regime || "unknown"}
       </td>
       <td className="px-4 py-3 text-slate-300">{Array.isArray(row?.signals) ? row.signals.join("+") : "whale_signal"}</td>
-      <td className="px-4 py-3 font-mono">{Number(row?.confidence || 0).toFixed(0)}</td>
+      <td className="px-4 py-3 font-mono text-slate-200">{Number(row?.confidence || 0).toFixed(0)}</td>
       <td className="px-4 py-3">
-        <span className="rounded-md bg-sky-400/10 px-2 py-1 font-mono text-xs text-sky-200">{status}</span>
+        <span className={`rounded-md border px-2 py-1 font-mono text-[10.5px] font-bold tracking-wider ${statusPill}`}>
+          {status}
+        </span>
       </td>
-      <td className={`px-4 py-3 font-mono ${tone}`}>{Number.isFinite(outcome) ? pct(outcome, 2) : "—"}</td>
-      <td className="px-4 py-3 font-mono text-slate-500">{row?.created_at ? new Date(row.created_at).toLocaleString() : "—"}</td>
+      <td className={`px-4 py-3 font-mono font-bold ${tone}`}>
+        {Number.isFinite(outcome) ? formatBigPct(outcome) : "—"}
+      </td>
+      <td className="px-4 py-3 font-mono text-[11px] text-slate-500">
+        {row?.created_at ? new Date(row.created_at).toLocaleString() : "—"}
+      </td>
     </tr>
   );
 }
@@ -277,9 +443,10 @@ function SignalRow({ row }) {
 function TrackRecordPage() {
   const queryClient = useQueryClient();
   const { wsConnected, lastLivePushAt } = useTrackRecordLive(queryClient);
+  const [refreshing, setRefreshing] = useState(false);
   const query = useQuery({
     queryKey: TRACK_RECORD_QUERY_KEY,
-    queryFn: fetchTrackRecord,
+    queryFn: () => fetchTrackRecord({ force: false }),
     staleTime: 25_000,
     refetchInterval: REFRESH_MS,
     refetchIntervalInBackground: false,
@@ -291,6 +458,18 @@ function TrackRecordPage() {
       return failureCount < 2;
     }
   });
+  // Force refresh bypasses both the React Query cache and the backend Redis layer.
+  const forceRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const fresh = await fetchTrackRecord({ force: true });
+      queryClient.setQueryData(TRACK_RECORD_QUERY_KEY, fresh);
+    } catch (err) {
+      console.warn("[track-record] force refresh failed:", err?.message || err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const data = query.isSuccess ? query.data : null;
   const loadFailed = query.isError;
   const errMsg = query.error instanceof Error ? query.error.message : String(query.error || "request_failed");
@@ -401,40 +580,61 @@ function TrackRecordPage() {
         </div>
       ) : null}
       {perfMirror && !emptyLedger && query.isSuccess ? (
-        <div className="border-b border-cyan-500/25 bg-cyan-950/20 px-6 py-3 text-sm text-cyan-50 xl:px-8">
-          <b className="text-cyan-200">Automated resolution.</b> Metrics resolve at 30m using live DEX prices—every
-          number on this page reflects real post-signal market moves, not back-tested curves.
+        <div className="relative border-b border-blue-500/30 bg-gradient-to-r from-blue-950/30 via-blue-900/10 to-blue-950/30 px-6 py-3 text-sm text-blue-50 xl:px-8">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
+          <b className="text-blue-200">Automated resolution.</b>{" "}
+          <span className="text-blue-100/80">
+            Metrics resolve at 30m using live DEX prices—every number on this page reflects real post-signal market
+            moves, not back-tested curves.
+          </span>
         </div>
       ) : null}
-      <div className="border-b border-slate-800 bg-[#030712]/85 px-6 py-4 backdrop-blur-xl xl:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
-          <span>YOU ARE HERE&nbsp;&nbsp; <b className="text-slate-200">Sentinel</b> › <b className="text-slate-200">Track Record</b></span>
+      <div className="border-b border-blue-500/15 bg-[#030712]/90 px-6 py-4 backdrop-blur-xl xl:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-[13px] text-slate-400">
+          <span>
+            YOU ARE HERE&nbsp;&nbsp; <b className="text-slate-200">Sentinel</b>{" "}
+            <span className="text-blue-400/60">›</span>{" "}
+            <b className="text-blue-200">Track Record</b>
+          </span>
           <span className="flex items-center gap-2">
-            Oracle · KPIs {hideNumericKpis ? "…" : "live"} · chart {hideNumericKpis ? "—" : chartRows.length} rows ·
+            <span className="text-slate-500">Oracle</span>
+            <span className="text-blue-400/40">·</span>
+            <span className="text-slate-400">KPIs {hideNumericKpis ? "…" : "live"}</span>
+            <span className="text-blue-400/40">·</span>
+            <span className="text-slate-400">chart {hideNumericKpis ? "—" : chartRows.length} rows</span>
+            <span className="text-blue-400/40">·</span>
             {wsConnected ? (
-              <span className="flex items-center gap-1 text-emerald-300">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-                live stream
+              <span className="flex items-center gap-1.5 text-blue-200">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.9)]" />
+                <span className="font-semibold uppercase tracking-[0.12em]">live stream</span>
               </span>
             ) : (
               <span className="text-slate-500">poll only</span>
             )}
-            {lastUpdatedAgo ? <span className="font-mono text-[11px] text-slate-500">· updated {lastUpdatedAgo}</span> : null}
+            {lastUpdatedAgo ? <span className="font-mono text-[11px] text-blue-200/60">updated {lastUpdatedAgo}</span> : null}
           </span>
         </div>
       </div>
-      <div className="space-y-4 p-6 xl:p-8">
+      <div className="space-y-5 p-6 xl:p-8">
         <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
           <div>
-            <span className="rounded border border-cyan-400/30 bg-cyan-400/5 px-3 py-1 font-mono text-xs uppercase tracking-[0.16em] text-cyan-300">Performance Verified · 30m</span>
-            <h1 className="mt-4 text-4xl font-black tracking-tight text-white">Sentinel Validation Engine</h1>
-            <h2 className="mt-2 text-2xl font-black text-cyan-300">Track Record Institutional</h2>
-            <p className="mt-3 max-w-2xl text-slate-400">
+            <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/40 bg-blue-500/[0.08] px-3.5 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-blue-200 shadow-md shadow-blue-500/10">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.9)]" />
+              Performance Verified · 30m
+            </span>
+            <h1 className="mt-5 text-[42px] font-bold leading-[1.05] tracking-tight text-white">
+              Sentinel Validation Engine
+            </h1>
+            <h2 className="mt-2 bg-gradient-to-r from-blue-300 via-blue-200 to-blue-400 bg-clip-text text-[26px] font-bold tracking-tight text-transparent">
+              Track Record Institutional
+            </h2>
+            <p className="mt-4 max-w-2xl text-[14px] leading-relaxed text-slate-300/85">
               {perfMirror ? (
                 <>
                   Every headline metric and chart row is backed by automated 30-minute resolution against live DEX
-                  prices. Win rate uses the institutional ±5% threshold — a signal only counts as a win if the token moves
-                  +5% or more after emission. <b className="text-slate-200">This is the dataset competitors hide.</b>
+                  prices. Win rate uses the institutional ±5% threshold — a signal only counts as a win if the token
+                  moves +5% or more after emission.{" "}
+                  <b className="text-blue-200">This is the dataset competitors hide.</b>
                 </>
               ) : (
                 <>
@@ -445,26 +645,49 @@ function TrackRecordPage() {
             </p>
           </div>
           <div className="flex items-center justify-end gap-3">
-            <button onClick={() => query.refetch()} className="rounded border border-cyan-400/40 bg-cyan-400/5 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-cyan-200 hover:bg-cyan-400/10">↻ Refresh</button>
-            <Link href="/scanner" className="rounded border border-slate-700 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-slate-200 hover:border-cyan-400/40">Alpha Radar</Link>
+            <button
+              onClick={forceRefresh}
+              disabled={refreshing}
+              className="group relative overflow-hidden rounded-xl border border-blue-400/50 bg-gradient-to-br from-blue-500/15 to-blue-600/10 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-blue-100 shadow-lg shadow-blue-500/20 transition-all hover:border-blue-300/70 hover:from-blue-500/25 hover:to-blue-600/15 hover:shadow-blue-400/40 disabled:opacity-60"
+            >
+              <span className={refreshing ? "inline-block animate-spin" : "inline-block"}>↻</span>
+              <span className="ml-2">{refreshing ? "Refreshing…" : "Refresh"}</span>
+            </button>
+            <Link
+              href="/scanner"
+              className="rounded-xl border border-slate-700/60 bg-slate-900/60 px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.18em] text-slate-200 transition-all hover:border-blue-400/40 hover:bg-blue-500/5 hover:text-blue-200 hover:shadow-md hover:shadow-blue-500/20"
+            >
+              Alpha Radar
+            </Link>
           </div>
         </section>
 
         {!hideNumericKpis && topWin ? <BestSignalHero topWin={topWin} lastUpdated={data?.last_updated} /> : null}
 
-        <section className="rounded-2xl border border-slate-800 bg-[#06101a]/80 p-4">
-          <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
-            <b className="text-cyan-300">LIVE ORACLE</b>
-            <span>Validation Engine · Real Chart Series</span>
+        <section className="relative overflow-hidden rounded-2xl border border-blue-500/20 bg-[#06101a]/85 p-5 shadow-xl shadow-blue-500/5">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
+          <div className="mb-4 flex flex-wrap items-center gap-3 text-[13px]">
+            <b className="font-bold tracking-[0.18em] text-blue-300">LIVE ORACLE</b>
+            <span className="text-slate-300">Validation Engine · Real Chart Series</span>
             {wsConnected ? (
-              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-300">Real-time stream</span>
+              <span className="rounded-full border border-blue-400/40 bg-blue-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-blue-200 shadow-md shadow-blue-500/10">
+                Real-time stream
+              </span>
             ) : (
-              <span className="rounded-full border border-slate-600 bg-slate-800/60 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Stream idle · poll only</span>
+              <span className="rounded-full border border-slate-700/60 bg-slate-800/60 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                Stream idle · poll only
+              </span>
             )}
             {lastLivePushAt ? (
-              <span className={`font-mono text-[11px] uppercase tracking-[0.12em] ${Date.now() - lastLivePushAt < 15000 ? "animate-pulse text-emerald-300" : "text-slate-500"}`}>Ledger push {new Date(lastLivePushAt).toLocaleTimeString()}</span>
+              <span
+                className={`font-mono text-[11px] uppercase tracking-[0.14em] ${Date.now() - lastLivePushAt < 15000 ? "animate-pulse text-blue-300" : "text-slate-500"}`}
+              >
+                Ledger push {new Date(lastLivePushAt).toLocaleTimeString()}
+              </span>
             ) : null}
-            <span className="font-mono text-slate-500">HTTP {data?.last_updated ? new Date(data.last_updated).toLocaleTimeString() : "—"}</span>
+            <span className="font-mono text-[11px] text-slate-500">
+              HTTP {data?.last_updated ? new Date(data.last_updated).toLocaleTimeString() : "—"}
+            </span>
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
             <Kpi
@@ -509,8 +732,22 @@ function TrackRecordPage() {
             />
           </div>
           <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_360px]">
-            <LineChart title="Win Rate Over Time (30m)" subtitle={hideNumericKpis ? "cargando…" : `${chartRows.length} oracle rows (tape + top wins)`} value={hideNumericKpis ? "…" : pct(winRate, 1)} rows={chartRows} mode="win" color="#22d3ee" />
-            <LineChart title="Avg Return Over Time" subtitle="rolling average from real outcomes" value={hideNumericKpis ? "…" : formatBigPct(avgReturn)} rows={chartRows} mode="avg" color="#3b82f6" />
+            <LineChart
+              title="Win Rate Over Time (30m)"
+              subtitle={hideNumericKpis ? "cargando…" : `${chartRows.length} rows · 30-row sliding window`}
+              value={hideNumericKpis ? "…" : pct(winRate, 1)}
+              rows={chartRows}
+              mode="win"
+              color="#60a5fa"
+            />
+            <LineChart
+              title="Avg Return Over Time"
+              subtitle="rolling 30-row mean · outliers clipped at ±100% for display"
+              value={hideNumericKpis ? "…" : formatBigPct(avgReturn)}
+              rows={chartRows}
+              mode="avg"
+              color="#3b82f6"
+            />
             {hideNumericKpis ? (
               <div className="rounded-xl border border-slate-800 bg-[#08111a]/85 p-4 flex min-h-[170px] items-center justify-center font-mono text-slate-500">
                 …
@@ -522,19 +759,78 @@ function TrackRecordPage() {
         </section>
 
         {!hideNumericKpis ? (
-          <section className="rounded-2xl border border-slate-800 bg-[#06101a]/80 p-5">
-            <div className="mb-3 flex items-center justify-between gap-3">
+          <section className="relative overflow-hidden rounded-2xl border border-blue-500/15 bg-[#06101a]/85 p-5 shadow-lg shadow-blue-500/5">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/40 to-transparent" />
+            <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-bold text-white">Why Sentinel</h3>
-                <p className="text-xs text-slate-500">No competitor publishes a verified, live-resolved track record. Sentinel does.</p>
+                <h3 className="text-[15px] font-bold tracking-tight text-white">Why Sentinel</h3>
+                <p className="mt-0.5 text-[12px] text-slate-400">
+                  No competitor publishes a verified, live-resolved track record. Sentinel does.
+                </p>
               </div>
-              <span className="hidden rounded-full border border-cyan-400/30 bg-cyan-400/5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-300 md:inline-block">
+              <span className="hidden rounded-full border border-blue-400/40 bg-blue-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-200 shadow-md shadow-blue-500/10 md:inline-block">
                 Differentiator
               </span>
             </div>
             <DifferentiatorStrip />
           </section>
-        ) : null}<section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#06101a]/80"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 p-4"><div><h3 className="text-lg font-bold">Live Signal Tape</h3><p className="text-sm text-slate-500">Recent validated signals</p></div><div className="flex gap-2 text-sm"><span className="rounded-full bg-slate-800 px-3 py-1">{rows.length} visible</span><span className="rounded-full bg-cyan-400/10 px-3 py-1 text-cyan-300">{chartRows.length} chart rows</span><span className="rounded-full bg-sky-400/10 px-3 py-1 text-sky-300">{hideNumericKpis ? "…" : pending} pending</span></div></div><div className="overflow-x-auto"><table className="w-full min-w-[1040px] text-left text-sm"><thead className="border-b border-slate-800 text-[11px] uppercase tracking-[0.16em] text-slate-500"><tr><th className="px-4 py-3">Token</th><th className="px-4 py-3">Mint</th><th className="px-4 py-3">Regime</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Confidence</th><th className="px-4 py-3">State</th><th className="px-4 py-3">Outcome 30m</th><th className="px-4 py-3">Timestamp</th></tr></thead><tbody>{rows.length ? rows.map((r) => <SignalRow key={r.id || `${r.mint}-${r.created_at}`} row={r} />) : <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">{loadFailed ? "Fix the error above — zeros here are not a real ledger read." : showSkeleton ? "Cargando señales…" : emptyLedger ? "Ledger vacío en este API — revisa NEXT_PUBLIC_API_URL en Vercel y el backend Railway." : !total ? "No verified signals on this page yet. Metrics update automatically as outcomes resolve." : "No rows on this page."}</td></tr>}</tbody></table></div></section></div>
+        ) : null}
+        <section className="overflow-hidden rounded-2xl border border-blue-500/20 bg-[#06101a]/85 shadow-xl shadow-blue-500/5">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/40 to-transparent" />
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-500/15 p-5">
+            <div>
+              <h3 className="text-[16px] font-bold tracking-tight text-white">Live Signal Tape</h3>
+              <p className="mt-0.5 text-[12px] text-slate-400">Recent validated signals · auto-refreshing</p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-[12px]">
+              <span className="rounded-full border border-slate-700/60 bg-slate-800/60 px-3 py-1 text-slate-300">
+                {rows.length} visible
+              </span>
+              <span className="rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-blue-200">
+                {chartRows.length} chart rows
+              </span>
+              <span className="rounded-full border border-blue-400/20 bg-blue-500/[0.06] px-3 py-1 text-blue-200/80">
+                {hideNumericKpis ? "…" : pending} pending
+              </span>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1040px] text-left text-[13px]">
+              <thead className="border-b border-blue-500/15 text-[10.5px] font-bold uppercase tracking-[0.18em] text-blue-200/60">
+                <tr>
+                  <th className="px-4 py-3">Token</th>
+                  <th className="px-4 py-3">Mint</th>
+                  <th className="px-4 py-3">Regime</th>
+                  <th className="px-4 py-3">Source</th>
+                  <th className="px-4 py-3">Confidence</th>
+                  <th className="px-4 py-3">State</th>
+                  <th className="px-4 py-3">Outcome 30m</th>
+                  <th className="px-4 py-3">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length ? (
+                  rows.map((r) => <SignalRow key={r.id || `${r.mint}-${r.created_at}`} row={r} />)
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                      {loadFailed
+                        ? "Fix the error above — zeros here are not a real ledger read."
+                        : showSkeleton
+                          ? "Cargando señales…"
+                          : emptyLedger
+                            ? "Ledger vacío en este API — revisa NEXT_PUBLIC_API_URL en Vercel y el backend Railway."
+                            : !total
+                              ? "No verified signals on this page yet. Metrics update automatically as outcomes resolve."
+                              : "No rows on this page."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
     </Shell>
   );
 }

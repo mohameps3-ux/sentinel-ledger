@@ -1047,6 +1047,8 @@ router.get("/track-record", async (req, res) => {
   const page = Math.max(1, Number(req.query.page || 1));
   const pageSize = Math.max(1, Math.min(50, Number(req.query.limit || 25)));
   const chartPages = Math.min(6, Math.max(1, Math.floor(Number(req.query.chart_pages || req.query.chart_page_span || 1))));
+  // `?force=…` bypasses the Redis layer so the user-facing Refresh button always returns fresh data.
+  const forceFresh = req.query.force != null && String(req.query.force) !== "";
   let cacheGen = 0;
   try {
     cacheGen = await getTrackRecordCacheGen();
@@ -1055,14 +1057,16 @@ router.get("/track-record", async (req, res) => {
   }
   const cacheKey = `signals:track-record:v14:g${cacheGen}:${filter}:${page}:${pageSize}:cp${chartPages}`;
   const cacheSec = trackRecordCacheSeconds();
-  try {
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      res.set("Cache-Control", `public, max-age=${cacheSec}, stale-while-revalidate=${cacheSec}`);
-      return res.json({ ...cached, cached: true });
+  if (!forceFresh) {
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        res.set("Cache-Control", `public, max-age=${cacheSec}, stale-while-revalidate=${cacheSec}`);
+        return res.json({ ...cached, cached: true });
+      }
+    } catch (error) {
+      console.warn("[track-record] cache read failed:", error?.message || error);
     }
-  } catch (error) {
-    console.warn("[track-record] cache read failed:", error?.message || error);
   }
   try {
     const body = await buildTrackRecordPayload(supabase, { filter, page, pageSize, cacheGen, chartPageSpan: chartPages });
