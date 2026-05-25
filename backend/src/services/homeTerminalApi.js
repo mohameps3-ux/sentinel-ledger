@@ -875,7 +875,7 @@ async function buildLatestSignalsFeed(
   const delayMinutes = signalFeedFreeDelayMinutes();
   const delayCutoffMs =
     feedTier === "delayed" ? Date.now() - delayMinutes * 60 * 1000 : null;
-  const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const { rows: raw, sourceTable } = await fetchLatestSignalRowsSupabase(supabase, since, 400);
   const anomalyAbsPct = Number(process.env.SIGNAL_FEED_EXCLUDE_ABS_OUTCOME_PCT || 0);
   /** Defaults reduce ultra-thin / instant-rug prints; set env to 0 to disable a gate. */
@@ -1059,7 +1059,14 @@ async function buildLatestSignalsFeed(
     });
   }
 
-  out.sort((a, b) => (b.sentinelScore || 0) - (a.sentinelScore || 0));
+  // Sort by recency-weighted score: fresh high-score signals always lead.
+  out.sort((a, b) => {
+    const recA = recencyMultiplier(a.createdAt);
+    const recB = recencyMultiplier(b.createdAt);
+    const compositeA = (a.sentinelScore || 0) * recA;
+    const compositeB = (b.sentinelScore || 0) * recB;
+    return compositeB - compositeA;
+  });
 
   return {
     ok: true,
@@ -1403,32 +1410,41 @@ async function buildHotTokens({ limit = 10, supabase = null } = {}) {
       /* tokens_analyzed optional */
     }
   }
-  const data = list.map((t) => {
-    const mint = t.mint;
-    const flowScore = computeHotSentinel(t);
-    const ia = iaByMint.get(mint);
-    const sentinelScore =
-      ia != null && Number.isFinite(ia) ? Math.min(100, Math.max(flowScore, Math.round(ia))) : flowScore;
-    return {
-      ...t,
-      token: t.symbol || "TOKEN",
-      tokenAddress: mint,
-      sentinelScore,
-      decision: "MERCADO",
-      entryWindow: null,
-      entryWindowMinutesLeft: null,
-      clusterHeat: clusterHeatFromScore(sentinelScore),
-      evidenceChips: [],
-      quickBuy: {
-        "0.5Sol": jupiterSwapUrl(mint, 0.5),
-        "1Sol": jupiterSwapUrl(mint, 1),
-        "5Sol": jupiterSwapUrl(mint, 5)
-      },
-      iaScore: ia != null ? Math.round(ia) : null,
-      narrativeTags: [],
-      degraded: Boolean(t?.degraded)
-    };
-  });
+  const hotMaxPairAgeDays = Number(process.env.HOT_FEED_MAX_PAIR_AGE_DAYS ?? 3);
+  const data = list
+    .filter((t) => {
+      if (hotMaxPairAgeDays > 0 && t.pairCreatedAt != null) {
+        const gate = gateDexPairAge(t.pairCreatedAt, 0, hotMaxPairAgeDays);
+        if (gate.exclude) return false;
+      }
+      return true;
+    })
+    .map((t) => {
+      const mint = t.mint;
+      const flowScore = computeHotSentinel(t);
+      const ia = iaByMint.get(mint);
+      const sentinelScore =
+        ia != null && Number.isFinite(ia) ? Math.min(100, Math.max(flowScore, Math.round(ia))) : flowScore;
+      return {
+        ...t,
+        token: t.symbol || "TOKEN",
+        tokenAddress: mint,
+        sentinelScore,
+        decision: "MERCADO",
+        entryWindow: null,
+        entryWindowMinutesLeft: null,
+        clusterHeat: clusterHeatFromScore(sentinelScore),
+        evidenceChips: [],
+        quickBuy: {
+          "0.5Sol": jupiterSwapUrl(mint, 0.5),
+          "1Sol": jupiterSwapUrl(mint, 1),
+          "5Sol": jupiterSwapUrl(mint, 5)
+        },
+        iaScore: ia != null ? Math.round(ia) : null,
+        narrativeTags: [],
+        degraded: Boolean(t?.degraded)
+      };
+    });
   data.sort((a, b) => (b.sentinelScore || 0) - (a.sentinelScore || 0));
   return {
     ok: true,

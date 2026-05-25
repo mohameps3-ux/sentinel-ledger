@@ -51,8 +51,8 @@ function clamp(n, lo, hi) {
  * Exponential decay from 1.0 toward floor as signal ages (minutes).
  */
 function recencyMultiplier(createdAtIso, options = {}) {
-  const tauMin = Math.max(5, Number(options.tauMin ?? process.env.SIGNAL_FEED_RECENCY_TAU_MIN ?? 120));
-  const floor = clamp(Number(options.floor ?? process.env.SIGNAL_FEED_RECENCY_FLOOR ?? 0.82), 0.5, 0.99);
+  const tauMin = Math.max(5, Number(options.tauMin ?? process.env.SIGNAL_FEED_RECENCY_TAU_MIN ?? 60));
+  const floor = clamp(Number(options.floor ?? process.env.SIGNAL_FEED_RECENCY_FLOOR ?? 0.55), 0.3, 0.99);
   const t = Date.parse(String(createdAtIso || ""));
   if (!Number.isFinite(t)) return 1;
   const ageMin = (Date.now() - t) / 60000;
@@ -88,7 +88,7 @@ function isAnomalousOutcomePct(pct, threshold) {
  * Clamp multiplicative stack so one knob cannot collapse the card.
  */
 function clampQualityStack(perfW, recW) {
-  const minStack = Number(process.env.SIGNAL_FEED_QUALITY_STACK_MIN || 0.72);
+  const minStack = Number(process.env.SIGNAL_FEED_QUALITY_STACK_MIN || 0.50);
   const maxStack = Number(process.env.SIGNAL_FEED_QUALITY_STACK_MAX || 1.12);
   const raw = perfW * recW;
   return clamp(raw, minStack, maxStack);
@@ -136,7 +136,7 @@ function poolAgeLabelFromMs(pairCreatedAtRaw) {
 
 /** Thresholds for early-memecoin discovery (env-tunable). */
 function earlyMemecoinThresholds(options = {}) {
-  const maxDays = Number(options.maxPairAgeDays ?? process.env.SIGNAL_FEED_MAX_PAIR_AGE_DAYS ?? 7);
+  const maxDays = Number(options.maxPairAgeDays ?? process.env.SIGNAL_FEED_MAX_PAIR_AGE_DAYS ?? 3);
   const maxMcap = Number(options.maxMarketCapUsd ?? process.env.SIGNAL_FEED_MAX_MARKET_CAP_USD ?? 5_000_000);
   return {
     maxPairAgeDays: Number.isFinite(maxDays) && maxDays > 0 ? maxDays : 0,

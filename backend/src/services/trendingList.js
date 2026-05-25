@@ -54,6 +54,7 @@ function normalizeTrendingEntry(mint, market) {
     change: Number(market.priceChange24h || 0),
     volume24h: Number(market.volume24h || 0),
     liquidity: Number(market.liquidity || 0),
+    pairCreatedAt: market?.pairCreatedAt ?? null,
     providerUsed: market?._provider || "unknown",
     attempts: Number(market?._attempts || 1),
     circuitState: market?._circuitState || "UNKNOWN",

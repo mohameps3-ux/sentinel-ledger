@@ -89,13 +89,24 @@ function sortLiveSignalsNewestFirst(rows) {
     return bms - ams;
   });
 }
+function signalRecencyScore(sig) {
+  const emittedMs = getLiveSignalEmittedAtMs(sig);
+  if (emittedMs == null || !Number.isFinite(emittedMs)) return 0.7;
+  const ageMin = Math.max(0, (Date.now() - emittedMs) / 60000);
+  // Exponential decay: tau=90min, floor=0.4 — signals older than ~3h score near 0.4
+  const tau = 90;
+  const floor = 0.4;
+  return floor + (1 - floor) * Math.exp(-ageMin / tau);
+}
+
 function sortByActionBucket(rows) {
   return [...rows].sort((a, b) => {
     const ra = getActionBucket(a).rank;
     const rb = getActionBucket(b).rank;
     if (ra !== rb) return ra - rb;
-    const sa = Number(a?.signalStrength ?? a?.sentinelScore ?? 0);
-    const sb = Number(b?.signalStrength ?? b?.sentinelScore ?? 0);
+    // Within same action bucket: recency × score composite
+    const sa = Number(a?.signalStrength ?? a?.sentinelScore ?? 0) * signalRecencyScore(a);
+    const sb = Number(b?.signalStrength ?? b?.sentinelScore ?? 0) * signalRecencyScore(b);
     return sb - sa;
   });
 }
