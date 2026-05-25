@@ -11,6 +11,7 @@ if (profile !== "strict") {
   process.env.RULE_NEWWALLET_ENABLED = "false";
   process.env.SIGNAL_GATE_ADAPTIVE_ENABLED = "true";
   process.env.SIGNAL_GATE_ADAPTIVE_REGIME_AWARE = "true";
+  process.env.SIGNAL_GATE_REGIME_ENABLED = "true";
 
   process.env.TRENDING_STRICT_MIN_LIQUIDITY_USD = "2000";
   process.env.TRENDING_STRICT_MIN_VOLUME_24H_USD = "1000";
