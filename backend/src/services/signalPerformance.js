@@ -8,10 +8,21 @@ const { resolveBaseSentinelScoreAtEmission } = require("./signalCardScore");
 
 const DEFAULT_HORIZON_MIN = Number(process.env.SIGNAL_PERF_HORIZON_MIN || 10);
 const SUCCESS_MIN_PCT = Number(process.env.SIGNAL_PERF_SUCCESS_MIN_PCT || 1.0);
+const WINSORIZE_CAP_PCT = Math.max(0, Number(process.env.SIGNAL_PERF_WINSORIZE_CAP_PCT ?? 200));
 const RESOLVE_MAX_ATTEMPTS = Number(process.env.SIGNAL_PERF_MAX_ATTEMPTS || 12);
 const KILL_SWITCH_MAX_LOSS = Number(process.env.KILL_SWITCH_MAX_LOSS_PCT || 0.1);
 const KILL_OUTCOME_PCT = Number(process.env.KILL_SWITCH_OUTCOME_PCT || -10);
 const KILL_SWEEP_LOOKBACK_HOURS = Number(process.env.KILL_SWITCH_SWEEP_LOOKBACK_HOURS || 72);
+
+/** Clip magnitude for aggregate metrics only; raw outcome_pct in DB unchanged. */
+function winsorizeOutcomePct(pct) {
+  const n = Number(pct);
+  if (!Number.isFinite(n)) return 0;
+  if (WINSORIZE_CAP_PCT <= 0) return n;
+  if (n > WINSORIZE_CAP_PCT) return WINSORIZE_CAP_PCT;
+  if (n < -WINSORIZE_CAP_PCT) return -WINSORIZE_CAP_PCT;
+  return n;
+}
 
 function clampInt(n, min, max, fallback) {
   const v = Number(n);
@@ -449,21 +460,21 @@ function computeRegimeOutcomeBlock(regimeRows) {
   if (!Array.isArray(regimeRows) || regimeRows.length === 0) return null;
   const wins = regimeRows.filter((r) => Number(r.outcome_pct) >= SUCCESS_MIN_PCT);
   const losses = regimeRows.filter((r) => Number(r.outcome_pct) < SUCCESS_MIN_PCT);
-  const sumWin = wins.reduce((a, r) => a + Number(r.outcome_pct), 0);
-  const sumLossAbs = losses.reduce((a, r) => a + Math.abs(Number(r.outcome_pct)), 0);
+  const sumWin = wins.reduce((a, r) => a + winsorizeOutcomePct(r.outcome_pct), 0);
+  const sumLossAbs = losses.reduce((a, r) => a + Math.abs(winsorizeOutcomePct(r.outcome_pct)), 0);
   const profitFactor = sumLossAbs > 0 ? sumWin / sumLossAbs : wins.length ? 999 : 0;
   let peak = 0;
   let equity = 0;
   let maxDd = 0;
   for (const r of regimeRows) {
-    equity += Number(r.outcome_pct);
+    equity += winsorizeOutcomePct(r.outcome_pct);
     if (equity > peak) peak = equity;
     const dd = peak - equity;
     if (dd > maxDd) maxDd = dd;
   }
   const total = regimeRows.length;
   const winRate = total ? (wins.length / total) * 100 : 0;
-  const totalRet = regimeRows.reduce((a, r) => a + Number(r.outcome_pct), 0);
+  const totalRet = regimeRows.reduce((a, r) => a + winsorizeOutcomePct(r.outcome_pct), 0);
   return {
     total,
     winRatePct: Math.round(winRate * 100) / 100,
@@ -530,9 +541,9 @@ async function getSignalPerformanceSummary(options = {}) {
   const resolved = all.filter((r) => r.status === "resolved" && Number.isFinite(Number(r.outcome_pct)));
   const wins = resolved.filter((r) => Number(r.outcome_pct) >= SUCCESS_MIN_PCT);
   const losses = resolved.filter((r) => Number(r.outcome_pct) < SUCCESS_MIN_PCT);
-  const sumWin = wins.reduce((a, r) => a + Number(r.outcome_pct), 0);
-  const sumLossAbs = losses.reduce((a, r) => a + Math.abs(Number(r.outcome_pct)), 0);
-  const totalRet = resolved.reduce((a, r) => a + Number(r.outcome_pct), 0);
+  const sumWin = wins.reduce((a, r) => a + winsorizeOutcomePct(r.outcome_pct), 0);
+  const sumLossAbs = losses.reduce((a, r) => a + Math.abs(winsorizeOutcomePct(r.outcome_pct)), 0);
+  const totalRet = resolved.reduce((a, r) => a + winsorizeOutcomePct(r.outcome_pct), 0);
   const avgRet = resolved.length ? totalRet / resolved.length : 0;
   const winRate = resolved.length ? (wins.length / resolved.length) * 100 : 0;
   const profitFactor = sumLossAbs > 0 ? sumWin / sumLossAbs : wins.length ? 999 : 0;
@@ -542,7 +553,7 @@ async function getSignalPerformanceSummary(options = {}) {
   let equity = 0;
   let maxDd = 0;
   for (const r of resolved) {
-    equity += Number(r.outcome_pct);
+    equity += winsorizeOutcomePct(r.outcome_pct);
     if (equity > peak) peak = equity;
     const dd = peak - equity;
     if (dd > maxDd) maxDd = dd;
@@ -557,7 +568,7 @@ async function getSignalPerformanceSummary(options = {}) {
       const cur = bySignal.get(tag) || { signal: tag, total: 0, wins: 0, sumPct: 0 };
       cur.total += 1;
       if (out >= SUCCESS_MIN_PCT) cur.wins += 1;
-      cur.sumPct += out;
+      cur.sumPct += winsorizeOutcomePct(out);
       bySignal.set(tag, cur);
     }
   }
@@ -582,7 +593,7 @@ async function getSignalPerformanceSummary(options = {}) {
         const cur = byCombo.get(key) || { combo: key, total: 0, wins: 0, sumPct: 0 };
         cur.total += 1;
         if (out >= SUCCESS_MIN_PCT) cur.wins += 1;
-        cur.sumPct += out;
+        cur.sumPct += winsorizeOutcomePct(out);
         byCombo.set(key, cur);
       }
     }
@@ -615,7 +626,7 @@ async function getSignalPerformanceSummary(options = {}) {
 
   const corr = pearson(
     resolved.map((r) => Number(r.confidence)),
-    resolved.map((r) => Number(r.outcome_pct))
+    resolved.map((r) => winsorizeOutcomePct(r.outcome_pct))
   );
 
   const statusBreakdown = { pending: 0, resolved: 0, failed: 0, other: 0 };
