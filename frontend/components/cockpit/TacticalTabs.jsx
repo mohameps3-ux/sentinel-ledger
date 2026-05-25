@@ -24,30 +24,28 @@ export function TacticalTabs({
   return (
     <div className="space-y-2">
       <div
-        className="sl-tactical-tabs-strip sticky top-1 z-20 -mx-1 flex flex-nowrap items-end gap-2 overflow-x-auto border-b border-white/[0.08] bg-[var(--sl-bg-base)]/90 px-1 pt-1 backdrop-blur-md [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:static md:mx-0 md:gap-3 md:bg-transparent md:backdrop-blur-0"
+        className="sl-tactical-tabs-strip sticky top-1 z-20 -mx-1 flex w-full flex-nowrap items-end gap-3 overflow-x-auto border-b border-white/[0.08] bg-[var(--sl-bg-base)]/90 px-1 pe-3 pt-1 backdrop-blur-md [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:static md:mx-0 md:gap-3 md:bg-transparent md:backdrop-blur-0 md:pe-1"
         role="tablist"
         aria-label={t("war.tactical.aria")}
       >
-        <div className="flex min-w-0 flex-1 flex-nowrap items-end gap-4">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              id={`tactical-tab-${tab.id}`}
-              aria-selected={activeTab === tab.id}
-              aria-controls={`tactical-panel-${tab.id}`}
-              onClick={() => onTabChange(tab.id)}
-              className={`relative shrink-0 inline-flex items-center gap-1 pb-2 pt-1 text-[11px] sm:text-xs font-bold uppercase tracking-[0.14em] transition-all duration-200 ${
-                activeTab === tab.id
-                  ? "text-indigo-100 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-indigo-400"
-                  : "text-gray-500 hover:text-gray-200"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            id={`tactical-tab-${tab.id}`}
+            aria-selected={activeTab === tab.id}
+            aria-controls={`tactical-panel-${tab.id}`}
+            onClick={() => onTabChange(tab.id)}
+            className={`sl-tactical-tab relative shrink-0 inline-flex items-center gap-1 pb-2 pt-1 text-[11px] sm:text-xs font-bold uppercase tracking-[0.14em] transition-all duration-200 ${
+              activeTab === tab.id
+                ? "text-indigo-100 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-indigo-400"
+                : "text-gray-500 hover:text-gray-200"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
       <div className="min-h-0 space-y-0">
         <div

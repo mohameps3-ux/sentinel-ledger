@@ -317,6 +317,19 @@ body {
   z-index: 1;
 }
 
+/* C8.4 — horizontal snap scroll so TRACK tab is reachable on narrow home */
+@media (max-width: 767px) {
+  .sl-tactical-tabs-strip {
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sl-tactical-tab {
+    scroll-snap-align: start;
+  }
+}
+
 /* Primary CTA — sapphire institutional */
 .btn-pro {
   display: inline-flex;
