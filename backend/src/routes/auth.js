@@ -8,6 +8,7 @@ const { PublicKey } = require("@solana/web3.js");
 const { getSupabase } = require("../lib/supabase");
 const redis = require("../lib/cache");
 const { getSubscriptionAuthContext } = require("../services/subscriptionService");
+const { getActiveWalletSubscription } = require("../services/subscriptionAccess");
 
 const authRouter = express.Router();
 
@@ -147,13 +148,35 @@ async function authMiddleware(req, res, next) {
       return res.status(401).json({ error: "missing_token" });
     const token = header.slice("Bearer ".length);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const sub = await getSubscriptionAuthContext(decoded.userId).catch(() => ({
+    let sub = await getSubscriptionAuthContext(decoded.userId).catch(() => ({
       plan: "free",
       subscriptionStatus: null,
       planExpiresAt: null,
       isLifetime: false,
       hasProAccess: false
     }));
+
+    // Fallback: if the userId-based lookup returns no PRO access, try the wallet
+    // address embedded in the JWT directly. This covers cases where the users
+    // table wallet_address column is null/mismatched but the wallet did pay on-chain.
+    if (!sub.hasProAccess && decoded.wallet) {
+      try {
+        const supabase = getSupabase();
+        const walletSub = await getActiveWalletSubscription(supabase, decoded.wallet);
+        if (walletSub) {
+          sub = {
+            plan: walletSub.plan || "pro",
+            subscriptionStatus: "active",
+            planExpiresAt: walletSub.expires_at || null,
+            isLifetime: false,
+            hasProAccess: true
+          };
+        }
+      } catch (_) {
+        // fallback failed silently — sub stays as-is
+      }
+    }
+
     req.user = {
       ...decoded,
       plan: sub.plan,

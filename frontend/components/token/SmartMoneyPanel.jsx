@@ -56,6 +56,18 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
   }
 
   if (error) {
+    const isProGate = /upgrade to pro/i.test(error.message || "");
+    if (isProGate) {
+      return (
+        <div className="border border-dashed border-amber-500/30 bg-amber-500/[0.05] px-4 py-6 text-center space-y-2">
+          <p className="text-amber-300 text-[13px] font-semibold">Session verification failed</p>
+          <p className="text-gray-400 text-[12px] leading-relaxed max-w-xs mx-auto">
+            Your wallet shows an active PRO plan but the server couldn&apos;t verify it via your current session.
+            Disconnect and reconnect your wallet to refresh the auth token.
+          </p>
+        </div>
+      );
+    }
     return <div className="text-red-400 text-sm text-center py-6">{error.message || "Failed to load smart money data"}</div>;
   }
 
