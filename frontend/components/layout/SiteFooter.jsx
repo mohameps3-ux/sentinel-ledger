@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useLocale } from "../../contexts/LocaleContext";
 import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
 import { FinancialDisclaimer } from "./FinancialDisclaimer";
+import { getPublicXProfileUrl } from "../../lib/publicRuntime";
 
 const showOpsLink =
   process.env.NEXT_PUBLIC_SHOW_OPS_NAV === "1" ||
@@ -47,7 +48,10 @@ const FOOTER_GROUPS = [
   }
 ];
 
-const SOCIAL_LINKS = [{ href: "https://x.com", labelKey: "footer.link.twitter" }];
+const SOCIAL_LINKS = (() => {
+  const xUrl = getPublicXProfileUrl();
+  return xUrl ? [{ href: xUrl, labelKey: "footer.link.twitter" }] : [];
+})();
 
 export function SiteFooter() {
   const { t } = useLocale();
@@ -73,19 +77,21 @@ export function SiteFooter() {
             </p>
             <div className="pt-2">
               <p className={titleBase}>{t("footer.col.connect")}</p>
-              <div className="flex flex-wrap gap-2">
-                {SOCIAL_LINKS.map((s) => (
-                  <a
-                    key={s.labelKey}
-                    href={s.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center px-2.5 py-1 border border-white/[0.08] bg-white/[0.02] text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--sl-fg-muted)] hover:border-white/20 hover:text-[var(--sl-fg)] transition"
-                  >
-                    {t(s.labelKey)}
-                  </a>
-                ))}
-              </div>
+              {SOCIAL_LINKS.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {SOCIAL_LINKS.map((s) => (
+                    <a
+                      key={s.labelKey}
+                      href={s.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center px-2.5 py-1 border border-white/[0.08] bg-white/[0.02] text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--sl-fg-muted)] hover:border-white/20 hover:text-[var(--sl-fg)] transition"
+                    >
+                      {t(s.labelKey)}
+                    </a>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
 
