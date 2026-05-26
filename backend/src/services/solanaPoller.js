@@ -24,10 +24,14 @@ const { jsonRpcPost } = require("../lib/solanaJsonRpc");
 
 const SOURCE = "solana_rpc_poller";
 const DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com";
-// Fase 0 (supervivencia): 5 min entre ticks para reducir créditos RPC. Valores de env por debajo se suben a este mínimo.
-const DEFAULT_TICK_MS = 300_000;
-const DEFAULT_BATCH_SIZE = 5;
-const SIGNATURE_LIMIT = 10;
+// Doubled cadence: 5 min -> 2.5 min between ticks; batch 5 -> 10 wallets per
+// tick; per-wallet signatures 10 -> 20. User directive: more Helius usage for
+// fresher smart-money tracking. The previous "Fase 0 (supervivencia)" floor
+// is lifted because Helius now has a 2x budget (DAILY_BUDGET_LIMIT default
+// raised in budgetGuard.js). Other subscriptions untouched.
+const DEFAULT_TICK_MS = 150_000;
+const DEFAULT_BATCH_SIZE = 10;
+const SIGNATURE_LIMIT = 20;
 const LAST_SIGNATURE_PREFIX = "solana-poller:last-signature:";
 const MARKET_MEMO_TTL_MS = 60_000;
 const MARKET_MEMO_MAX = 500;

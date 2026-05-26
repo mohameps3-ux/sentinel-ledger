@@ -8,16 +8,19 @@ function deltaFetchingEnabled() {
   return String(process.env.FF_DELTA_FETCHING || "true").trim().toLowerCase() !== "false";
 }
 
+// Doubled defaults: 5 -> 10 sigs per delta poll, 100 -> 200 sigs on bootstrap.
+// User directive: "doubla Helius" for fresher tracking without bumping other
+// subscriptions. Override via env if the running plan is constrained.
 function fetchTxLimit() {
-  const n = Number(process.env.FETCH_TX_LIMIT ?? 5);
-  if (!Number.isFinite(n) || n < 1) return 5;
+  const n = Number(process.env.FETCH_TX_LIMIT ?? 10);
+  if (!Number.isFinite(n) || n < 1) return 10;
   return Math.min(50, Math.floor(n));
 }
 
 function bootstrapSignatureLimit() {
-  const n = Number(process.env.FETCH_WALLET_BOOTSTRAP_SIG_LIMIT ?? 100);
-  if (!Number.isFinite(n) || n < 1) return 100;
-  return Math.min(200, Math.floor(n));
+  const n = Number(process.env.FETCH_WALLET_BOOTSTRAP_SIG_LIMIT ?? 200);
+  if (!Number.isFinite(n) || n < 1) return 200;
+  return Math.min(400, Math.floor(n));
 }
 
 function normalizeOpts(limitOrOpts) {

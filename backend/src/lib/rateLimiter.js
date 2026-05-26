@@ -48,15 +48,18 @@ function rateLimiterEnabled() {
   return String(process.env.FF_RATE_LIMITER ?? "true").toLowerCase() !== "false";
 }
 
+// Doubled defaults: 40 -> 80 RPS, 50 -> 100 burst. Per user directive to use
+// Helius more aggressively for discovery / freshness without touching other
+// subscriptions. Override via env on Railway if a smaller plan is in use.
 function heliusRateLimitRps() {
-  const n = Number(process.env.HELIUS_RATE_LIMIT_RPS ?? 40);
-  if (!Number.isFinite(n) || n < 1) return 40;
+  const n = Number(process.env.HELIUS_RATE_LIMIT_RPS ?? 80);
+  if (!Number.isFinite(n) || n < 1) return 80;
   return Math.min(200, Math.floor(n));
 }
 
 function heliusRateBurst() {
-  const n = Number(process.env.HELIUS_RATE_BURST ?? 50);
-  if (!Number.isFinite(n) || n < 1) return 50;
+  const n = Number(process.env.HELIUS_RATE_BURST ?? 100);
+  if (!Number.isFinite(n) || n < 1) return 100;
   return Math.min(500, Math.floor(n));
 }
 
