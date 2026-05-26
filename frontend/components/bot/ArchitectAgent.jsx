@@ -16,6 +16,7 @@ export default function ArchitectAgent() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [toolProgress, setToolProgress] = useState([]);
   const [isOpen, setIsOpen] = useState(true);
   const scrollContainerRef = useRef(null);
   const inputRef = useRef(null);
@@ -60,8 +61,111 @@ export default function ArchitectAgent() {
     setInput("");
     setLoading(true);
     setError(null);
+    setToolProgress([]);
+
+    const useStream = true;
 
     try {
+      if (useStream) {
+        const response = await fetch(`${API_BASE}/api/v1/ops/agent/message`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+            "x-ops-key": opsKey
+          },
+          body: JSON.stringify({ message: msg, history, stream: true })
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          setError(data.error || `Agent error (${response.status})`);
+          setMessages((prev) => prev.slice(0, -1));
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("Streaming not supported");
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let finalPayload = null;
+        const progress = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || "";
+
+          for (const part of parts) {
+            const lines = part.split("\n");
+            let event = "message";
+            let dataLine = "";
+            for (const line of lines) {
+              if (line.startsWith("event:")) event = line.slice(6).trim();
+              if (line.startsWith("data:")) dataLine += line.slice(5).trim();
+            }
+            if (!dataLine) continue;
+            let parsed;
+            try {
+              parsed = JSON.parse(dataLine);
+            } catch {
+              continue;
+            }
+            if (event === "tool_start") {
+              progress.push({ type: "start", name: parsed.name, ok: null });
+              setToolProgress([...progress]);
+            } else if (event === "tool_result") {
+              const idx = progress.findIndex((p) => p.name === parsed.name && p.ok === null);
+              const ok = parsed.result?.ok !== false && parsed.result?.status !== "confirmation_required";
+              const entry = {
+                type: "result",
+                name: parsed.name,
+                ok,
+                pending: parsed.result?.status === "confirmation_required"
+              };
+              if (idx >= 0) progress[idx] = entry;
+              else progress.push(entry);
+              setToolProgress([...progress]);
+            } else if (event === "done") {
+              finalPayload = parsed;
+            } else if (event === "error") {
+              throw new Error(parsed.error || "Stream error");
+            }
+          }
+        }
+
+        if (!finalPayload?.answer) {
+          setError("No answer returned from agent stream.");
+          setMessages((prev) => prev.slice(0, -1));
+          return;
+        }
+
+        let content = finalPayload.answer;
+        if (Array.isArray(finalPayload.toolInvocations) && finalPayload.toolInvocations.length > 0) {
+          const summary = finalPayload.toolInvocations
+            .map((t) => {
+              const st = t.result?.status === "confirmation_required" ? "pending confirm" : t.result?.ok === false ? "failed" : "ok";
+              return `• ${t.name}: ${st}`;
+            })
+            .join("\n");
+          content += `\n\n---\nTools (${finalPayload.toolInvocations.length}):\n${summary}`;
+        }
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content,
+            model: finalPayload.model || null,
+            toolInvocations: finalPayload.toolInvocations || []
+          }
+        ]);
+        return;
+      }
+
       const response = await fetch(`${API_BASE}/api/v1/ops/agent/message`, {
         method: "POST",
         headers: {
@@ -78,12 +182,24 @@ export default function ArchitectAgent() {
         return;
       }
 
+      let content = data.answer || "No answer returned.";
+      if (Array.isArray(data.toolInvocations) && data.toolInvocations.length > 0) {
+        const summary = data.toolInvocations
+          .map((t) => {
+            const st = t.result?.status === "confirmation_required" ? "pending confirm" : t.result?.ok === false ? "failed" : "ok";
+            return `• ${t.name}: ${st}`;
+          })
+          .join("\n");
+        content += `\n\n---\nTools (${data.toolInvocations.length}):\n${summary}`;
+      }
+
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: data.answer || "No answer returned.",
-          model: data.model || null
+          content,
+          model: data.model || null,
+          toolInvocations: data.toolInvocations || []
         }
       ]);
     } catch (err) {
@@ -91,6 +207,7 @@ export default function ArchitectAgent() {
       setMessages((prev) => prev.slice(0, -1));
     } finally {
       setLoading(false);
+      setToolProgress([]);
       setTimeout(() => {
         inputRef.current?.focus({ preventScroll: true });
       }, 50);
@@ -265,7 +382,7 @@ export default function ArchitectAgent() {
             ))}
 
             {loading && (
-              <div style={{ display: "flex", alignItems: "flex-start" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
                 <div
                   style={{
                     background: "rgba(255,255,255,0.03)",
@@ -277,8 +394,28 @@ export default function ArchitectAgent() {
                     fontFamily: "monospace"
                   }}
                 >
-                  analyzing...
+                  {toolProgress.length > 0 ? "running tools..." : "analyzing..."}
                 </div>
+                {toolProgress.length > 0 && (
+                  <div
+                    style={{
+                      fontSize: "10px",
+                      fontFamily: "monospace",
+                      color: "#4a7a4a",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "2px",
+                      paddingLeft: "4px"
+                    }}
+                  >
+                    {toolProgress.map((t, i) => (
+                      <span key={`${t.name}-${i}`}>
+                        {t.ok === null ? "…" : t.pending ? "?" : t.ok ? "✓" : "✗"} {t.name}
+                        {t.pending ? " (confirm required)" : ""}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

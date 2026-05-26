@@ -13,6 +13,8 @@ const { getSupabase } = require("../lib/supabase");
 const { getOpsPostgresPool } = require("../lib/opsPostgresPool");
 const { insertOpsAuditLog } = require("../lib/opsAuditLog");
 const opsToolsRouter = require("./opsTools");
+const { isToolUseEnabled, runOpsAgentLoop } = require("../services/opsAgentLoop");
+const { OPS_AGENT_TOOLS } = require("../services/opsAgentTools");
 
 const router = express.Router();
 
@@ -537,6 +539,13 @@ EJECUCIÓN AUTOMÁTICA (enganchada en este backend):
 - Si \`OPS_AUTO_EXECUTE_CALIBRATION=true\` y la última calibración **exitosa** tiene >24h y el operador **no** vetó ("no toques pesos/weights"), puede ejecutarse **auto_calibration** antes del LLM (ver **EJECUCIÓN_EN_ESTA_PETICIÓN**).
 - Resume solo lo que venga en **EJECUCIÓN_EN_ESTA_PETICIÓN**; no inventes otras ejecuciones.
 
+TOOL USE AGENTIC (cuando OPS_AGENT_TOOL_USE_ENABLED=true):
+- Tienes ${OPS_AGENT_TOOLS.length} herramientas invocables durante la misma petición.
+- **Auto** (sin confirmación): repo_read, sql_select, health_probe, public_api_probe, redis_inspect, calibration_status, bulk_update_dry_run.
+- **Requieren confirmación**: sql_write, sql_dangerous, bulk_update_apply, calibration_run, tuner_run, rollback_calibration, deploy, env_update, github_commit, github_workflow.
+- Si una tool devuelve confirmation_required, pide al operador: \`OK EJECUTAR <acción>\`, \`CONFIRM TOOL <nombre>\`, o \`confirmTools: ["nombre"]\` en el body.
+- No invoques tools destructivas sin confirmación explícita del operador en el mismo turno o vía confirmTools.
+
 CAPACIDADES OPS (HTTP + \`x-ops-key\`; ver JSON **opsConsoleLimits** y **herramientasQueSiExisten**):
 - **SQL**: \`/ops/tools/sql\` (SELECT / DML / DDL con flags) y \`/ops/tools/sql/auto\` (DML/DDL auditado \`auto_executed\`, \`dangerConfirm\` si \`estimatedRows\`>1000).
 - **Batch**: \`/ops/tools/bulk-update\` (tablas whitelist, \`dryRun\` + \`confirm\`, chunks).
@@ -583,7 +592,7 @@ ${execStr ? `\nEJECUCIÓN_EN_ESTA_PETICIÓN (solo lectura; no inventes):\n${exec
 
 router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
   try {
-    const { message, history = [] } = req.body || {};
+    const { message, history = [], confirmTools = [], stream = false } = req.body || {};
     if (!message || typeof message !== "string" || message.trim().length === 0) {
       return res.status(400).json({ error: "Invalid message" });
     }
@@ -621,6 +630,7 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
 
     const ctx = await buildOpsContext();
     ctx.operatorIntent = intent;
+    ctx.agentToolUseEnabled = isToolUseEnabled();
     const systemPrompt = buildSystemPrompt(ctx, summarizeExecutionForPrompt(ran));
     const safeHistory = Array.isArray(history)
       ? history
@@ -633,6 +643,65 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
       : [];
     const messages = [...safeHistory, { role: "user", content: userMsg }];
     const model = process.env.ANTHROPIC_OPS_AGENT_MODEL || "claude-sonnet-4-5";
+
+    const safeConfirmTools = Array.isArray(confirmTools)
+      ? confirmTools.map((t) => String(t).trim()).filter(Boolean)
+      : [];
+
+    if (isToolUseEnabled()) {
+      const runLoop = async (onEvent) =>
+        runOpsAgentLoop({
+          apiKey,
+          model,
+          systemPrompt,
+          messages,
+          userMessage: message,
+          confirmTools: safeConfirmTools,
+          onEvent
+        });
+
+      if (stream) {
+        res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+        res.setHeader("Cache-Control", "no-cache, no-transform");
+        res.setHeader("Connection", "keep-alive");
+        res.flushHeaders?.();
+
+        const writeEvent = (event, data) => {
+          res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        };
+
+        try {
+          writeEvent("started", { model, toolUseEnabled: true });
+          const loopOut = await runLoop((ev) => writeEvent(ev.type, ev));
+          writeEvent("done", {
+            answer: loopOut.answer,
+            model: loopOut.model,
+            contextTimestamp: ctx.timestamp,
+            executed: ran,
+            toolInvocations: loopOut.toolInvocations,
+            truncated: loopOut.truncated,
+            stopReason: loopOut.stopReason
+          });
+          return res.end();
+        } catch (err) {
+          writeEvent("error", { error: err?.message || String(err) });
+          return res.end();
+        }
+      }
+
+      const loopOut = await runLoop();
+      return res.json({
+        answer: loopOut.answer,
+        model: loopOut.model,
+        contextTimestamp: ctx.timestamp,
+        executed: ran,
+        toolInvocations: loopOut.toolInvocations,
+        truncated: loopOut.truncated,
+        stopReason: loopOut.stopReason,
+        toolUseEnabled: true
+      });
+    }
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -672,7 +741,8 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
       answer: assistantMessage,
       model,
       contextTimestamp: ctx.timestamp,
-      executed: ran
+      executed: ran,
+      toolUseEnabled: false
     });
   } catch (err) {
     console.error("[ops-agent] error:", err?.message || err);
