@@ -259,8 +259,8 @@ function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onTogg
   };
 
   return (
-    <div className="flex flex-col gap-3 w-full min-w-0 border border-white/[0.06] bg-sl-card/40 px-2.5 py-2 sm:px-3 sm:py-2.5">
-      <section className="flex flex-col gap-1.5 min-w-0">
+    <div className="home-settings-panel flex flex-col gap-3 w-full min-w-0 border border-white/[0.06] bg-sl-card/40 px-2.5 py-2 sm:px-3 sm:py-2.5">
+      <section className="home-settings-profile flex flex-col gap-1.5 min-w-0">
         <p className="text-[11px] font-semibold text-sl-text tracking-tight">
           {t("home.settings.profileTitle")}
         </p>
@@ -278,8 +278,8 @@ function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onTogg
         </div>
       </section>
 
-      <section className="flex flex-col gap-1.5 min-w-0 border-t border-white/[0.06] pt-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+      <section className="home-settings-strategy flex flex-col gap-1.5 min-w-0 border-t border-white/[0.06] pt-3">
+        <div className="home-settings-strategy-header flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold text-sl-text tracking-tight">
               {t("home.settings.strategyTitle")}
@@ -291,7 +291,7 @@ function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onTogg
           <button
             type="button"
             onClick={onToggleSound}
-            className={`shrink-0 self-start rounded-md border px-2 py-0.5 text-[10px] font-mono transition-colors ${
+            className={`home-settings-sound shrink-0 self-start rounded-md border px-2 py-0.5 text-[10px] font-mono transition-colors ${
               soundEnabled
                 ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
                 : "border-sl-border bg-sl-card text-sl-sub hover:text-sl-text"
@@ -300,7 +300,7 @@ function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onTogg
             {soundEnabled ? "🔔 Sound On" : "🔕 Sound Off"}
           </button>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="home-settings-strategy-modes flex flex-wrap items-center gap-2">
           {STRATEGY_MODES.map((mode) => (
             <button
               key={mode}
