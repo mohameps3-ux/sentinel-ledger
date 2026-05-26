@@ -47,10 +47,7 @@ const FOOTER_GROUPS = [
   }
 ];
 
-const SOCIAL_LINKS = [
-  { href: "https://x.com", labelKey: "footer.link.twitter" },
-  { href: "https://github.com/mohameps3-ux/sentinel-ledger", labelKey: "footer.link.github" }
-];
+const SOCIAL_LINKS = [{ href: "https://x.com", labelKey: "footer.link.twitter" }];
 
 export function SiteFooter() {
   const { t } = useLocale();
