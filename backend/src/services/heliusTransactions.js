@@ -96,6 +96,10 @@ async function fetchWalletTransactions(walletAddress, limitOrOpts = 100) {
     const claimedSigs = [];
     const freshSignatures = [];
     for (const s of signatures) {
+      if (opts.skipGlobalDedupe) {
+        freshSignatures.push(s);
+        continue;
+      }
       const ok = await markTransactionProcessed(s);
       if (ok) {
         freshSignatures.push(s);

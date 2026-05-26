@@ -108,7 +108,10 @@ async function enrichCandidateWithRoundTripMetrics(supabase, candidate) {
 
   let parsedTransactions = [];
   try {
-    const { transactions } = await fetchWalletTransactions(wallet, { limit: ENRICHMENT_SIG_LIMIT });
+    const { transactions } = await fetchWalletTransactions(wallet, {
+      limit: ENRICHMENT_SIG_LIMIT,
+      skipGlobalDedupe: true
+    });
     parsedTransactions = (Array.isArray(transactions) ? transactions : []).map((tx) => ({
       tx,
       signature: tx?.transaction?.signatures?.[0] || null
