@@ -16,6 +16,7 @@ const {
 } = require("./opsAgentTools");
 const { getOpsPostgresPool } = require("../lib/opsPostgresPool");
 const { insertOpsAuditLog } = require("../lib/opsAuditLog");
+const { safeJsonStringify } = require("../lib/safeJson");
 
 const OPS_AGENT_MAX_TOOL_ITERATIONS = (() => {
   const n = Number(process.env.OPS_AGENT_MAX_TOOL_ITERATIONS || 12);
@@ -379,7 +380,7 @@ async function runOpsAgentLoop(opts) {
         toolResults.push({
           type: "tool_result",
           tool_use_id: tu.id,
-          content: JSON.stringify(skipResult)
+          content: safeJsonStringify(skipResult, 120_000)
         });
         bumpCounters(tu.name, counters, false);
         continue;
@@ -402,7 +403,7 @@ async function runOpsAgentLoop(opts) {
         toolResults.push({
           type: "tool_result",
           tool_use_id: tu.id,
-          content: JSON.stringify(capResult)
+          content: safeJsonStringify(capResult, 120_000)
         });
         break;
       }
@@ -441,7 +442,7 @@ async function runOpsAgentLoop(opts) {
       toolResults.push({
         type: "tool_result",
         tool_use_id: tu.id,
-        content: JSON.stringify(enriched)
+        content: safeJsonStringify(enriched, 120_000)
       });
     }
 

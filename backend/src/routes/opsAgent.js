@@ -12,6 +12,7 @@ const { runSignalGateTunerTick } = require("../jobs/signalGateTunerCron");
 const { getSupabase } = require("../lib/supabase");
 const { getOpsPostgresPool } = require("../lib/opsPostgresPool");
 const { insertOpsAuditLog } = require("../lib/opsAuditLog");
+const { safeJsonStringify } = require("../lib/safeJson");
 const opsToolsRouter = require("./opsTools");
 const { isToolUseEnabled, runOpsAgentLoop, getAutonomyMode, isFullAutonomyMode } = require("../services/opsAgentLoop");
 const { OPS_AGENT_TOOLS } = require("../services/opsAgentTools");
@@ -387,8 +388,9 @@ function classifyOperatorIntent(userMessage) {
 async function logIntentClassification(classification, rawMessage) {
   const pool = getOpsPostgresPool();
   if (!pool) return;
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await insertOpsAuditLog(client, {
       operation: "intent_classification",
       sql_statement: String(rawMessage || "").slice(0, 12_000),
@@ -401,7 +403,7 @@ async function logIntentClassification(classification, rawMessage) {
   } catch (_) {
     /* ignore audit failures */
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
@@ -508,8 +510,8 @@ async function maybeExecuteAuthorizedOps(message) {
 }
 
 function buildSystemPrompt(ctx, executionSummary) {
-  const ctxStr = JSON.stringify(ctx, null, 2);
-  const execStr = executionSummary ? JSON.stringify(executionSummary, null, 2) : null;
+  const ctxStr = safeJsonStringify(ctx);
+  const execStr = executionSummary ? safeJsonStringify(executionSummary) : null;
   const autonomyMode = getAutonomyMode();
   const fullAutonomyBlock =
     autonomyMode === "full"
@@ -617,7 +619,26 @@ ${ctxStr}
 ${execStr ? `\nEJECUCIÓN_EN_ESTA_PETICIÓN (solo lectura; no inventes):\n${execStr}\n` : ""}`;
 }
 
+function agentErrorMessage(err) {
+  const msg = String(err?.message || err || "unknown").slice(0, 500);
+  if (/invalid x-api-key|authentication|401/i.test(msg)) {
+    return "Agent error: Anthropic API key invalid or expired";
+  }
+  if (/model.*not found|invalid model/i.test(msg)) {
+    return `Agent error: model misconfigured (${process.env.ANTHROPIC_OPS_AGENT_MODEL || "claude-sonnet-4-5"})`;
+  }
+  if (/rate limit|overloaded|529|529/i.test(msg)) {
+    return "Agent error: Anthropic rate limit — retry in a minute";
+  }
+  if (/JSON|serialize|circular|BigInt/i.test(msg)) {
+    return "Agent error: failed to build context payload";
+  }
+  return `Agent error: ${msg}`;
+}
+
 router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
+  let writeEvent = null;
+  let useStream = false;
   try {
     const { message, history = [], confirmTools = [], stream = false } = req.body || {};
     if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -632,6 +653,23 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
     if (!apiKey) {
       return res.status(503).json({ error: "Agent unavailable — ANTHROPIC_API_KEY not set" });
     }
+
+    useStream = Boolean(stream);
+    if (useStream) {
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders?.();
+      writeEvent = (event, data) => {
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      };
+      writeEvent("started", {
+        model: process.env.ANTHROPIC_OPS_AGENT_MODEL || "claude-sonnet-4-5",
+        toolUseEnabled: isToolUseEnabled(),
+        autonomyMode: getAutonomyMode()
+      });
+    }
+
     const intent = classifyOperatorIntent(message);
     logIntentClassification(intent, message).catch(() => {});
     const autoCal = await maybeAutoCalibration(message);
@@ -689,18 +727,8 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
           onEvent
         });
 
-      if (stream) {
-        res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-        res.setHeader("Cache-Control", "no-cache, no-transform");
-        res.setHeader("Connection", "keep-alive");
-        res.flushHeaders?.();
-
-        const writeEvent = (event, data) => {
-          res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-        };
-
+      if (useStream) {
         try {
-          writeEvent("started", { model, toolUseEnabled: true, autonomyMode: getAutonomyMode() });
           const loopOut = await runLoop((ev) => writeEvent(ev.type, ev));
           writeEvent("done", {
             answer: loopOut.answer,
@@ -715,7 +743,7 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
           });
           return res.end();
         } catch (err) {
-          writeEvent("error", { error: err?.message || String(err) });
+          writeEvent("error", { error: agentErrorMessage(err) });
           return res.end();
         }
       }
@@ -779,7 +807,16 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
     });
   } catch (err) {
     console.error("[ops-agent] error:", err?.message || err);
-    return res.status(500).json({ error: "Internal error" });
+    const messageOut = agentErrorMessage(err);
+    if (res.headersSent && writeEvent) {
+      try {
+        writeEvent("error", { error: messageOut });
+        return res.end();
+      } catch (_) {
+        return;
+      }
+    }
+    return res.status(500).json({ error: messageOut });
   }
 });
 
