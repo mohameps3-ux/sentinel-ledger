@@ -16,6 +16,7 @@ const {
 } = require("../queues/webhookScoring.queue");
 const { invalidateSignalsLatestFeedCache } = require("../services/homeTerminalApi");
 const { createClient } = require("@supabase/supabase-js");
+const { recordHeliusWebhookReceipt } = require("../lib/heliusWebhookTelemetry");
 
 const router = express.Router();
 
@@ -51,8 +52,9 @@ function heliusWebhookAuth(req, res, next) {
     const secret = process.env.HELIUS_WEBHOOK_SECRET;
     if (!secret) return res.status(503).json({ ok: false, error: "helius_webhook_secret_missing" });
     const bearer = (req.headers.authorization || "").replace(/^Bearer\s+/i, "").trim();
+    const authRaw = String(req.headers.authorization || "").trim();
     const header = (req.headers["x-helius-secret"] || "").trim();
-    if (bearer === secret || header === secret) return next();
+    if (bearer === secret || authRaw === secret || header === secret) return next();
     return res.status(401).json({ ok: false, error: "webhook_unauthorized" });
 }
 
@@ -185,6 +187,7 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
     try {
           const body = req.body;
           const events = Array.isArray(body) ? body : body ? [body] : [];
+          recordHeliusWebhookReceipt({ events: events.length, signalsWritten: 0 });
           const shape = validateWebhookShape(events);
           if (!shape.ok) {
                   const estimatedDrops = Number(shape.totalTransfers) > 0 ? Number(shape.totalTransfers) : 1;
@@ -289,8 +292,24 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
               await invalidateSignalsLatestFeedCache();
       }
 
+      const logPayload = {
+        received_at: new Date().toISOString(),
+        source: "helius",
+        wallets_in_payload: events.length,
+        signals_written: emitted,
+        queued,
+        dropped_by_guard: droppedByGuard
+      };
+      recordHeliusWebhookReceipt({
+        events: events.length,
+        signalsWritten: emitted,
+        walletsInPayload: events.length
+      });
+      console.log(JSON.stringify({ event: "helius_webhook_processed", ...logPayload }));
+
       res.status(200).json({ ok: true, emitted, queued, droppedByGuard });
     } catch (error) {
+          recordHeliusWebhookReceipt({ events: 0, signalsWritten: 0, error: error?.message || error });
           console.error("helius webhook:", error);
           res.sendStatus(500);
     }
