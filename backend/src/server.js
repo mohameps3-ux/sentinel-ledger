@@ -1,5 +1,4 @@
 require("dotenv").config();
-require("./opsAgentProductionDefaults");
 
 const express = require("express");
 const http = require("http");
@@ -88,6 +87,7 @@ const { startFlipsideSyncCron } = require("./jobs/flipsideSyncCron");
 const { startSolanaPoller } = require("./services/solanaPoller");
 const { startValidationOracle } = require("./workers/validationOracle");
 const { startPromotionCron: startAutoDiscoveryPromotionCron } = require("./workers/autoDiscovery");
+const { startIngestionHealthCheckCron } = require("./jobs/ingestionHealthCheck");
 const publicSurfaceRouter = require("./routes/publicSurface");
 const portfolioRouter = require("./routes/portfolio");
 const signalsRouter = require("./routes/signals");
@@ -115,6 +115,7 @@ const { checkWalletProStatus } = require("./services/subscriptionAccess");
 const redis = require("./lib/cache");
 const { getIngestionSnapshot } = require("./ingestion/ingestionState");
 const { getDedupeStats } = require("./ingestion/dedupe");
+const { getHeliusWebhookTelemetry } = require("./lib/heliusWebhookTelemetry");
 const { getMarketDataCircuitStatus, getMarketDataProviderStats } = require("./services/marketData");
 const { getDataFreshnessSnapshot } = require("./services/homeTerminalApi");
 const { getBudgetHealthJson } = require("./services/budgetGuard");
@@ -329,12 +330,7 @@ app.get("/health", async (_, res) => {
     },
     signalGate: getSignalGateOpsSnapshot(),
     signalGateTuner: getSignalGateTunerCronStatus(),
-    classifier: getClassifierStats(),
-    autonomyMode: process.env.OPS_AGENT_AUTONOMY_MODE || "strict",
-    toolUseEnabled: String(process.env.OPS_AGENT_TOOL_USE_ENABLED || "").toLowerCase() === "true",
-    githubRepoConfigured: Boolean(String(process.env.GITHUB_REPOSITORY || "").trim()),
-    githubRepository: String(process.env.GITHUB_REPOSITORY || "").trim() || null,
-    opsAuditLog: require("./lib/ensureOpsAuditSchema").getOpsAuditSchemaState()
+    classifier: getClassifierStats()
   };
   if (missingCritical.length) {
     return res.status(503).json(body);
@@ -350,6 +346,7 @@ app.get("/health", async (_, res) => {
  */
 app.get("/health/ingestion", (_req, res) => {
   const snap = getIngestionSnapshot();
+  const helius = getHeliusWebhookTelemetry();
   res.json({
     ok: snap.ingestionStatus !== "DEGRADED",
     status: snap.ingestionStatus,
@@ -361,7 +358,8 @@ app.get("/health/ingestion", (_req, res) => {
     normalizationLatencyEmaMs: snap.normalizationLatencyEmaMs,
     bufferDepth: snap.bufferDepth,
     sources: snap.sources,
-    dedupe: getDedupeStats()
+    dedupe: getDedupeStats(),
+    ...helius
   });
 });
 
@@ -543,15 +541,6 @@ async function bootstrap() {
     isSignalGateTunerCronEnabled() && hydration[1] && hydration[1].status === "fulfilled";
   const coordOutWarmed = isCoordinationResolutionActive() && hydration[2] && hydration[2].status === "fulfilled";
 
-  try {
-    const { getOpsPostgresPool } = require("./lib/opsPostgresPool");
-    const { ensureOpsAuditSchema } = require("./lib/ensureOpsAuditSchema");
-    const pool = getOpsPostgresPool();
-    if (pool) await ensureOpsAuditSchema(pool);
-  } catch (e) {
-    console.warn("[bootstrap] ops audit schema ensure:", e?.message || e);
-  }
-
   if (isWorkersEnabled()) {
     startDeployerWorker();
     startSmartWalletWorker();
@@ -569,6 +558,7 @@ async function bootstrap() {
   startSignalOutcomeCron();
   startValidationOracle();
   startAutoDiscoveryPromotionCron();
+  startIngestionHealthCheckCron();
   startCoordinationOutcomeCron({ skipInitialTick: Boolean(coordOutWarmed) });
   startSignalCalibratorCron({ skipInitialTick: true });
   startOpsHeartbeatCron();
