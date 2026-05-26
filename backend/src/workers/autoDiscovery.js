@@ -4,6 +4,13 @@ const { getSupabase } = require("../lib/supabase");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 const { fetchWalletTransactions } = require("../services/heliusTransactions");
 const { detectInventoryRoundTrips } = require("../services/walletRoundTripDetector");
+const {
+  promotionRejectionGate,
+  autoDiscoveryCandidateInc,
+  autoDiscoveryEnrichedOkInc,
+  autoDiscoveryPromotedInc,
+  autoDiscoveryRejectionInc
+} = require("../lib/autoDiscoveryTelemetry");
 
 const PROMOTION_TICK_MS = Math.max(60 * 60 * 1000, Number(process.env.AUTO_DISCOVERY_PROMOTION_TICK_MS || 6 * 60 * 60 * 1000));
 const BATCH_DISCOVERY_TICK_MS = Math.max(
@@ -271,6 +278,7 @@ async function discoverFromSignal({ mint, signal_id, rule_id = "unknown", outcom
 
   const inserted = rows.filter((row) => !existingByWallet.has(row.wallet_address)).length;
   const updated = rows.length - inserted;
+  if (inserted > 0) autoDiscoveryCandidateInc(inserted);
   lastDiscoveryAt = Date.now();
   lastDiscoveryStats = { mint: tokenMint, candidates: rows.length, inserted, updated, error: null };
   return { ok: true, candidates: rows.length, inserted, updated };
@@ -316,19 +324,36 @@ async function runPromotionTick() {
     const enrichedRows = [];
     let enrichErrors = 0;
     let likelyBots = 0;
+    const gateThresholds = {
+      minScore: PROMOTION_MIN_SCORE,
+      minClosed: PROMOTION_MIN_CLOSED_TRADES,
+      minWinRate: PROMOTION_MIN_WIN_RATE_OBSERVED,
+      minPnl: PROMOTION_MIN_WEIGHTED_SOL_PNL,
+      botTxPerHour: BOT_TX_PER_HOUR_THRESHOLD
+    };
     for (const row of rows) {
       try {
         const enriched = await enrichCandidateWithRoundTripMetrics(supabase, row);
         const merged = enriched || row;
+        if (!enriched) {
+          autoDiscoveryRejectionInc("enrichment_empty");
+        } else if (Number(merged.closed_trades || 0) > 0) {
+          autoDiscoveryEnrichedOkInc(1);
+        }
         if (merged?.is_likely_bot) likelyBots += 1;
         enrichedRows.push(merged);
       } catch (e) {
         enrichErrors += 1;
         enrichedRows.push(row);
+        autoDiscoveryRejectionInc("enrichment_empty");
       }
     }
 
     const eligible = enrichedRows.filter(promotionEligible);
+    for (const row of enrichedRows) {
+      if (promotionEligible(row)) continue;
+      autoDiscoveryRejectionInc(promotionRejectionGate(row, gateThresholds));
+    }
     const rejected = enrichedRows.filter((row) => !promotionEligible(row) && row.is_likely_bot);
     const nowIso = new Date().toISOString();
     let promoted = 0;
@@ -361,6 +386,7 @@ async function runPromotionTick() {
         .eq("wallet_address", row.wallet_address);
       if (markErr) throw new Error(markErr.message || "auto_discovery_mark_promoted_failed");
       promoted += 1;
+      autoDiscoveryPromotedInc(1);
     }
 
     if (rejected.length) {

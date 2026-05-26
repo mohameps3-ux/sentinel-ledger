@@ -118,6 +118,7 @@ const { getIngestionSnapshot } = require("./ingestion/ingestionState");
 const { getDedupeStats } = require("./ingestion/dedupe");
 const { getHeliusWebhookTelemetry } = require("./lib/heliusWebhookTelemetry");
 const { getHeliusWebhookSyncTelemetry } = require("./lib/heliusWebhookSyncTelemetry");
+const { getAutoDiscoveryPromotionTelemetry } = require("./lib/autoDiscoveryTelemetry");
 const { getTokensRailsTelemetry } = require("./lib/tokensRailsTelemetry");
 const { getMarketDataCircuitStatus, getMarketDataProviderStats } = require("./services/marketData");
 const { getDataFreshnessSnapshot } = require("./services/homeTerminalApi");
@@ -364,6 +365,7 @@ app.get("/health/ingestion", (_req, res) => {
     dedupe: getDedupeStats(),
     ...helius,
     ...getHeliusWebhookSyncTelemetry(),
+    ...getAutoDiscoveryPromotionTelemetry(),
     ...getTokensRailsTelemetry()
   });
 });
