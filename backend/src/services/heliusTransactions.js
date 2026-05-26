@@ -3,6 +3,11 @@
 const { getSolanaJsonRpcUrlList, jsonRpcPost } = require("../lib/solanaJsonRpc");
 const { markTransactionProcessed, releaseTransactionClaim } = require("../lib/dedupe");
 const { getCachedTransaction, setCachedTransaction } = require("../lib/txCache");
+const { heliusApiKey } = require("../lib/heliusWebhookApi");
+const {
+  fetchHeliusEnhancedTransactions,
+  fetchHeliusEnhancedByAddress
+} = require("../lib/heliusEnhanced");
 
 function deltaFetchingEnabled() {
   return String(process.env.FF_DELTA_FETCHING || "true").trim().toLowerCase() !== "false";
@@ -40,6 +45,9 @@ function normalizeOpts(limitOrOpts) {
 
 async function fetchParsedBatch(endpoint, signatures) {
   if (!signatures.length) return [];
+  if (heliusApiKey()) {
+    return fetchHeliusEnhancedTransactions(signatures);
+  }
   const txBody = {
     jsonrpc: "2.0",
     id: "smart-wallet-transactions",
@@ -65,6 +73,22 @@ async function fetchWalletTransactions(walletAddress, limitOrOpts = 100) {
   const untilSig = opts.untilSignature && String(opts.untilSignature).trim() ? String(opts.untilSignature).trim() : null;
 
   const useDelta = deltaFetchingEnabled() && opts.skipGlobalDedupe === true;
+
+  // Enrichment bootstrap: one Helius Enhanced address call (skip sig list + batch).
+  if (useDelta && !untilSig && heliusApiKey()) {
+    const cappedLimit = Math.max(1, Math.min(Number(opts.limit) || bootstrapSignatureLimit(), 200));
+    const transactions = await fetchHeliusEnhancedByAddress(walletAddress, cappedLimit);
+    return {
+      transactions: transactions.slice(0, cappedLimit),
+      deltaStats: {
+        newSignatures: transactions.length,
+        cacheHits: 0,
+        rpcParsed: transactions.length,
+        headSignature: transactions[0]?.signature || null
+      },
+      pollOk: true
+    };
+  }
 
   if (!useDelta) {
     const cappedLimit = Math.max(1, Math.min(Number(opts.limit) || 100, 200));
