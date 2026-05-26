@@ -235,7 +235,13 @@ async function auditToolInvocation(
       executed_by: "ops-agent-tool",
       error: success ? null : metadata.error?.message || null,
       metadata,
-      auto_executed: Boolean(autoExecutedWithoutConfirmation)
+      auto_executed: Boolean(autoExecutedWithoutConfirmation),
+      conversation_id: conversationId,
+      autonomy_mode: autonomyMode,
+      auto_executed_without_confirmation: Boolean(autoExecutedWithoutConfirmation),
+      iteration_index: iterationIndex,
+      model_reasoning_snippet: modelReasoningSnippet,
+      triggering_user_message: triggeringUserMessage
     });
     return ins?.id || null;
   } catch (_) {
