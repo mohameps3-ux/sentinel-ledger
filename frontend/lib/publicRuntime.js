@@ -50,21 +50,8 @@ export function getPublicWsUrl() {
   return process.env.NODE_ENV === "production" ? DEFAULT_PROD_API.replace(/^https:\/\//, "wss://") : DEFAULT_DEV_WS;
 }
 
-/** Public X/Twitter profile — must include handle path (not bare https://x.com). */
-export function getPublicXProfileUrl() {
-  const raw = String(process.env.NEXT_PUBLIC_X_URL || process.env.NEXT_PUBLIC_TWITTER_URL || "").trim();
-  if (!raw) return "";
-  try {
-    const u = new URL(raw);
-    const host = u.hostname.replace(/^www\./, "").toLowerCase();
-    if (host !== "x.com" && host !== "twitter.com") return "";
-    const path = u.pathname.replace(/\/+$/, "");
-    if (!path || path === "/") return "";
-    return u.toString().replace(/\/+$/, "");
-  } catch {
-    return "";
-  }
-}
+/** Solana RPC for wallet + ConnectionProvider (optional dedicated RPC, no API key in client). */
+export function getPublicSolanaRpcUrl() {
   const raw = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
   const trimmed = typeof raw === "string" ? raw.trim() : "";
   if (trimmed) return trimTrailingSlash(trimmed);
