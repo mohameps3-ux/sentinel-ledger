@@ -670,8 +670,11 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       rows = [];
     }
 
-    rows = rows.slice(0, pageLimit);
-
+    // NOTE: We intentionally DO NOT slice to pageLimit here. The SQL fetch above
+    // pulls top 240 by total_trades, which surfaces high-volume MEV/arbitrage bots
+    // first. If we slice here, "?limit=10" returns the 10 bot wallets with the
+    // highest volume; quality ranking later only reorders those 10 bots. The slice
+    // now happens AFTER enrichment + rankingScore sort below.
     const wallets = rows.map((r) => r.wallet).filter(Boolean);
     const bestByWallet = new Map();
     const behaviorByWallet = new Map();
@@ -821,7 +824,10 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       };
     });
 
-    const sorted = enriched.sort((a, b) => b.rankingScore - a.rankingScore);
+    const ranked = enriched.sort((a, b) => b.rankingScore - a.rankingScore);
+    // Slice to page size AFTER quality ranking so "?limit=10" returns the 10 best wallets
+    // out of the full candidate pool — not the 10 noisiest by total_trades.
+    const sorted = ranked.slice(0, pageLimit);
 
     // Compute freshness signals so the UI can display "Updated Xm ago" without guessing.
     let dataComputedAt = null;
