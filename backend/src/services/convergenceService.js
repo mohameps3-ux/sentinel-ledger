@@ -2,6 +2,7 @@ const redis = require("../lib/cache");
 const { getSupabase } = require("../lib/supabase");
 const { isSystemMint } = require("../lib/systemMints");
 const { processRedCoordinationPhases, checkRedPrepareAbort } = require("./walletCoordinationService");
+const { isEliteWallet } = require("./walletReputation");
 
 const WINDOW_SEC = 10 * 60;
 const MIN_WALLETS = 3;
@@ -21,13 +22,20 @@ async function isSmartWallet(walletAddress) {
 
   try {
     const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from("smart_wallets")
-      .select("wallet_address, win_rate")
-      .eq("wallet_address", walletAddress)
-      .maybeSingle();
-    if (error) return false;
-    const ok = Number(data?.win_rate || 0) >= 70;
+    const [{ data: walletRow, error: wErr }, { data: behaviorRow }] = await Promise.all([
+      supabase
+        .from("smart_wallets")
+        .select("wallet_address, win_rate, smart_score")
+        .eq("wallet_address", walletAddress)
+        .maybeSingle(),
+      supabase
+        .from("wallet_behavior_stats")
+        .select("wallet_address, win_rate_real, resolved_signals, style_label")
+        .eq("wallet_address", walletAddress)
+        .maybeSingle()
+    ]);
+    if (wErr) return false;
+    const ok = isEliteWallet({ behavior: behaviorRow, smartWallet: walletRow });
     try {
       await redis.set(cacheKey, ok ? "1" : "0", { ex: 600 });
     } catch (_) {}

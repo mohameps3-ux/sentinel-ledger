@@ -11,6 +11,38 @@ function getAutoDiscovery() {
   try { return require("../workers/autoDiscovery"); } catch (_) { return null; }
 }
 
+function getWalletBehaviorMemory() {
+  try { return require("./walletBehaviorMemory"); } catch (_) { return null; }
+}
+
+/** After a signal resolves, refresh behavior memory for wallets that touched the mint. */
+async function queueBehaviorRefreshForMint(supabase, mint, timestampIso) {
+  if (!mint || !supabase) return;
+  const wbm = getWalletBehaviorMemory();
+  if (!wbm?.requestWalletBehaviorRefresh) return;
+  const center = Date.parse(timestampIso);
+  const fromIso = Number.isFinite(center)
+    ? new Date(center - 90 * 60_000).toISOString()
+    : new Date(Date.now() - 90 * 60_000).toISOString();
+  const toIsoValue = Number.isFinite(center)
+    ? new Date(center + 90 * 60_000).toISOString()
+    : new Date().toISOString();
+  try {
+    const { data } = await supabase
+      .from("smart_wallet_signals")
+      .select("wallet_address")
+      .eq("token_address", mint)
+      .gte("created_at", fromIso)
+      .lte("created_at", toIsoValue)
+      .limit(40);
+    for (const sigRow of data || []) {
+      wbm.requestWalletBehaviorRefresh(sigRow.wallet_address);
+    }
+  } catch (_) {
+    // Non-fatal — next cron tick will still refresh top winners.
+  }
+}
+
 // Map signal tag → rule ID (mirrors validationOracle.RULE_ID_BY_SIGNAL).
 const RULE_ID_BY_SIGNAL = {
   whale_accumulation: "R01",
@@ -468,6 +500,11 @@ async function runSignalOutcomeResolutionOnce(options = {}) {
       continue;
     }
     resolved += 1;
+
+    // Learning loop: recompute wallet_behavior_stats for wallets on this mint.
+    setImmediate(() => {
+      queueBehaviorRefreshForMint(supabase, row.asset, row.emitted_at).catch(() => {});
+    });
 
     // Trigger wallet auto-discovery for every WIN (≥1%) — fire-and-forget.
     if (isSuccess) {

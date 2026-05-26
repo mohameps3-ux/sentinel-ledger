@@ -5,7 +5,6 @@ const { getMarketData } = require("./marketData");
 const { shouldSkipWalletAnalysis } = require("../lib/walletDenylist");
 const {
   computeEarlyEntryScore,
-  computeConsistencyScore,
   detectCluster
 } = require("./smartWalletScoring");
 const { isRealTrade } = require("./transactionClassifier");
@@ -288,16 +287,6 @@ async function analyzeWallet(walletAddress) {
     }
   }
 
-  const buyTrades = Math.max(0, totalTrades - sellTrades);
-  const winRateRatio = buyTrades > 0 ? profitableTrades / buyTrades : 0;
-  const avgEarlyEntry = earlyScores.length
-    ? earlyScores.reduce((a, b) => a + b, 0) / earlyScores.length
-    : 0;
-  const avgCluster = clusterScores.length
-    ? clusterScores.reduce((a, b) => a + b, 0) / clusterScores.length
-    : 0;
-  const consistency = computeConsistencyScore(winRateRatio, totalTrades);
-
   const since30dIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data: signalRows, error: signalsError } = await supabase
     .from("smart_wallet_signals")
@@ -333,17 +322,6 @@ async function analyzeWallet(walletAddress) {
     console.warn("analyzeWallet smart_wallet_signals:", signalsError.message);
   }
 
-  const smartScore =
-    totalTradesFromSignals > 0
-      ? Math.max(
-          0,
-          Math.min(
-            100,
-            winRateFromSignals * 0.6 + Math.min(totalTradesFromSignals, 50) * 0.4
-          )
-        )
-      : null;
-
   const nowIso = new Date().toISOString();
   const payload = {
     wallet_address: walletAddress,
@@ -353,10 +331,9 @@ async function analyzeWallet(walletAddress) {
     recent_hits: profitableTrades,
     total_trades: totalTradesFromSignals,
     profitable_trades: profitableTrades,
-    early_entry_score: avgEarlyEntry,
-    cluster_score: avgCluster,
-    consistency_score: consistency,
-    smart_score: smartScore,
+    // early_entry_score / cluster_score / consistency_score / smart_score are
+    // owned by walletBehaviorCron (wallet_behavior_stats → smart_wallets).
+    // Writing them here from a tiny delta batch was wiping good profiles.
     last_seen: nowIso,
     last_checked_at: nowIso,
     updated_at: nowIso

@@ -180,6 +180,7 @@ export function SmartMoneyLeaderboardConsole({
   meanUnifiedScore,
   activeProbes24h,
   totalSmartWallets,
+  totalBehaviorProfiles,
   dataComputedAt,
   onRefreshAll,
   profitableOnly,
@@ -466,19 +467,29 @@ export function SmartMoneyLeaderboardConsole({
               {
                 k: "Total tracked wallets",
                 tooltip:
-                  "Smart wallets stored in the universe. The leaderboard below shows only the current page (top N).",
+                  "Registry rows in smart_wallets (includes Helius shells). Behavior profiles = wallets with resolved outcome memory in wallet_behavior_stats — used for reputation ranking.",
                 v: (() => {
                   const shown = Array.isArray(displayedRanked) ? displayedRanked.length : 0;
                   const total = Number.isFinite(Number(totalSmartWallets))
                     ? Number(totalSmartWallets)
                     : null;
+                  const behaviorN = Number.isFinite(Number(totalBehaviorProfiles))
+                    ? Number(totalBehaviorProfiles)
+                    : null;
                   if (total != null && total > 0) {
                     return (
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-50">
-                          {total}
-                        </span>
-                        <span className="font-mono text-xs tabular-nums text-zinc-500">· top {shown} shown</span>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-50">
+                            {total}
+                          </span>
+                          <span className="font-mono text-xs tabular-nums text-zinc-500">· top {shown} shown</span>
+                        </div>
+                        {behaviorN != null ? (
+                          <span className="font-mono text-[10px] tabular-nums text-zinc-500">
+                            {behaviorN.toLocaleString()} behavior profiles synced
+                          </span>
+                        ) : null}
                       </div>
                     );
                   }

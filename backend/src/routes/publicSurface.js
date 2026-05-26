@@ -3,6 +3,12 @@ const rateLimit = require("express-rate-limit");
 const { getSupabase } = require("../lib/supabase");
 const { getFreshnessExportEd25519PublicKeyBytes } = require("../lib/freshnessSignedExport");
 const redis = require("../lib/cache");
+const { getWalletBehaviorTop } = require("../services/walletBehaviorMemory");
+const {
+  computeReputationScore,
+  rankingScoreFromReputation,
+  displayWinRate
+} = require("../services/walletReputation");
 
 const router = express.Router();
 
@@ -148,6 +154,36 @@ function isLeaderboardFresh(lastSeenIso, maxStaleDays) {
   const t = Date.parse(String(lastSeenIso));
   if (!Number.isFinite(t)) return false;
   return Date.now() - t <= maxStaleDays * 86_400_000;
+}
+
+/** Fresh if ANY anchor (last_seen, on-chain buy, behavior computed_at) is within window. */
+function isLeaderboardFreshWithAnchors({ lastSeenIso, onchainIso, behaviorComputedAt }, maxStaleDays) {
+  if (maxStaleDays <= 0) return true;
+  const anchors = [lastSeenIso, onchainIso, behaviorComputedAt].filter(Boolean);
+  if (!anchors.length) return false;
+  const cutoff = Date.now() - maxStaleDays * 86_400_000;
+  return anchors.some((iso) => {
+    const t = Date.parse(String(iso));
+    return Number.isFinite(t) && t >= cutoff;
+  });
+}
+
+function mapSmartWalletRow(w) {
+  return {
+    wallet: w.wallet_address,
+    winRate: Number(w.win_rate || 0),
+    pnl30d: Number(w.pnl_30d || 0),
+    avgPositionSize: Number(w.avg_position_size || 0),
+    recentHits: Number(w.recent_hits || 0),
+    totalTrades: Number(w.total_trades || 0),
+    lastSeen: w.last_seen,
+    lastCheckedAt: w.last_checked_at || null,
+    smartScore: w.smart_score != null ? Number(w.smart_score) : null,
+    earlyEntryScore: w.early_entry_score != null ? Number(w.early_entry_score) : null,
+    clusterScore: w.cluster_score != null ? Number(w.cluster_score) : null,
+    consistencyScore: w.consistency_score != null ? Number(w.consistency_score) : null,
+    smartWalletRowUpdatedAt: w.updated_at || null
+  };
 }
 
 function leaderboardInactivityDecayMultiplier(daysInactive) {
@@ -671,21 +707,32 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
     const { data, error } = await q;
     if (error) throw error;
 
-    let rows = (data || []).map((w) => ({
-      wallet: w.wallet_address,
-      winRate: Number(w.win_rate || 0),
-      pnl30d: Number(w.pnl_30d || 0),
-      avgPositionSize: Number(w.avg_position_size || 0),
-      recentHits: Number(w.recent_hits || 0),
-      totalTrades: Number(w.total_trades || 0),
-      lastSeen: w.last_seen,
-      lastCheckedAt: w.last_checked_at || null,
-      smartScore: w.smart_score != null ? Number(w.smart_score) : null,
-      earlyEntryScore: w.early_entry_score != null ? Number(w.early_entry_score) : null,
-      clusterScore: w.cluster_score != null ? Number(w.cluster_score) : null,
-      consistencyScore: w.consistency_score != null ? Number(w.consistency_score) : null,
-      smartWalletRowUpdatedAt: w.updated_at || null
-    }));
+    let rows = (data || []).map(mapSmartWalletRow);
+    const rowWalletSet = new Set(rows.map((r) => r.wallet).filter(Boolean));
+
+    // Merge proven winners from wallet_behavior_stats — they may have stale
+    // smart_wallets.last_seen but fresh computed_at + real win_rate_real.
+    const behaviorTop = await getWalletBehaviorTop({ limit: 240, minResolved: 3 });
+    if (behaviorTop.ok && Array.isArray(behaviorTop.rows)) {
+      const missingBehaviorWallets = behaviorTop.rows
+        .map((br) => String(br?.wallet_address || ""))
+        .filter((w) => w && !rowWalletSet.has(w));
+      if (missingBehaviorWallets.length > 0) {
+        const { data: extraSw, error: extraErr } = await supabase
+          .from("smart_wallets")
+          .select("*")
+          .in("wallet_address", missingBehaviorWallets.slice(0, 240));
+        if (!extraErr && Array.isArray(extraSw)) {
+          for (const w of extraSw) {
+            const mapped = mapSmartWalletRow(w);
+            if (!rowWalletSet.has(mapped.wallet)) {
+              rows.push(mapped);
+              rowWalletSet.add(mapped.wallet);
+            }
+          }
+        }
+      }
+    }
 
     if (maxStaleDays > 0) {
       rows = rows.filter((r) => isLeaderboardFresh(r.lastSeen, maxStaleDays));
@@ -707,6 +754,12 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
     const wallets = rows.map((r) => r.wallet).filter(Boolean);
     const bestByWallet = new Map();
     const behaviorByWallet = new Map();
+    if (behaviorTop.ok && Array.isArray(behaviorTop.rows)) {
+      for (const br of behaviorTop.rows) {
+        const key = String(br.wallet_address || "");
+        if (key) behaviorByWallet.set(key, br);
+      }
+    }
     /** wallet -> ISO string of most recent on-chain activity (wallet_tokens.bought_at) */
     const onchainActivityByWallet = new Map();
     if (wallets.length) {
@@ -806,22 +859,27 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       }
       const daysInactive = daysInactiveFromAnchor(anchorForDecay);
       const decayMultiplier = leaderboardInactivityDecayMultiplier(daysInactive);
-      const baseForRanking =
-        r.smartScore != null && Number.isFinite(Number(r.smartScore))
-          ? Number(r.smartScore)
-          : scoreVal;
-      const rankingScore = Number((baseForRanking * decayMultiplier).toFixed(2));
+      const reputationScore = computeReputationScore({ behavior: wb, smartWallet: r });
+      const rankingScore = rankingScoreFromReputation({
+        behavior: wb,
+        smartWallet: r,
+        decayMultiplier
+      });
+      const winRateDisplay = displayWinRate({ behavior: wb, smartWallet: r });
 
       return {
         ...r,
+        winRate: winRateDisplay > 0 ? winRateDisplay : r.winRate,
         roi30dVsAvgSize: Number(roiMult.toFixed(2)),
         bestTradePct: bt ? Number(Number(bt.pct).toFixed(2)) : null,
         bestTradeMint: bt?.token || null,
         bestTradeAt: bt?.at || null,
         score: scoreVal,
-        unifiedScore: scoreVal,
+        unifiedScore: reputationScore > 0 ? reputationScore : scoreVal,
+        reputationScore,
         profitFactor,
         rankingScore,
+        rankingSource: wb && Number(wb.resolved_signals) >= 3 ? "wallet_behavior_stats" : "smart_wallets",
         decayMultiplier,
         lastOnchainActivityAt: onchainIso,
         activityAnchor: onchainIso ? "wallet_tokens.bought_at" : lastSeenIso ? "smart_wallets.last_seen" : "smart_wallets.updated_at",
@@ -854,9 +912,24 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
     });
 
     const ranked = enriched.sort((a, b) => b.rankingScore - a.rankingScore);
-    // Slice to page size AFTER quality ranking so "?limit=10" returns the 10 best wallets
-    // out of the full candidate pool — not the 10 noisiest by total_trades.
-    const sorted = ranked.slice(0, pageLimit);
+
+    // Re-apply staleness with behavior + on-chain anchors so proven winners
+    // are not dropped just because smart_wallets.last_seen is gate-stale.
+    const rankedFresh =
+      maxStaleDays > 0
+        ? ranked.filter((r) =>
+            isLeaderboardFreshWithAnchors(
+              {
+                lastSeenIso: r.lastSeen,
+                onchainIso: r.lastOnchainActivityAt,
+                behaviorComputedAt: r.profile?.computedAt
+              },
+              maxStaleDays
+            )
+          )
+        : ranked;
+
+    const sorted = rankedFresh.slice(0, pageLimit);
 
     // Compute freshness signals so the UI can display "Updated Xm ago" without guessing.
     let dataComputedAt = null;
@@ -878,6 +951,7 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
     // Total universe size (independent of page limit + filters) so "Total tracked wallets"
     // reflects reality instead of always echoing the page size.
     let totalSmartWallets = null;
+    let totalBehaviorProfiles = null;
     try {
       const { count, error: cErr } = await supabase
         .from("smart_wallets")
@@ -885,6 +959,15 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       if (!cErr && Number.isFinite(Number(count))) totalSmartWallets = Number(count);
     } catch (_) {
       totalSmartWallets = null;
+    }
+    try {
+      const { count, error: bErr } = await supabase
+        .from("wallet_behavior_stats")
+        .select("wallet_address", { count: "exact", head: true })
+        .gte("resolved_signals", 1);
+      if (!bErr && Number.isFinite(Number(count))) totalBehaviorProfiles = Number(count);
+    } catch (_) {
+      totalBehaviorProfiles = null;
     }
 
     return res.json({
@@ -896,6 +979,7 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
         limit: pageLimit,
         chain: chain === "all" ? "all" : "solana",
         totalSmartWallets,
+        totalBehaviorProfiles,
         dataComputedAt,
         filters: {
           minWinRate: minWr,
@@ -906,8 +990,9 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
           includeShells,
           shellSmartScoreThreshold: includeShells ? null : SHELL_SMART_SCORE_THRESHOLD,
           maxStaleDays: maxStaleDays || null,
-          freshnessColumn: "last_seen",
-          orderBy: "smart_score DESC NULLS LAST, total_trades DESC"
+          freshnessAnchors: ["smart_wallets.last_seen", "wallet_tokens.bought_at", "wallet_behavior_stats.computed_at"],
+          rankingEngine: "wallet_reputation_v1",
+          orderBy: "reputationScore DESC (behavior-first), inactivity decay"
         }
       }
     });
