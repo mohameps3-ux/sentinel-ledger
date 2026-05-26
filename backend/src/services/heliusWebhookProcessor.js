@@ -30,6 +30,10 @@ const {
 } = require("../lib/stalkerImpact");
 const { wireSmartWalletsAfterSignal } = require("./smartWalletWebhookWire");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
+const {
+  walletTokensWrittenInc,
+  walletTokensErrorInc
+} = require("../lib/heliusWebhookTelemetry");
 
 const SENTINEL_SOURCE = "helius_webhook";
 const DEDUPE_TTL_SEC = 120;
@@ -138,6 +142,23 @@ function expandHeliusPayload(raw) {
   return out;
 }
 
+function pgErrorCode(err) {
+  const code = err?.code ?? err?.cause?.code;
+  return code != null ? String(code) : null;
+}
+
+async function upsertWalletTokenRow(supabase, row) {
+  const { error } = await supabase.from("wallet_tokens").upsert(row, {
+    onConflict: "wallet_address,token_address,tx_signature"
+  });
+  if (error) {
+    const err = new Error(error.message || "wallet_tokens upsert failed");
+    err.code = error.code;
+    throw err;
+  }
+  walletTokensWrittenInc();
+}
+
 /**
  * @param {object} raw — payload Helius (un elemento del array webhook)
  * @returns {{ emitted: number, droppedByGuard: number, signalEmitted: boolean }}
@@ -187,17 +208,26 @@ async function processHeliusWebhookRaw(raw) {
             const mint = t?.mint && String(t.mint).trim();
             if (!mint || !isProbableSolanaPubkey(mint)) continue;
             try {
-              await supabase.from("wallet_tokens").upsert(
-                {
-                  wallet_address: signerAddress,
-                  token_address: mint,
-                  tx_signature: txSig,
-                  bought_at: boughtAt,
-                  amount_usd: null
-                },
-                { onConflict: "wallet_address,token_address,tx_signature" }
-              );
-            } catch (_) {}
+              await upsertWalletTokenRow(supabase, {
+                wallet_address: signerAddress,
+                token_address: mint,
+                tx_signature: txSig,
+                bought_at: boughtAt,
+                amount_usd: null
+              });
+            } catch (err) {
+              const code = pgErrorCode(err);
+              walletTokensErrorInc({
+                code,
+                message: err?.message || String(err)
+              });
+              console.warn("[helius] wallet_tokens upsert failed", {
+                code,
+                mint,
+                wallet: signerAddress,
+                sig: txSig.slice(0, 16)
+              });
+            }
           }
         }
       }

@@ -4,13 +4,24 @@ const crypto = require("crypto");
 const { getSupabase } = require("../lib/supabase");
 const { getOpsPostgresPool } = require("../lib/opsPostgresPool");
 
+const { getHeliusWebhookTelemetry } = require("../lib/heliusWebhookTelemetry");
+
 const TICK_MS = Math.max(5 * 60 * 1000, Number(process.env.INGESTION_HEALTH_CHECK_MS || 60 * 60 * 1000));
 const HELIUS_SILENT_MINUTES = Math.max(30, Number(process.env.INGESTION_HELIUS_SILENT_MINUTES || 120));
 const DISCOVERY_STALL_HOURS = Math.max(1, Number(process.env.INGESTION_DISCOVERY_STALL_HOURS || 6));
+const WALLET_TOKENS_ERROR_ALERT_THRESHOLD = Math.max(
+  1,
+  Number(process.env.INGESTION_WALLET_TOKENS_ERROR_ALERT_THRESHOLD || 100)
+);
+const WALLET_TOKENS_STALE_MS = Math.max(
+  60 * 60 * 1000,
+  Number(process.env.INGESTION_WALLET_TOKENS_STALE_MS || 2 * 60 * 60 * 1000)
+);
 
 let intervalRef = null;
 let lastHeliusAlertAt = 0;
 let lastDiscoveryAlertAt = 0;
+let lastWalletTokensAlertAt = 0;
 
 function sortedStringify(value) {
   if (value === null || value === undefined) return "null";
@@ -132,7 +143,33 @@ async function runIngestionHealthCheckTick() {
     console.warn("[ingestion-health] auto_discovery_stalled", metadata);
   }
 
-  return { signalAgeMin, discoveryAgeH };
+  const wt = getHeliusWebhookTelemetry();
+  const wtErrors = Number(wt.wallet_tokens_24h_errors) || 0;
+  const wtLastWriteIso = wt.wallet_tokens_last_write_at;
+  const wtLastWriteMs = wtLastWriteIso ? Date.parse(wtLastWriteIso) : NaN;
+  const wtStale =
+    !Number.isFinite(wtLastWriteMs) || Date.now() - wtLastWriteMs > WALLET_TOKENS_STALE_MS;
+  if (
+    (wtErrors > WALLET_TOKENS_ERROR_ALERT_THRESHOLD || wtStale) &&
+    now - lastWalletTokensAlertAt > TICK_MS
+  ) {
+    lastWalletTokensAlertAt = now;
+    const metadata = {
+      wallet_tokens_24h_errors: wtErrors,
+      wallet_tokens_24h_timeouts: Number(wt.wallet_tokens_24h_timeouts) || 0,
+      wallet_tokens_24h_writes: Number(wt.wallet_tokens_24h_writes) || 0,
+      wallet_tokens_last_write_at: wtLastWriteIso,
+      wallet_tokens_last_error: wt.wallet_tokens_last_error,
+      wallet_tokens_last_error_code: wt.wallet_tokens_last_error_code,
+      stale_threshold_ms: WALLET_TOKENS_STALE_MS,
+      error_threshold: WALLET_TOKENS_ERROR_ALERT_THRESHOLD
+    };
+    await insertOpsAlertDirect("wallet_tokens_silent_failures", metadata);
+    await postOpsAlert("wallet_tokens_silent_failures", metadata);
+    console.warn("[ingestion-health] wallet_tokens_silent_failures", metadata);
+  }
+
+  return { signalAgeMin, discoveryAgeH, walletTokensErrors24h: wtErrors, walletTokensStale: wtStale };
 }
 
 function startIngestionHealthCheckCron() {
@@ -157,7 +194,9 @@ function getIngestionHealthCheckStatus() {
     enabled: String(process.env.INGESTION_HEALTH_CHECK_ENABLED || "true").toLowerCase() !== "false",
     tickMs: TICK_MS,
     heliusSilentMinutes: HELIUS_SILENT_MINUTES,
-    discoveryStallHours: DISCOVERY_STALL_HOURS
+    discoveryStallHours: DISCOVERY_STALL_HOURS,
+    walletTokensErrorAlertThreshold: WALLET_TOKENS_ERROR_ALERT_THRESHOLD,
+    walletTokensStaleMs: WALLET_TOKENS_STALE_MS
   };
 }
 
