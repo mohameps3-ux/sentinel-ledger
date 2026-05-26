@@ -30,11 +30,23 @@ function formatBigPct(v, sign = true) {
 }
 function shortMint(mint) { const s = String(mint || ""); return s.length > 12 ? `${s.slice(0, 4)}…${s.slice(-4)}` : s || "—"; }
 function clamp01(v) { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0; }
+/** Null/undefined must not become 0 — Number(null) === 0 and breaks charts + pending rows. */
+function resolvedOutcomeFraction(row) {
+  const raw = row?.outcome_60m;
+  if (raw == null || raw === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+function isResolvedOutcome(row) {
+  return resolvedOutcomeFraction(row) != null;
+}
 function outcomeState(v) {
+  if (v == null || v === "") return "pending";
   const n = Number(v);
   if (!Number.isFinite(n)) return "pending";
   if (n >= TR_DECISIVE_WIN) return "win";
-  return "loss";
+  if (n <= TR_DECISIVE_LOSS) return "loss";
+  return "flat";
 }
 
 const FETCH_MS = 35_000;
@@ -85,7 +97,7 @@ async function fetchTrackRecord({ force = false } = {}) {
       Array.isArray(body.chart_rows) && body.chart_rows.length > 0
         ? body.chart_rows
         : mergeChartRowsFromPayload(body, body.recent_signals || []);
-  const resolvedRows = chartRows.filter((r) => Number.isFinite(Number(r?.outcome_60m)));
+  const resolvedRows = chartRows.filter(isResolvedOutcome);
   const wins = resolvedRows.filter((r) => outcomeState(r.outcome_60m) === "win").length;
   const losses = resolvedRows.filter((r) => outcomeState(r.outcome_60m) === "loss").length;
   const flats = resolvedRows.filter((r) => outcomeState(r.outcome_60m) === "flat").length;
@@ -222,7 +234,7 @@ function DifferentiatorStrip() {
  *   pump.fun outlier (+2290x) doesn't flatten the line by domination of the y-scale.
  */
 function makeSeries(rows, mode) {
-  const resolved = [...(rows || [])].filter((r) => Number.isFinite(Number(r?.outcome_60m))).slice(-160);
+  const resolved = [...(rows || [])].filter(isResolvedOutcome).slice(-160);
   if (resolved.length < 1) return [];
   const WINDOW = 30;
   const out = [];
@@ -233,7 +245,8 @@ function makeSeries(rows, mode) {
       let w = 0;
       let d = 0;
       for (const r of slice) {
-        const o = Number(r.outcome_60m);
+        const o = resolvedOutcomeFraction(r);
+        if (o == null) continue;
         if (o >= TR_DECISIVE_WIN) { w += 1; d += 1; }
         else { d += 1; }
       }
@@ -242,8 +255,11 @@ function makeSeries(rows, mode) {
       let sum = 0;
       let n = 0;
       for (const r of slice) {
-        const o = Math.max(-1, Math.min(1, Number(r.outcome_60m)));
-        if (Number.isFinite(o)) { sum += o; n += 1; }
+        const raw = resolvedOutcomeFraction(r);
+        if (raw == null) continue;
+        const o = Math.max(-1, Math.min(1, raw));
+        sum += o;
+        n += 1;
       }
       out.push(n ? sum / n : 0);
     }
@@ -365,16 +381,23 @@ function Donut({ distribution }) {
   );
 }
 function SignalRow({ row }) {
-  const outcome = Number(row?.outcome_60m);
-  const status = !Number.isFinite(outcome)
-    ? "PENDING"
-    : outcome > TR_DECISIVE_WIN
-      ? "WIN"
-      : outcome < TR_DECISIVE_LOSS
-        ? "LOSS"
-        : "FLAT";
+  const outcome = resolvedOutcomeFraction(row);
+  const status =
+    outcome == null
+      ? "PENDING"
+      : outcome > TR_DECISIVE_WIN
+        ? "WIN"
+        : outcome < TR_DECISIVE_LOSS
+          ? "LOSS"
+          : "FLAT";
   const tone =
-    outcome < TR_DECISIVE_LOSS ? "text-rose-300" : outcome > TR_DECISIVE_WIN ? "text-emerald-300" : "text-slate-300";
+    outcome == null
+      ? "text-slate-400"
+      : outcome < TR_DECISIVE_LOSS
+        ? "text-rose-300"
+        : outcome > TR_DECISIVE_WIN
+          ? "text-emerald-300"
+          : "text-slate-300";
   const statusPillClass = status === "WIN" ? "sl-pill sl-pill-win" : status === "LOSS" ? "sl-pill sl-pill-loss" : "sl-pill";
   return (
     <tr className="border-b border-[var(--sl-border)] transition hover:bg-[rgba(var(--sl-sapphire-rgb),0.05)]">
@@ -397,7 +420,7 @@ function SignalRow({ row }) {
         <span className={statusPillClass}>{status}</span>
       </td>
       <td className={`sl-num px-4 py-3 font-bold ${tone}`}>
-        {Number.isFinite(outcome) ? formatBigPct(outcome) : "—"}
+        {outcome != null ? formatBigPct(outcome) : "—"}
       </td>
       <td className="sl-num px-4 py-3 text-[11px] text-[var(--sl-text-muted)]">
         {row?.created_at ? new Date(row.created_at).toLocaleString() : "—"}
@@ -477,7 +500,7 @@ function TrackRecordPage() {
   const topWin = useMemo(() => {
     const wins = Array.isArray(data?.top_wins) ? data.top_wins : [];
     if (wins.length) return wins[0];
-    const sorted = chartRows.filter((r) => Number.isFinite(Number(r?.outcome_60m))).sort((a, b) => Number(b.outcome_60m) - Number(a.outcome_60m));
+    const sorted = chartRows.filter(isResolvedOutcome).sort((a, b) => Number(b.outcome_60m) - Number(a.outcome_60m));
     return sorted[0] || null;
   }, [data, chartRows]);
   const lastUpdatedAgo = useMemo(() => {
