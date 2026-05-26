@@ -5,189 +5,136 @@ import { ProPurchaseButton } from "../components/subscription/ProPurchaseButton"
 import { getPublicApiUrl } from "../lib/publicRuntime";
 import { useLocale } from "../contexts/LocaleContext";
 
-function normalizeResultStatus(row = {}) {
-  const raw = String(row.status ?? row.result ?? "").trim().toUpperCase();
-  if (raw === "WIN" || raw === "LOSS") return raw;
-  if (raw === "NEUTRAL" || raw === "FLAT") return "FLAT";
-  const pct = normalizedResultPct(row);
-  if (pct == null) return "PENDING";
-  // 1% threshold aligns with signal_performance SUCCESS_MIN_PCT backend constant
-  if (pct >= 1) return "WIN";
-  if (pct < -1) return "LOSS";
-  return "FLAT";
-}
+const WIN_DEFINITION = "outcome_pct >= 1% at resolve horizon";
 
-function statusBadge(status, t) {
-  if (status === "WIN") return <span className="text-emerald-300 font-mono">{t("results.status.win")}</span>;
-  if (status === "LOSS") return <span className="text-red-300 font-mono">{t("results.status.loss")}</span>;
-  if (status === "FLAT") return <span className="text-slate-300 font-mono">FLAT</span>;
-  return <span className="text-sl-sub font-mono">{t("results.status.pending")}</span>;
-}
-
-function fmtPrice(v) {
-  if (v == null || Number.isNaN(Number(v))) return "—";
+function fmtPctPoints(v) {
   const n = Number(v);
-  if (n < 0.0001) return n.toExponential(2);
-  if (n < 1) return n.toFixed(6);
-  return n.toFixed(4);
-}
-
-function fmtPct(v) {
-  if (v == null || Number.isNaN(Number(v))) return "—";
-  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
   const sign = n > 0 ? "+" : "";
-  return `${sign}${n.toFixed(2)}%`;
+  if (Math.abs(n) >= 1000) return `${sign}${Math.round(n).toLocaleString()}%`;
+  if (Math.abs(n) >= 100) return `${sign}${n.toFixed(0)}%`;
+  return `${sign}${n.toFixed(1)}%`;
 }
 
-function pctFromFraction(v) {
-  if (v == null || Number.isNaN(Number(v))) return null;
-  return Number(v) * 100;
+function fmtNum(v, digits = 1) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toFixed(digits) : "—";
 }
 
-function normalizedResultPct(row = {}) {
-  if (row.resultPct != null && !Number.isNaN(Number(row.resultPct))) return Number(row.resultPct);
-  if (row.outcome60m != null && !Number.isNaN(Number(row.outcome60m))) return pctFromFraction(row.outcome60m);
-  if (row.outcome_60m != null && !Number.isNaN(Number(row.outcome_60m))) return pctFromFraction(row.outcome_60m);
-  return null;
-}
-
-function normalizedTime(row = {}) {
-  return row.signalAt ?? row.timestamp ?? row.created_at ?? row.time ?? null;
-}
-
-function normalizedToken(row = {}) {
-  return row.symbol || row.asset || row.token || row.mint || row.token_address || "—";
-}
-
-function shortToken(value) {
-  const s = String(value || "");
+function shortMint(v) {
+  const s = String(v || "");
   if (!s) return "—";
-  if (s.length <= 16) return s;
-  return `${s.slice(0, 8)}…`;
+  if (s.length <= 14) return s;
+  return `${s.slice(0, 4)}…${s.slice(-4)}`;
 }
 
-function ResultsMetric({ label, value, sub, tone = "default" }) {
+function signalBadge(type) {
+  const label = String(type || "signal").replace(/_/g, " ");
+  return (
+    <span className="sl-pill border border-[var(--sl-sapphire-mid)]/40 bg-[var(--sl-sapphire-mid)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--sl-sapphire-hi)]">
+      {label}
+    </span>
+  );
+}
+
+function HeroKpi({ label, value, sub, tone = "default" }) {
   const toneClass =
     tone === "good"
-      ? "border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-100"
-      : tone === "bad"
-        ? "border-red-500/25 bg-red-500/[0.06] text-red-100"
-        : tone === "accent"
-          ? "border-cyan-400/25 bg-cyan-500/[0.06] text-cyan-100"
-          : "border-white/10 bg-white/[0.025] text-sl-text";
+      ? "sl-card-premium sl-shine-edge border-emerald-500/20"
+      : tone === "accent"
+        ? "sl-card-premium sl-shine-edge border-[var(--sl-sapphire-mid)]/30"
+        : "sl-card-premium sl-shine-edge";
   return (
-    <div className={`border px-4 py-3 ${toneClass}`}>
-      <p className="text-[9px] font-mono font-semibold uppercase tracking-[0.2em] text-sl-muted">
-        {label}
+    <div className={`${toneClass} px-5 py-4`}>
+      <p className="sl-eyebrow text-[var(--sl-text-muted)]">{label}</p>
+      <p className={`sl-num mt-2 text-3xl font-semibold tracking-tight ${tone === "good" ? "text-emerald-300" : "text-[var(--sl-diamond-bright)]"}`}>
+        {value}
       </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-current">{value}</p>
-      {sub ? <p className="mt-1 text-[11px] text-sl-muted">{sub}</p> : null}
+      {sub ? <p className="mt-1 text-[11px] text-[var(--sl-text-muted)]">{sub}</p> : null}
     </div>
+  );
+}
+
+function StatRow({ label, value, hint }) {
+  return (
+    <tr className="border-b border-[var(--sl-border)]/60">
+      <td className="py-2.5 pr-4 text-sm text-[var(--sl-text-secondary)]">
+        {label}
+        {hint ? (
+          <span className="ml-1 cursor-help text-[var(--sl-text-muted)]" title={hint}>
+            ⓘ
+          </span>
+        ) : null}
+      </td>
+      <td className="py-2.5 text-right font-mono text-sm tabular-nums text-[var(--sl-text-primary)]">{value}</td>
+    </tr>
   );
 }
 
 export default function ResultsPage() {
   const { t } = useLocale();
-  const [filter, setFilter] = useState("all");
-  const [data, setData] = useState({ rows: [], loading: true, error: null, stats: null, meta: null });
-
-  const filters = useMemo(
-    () => [
-      { id: "all", label: t("results.filter.all") },
-      { id: "win", label: t("results.filter.win") },
-      { id: "loss", label: t("results.filter.loss") },
-      { id: "24h", label: t("results.filter.24h") },
-      { id: "week", label: t("results.filter.week") }
-    ],
-    [t]
-  );
+  const [days, setDays] = useState(30);
+  const [summary, setSummary] = useState(null);
+  const [highlights, setHighlights] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    setData((d) => ({ ...d, loading: true, error: null }));
+    setLoading(true);
+    setError(null);
+    const base = getPublicApiUrl();
     try {
-      const res = await fetch(`${getPublicApiUrl()}/api/v1/public/track-record?filter=${encodeURIComponent(filter)}`);
-      const j = await res.json();
-      if (!res.ok || j?.ok === false) throw new Error(j.error || "failed");
-      setData({
-        rows: Array.isArray(j.rows) ? j.rows : [],
-        stats: j.stats || null,
-        meta: j.meta || null,
-        loading: false,
-        error: null
-      });
+      const [sumRes, hiRes] = await Promise.all([
+        fetch(`${base}/api/v1/public/track-record/summary?days=${days}`),
+        fetch(`${base}/api/v1/public/highlights?days=${days}&limit=20&minOutcomePct=50`)
+      ]);
+      const sumJson = await sumRes.json().catch(() => ({}));
+      const hiJson = await hiRes.json().catch(() => ({}));
+      if (!sumRes.ok || sumJson?.ok === false) throw new Error(sumJson.error || "summary_failed");
+      if (!hiRes.ok || hiJson?.ok === false) throw new Error(hiJson.error || "highlights_failed");
+      setSummary(sumJson);
+      setHighlights(Array.isArray(hiJson.items) ? hiJson.items : []);
     } catch (e) {
-      setData((d) => ({ ...d, loading: false, error: e.message }));
+      setError(e.message || "load_failed");
+      setSummary(null);
+      setHighlights([]);
+    } finally {
+      setLoading(false);
     }
-  }, [filter]);
+  }, [days]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  /** Keep /results aligned with DB without manual refresh. */
-  useEffect(() => {
-    const id = setInterval(() => {
-      load();
-    }, 60_000);
-    return () => clearInterval(id);
-  }, [load]);
-
-  const normalizedRows = useMemo(
-    () =>
-      data.rows.map((row) => ({
-        ...row,
-        _status: normalizeResultStatus(row),
-        _resultPct: normalizedResultPct(row),
-        _time: normalizedTime(row),
-        _token: normalizedToken(row)
-      })),
-    [data.rows]
-  );
-
-  const resolvedRows = useMemo(() => normalizedRows.filter((r) => r._status === "WIN" || r._status === "LOSS"), [normalizedRows]);
-  const wins = useMemo(() => resolvedRows.filter((r) => r._status === "WIN"), [resolvedRows]);
-  const losses = useMemo(() => resolvedRows.filter((r) => r._status === "LOSS"), [resolvedRows]);
-  const pendingRows = useMemo(() => normalizedRows.filter((r) => r._status === "PENDING"), [normalizedRows]);
-  const flatRows = useMemo(() => normalizedRows.filter((r) => r._status === "FLAT"), [normalizedRows]);
-  const avgWin = wins.length
-    ? wins.reduce((sum, r) => sum + Math.max(0, Number(r._resultPct || 0)), 0) / wins.length
-    : null;
-  const avgLoss = losses.length
-    ? losses.reduce((sum, r) => sum + Math.min(0, Number(r._resultPct || 0)), 0) / losses.length
-    : null;
-  const winRate = resolvedRows.length ? (wins.length / resolvedRows.length) * 100 : null;
-  const headlineWinRate = data.stats?.winRate != null ? Number(data.stats.winRate) * 100 : winRate;
-  const totalSignals = data.stats?.totalSignals ?? data.meta?.totalRows ?? normalizedRows.length;
-
-  const badge = useMemo(() => {
-    if (data.loading) return "Loading saved outcomes…";
-    if (data.error) return "Results API degraded — review the request error below.";
-    if (!resolvedRows.length && !flatRows.length && pendingRows.length) {
-      return `${pendingRows.length} pending rows visible · no resolved outcomes in this public sample yet`;
-    }
-    if (!resolvedRows.length && !flatRows.length) return "No resolved outcomes in this public sample yet";
-    const wrPart = headlineWinRate == null ? "—" : `${headlineWinRate.toFixed(1)}%`;
-    const flatPart = flatRows.length ? ` · ${flatRows.length} flat (±1%)` : "";
-    return `Win rate ${wrPart} · ${resolvedRows.length} resolved rows visible${flatPart}`;
-  }, [data.loading, data.error, resolvedRows.length, pendingRows.length, flatRows.length, headlineWinRate]);
+  const windowLabel = useMemo(() => `${days}d`, [days]);
 
   return (
     <>
       <PageHead title={t("results.pageTitle")} description={t("results.pageDesc")} />
-      <div className="sl-container py-8 sm:py-10 pb-28 space-y-6">
-        <header className="terminal-panel relative overflow-hidden px-6 py-6 mb-4">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/50 to-transparent" />
+      <div className="sl-container py-8 sm:py-10 pb-28 space-y-8">
+        <header className="sl-card-premium sl-shine-edge relative overflow-hidden px-6 py-6">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--sl-sapphire-hi)]/50 to-transparent" />
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <span className="section-title">RESULTS · SAVED OUTCOMES</span>
-              <h1 className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-sl-text">
-                Validation tape
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-sl-muted">
-                Public signal outcomes from Sentinel&apos;s validation ledger. Pending rows are still awaiting outcome data; resolved rows drive win/loss metrics.
+              <span className="sl-eyebrow text-[var(--sl-sapphire-hi)]">PROOF · REAL OUTCOMES</span>
+              <h1 className="sl-display mt-2 text-2xl sm:text-3xl text-[var(--sl-text-primary)]">Sentinel results</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--sl-text-muted)]">
+                Verified resolved signals from our performance ledger. Win rate uses a single honest rule:{" "}
+                <span className="font-mono text-[var(--sl-text-secondary)]">{WIN_DEFINITION}</span>.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {[7, 30, 90].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDays(d)}
+                  className={days === d ? "sl-btn-primary text-xs px-3 py-1.5" : "btn-pill text-xs"}
+                >
+                  {d}d
+                </button>
+              ))}
               <button type="button" onClick={load} className="btn-ghost-sm">
                 REFRESH
               </button>
@@ -198,132 +145,111 @@ export default function ResultsPage() {
           </div>
         </header>
 
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <ResultsMetric
-            label="Win rate"
-            value={headlineWinRate == null ? "—" : `${headlineWinRate.toFixed(1)}%`}
-            sub={`${resolvedRows.length} resolved visible`}
-            tone="good"
-          />
-          <ResultsMetric label="Wins" value={wins.length} sub="Decisive positive outcomes" tone="good" />
-          <ResultsMetric label="Losses" value={losses.length} sub="Decisive negative outcomes" tone="bad" />
-          <ResultsMetric label="Pending" value={pendingRows.length} sub={`${totalSignals} total ledger rows`} tone="accent" />
-        </section>
+        {error ? <p className="text-sm text-red-300">{error}</p> : null}
+        {loading ? <p className="text-sm text-[var(--sl-text-muted)]">{t("results.loading")}</p> : null}
 
-        <section className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <div className="terminal-panel px-4 py-3">
-            <span className="section-title">AVG WIN</span>
-            <p className="mt-2 font-mono text-xl text-emerald-300">{avgWin == null ? "—" : `+${avgWin.toFixed(2)}%`}</p>
-          </div>
-          <div className="terminal-panel px-4 py-3">
-            <span className="section-title">AVG LOSS</span>
-            <p className="mt-2 font-mono text-xl text-red-300">{avgLoss == null ? "—" : `${avgLoss.toFixed(2)}%`}</p>
-          </div>
-          <div className="terminal-panel px-4 py-3">
-            <span className="section-title">NEUTRAL / FLAT</span>
-            <p className="mt-2 font-mono text-xl text-slate-200">{flatRows.length}</p>
-            <p className="mt-1 text-[11px] text-sl-muted">Within ±1% at 60m</p>
-          </div>
-        </section>
+        {!loading && summary ? (
+          <>
+            <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <HeroKpi
+                label="Win rate"
+                value={`${fmtNum(summary.win_rate_pct, 1)}%`}
+                sub={summary.win_definition || WIN_DEFINITION}
+                tone="good"
+              />
+              <HeroKpi
+                label="Best trade"
+                value={fmtPctPoints(summary.best_trade_pct)}
+                sub={`Peak resolved outcome · ${windowLabel}`}
+                tone="accent"
+              />
+              <HeroKpi
+                label="Trades ≥ +100%"
+                value={Number(summary.trades_above_100pct || 0).toLocaleString()}
+                sub="Resolved in window"
+              />
+              <HeroKpi
+                label="Total resolved"
+                value={Number(summary.total_resolved || 0).toLocaleString()}
+                sub={`${Number(summary.wins || 0).toLocaleString()} wins · ${Number(summary.losses || 0).toLocaleString()} losses`}
+              />
+            </section>
 
-        <div className="flex flex-wrap gap-2">
-          {filters.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setFilter(f.id)}
-              className={filter === f.id ? "btn-pill-active" : "btn-pill"}
-              aria-pressed={filter === f.id}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {data.error ? <p className="text-sm text-red-300">{data.error}</p> : null}
-        {data.loading ? <p className="text-sm text-sl-muted">{t("results.loading")}</p> : null}
-
-        <section className="terminal-panel px-4 py-3">
-          <span className="section-title">SIGNAL STATUS</span>
-          <p className="font-mono text-sm text-sl-muted mt-2">{badge}</p>
-        </section>
-
-        <div className="terminal-panel hidden lg:block overflow-x-auto">
-          <table className="w-full min-w-[1040px] table-fixed border-collapse text-left text-sm">
-            <colgroup>
-              <col className="w-[13%]" />
-              <col className="w-[18%]" />
-              <col className="w-[9%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
-              <col className="w-[12%]" />
-              <col className="w-[18%]" />
-            </colgroup>
-            <thead>
-              <tr className="border-b border-sl-border text-[10px] uppercase tracking-[0.18em] text-sl-muted">
-                <th className="px-4 py-3 text-left font-mono font-semibold">TOKEN</th>
-                <th className="px-4 py-3 text-left font-mono font-semibold">SIGNAL TIME</th>
-                <th className="px-4 py-3 text-left font-mono font-semibold">RULE</th>
-                <th className="px-4 py-3 text-left font-mono font-semibold">CONFIDENCE</th>
-                <th className="px-4 py-3 text-left font-mono font-semibold">5M</th>
-                <th className="px-4 py-3 text-left font-mono font-semibold">15M</th>
-                <th className="px-4 py-3 text-left font-mono font-semibold">60M</th>
-                <th className="px-4 py-3 text-left font-mono font-semibold">STATUS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {normalizedRows.length === 0 && !data.loading ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-sl-muted">
-                    {t("results.empty")}
-                  </td>
-                </tr>
+            <section>
+              <div className="mb-4 flex items-end justify-between gap-3">
+                <div>
+                  <h2 className="sl-display text-xl text-[var(--sl-text-primary)]">Best calls</h2>
+                  <p className="mt-1 text-sm text-[var(--sl-text-muted)]">
+                    Top token per mint — best resolved outcome ≥ +50% in the last {windowLabel}.
+                  </p>
+                </div>
+                <span className="font-mono text-xs text-[var(--sl-text-muted)]">{highlights.length} tokens</span>
+              </div>
+              {highlights.length === 0 ? (
+                <p className="text-sm text-[var(--sl-text-muted)]">No highlights in this window yet.</p>
               ) : (
-                normalizedRows.map((r) => (
-                  <tr key={r.id} className="border-b border-sl-border/80 hover:bg-white/[0.025]">
-                    <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-sl-sub" title={String(r.token || r.mint || "")}>{shortToken(r._token)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-sl-text">
-                      {r._time ? new Date(r._time).toLocaleString() : "—"}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-sl-text">{r.rule || "—"}</td>
-                    <td className="px-4 py-3 whitespace-nowrap font-mono text-sl-text">{r.signalStrength != null ? Number(r.signalStrength).toFixed(0) : "—"}</td>
-                    <td className="px-4 py-3 whitespace-nowrap font-mono text-sl-text">{fmtPct(pctFromFraction(r.outcome5m ?? r.outcome_5m))}</td>
-                    <td className="px-4 py-3 whitespace-nowrap font-mono text-sl-text">{fmtPct(pctFromFraction(r.outcome15m ?? r.outcome_15m))}</td>
-                    <td className={`px-4 py-3 whitespace-nowrap font-mono ${Number(r._resultPct) >= 0 ? "data-pos" : "data-neg"}`}>{fmtPct(r._resultPct)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{statusBadge(r._status, t)}</td>
-                  </tr>
-                ))
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {highlights.map((item) => {
+                    const sym = item.token_symbol || shortMint(item.token_address);
+                    return (
+                      <Link
+                        key={item.token_address}
+                        href={`/token/${item.token_address}`}
+                        className="sl-card-premium sl-ring-hover block p-4 no-underline transition hover:border-[var(--sl-sapphire-mid)]/40"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-lg font-semibold tracking-tight text-[var(--sl-text-primary)]">{sym}</p>
+                            <p className="font-mono text-[10px] text-[var(--sl-text-muted)]">{shortMint(item.token_address)}</p>
+                          </div>
+                          <p className="font-mono text-xl font-bold tabular-nums text-emerald-300">{fmtPctPoints(item.outcome_pct)}</p>
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          {signalBadge(item.signal_type)}
+                          {item.confidence != null ? (
+                            <span className="text-[10px] font-mono text-[var(--sl-text-muted)]">
+                              conf {Math.round(Number(item.confidence))}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 text-[11px] text-[var(--sl-text-muted)]">
+                          Emitted {item.emitted_at ? new Date(item.emitted_at).toLocaleString() : "—"}
+                        </p>
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
-            </tbody>
-          </table>
-        </div>
+            </section>
 
-        <div className="grid grid-cols-1 gap-3 lg:hidden">
-          {normalizedRows.map((r) => (
-            <div
-              key={r.id}
-              className="terminal-card-interactive p-4 space-y-2 text-sm font-mono"
-            >
-              <div className="flex justify-between gap-2">
-                <span className="text-sl-sub">{shortToken(r._token)}</span>
-                {statusBadge(r._status, t)}
-              </div>
-              <p className="text-xs text-sl-muted">{r._time ? new Date(r._time).toLocaleString() : ""}</p>
-              <p className="text-xs text-sl-muted">Rule {r.rule || "—"} · confidence {r.signalStrength != null ? Number(r.signalStrength).toFixed(0) : "—"}</p>
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                <span className="text-sl-sub">5m {fmtPct(pctFromFraction(r.outcome5m ?? r.outcome_5m))}</span>
-                <span className="text-sl-sub">15m {fmtPct(pctFromFraction(r.outcome15m ?? r.outcome_15m))}</span>
-                <span className="text-emerald-300">60m {fmtPct(r._resultPct)}</span>
-              </div>
-            </div>
-          ))}
-        </div>
+            <section className="sl-card-premium sl-shine-edge p-5">
+              <h2 className="sl-display text-xl text-[var(--sl-text-primary)]">Honest stats</h2>
+              <p className="mt-1 text-sm text-[var(--sl-text-muted)]">
+                Full methodology disclosure — including average loser return for credibility.
+              </p>
+              <table className="mt-4 w-full max-w-xl">
+                <tbody>
+                  <StatRow label="Window" value={windowLabel} />
+                  <StatRow label="Win rate" value={`${fmtNum(summary.win_rate_pct, 1)}%`} hint={WIN_DEFINITION} />
+                  <StatRow label="Wins (≥ +1%)" value={Number(summary.wins || 0).toLocaleString()} />
+                  <StatRow label="Losses (&lt; +1%)" value={Number(summary.losses || 0).toLocaleString()} />
+                  <StatRow label="Avg outcome (all)" value={fmtPctPoints(summary.avg_outcome_pct)} />
+                  <StatRow label="Avg winner" value={fmtPctPoints(summary.avg_winner_pct)} />
+                  <StatRow label="Avg loser" value={fmtPctPoints(summary.avg_loser_pct)} />
+                  <StatRow label="Best trade" value={fmtPctPoints(summary.best_trade_pct)} />
+                  <StatRow label="Trades ≥ +100%" value={Number(summary.trades_above_100pct || 0).toLocaleString()} />
+                  <StatRow label="Trades ≥ +500%" value={Number(summary.trades_above_500pct || 0).toLocaleString()} />
+                  <StatRow label="Profit factor" value={fmtNum(summary.profit_factor, 2)} hint="Sum of winner % ÷ |sum of loser %|" />
+                </tbody>
+              </table>
+            </section>
+          </>
+        ) : null}
 
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-sl-border bg-[#0B0B0E]/95 backdrop-blur-md py-3 px-4 safe-bottom-pad">
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--sl-border)] bg-[var(--sl-bg-base)]/95 backdrop-blur-md py-3 px-4 safe-bottom-pad">
           <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-sm">
-            <span className="text-sl-sub text-center sm:text-left">{t("results.stickyLine")}</span>
-            <ProPurchaseButton className="btn-pro inline-flex text-center no-underline">
+            <span className="text-[var(--sl-text-muted)] text-center sm:text-left">{t("results.stickyLine")}</span>
+            <ProPurchaseButton className="sl-btn-primary inline-flex text-center no-underline">
               {t("results.upgradePro")}
             </ProPurchaseButton>
           </div>

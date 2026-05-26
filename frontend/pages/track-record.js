@@ -8,9 +8,9 @@ import { TrackRecordShell } from "../components/layout/TrackRecordShell";
 
 const REFRESH_MS = 30_000;
 const CHART_PAGES = 6;
-/** Aligned with backend signal_outcomes / oracle decisive (fraction of return). */
-const TR_DECISIVE_WIN = 0.05;
-const TR_DECISIVE_LOSS = -0.05;
+/** Aligned with backend SIGNAL_PERF_SUCCESS_MIN_PCT (1% = win). */
+const TR_DECISIVE_WIN = 0.01;
+const TR_DECISIVE_LOSS = -0.01;
 
 function pct(v, d = 1) { const n = Number(v); return Number.isFinite(n) ? `${(n * 100).toFixed(d)}%` : "—"; }
 /**
@@ -33,9 +33,8 @@ function clamp01(v) { const n = Number(v); return Number.isFinite(n) ? Math.max(
 function outcomeState(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return "pending";
-  if (n > TR_DECISIVE_WIN) return "win";
-  if (n < TR_DECISIVE_LOSS) return "loss";
-  return "flat";
+  if (n >= TR_DECISIVE_WIN) return "win";
+  return "loss";
 }
 
 const FETCH_MS = 35_000;
@@ -235,8 +234,8 @@ function makeSeries(rows, mode) {
       let d = 0;
       for (const r of slice) {
         const o = Number(r.outcome_60m);
-        if (o > TR_DECISIVE_WIN) { w += 1; d += 1; }
-        else if (o < TR_DECISIVE_LOSS) { d += 1; }
+        if (o >= TR_DECISIVE_WIN) { w += 1; d += 1; }
+        else { d += 1; }
       }
       out.push(d ? w / d : 0);
     } else {
@@ -471,7 +470,7 @@ function TrackRecordPage() {
         : `mean resolved · last ${rollingDays}d`;
   const ddDetail = `worst case at 30m · last ${rollingDays}d`;
   // Track Record uses institutional ±5% threshold; Home banner uses ±1% — both honest, different lens.
-  const winTooltip = "Institutional methodology: a signal counts as WIN only if the token moves +5% or more within 30 minutes of emission. Smaller moves count as flat (excluded from WR denominator), losses as -5% or worse. This is stricter than Home banner (±1%).";
+  const winTooltip = "Win = resolved outcome ≥ +1% (outcome_pct ≥ 1). Matches signal_performance SUCCESS_MIN_PCT across Sentinel.";
   const avgTooltip = "MEDIAN return — the typical signal outcome at 30m. Robust to pump.fun outliers (a single +2000x microcap doesn't distort the headline). The MEAN is shown as a secondary number for transparency: it includes those extreme winners and is naturally much higher.";
   const ddTooltip = "Single worst realized outcome at 30m in the rolling window — captures the rug-pull risk you're exposed to if you blindly chase every signal.";
 
