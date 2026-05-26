@@ -182,6 +182,8 @@ export function SmartMoneyLeaderboardConsole({
   totalSmartWallets,
   dataComputedAt,
   onRefreshAll,
+  profitableOnly,
+  setProfitableOnly,
   rawRowCount,
   onClearFavoritesFilter,
   t
@@ -411,6 +413,20 @@ export function SmartMoneyLeaderboardConsole({
               <option value="es">ES</option>
               <option value="en">EN</option>
             </select>
+            <label
+              className="flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-emerald-400/85"
+              title="Filter out wallets with negative 30D PnL. Use when you want only profitable smart money."
+            >
+              <input
+                type="checkbox"
+                className="rounded border-emerald-600/60 bg-[#141A24] accent-emerald-500"
+                checked={Boolean(profitableOnly)}
+                onChange={(e) => {
+                  if (typeof setProfitableOnly === "function") setProfitableOnly(e.target.checked);
+                }}
+              />
+              Profitable only
+            </label>
             <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-zinc-500">
               <input
                 type="checkbox"
