@@ -10,6 +10,29 @@ const {
   displayWinRate
 } = require("../services/walletReputation");
 
+/** Product win threshold — outcome_pct is in percent points (1 = +1%). */
+const SIGNAL_PERF_SUCCESS_MIN_PCT = Number(process.env.SIGNAL_PERF_SUCCESS_MIN_PCT || 1);
+
+function setPublicCache60s(res) {
+  res.set("Cache-Control", "public, max-age=60");
+}
+
+function clampPublicDays(raw, fallback = 30, max = 90) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(1, Math.floor(n)));
+}
+
+function signalTypeFromPerformanceRow(row) {
+  const sigs = Array.isArray(row?.signals) ? row.signals : [];
+  return String(sigs[0] || row?.signal_type || "unknown");
+}
+
+function unifiedScoreFromPerformanceRow(row) {
+  const u = Number(row?.emission_gate?.unifiedScore);
+  return Number.isFinite(u) ? Number(u.toFixed(4)) : null;
+}
+
 const router = express.Router();
 
 const PUBLIC_STATS_CACHE_KEY = "public:sentinel:stats:v3";
@@ -1143,6 +1166,181 @@ router.get("/token-flow/:address", async (req, res) => {
     return res.json({ ok: true, rows, meta: { source: "smart_wallet_signals", count: rows.length, lookbackHours } });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message, rows: [] });
+  }
+});
+
+/** GET /api/v1/public/highlights — best resolved trade per token (public landing). */
+router.get("/highlights", async (req, res) => {
+  setPublicCache60s(res);
+  const supabase = safeSupabase();
+  if (!supabase) {
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured", items: [] });
+  }
+  try {
+    const windowDays = clampPublicDays(req.query.days, 30, 90);
+    const pageLimit = Math.min(50, Math.max(1, Number(req.query.limit || 20)));
+    const minOutcomePct = Number.isFinite(Number(req.query.minOutcomePct))
+      ? Number(req.query.minOutcomePct)
+      : 50;
+    const sinceIso = new Date(Date.now() - windowDays * 86_400_000).toISOString();
+
+    const { data, error } = await supabase
+      .from("signal_performance")
+      .select("id, asset, signals, confidence, outcome_pct, emitted_at, resolved_at, emission_gate")
+      .eq("status", "resolved")
+      .gte("outcome_pct", minOutcomePct)
+      .gte("emitted_at", sinceIso)
+      .order("outcome_pct", { ascending: false })
+      .limit(Math.min(2000, pageLimit * 40));
+    if (error) throw error;
+
+    const bestByAsset = new Map();
+    for (const row of data || []) {
+      const asset = String(row.asset || "").trim();
+      const pct = Number(row.outcome_pct);
+      if (!asset || !Number.isFinite(pct)) continue;
+      const prev = bestByAsset.get(asset);
+      if (!prev || pct > Number(prev.outcome_pct)) bestByAsset.set(asset, row);
+    }
+
+    const ranked = [...bestByAsset.values()]
+      .sort((a, b) => Number(b.outcome_pct) - Number(a.outcome_pct))
+      .slice(0, pageLimit);
+
+    const mints = ranked.map((r) => r.asset).filter(Boolean);
+    const symbolByMint = new Map();
+    if (mints.length) {
+      const { data: snaps } = await supabase.from("market_snapshots").select("mint, symbol").in("mint", mints);
+      for (const s of snaps || []) {
+        if (s?.mint) symbolByMint.set(s.mint, s.symbol);
+      }
+    }
+
+    const items = ranked.map((row) => ({
+      token_address: row.asset,
+      token_symbol: symbolByMint.get(row.asset) || null,
+      signal_type: signalTypeFromPerformanceRow(row),
+      confidence: row.confidence != null ? Number(row.confidence) : null,
+      unified_score: unifiedScoreFromPerformanceRow(row),
+      outcome_pct: Number(Number(row.outcome_pct).toFixed(2)),
+      emitted_at: row.emitted_at,
+      resolved_at: row.resolved_at || null
+    }));
+
+    return res.json({
+      ok: true,
+      generated_at: new Date().toISOString(),
+      window_days: windowDays,
+      min_outcome_pct: minOutcomePct,
+      count: items.length,
+      items
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message, items: [] });
+  }
+});
+
+/** GET /api/v1/public/track-record/summary — honest aggregate stats (outcome_pct >= 1% wins). */
+router.get("/track-record/summary", async (req, res) => {
+  setPublicCache60s(res);
+  const supabase = safeSupabase();
+  if (!supabase) {
+    return res.status(503).json({ ok: false, error: "supabase_unconfigured" });
+  }
+  try {
+    const windowDays = clampPublicDays(req.query.days, 30, 90);
+    const sinceIso = new Date(Date.now() - windowDays * 86_400_000).toISOString();
+    const winMin = SIGNAL_PERF_SUCCESS_MIN_PCT;
+
+    const [resolvedRes, winsRes, above100Res, above500Res, sampleRes, bestRes] = await Promise.all([
+      supabase
+        .from("signal_performance")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "resolved")
+        .gte("emitted_at", sinceIso),
+      supabase
+        .from("signal_performance")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "resolved")
+        .gte("outcome_pct", winMin)
+        .gte("emitted_at", sinceIso),
+      supabase
+        .from("signal_performance")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "resolved")
+        .gte("outcome_pct", 100)
+        .gte("emitted_at", sinceIso),
+      supabase
+        .from("signal_performance")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "resolved")
+        .gte("outcome_pct", 500)
+        .gte("emitted_at", sinceIso),
+      supabase
+        .from("signal_performance")
+        .select("outcome_pct")
+        .eq("status", "resolved")
+        .not("outcome_pct", "is", null)
+        .gte("emitted_at", sinceIso)
+        .limit(15000),
+      supabase
+        .from("signal_performance")
+        .select("outcome_pct")
+        .eq("status", "resolved")
+        .not("outcome_pct", "is", null)
+        .gte("emitted_at", sinceIso)
+        .order("outcome_pct", { ascending: false })
+        .limit(1)
+    ]);
+
+    for (const r of [resolvedRes, winsRes, above100Res, above500Res, sampleRes, bestRes]) {
+      if (r.error) throw r.error;
+    }
+
+    const totalResolved = Number(resolvedRes.count || 0);
+    const wins = Number(winsRes.count || 0);
+    const losses = Math.max(0, totalResolved - wins);
+    const pctRows = (sampleRes.data || [])
+      .map((r) => Number(r.outcome_pct))
+      .filter((n) => Number.isFinite(n));
+
+    const winRows = pctRows.filter((n) => n >= winMin);
+    const lossRows = pctRows.filter((n) => n < winMin);
+    const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
+    const sumWin = winRows.reduce((a, b) => a + b, 0);
+    const sumLossAbs = Math.abs(lossRows.reduce((a, b) => a + b, 0));
+    const profitFactor =
+      sumLossAbs > 0 ? Number((sumWin / sumLossAbs).toFixed(2)) : sumWin > 0 ? 99 : 0;
+
+    const bestRow = (bestRes.data || [])[0];
+    const bestTradePct =
+      bestRow?.outcome_pct != null && Number.isFinite(Number(bestRow.outcome_pct))
+        ? Number(Number(bestRow.outcome_pct).toFixed(2))
+        : pctRows.length
+          ? Math.max(...pctRows)
+          : null;
+
+    const winRatePct = totalResolved > 0 ? Number(((wins / totalResolved) * 100).toFixed(1)) : 0;
+
+    return res.json({
+      ok: true,
+      window_days: windowDays,
+      win_rate_pct: winRatePct,
+      win_definition: `outcome_pct >= ${winMin}% at resolve horizon`,
+      total_resolved: totalResolved,
+      wins,
+      losses,
+      avg_outcome_pct: avg(pctRows) != null ? Number(avg(pctRows).toFixed(2)) : null,
+      avg_winner_pct: avg(winRows) != null ? Number(avg(winRows).toFixed(2)) : null,
+      avg_loser_pct: avg(lossRows) != null ? Number(avg(lossRows).toFixed(2)) : null,
+      best_trade_pct: bestTradePct,
+      trades_above_100pct: Number(above100Res.count || 0),
+      trades_above_500pct: Number(above500Res.count || 0),
+      profit_factor: profitFactor,
+      sample_rows: pctRows.length
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
   }
 });
 
