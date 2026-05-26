@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useLocale } from "../../contexts/LocaleContext";
 import { ProPurchaseButton } from "../subscription/ProPurchaseButton";
 import { FinancialDisclaimer } from "./FinancialDisclaimer";
-import { getPublicXProfileUrl } from "../../lib/publicRuntime";
 
 const showOpsLink =
   process.env.NEXT_PUBLIC_SHOW_OPS_NAV === "1" ||
@@ -48,10 +47,7 @@ const FOOTER_GROUPS = [
   }
 ];
 
-const SOCIAL_LINKS = (() => {
-  const xUrl = getPublicXProfileUrl();
-  return xUrl ? [{ href: xUrl, labelKey: "footer.link.twitter" }] : [];
-})();
+const SOCIAL_LINKS = [{ href: "https://x.com/MohamePs3", labelKey: "footer.link.twitter" }];
 
 export function SiteFooter() {
   const { t } = useLocale();
@@ -77,9 +73,8 @@ export function SiteFooter() {
             </p>
             <div className="pt-2">
               <p className={titleBase}>{t("footer.col.connect")}</p>
-              {SOCIAL_LINKS.length ? (
-                <div className="flex flex-wrap gap-2">
-                  {SOCIAL_LINKS.map((s) => (
+              <div className="flex flex-wrap gap-2">
+                {SOCIAL_LINKS.map((s) => (
                     <a
                       key={s.labelKey}
                       href={s.href}
@@ -89,9 +84,8 @@ export function SiteFooter() {
                     >
                       {t(s.labelKey)}
                     </a>
-                  ))}
-                </div>
-              ) : null}
+                ))}
+              </div>
             </div>
           </div>
 
