@@ -1122,6 +1122,9 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               avgConfidence={homeMetrics.avgConfidence}
               bestSignal={homeMetrics.bestSignal}
             />
+            {/* HomeRailsBoard removed 2026-05 — duplicates TacticalFeed tabs and adds 1.3s p95.
+                Restore if user feedback requests dedicated rails section. */}
+            {/*
             <HomeRailsBoard
               hot={railsQuery.hot}
               live={railsQuery.live}
@@ -1130,6 +1133,7 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               isSlowLoad={railsSlowLoad}
               pulsingMints={pulsingMints}
             />
+            */}
             <TacticalFeed
               tacticalTab={tacticalTab}
               onTabChange={setTacticalTab}
