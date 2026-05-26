@@ -121,9 +121,53 @@ div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] butto
   white-space: nowrap !important;
 }
 
-/* Put the sound toggle on the far right of the same row. */
-div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] > section:nth-child(2) button[type="button"]:last-child {
+/* Put the sound toggle on the far right of the decision-mode header row. */
+.home-settings-panel > .home-settings-strategy .home-settings-sound {
   margin-left: auto !important;
+}
+
+@media (max-width: 768px) {
+  /* Decision mode only: stack header + 3-column strategy pills on mobile. */
+  .home-settings-panel > .home-settings-strategy {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    order: unset !important;
+    border-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  .home-settings-panel > .home-settings-strategy .home-settings-strategy-header {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .home-settings-panel > .home-settings-strategy .home-settings-strategy-header > .min-w-0 {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  .home-settings-panel > .home-settings-strategy .home-settings-sound {
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+  }
+
+  .home-settings-panel > .home-settings-strategy .home-settings-strategy-modes {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    width: 100% !important;
+    flex-wrap: unset !important;
+  }
+
+  .home-settings-panel > .home-settings-strategy .home-settings-strategy-modes button {
+    width: 100% !important;
+    text-align: center !important;
+  }
 }
 
 @media (max-width: 900px) {
