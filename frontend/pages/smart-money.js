@@ -146,15 +146,25 @@ export default function SmartMoneyPage() {
     return median(displayedRanked.map((w) => Number(w.winRate || 0)));
   }, [displayedRanked]);
 
-  const avgPnl30 = useMemo(() => {
+  // PnL distribution across smart wallets is brutally skewed (a single high-volume
+  // bot with -$2,210 can dominate the mean over 10 wallets). Use the median as the
+  // headline number — same convention as Nansen / Bloomberg for non-normal samples.
+  // The mean is kept around as `meanPnl30` and surfaced in tooltips/secondary copy.
+  const medianPnl30 = useMemo(() => {
+    if (!displayedRanked.length) return null;
+    return median(displayedRanked.map((w) => Number(w.pnl30d || 0)));
+  }, [displayedRanked]);
+
+  const meanPnl30 = useMemo(() => {
     if (!displayedRanked.length) return null;
     const sum = displayedRanked.reduce((a, w) => a + Number(w.pnl30d || 0), 0);
     return sum / displayedRanked.length;
   }, [displayedRanked]);
 
-  const avgUnifiedScore = useMemo(() => {
-    if (!displayedRanked.length) return null;
-    const nums = displayedRanked
+  // Same reasoning for the unified score: median over a skewed sample tells a
+  // truer story than the mean.
+  const unifiedScoreNums = useMemo(() => {
+    return displayedRanked
       .map((w) => {
         const u = w.unifiedScore != null ? Number(w.unifiedScore) : null;
         if (u != null && Number.isFinite(u)) return u;
@@ -163,9 +173,17 @@ export default function SmartMoneyPage() {
         return null;
       })
       .filter((n) => n != null);
-    if (!nums.length) return null;
-    return nums.reduce((a, b) => a + b, 0) / nums.length;
   }, [displayedRanked]);
+
+  const medianUnifiedScore = useMemo(() => {
+    if (!unifiedScoreNums.length) return null;
+    return median(unifiedScoreNums);
+  }, [unifiedScoreNums]);
+
+  const meanUnifiedScore = useMemo(() => {
+    if (!unifiedScoreNums.length) return null;
+    return unifiedScoreNums.reduce((a, b) => a + b, 0) / unifiedScoreNums.length;
+  }, [unifiedScoreNums]);
 
   // Prefer the server-counted value (never capped). Fall back to a client-side count
   // (capped at activity page limit) only if the server didn't provide one.
@@ -213,8 +231,10 @@ export default function SmartMoneyPage() {
           isFavorite={isFavorite}
           toggleFavorite={toggleFavorite}
           medianWinRate={medianWinRate}
-          avgPnl30={avgPnl30}
-          avgUnifiedScore={avgUnifiedScore}
+          medianPnl30={medianPnl30}
+          meanPnl30={meanPnl30}
+          medianUnifiedScore={medianUnifiedScore}
+          meanUnifiedScore={meanUnifiedScore}
           activeProbes24h={activeProbes24h}
           totalSmartWallets={totalSmartWallets}
           dataComputedAt={dataComputedAt}

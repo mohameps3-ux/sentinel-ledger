@@ -91,7 +91,8 @@ function winRateBadgeClass(wr) {
   return "bg-rose-950/30 text-rose-400/85 ring-1 ring-rose-900/30";
 }
 
-const INACTIVITY_DECAY_TOOLTIP = "Ranking includes inactivity decay";
+const INACTIVITY_DECAY_TOOLTIP =
+  "Ranking decay uses last on-chain activity (wallet_tokens.bought_at) when available, falling back to last gated signal.";
 
 /** Server fields `daysInactive` / `decayMultiplier`; label tiers match leaderboard decay bands. */
 function inactivityDecayBadge(row) {
@@ -122,6 +123,17 @@ function inactivityDecayBadge(row) {
 /** Poll time for table column; until first poll after deploy, fall back to last trade time. */
 function leaderboardCheckedIso(row) {
   return row?.lastCheckedAt || row?.lastSeen || null;
+}
+
+/** Honest "last seen trading" timestamp: prefer real on-chain activity (wallet_tokens.bought_at)
+ *  over the gated last_seen which only ticks when our system emits a signal for the wallet. */
+function leaderboardActivityIso(row) {
+  const onchain = row?.lastOnchainActivityAt;
+  const lastSeen = row?.lastSeen;
+  if (onchain && lastSeen) {
+    return new Date(onchain).getTime() >= new Date(lastSeen).getTime() ? onchain : lastSeen;
+  }
+  return onchain || lastSeen || null;
 }
 
 function StatusDot({ tone }) {
@@ -162,8 +174,10 @@ export function SmartMoneyLeaderboardConsole({
   isFavorite,
   toggleFavorite,
   medianWinRate,
-  avgPnl30,
-  avgUnifiedScore,
+  medianPnl30,
+  meanPnl30,
+  medianUnifiedScore,
+  meanUnifiedScore,
   activeProbes24h,
   totalSmartWallets,
   dataComputedAt,
@@ -483,30 +497,49 @@ export function SmartMoneyLeaderboardConsole({
                   )
               },
               {
-                k: "Avg 30D PnL",
-                tooltip: "Average net PnL across the wallets currently shown, over the last 30 days.",
+                k: "Median 30D PnL",
+                tooltip:
+                  meanPnl30 != null
+                    ? `Median net PnL across the wallets shown (rolling 30d). Median (not mean) is used because one high-volume bot wallet can dominate the average. Mean for reference: ${meanPnl30 >= 0 ? "+" : "-"}$${formatUsdWhole(Math.abs(meanPnl30))}.`
+                    : "Median net PnL across the wallets shown (rolling 30d). Median is used instead of mean because outliers (high-volume bot wallets) distort the average.",
                 v:
-                  avgPnl30 != null ? (
-                    <span
-                      className={`font-mono text-3xl font-medium tabular-nums tracking-tight ${
-                        avgPnl30 >= 0 ? "text-emerald-500/85" : "text-rose-500/80"
-                      }`}
-                    >
-                      {avgPnl30 >= 0 ? "+" : "-"}${formatUsdWhole(Math.abs(avgPnl30))}
-                    </span>
+                  medianPnl30 != null ? (
+                    <div className="space-y-1.5">
+                      <span
+                        className={`font-mono text-3xl font-medium tabular-nums tracking-tight ${
+                          medianPnl30 >= 0 ? "text-emerald-500/85" : "text-rose-500/80"
+                        }`}
+                      >
+                        {medianPnl30 >= 0 ? "+" : "-"}${formatUsdWhole(Math.abs(medianPnl30))}
+                      </span>
+                      {meanPnl30 != null && Number.isFinite(meanPnl30) ? (
+                        <div className="font-mono text-[10px] tabular-nums text-zinc-500">
+                          mean {meanPnl30 >= 0 ? "+" : "-"}${formatUsdWhole(Math.abs(meanPnl30))}
+                        </div>
+                      ) : null}
+                    </div>
                   ) : (
                     "—"
                   )
               },
               {
-                k: "Avg Unified Score",
+                k: "Median Unified Score",
                 tooltip:
-                  "Composite ranking score (0-100): 50% win rate + 30% trades confidence + 20% PnL influence.",
+                  meanUnifiedScore != null
+                    ? `Median of unifiedScore (0-100): 50% win rate + 30% trades confidence + 20% PnL influence. Mean for reference: ${meanUnifiedScore.toFixed(1)}.`
+                    : "Median of unifiedScore (0-100): 50% win rate + 30% trades confidence + 20% PnL influence.",
                 v:
-                  avgUnifiedScore != null ? (
-                    <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-50">
-                      {avgUnifiedScore.toFixed(1)}
-                    </span>
+                  medianUnifiedScore != null ? (
+                    <div className="space-y-1.5">
+                      <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-50">
+                        {medianUnifiedScore.toFixed(1)}
+                      </span>
+                      {meanUnifiedScore != null && Number.isFinite(meanUnifiedScore) ? (
+                        <div className="font-mono text-[10px] tabular-nums text-zinc-500">
+                          mean {meanUnifiedScore.toFixed(1)}
+                        </div>
+                      ) : null}
+                    </div>
                   ) : (
                     "—"
                   )
@@ -519,7 +552,7 @@ export function SmartMoneyLeaderboardConsole({
                   activeProbes24h != null ? (
                     <span className="font-mono text-3xl font-medium tabular-nums tracking-tight text-zinc-200">
                       {activeProbes24h}
-                      <span className="ml-1.5 text-sm font-normal text-zinc-500">24h</span>
+                      <span className="ml-2 text-sm font-normal text-zinc-500">/ 24h</span>
                     </span>
                   ) : (
                     "—"
@@ -745,9 +778,21 @@ export function SmartMoneyLeaderboardConsole({
                             <td className="px-5 py-5 font-mono text-[12px] tabular-nums text-zinc-500">{pf}</td>
                             <td className="px-5 py-5 font-mono text-[11px] tabular-nums text-zinc-500">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="whitespace-nowrap">
+                                <span className="whitespace-nowrap" title="Last time Sentinel polled this wallet (last_checked_at).">
                                   {leaderboardCheckedIso(w) ? formatDateTime(leaderboardCheckedIso(w)) : "—"}
                                 </span>
+                                {(() => {
+                                  const activityIso = leaderboardActivityIso(w);
+                                  if (!activityIso) return null;
+                                  return (
+                                    <span
+                                      className="whitespace-nowrap text-[10px] text-emerald-500/70"
+                                      title="Last on-chain activity (wallet_tokens.bought_at) — updated by Helius webhook on every tx, regardless of our signal gating."
+                                    >
+                                      · on-chain {relShort(activityIso)}
+                                    </span>
+                                  );
+                                })()}
                                 {(() => {
                                   const badge = inactivityDecayBadge(w);
                                   if (!badge) return null;
@@ -824,16 +869,21 @@ export function SmartMoneyLeaderboardConsole({
                           {timeframe}
                         </li>
                         <li>
-                          Avg book PnL (30D):{" "}
-                          {avgPnl30 != null ? (
+                          Median book PnL (30D):{" "}
+                          {medianPnl30 != null ? (
                             <span
-                              className={`font-mono tabular-nums ${avgPnl30 >= 0 ? "text-emerald-500/75" : "text-rose-500/75"}`}
+                              className={`font-mono tabular-nums ${medianPnl30 >= 0 ? "text-emerald-500/75" : "text-rose-500/75"}`}
                             >
-                              {avgPnl30 >= 0 ? "+" : "-"}${formatUsdWhole(Math.abs(avgPnl30))}
+                              {medianPnl30 >= 0 ? "+" : "-"}${formatUsdWhole(Math.abs(medianPnl30))}
                             </span>
                           ) : (
                             "—"
                           )}
+                          {meanPnl30 != null && Number.isFinite(meanPnl30) ? (
+                            <span className="ml-2 font-mono text-[11px] tabular-nums text-zinc-600">
+                              (mean {meanPnl30 >= 0 ? "+" : "-"}${formatUsdWhole(Math.abs(meanPnl30))})
+                            </span>
+                          ) : null}
                         </li>
                       </ul>
                       <p className="text-[12px] text-zinc-600">

@@ -675,6 +675,8 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
     const wallets = rows.map((r) => r.wallet).filter(Boolean);
     const bestByWallet = new Map();
     const behaviorByWallet = new Map();
+    /** wallet -> ISO string of most recent on-chain activity (wallet_tokens.bought_at) */
+    const onchainActivityByWallet = new Map();
     if (wallets.length) {
       const { data: sigs, error: sErr } = await supabase
         .from("smart_wallet_signals")
@@ -708,6 +710,36 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
           behaviorByWallet.set(key, br);
         }
       }
+
+      // smart_wallets.last_seen only moves when our gating emits a signal for that wallet
+      // (see smartWalletWebhookWire). That makes the "stale" badge dishonest: a wallet
+      // with 100k trades/day shows as stale just because we didn't emit a gated signal
+      // about it. wallet_tokens.bought_at, on the other hand, is upserted by Helius for
+      // any on-chain activity it sees. We use MAX(bought_at) per wallet as a fresher
+      // anchor for inactivity / staleness computations.
+      try {
+        const sinceIso = new Date(Date.now() - 60 * 86_400_000).toISOString(); // 60d cap
+        const { data: walletTokenRows, error: wtErr } = await supabase
+          .from("wallet_tokens")
+          .select("wallet_address, bought_at")
+          .in("wallet_address", wallets)
+          .gte("bought_at", sinceIso)
+          .order("bought_at", { ascending: false })
+          .limit(5000);
+        if (!wtErr && Array.isArray(walletTokenRows)) {
+          for (const row of walletTokenRows) {
+            const w = String(row?.wallet_address || "");
+            const iso = row?.bought_at;
+            if (!w || !iso) continue;
+            const prev = onchainActivityByWallet.get(w);
+            if (!prev || new Date(iso).getTime() > new Date(prev).getTime()) {
+              onchainActivityByWallet.set(w, iso);
+            }
+          }
+        }
+      } catch (_) {
+        // Non-fatal: fall back to last_seen if wallet_tokens lookup fails.
+      }
     }
 
     const enriched = rows.map((r) => {
@@ -728,7 +760,18 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       const scoreVal = Number(score.toFixed(2));
       const profitFactor = approxProfitFactorFromWinRate(r.totalTrades, r.winRate);
 
-      const anchorForDecay = r.lastSeen != null ? r.lastSeen : r.smartWalletRowUpdatedAt;
+      // Use the freshest of: smart_wallets.last_seen (gated-signal only) and the most
+      // recent wallet_tokens.bought_at (any on-chain activity). This makes the "stale"
+      // badge reflect reality instead of our gating policy.
+      const onchainIso = onchainActivityByWallet.get(r.wallet) || null;
+      const lastSeenIso = r.lastSeen || null;
+      let anchorForDecay = null;
+      if (onchainIso && lastSeenIso) {
+        anchorForDecay =
+          new Date(onchainIso).getTime() >= new Date(lastSeenIso).getTime() ? onchainIso : lastSeenIso;
+      } else {
+        anchorForDecay = onchainIso || lastSeenIso || r.smartWalletRowUpdatedAt || null;
+      }
       const daysInactive = daysInactiveFromAnchor(anchorForDecay);
       const decayMultiplier = leaderboardInactivityDecayMultiplier(daysInactive);
       const baseForRanking =
@@ -748,6 +791,8 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
         profitFactor,
         rankingScore,
         decayMultiplier,
+        lastOnchainActivityAt: onchainIso,
+        activityAnchor: onchainIso ? "wallet_tokens.bought_at" : lastSeenIso ? "smart_wallets.last_seen" : "smart_wallets.updated_at",
         daysInactive:
           daysInactive != null && Number.isFinite(daysInactive) ? Number(daysInactive.toFixed(2)) : null,
         profile: wb
@@ -781,7 +826,12 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
     // Compute freshness signals so the UI can display "Updated Xm ago" without guessing.
     let dataComputedAt = null;
     for (const r of sorted) {
-      const candidates = [r.lastCheckedAt, r.smartWalletRowUpdatedAt, r.profile?.computedAt];
+      const candidates = [
+        r.lastOnchainActivityAt,
+        r.lastCheckedAt,
+        r.smartWalletRowUpdatedAt,
+        r.profile?.computedAt
+      ];
       for (const iso of candidates) {
         if (!iso) continue;
         if (dataComputedAt == null || new Date(iso).getTime() > new Date(dataComputedAt).getTime()) {
