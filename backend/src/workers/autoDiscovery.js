@@ -2,12 +2,40 @@
 
 const { getSupabase } = require("../lib/supabase");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
+const { fetchWalletTransactions } = require("../services/heliusTransactions");
+const { detectInventoryRoundTrips } = require("../services/walletRoundTripDetector");
 
 const PROMOTION_TICK_MS = Math.max(60 * 60 * 1000, Number(process.env.AUTO_DISCOVERY_PROMOTION_TICK_MS || 6 * 60 * 60 * 1000));
 const LOOKBACK_MINUTES = Math.max(5, Math.min(24 * 60, Number(process.env.AUTO_DISCOVERY_SIGNAL_LOOKBACK_MIN || 90)));
 const MAX_WALLETS_PER_SIGNAL = Math.max(1, Math.min(100, Number(process.env.AUTO_DISCOVERY_MAX_WALLETS_PER_SIGNAL || 25)));
 const PROMOTION_MIN_SCORE = Math.max(0, Math.min(1, Number(process.env.AUTO_DISCOVERY_PROMOTION_MIN_SCORE || 0.65)));
 const PROMOTION_BATCH = Math.max(1, Math.min(200, Number(process.env.AUTO_DISCOVERY_PROMOTION_BATCH || 50)));
+
+// --- Helius round-trip enrichment thresholds (used in promotionEligible) ---
+// These gates ensure only *actually profitable* wallets get promoted to smart_wallets.
+const PROMOTION_MIN_WIN_RATE_OBSERVED = Math.max(
+  0,
+  Math.min(1, Number(process.env.AUTO_DISCOVERY_MIN_WIN_RATE_OBSERVED || 0.55))
+);
+const PROMOTION_MIN_CLOSED_TRADES = Math.max(
+  1,
+  Number(process.env.AUTO_DISCOVERY_MIN_CLOSED_TRADES || 5)
+);
+const PROMOTION_MIN_WEIGHTED_SOL_PNL = Number(process.env.AUTO_DISCOVERY_MIN_WEIGHTED_SOL_PNL ?? 0);
+// Bot heuristic: tx-per-hour above this flags is_likely_bot. 30/hr is aggressive
+// (legitimate sniper wallets rarely sustain >0.5 tx/hr; arbitrage bots hit 100s).
+const BOT_TX_PER_HOUR_THRESHOLD = Math.max(
+  1,
+  Number(process.env.AUTO_DISCOVERY_BOT_TX_PER_HOUR || 30)
+);
+// How many signatures of the candidate's recent history to fetch from Helius.
+// Bounded so we don't blow the Helius budget on the cron.
+const ENRICHMENT_SIG_LIMIT = Math.max(
+  10,
+  Math.min(200, Number(process.env.AUTO_DISCOVERY_ENRICHMENT_SIG_LIMIT || 80))
+);
+const ENRICHMENT_ENABLED =
+  String(process.env.AUTO_DISCOVERY_ROUND_TRIP_ENRICHMENT_ENABLED || "true").toLowerCase() !== "false";
 
 let promotionIntervalRef = null;
 let lastDiscoveryAt = null;
@@ -49,7 +77,86 @@ function promotionEligible(row) {
   if (String(row?.status || "candidate") !== "candidate") return false;
   const score = Number(row?.candidate_score || 0);
   const closedTrades = Number(row?.closed_trades || 0);
-  return score >= PROMOTION_MIN_SCORE && closedTrades >= 3;
+  const winRateObserved = Number(row?.win_rate_observed || 0);
+  const weightedPnl = Number(row?.weighted_avg_sol_pnl || 0);
+  if (score < PROMOTION_MIN_SCORE) return false;
+  if (closedTrades < PROMOTION_MIN_CLOSED_TRADES) return false;
+  if (winRateObserved < PROMOTION_MIN_WIN_RATE_OBSERVED) return false;
+  if (weightedPnl < PROMOTION_MIN_WEIGHTED_SOL_PNL) return false;
+  return true;
+}
+
+/**
+ * Pull the candidate's recent Solana history via Helius, run the SPL-inventory
+ * round-trip detector, and persist the resulting metrics back onto the
+ * auto_discovered_wallets row. This is what makes promotionEligible() actually
+ * mean "wallet is profitable on chain" instead of "the signal that touched this
+ * wallet performed well".
+ *
+ * Returns the updated metric snapshot or null on failure (failure is non-fatal:
+ * the next promotion tick will retry).
+ */
+async function enrichCandidateWithRoundTripMetrics(supabase, candidate) {
+  if (!ENRICHMENT_ENABLED) return null;
+  const wallet = String(candidate?.wallet_address || "").trim();
+  if (!wallet || !isProbableSolanaPubkey(wallet)) return null;
+
+  let parsedTransactions = [];
+  try {
+    const { transactions } = await fetchWalletTransactions(wallet, { limit: ENRICHMENT_SIG_LIMIT });
+    parsedTransactions = (Array.isArray(transactions) ? transactions : []).map((tx) => ({
+      tx,
+      signature: tx?.transaction?.signatures?.[0] || null
+    }));
+  } catch (e) {
+    console.warn(`[auto-discovery] round-trip fetch ${wallet}: ${e?.message || e}`);
+    return null;
+  }
+  if (!parsedTransactions.length) return null;
+
+  const result = detectInventoryRoundTrips(parsedTransactions, wallet);
+  const m = result?.metrics || {};
+
+  // Cheap tx-rate heuristic from the fetched window.
+  const blockTimes = parsedTransactions
+    .map((entry) => Number(entry?.tx?.blockTime))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  let txPerHour = 0;
+  if (blockTimes.length >= 2) {
+    const spanSec = Math.max(1, Math.max(...blockTimes) - Math.min(...blockTimes));
+    txPerHour = (blockTimes.length / spanSec) * 3600;
+  }
+  const isLikelyBot = txPerHour > BOT_TX_PER_HOUR_THRESHOLD;
+
+  const metricsPayload = {
+    closed_trades: Number(m.closedTrades || 0),
+    wins_observed: Number(m.wins || 0),
+    win_rate_observed: Number(m.winRateObserved || 0),
+    avg_sol_pnl_per_cycle: Number(m.avgSolPnl || 0),
+    weighted_avg_sol_pnl: Number(m.weightedAvgSolPnl || 0),
+    total_sol_moved: Number(m.totalSolMoved || 0),
+    tx_per_hour: Number(txPerHour),
+    is_likely_bot: isLikelyBot,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    const { error: updErr } = await supabase
+      .from("auto_discovered_wallets")
+      .update(metricsPayload)
+      .eq("wallet_address", wallet);
+    if (updErr) {
+      console.warn(`[auto-discovery] round-trip update ${wallet}: ${updErr.message || updErr}`);
+      return null;
+    }
+  } catch (e) {
+    console.warn(`[auto-discovery] round-trip persist ${wallet}: ${e?.message || e}`);
+    return null;
+  }
+
+  // Return a merged candidate snapshot so the caller can decide eligibility
+  // immediately without re-querying.
+  return { ...candidate, ...metricsPayload };
 }
 
 async function safeSupabase() {
@@ -193,8 +300,28 @@ async function runPromotionTick() {
     if (error) throw new Error(error.message || "auto_discovery_query_failed");
 
     const rows = data || [];
-    const eligible = rows.filter(promotionEligible);
-    const rejected = rows.filter((row) => !promotionEligible(row) && row.is_likely_bot);
+
+    // Enrich every candidate with on-chain round-trip metrics BEFORE deciding
+    // eligibility. This is what actually closes the "wallets rentables" gap:
+    // promotionEligible() now sees real win_rate_observed / weighted_avg_sol_pnl
+    // computed from Helius transactions, not placeholder zeros from ingest.
+    const enrichedRows = [];
+    let enrichErrors = 0;
+    let likelyBots = 0;
+    for (const row of rows) {
+      try {
+        const enriched = await enrichCandidateWithRoundTripMetrics(supabase, row);
+        const merged = enriched || row;
+        if (merged?.is_likely_bot) likelyBots += 1;
+        enrichedRows.push(merged);
+      } catch (e) {
+        enrichErrors += 1;
+        enrichedRows.push(row);
+      }
+    }
+
+    const eligible = enrichedRows.filter(promotionEligible);
+    const rejected = enrichedRows.filter((row) => !promotionEligible(row) && row.is_likely_bot);
     const nowIso = new Date().toISOString();
     let promoted = 0;
 
@@ -235,7 +362,15 @@ async function runPromotionTick() {
         .in("wallet_address", rejected.map((row) => row.wallet_address));
     }
 
-    lastPromotionStats = { examined: rows.length, promoted, rejected: rejected.length, error: null };
+    lastPromotionStats = {
+      examined: rows.length,
+      enriched: enrichedRows.length,
+      enrichErrors,
+      likelyBots,
+      promoted,
+      rejected: rejected.length,
+      error: null
+    };
   } catch (error) {
     lastPromotionStats = { ...lastPromotionStats, error: error?.message || "promotion_failed" };
     console.warn("[auto-discovery] promotion:", error?.message || error);
@@ -267,6 +402,12 @@ function getAutoDiscoveryStatus() {
     promotionEnabled: isPromotionEnabled(),
     promotionTickMs: PROMOTION_TICK_MS,
     promotionMinScore: PROMOTION_MIN_SCORE,
+    promotionMinWinRateObserved: PROMOTION_MIN_WIN_RATE_OBSERVED,
+    promotionMinClosedTrades: PROMOTION_MIN_CLOSED_TRADES,
+    promotionMinWeightedSolPnl: PROMOTION_MIN_WEIGHTED_SOL_PNL,
+    botTxPerHourThreshold: BOT_TX_PER_HOUR_THRESHOLD,
+    enrichmentEnabled: ENRICHMENT_ENABLED,
+    enrichmentSigLimit: ENRICHMENT_SIG_LIMIT,
     maxWalletsPerSignal: MAX_WALLETS_PER_SIGNAL,
     lookbackMinutes: LOOKBACK_MINUTES,
     lastDiscoveryAt,

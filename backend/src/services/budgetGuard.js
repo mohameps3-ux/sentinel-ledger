@@ -20,9 +20,12 @@ function budgetGuardEnabled() {
   return String(process.env.FF_BUDGET_GUARD ?? "true").toLowerCase() !== "false";
 }
 
+// Doubled default: 330k -> 660k credits/day. Helius can absorb the higher
+// quota for discovery + round-trip enrichment without touching Flipside,
+// Supabase or OpenAI usage. Set DAILY_BUDGET_LIMIT in Railway to override.
 function dailyBudgetLimit() {
-  const n = Number(process.env.DAILY_BUDGET_LIMIT ?? 330_000);
-  if (!Number.isFinite(n) || n < 1000) return 330_000;
+  const n = Number(process.env.DAILY_BUDGET_LIMIT ?? 660_000);
+  if (!Number.isFinite(n) || n < 1000) return 660_000;
   return Math.min(50_000_000, Math.floor(n));
 }
 
