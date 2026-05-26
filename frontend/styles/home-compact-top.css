@@ -40,119 +40,136 @@
   white-space: nowrap !important;
 }
 
-/* Exact compacting of the HomeSettings panel: one horizontal shelf. */
-div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 12px !important;
-  min-height: 38px !important;
-  padding: 6px 8px !important;
-}
-
-/* Decision mode first. */
-div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] > section:nth-child(2) {
-  order: 0 !important;
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 8px !important;
-  min-width: 0 !important;
-  border-top: 0 !important;
-  padding-top: 0 !important;
-}
-
-/* Opportunity focus second. */
-div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] > section:nth-child(1) {
-  order: 1 !important;
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 8px !important;
-  min-width: 0 !important;
-}
-
-/* Turn each section into label + pills on the same line. */
-div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] > section > div,
-div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] > section > div:first-child {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 8px !important;
-  min-width: 0 !important;
-}
-
-div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] p {
-  margin: 0 !important;
-  white-space: nowrap !important;
-}
-
-/* Settings descriptions visible on mobile (C8.C); hidden on desktop shelf. */
-@media (max-width: 768px) {
-  div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] p.text-sl-muted {
-    display: block !important;
-    font-size: 9px !important;
-    line-height: 1.25 !important;
-    max-width: 14rem;
-    white-space: normal !important;
-  }
-}
-
+/* Desktop: compact horizontal shelf for HomeSettings. */
 @media (min-width: 769px) {
-  div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] p.text-sl-muted {
-    display: none !important;
+  .home-settings-panel {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    min-height: 38px !important;
+    padding: 6px 8px !important;
   }
-}
 
-div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] p.text-\[11px\] {
-  font-size: 9px !important;
-  line-height: 1 !important;
-  text-transform: uppercase !important;
-  letter-spacing: .1em !important;
-  color: rgba(228,228,231,.8) !important;
-}
-
-/* Compact all top shelf buttons. */
-div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] button {
-  padding: 3px 7px !important;
-  font-size: 9px !important;
-  line-height: 1.1 !important;
-  white-space: nowrap !important;
-}
-
-/* Put the sound toggle on the far right of the decision-mode header row. */
-.home-settings-panel > .home-settings-strategy .home-settings-sound {
-  margin-left: auto !important;
-}
-
-@media (max-width: 768px) {
-  /* Decision mode only: stack header + 3-column strategy pills on mobile. */
   .home-settings-panel > .home-settings-strategy {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    width: 100% !important;
-    order: unset !important;
+    order: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
     border-top: 0 !important;
     padding-top: 0 !important;
   }
 
-  .home-settings-panel > .home-settings-strategy .home-settings-strategy-header {
+  .home-settings-panel > .home-settings-profile {
+    order: 1 !important;
+    display: flex !important;
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
     align-items: center !important;
-    justify-content: space-between !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  .home-settings-panel > section > div,
+  .home-settings-panel > section > div:first-child {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  .home-settings-panel p {
+    margin: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .home-settings-panel p.text-sl-muted {
+    display: none !important;
+  }
+
+  .home-settings-panel p.text-\[11px\] {
+    font-size: 9px !important;
+    line-height: 1 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .1em !important;
+    color: rgba(228, 228, 231, .8) !important;
+  }
+
+  .home-settings-panel button {
+    padding: 3px 7px !important;
+    font-size: 9px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+  }
+
+  .home-settings-panel > .home-settings-strategy .home-settings-sound {
+    margin-left: auto !important;
+  }
+}
+
+/* Mobile: vertical stack, left-aligned grids — no horizontal shelf. */
+@media (max-width: 768px) {
+  .home-settings-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 8px 10px !important;
+    overflow: hidden !important;
+  }
+
+  .home-settings-panel > .home-settings-strategy,
+  .home-settings-panel > .home-settings-profile {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+  }
+
+  .home-settings-panel > .home-settings-strategy {
+    order: 0 !important;
+    border-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  .home-settings-panel > .home-settings-profile {
+    order: 1 !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+    padding-top: 10px !important;
+  }
+
+  .home-settings-panel p.text-sl-muted {
+    display: block !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+  }
+
+  .home-settings-panel > .home-settings-strategy .home-settings-strategy-header {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
     gap: 8px !important;
     width: 100% !important;
   }
 
   .home-settings-panel > .home-settings-strategy .home-settings-strategy-header > .min-w-0 {
-    flex: 1 1 auto !important;
+    flex: 1 1 60% !important;
     min-width: 0 !important;
   }
 
   .home-settings-panel > .home-settings-strategy .home-settings-sound {
-    margin-left: auto !important;
+    margin-left: 0 !important;
     flex-shrink: 0 !important;
   }
 
@@ -161,17 +178,22 @@ div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] butto
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 6px !important;
     width: 100% !important;
-    flex-wrap: unset !important;
+    justify-content: flex-start !important;
   }
 
-  .home-settings-panel > .home-settings-strategy .home-settings-strategy-modes button {
+  .home-settings-panel > .home-settings-strategy .home-settings-strategy-modes button,
+  .home-settings-panel > .home-settings-profile .home-settings-profile-modes button {
     width: 100% !important;
     text-align: center !important;
+    padding: 5px 4px !important;
+    font-size: 9px !important;
   }
-}
 
-@media (max-width: 900px) {
-  div[class*="bg-sl-card/40"][class*="border-white/[0.06]"][class*="px-2.5"] {
-    flex-wrap: wrap !important;
+  .home-settings-panel > .home-settings-profile .home-settings-profile-modes {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
   }
 }

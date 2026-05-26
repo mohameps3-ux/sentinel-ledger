@@ -264,7 +264,7 @@ function HomeSettings({ strategyMode, onStrategyModeChange, soundEnabled, onTogg
         <p className="text-[11px] font-semibold text-sl-text tracking-tight">
           {t("home.settings.profileTitle")}
         </p>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="home-settings-profile-modes flex flex-wrap items-center gap-2">
           {PROFILE_MODES.map((id) => (
             <button
               key={id}
