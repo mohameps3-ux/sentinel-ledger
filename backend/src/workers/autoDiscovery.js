@@ -6,6 +6,10 @@ const { fetchWalletTransactions } = require("../services/heliusTransactions");
 const { detectInventoryRoundTrips } = require("../services/walletRoundTripDetector");
 
 const PROMOTION_TICK_MS = Math.max(60 * 60 * 1000, Number(process.env.AUTO_DISCOVERY_PROMOTION_TICK_MS || 6 * 60 * 60 * 1000));
+const BATCH_DISCOVERY_TICK_MS = Math.max(
+  5 * 60 * 1000,
+  Number(process.env.AUTO_DISCOVERY_BATCH_TICK_MS || 15 * 60 * 1000)
+);
 const LOOKBACK_MINUTES = Math.max(5, Math.min(24 * 60, Number(process.env.AUTO_DISCOVERY_SIGNAL_LOOKBACK_MIN || 90)));
 const MAX_WALLETS_PER_SIGNAL = Math.max(1, Math.min(100, Number(process.env.AUTO_DISCOVERY_MAX_WALLETS_PER_SIGNAL || 25)));
 const PROMOTION_MIN_SCORE = Math.max(0, Math.min(1, Number(process.env.AUTO_DISCOVERY_PROMOTION_MIN_SCORE || 0.65)));
@@ -38,6 +42,7 @@ const ENRICHMENT_ENABLED =
   String(process.env.AUTO_DISCOVERY_ROUND_TRIP_ENRICHMENT_ENABLED || "true").toLowerCase() !== "false";
 
 let promotionIntervalRef = null;
+let batchDiscoveryIntervalRef = null;
 let lastDiscoveryAt = null;
 let lastPromotionStartedAt = null;
 let lastPromotionFinishedAt = null;
@@ -200,9 +205,9 @@ async function walletsForWinningMint(supabase, mint, timestamp) {
   if (primary.length === 0) {
     const { data: wt, error: wtErr } = await supabase
       .from("wallet_tokens")
-      .select("wallet_address, created_at")
+      .select("wallet_address, bought_at")
       .eq("token_address", mint)
-      .order("created_at", { ascending: false })
+      .order("bought_at", { ascending: false, nullsFirst: false })
       .limit(MAX_WALLETS_PER_SIGNAL);
     if (!wtErr && Array.isArray(wt) && wt.length > 0) {
       const fallback = [];
@@ -210,7 +215,7 @@ async function walletsForWinningMint(supabase, mint, timestamp) {
         const wallet = String(row?.wallet_address || "").trim();
         if (!isProbableSolanaPubkey(wallet) || seen.has(wallet)) continue;
         seen.add(wallet);
-        fallback.push({ wallet_address: wallet, confidence: 50, created_at: row.created_at });
+        fallback.push({ wallet_address: wallet, confidence: 50, created_at: row.bought_at });
       }
       return fallback;
     }
@@ -381,15 +386,38 @@ async function runPromotionTick() {
 }
 
 function startPromotionCron() {
-  if (promotionIntervalRef) return;
-  if (!isEnabled() || !isPromotionEnabled()) {
-    console.log("[auto-discovery] promotion cron disabled");
+  if (!isEnabled()) {
+    console.log("[auto-discovery] disabled via AUTO_DISCOVERY_ENABLED");
     return;
   }
-  // On startup: backfill candidates from recent wins, then promote.
-  runBatchDiscovery({ lookbackHours: 48, minWinPct: 1.0 })
-    .then(() => runPromotionTick())
-    .catch((e) => console.warn("[auto-discovery] bootstrap batch+promotion:", e?.message || e));
+
+  const batchParams = {
+    lookbackHours: Math.max(1, Number(process.env.AUTO_DISCOVERY_BATCH_LOOKBACK_HOURS || 24)),
+    minWinPct: Number(process.env.AUTO_DISCOVERY_BATCH_MIN_WIN_PCT || 50),
+    limit: Math.max(10, Math.min(500, Number(process.env.AUTO_DISCOVERY_BATCH_LIMIT || 100)))
+  };
+
+  if (!batchDiscoveryIntervalRef) {
+    runBatchDiscovery(batchParams)
+      .then((r) => console.log("[auto-discovery] bootstrap batch:", r))
+      .catch((e) => console.warn("[auto-discovery] bootstrap batch:", e?.message || e));
+    batchDiscoveryIntervalRef = setInterval(() => {
+      runBatchDiscovery(batchParams)
+        .then((r) => {
+          if (r?.totalCandidates > 0) console.log("[auto-discovery] batch tick:", r);
+        })
+        .catch((e) => console.warn("[auto-discovery] batch tick:", e?.message || e));
+    }, BATCH_DISCOVERY_TICK_MS);
+    if (typeof batchDiscoveryIntervalRef.unref === "function") batchDiscoveryIntervalRef.unref();
+  }
+
+  if (promotionIntervalRef) return;
+  if (!isPromotionEnabled()) {
+    console.log("[auto-discovery] promotion cron disabled (batch discovery still active)");
+    return;
+  }
+
+  runPromotionTick().catch((e) => console.warn("[auto-discovery] bootstrap promotion:", e?.message || e));
   promotionIntervalRef = setInterval(() => {
     runPromotionTick().catch((e) => console.warn("[auto-discovery] promotion tick:", e?.message || e));
   }, PROMOTION_TICK_MS);
