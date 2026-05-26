@@ -13,7 +13,7 @@ const { getSupabase } = require("../lib/supabase");
 const { getOpsPostgresPool } = require("../lib/opsPostgresPool");
 const { insertOpsAuditLog } = require("../lib/opsAuditLog");
 const opsToolsRouter = require("./opsTools");
-const { isToolUseEnabled, runOpsAgentLoop } = require("../services/opsAgentLoop");
+const { isToolUseEnabled, runOpsAgentLoop, getAutonomyMode, isFullAutonomyMode } = require("../services/opsAgentLoop");
 const { OPS_AGENT_TOOLS } = require("../services/opsAgentTools");
 
 const router = express.Router();
@@ -510,9 +510,41 @@ async function maybeExecuteAuthorizedOps(message) {
 function buildSystemPrompt(ctx, executionSummary) {
   const ctxStr = JSON.stringify(ctx, null, 2);
   const execStr = executionSummary ? JSON.stringify(executionSummary, null, 2) : null;
-  return `Eres el **Director General / Arquitecto de Sentinel** (consola interna de ops). Ámbito mental: **todo el producto** — motor, ingestión, señales, smart money, wallets, track record, UI/UX, despliegues y datos — aunque aquí solo veas un subconjunto en el JSON.
+  const autonomyMode = getAutonomyMode();
+  const fullAutonomyBlock =
+    autonomyMode === "full"
+      ? `
+AUTONOMY MODE: FULL.
+Ejecuta cualquier tool necesaria sin pedir confirmación al operador.
+No preguntes "¿quieres que…?". Ejecuta y reporta resultado.
+Si una tool falla, intenta diagnóstico y fix por tu cuenta hasta agotar iteraciones.
+El operador NO va a confirmar nada. No esperes input humano intermedio.
+Respeta caps operativos del loop (max tools, SQL writes, deploys, commits); si un cap se alcanza, reporta qué se hizo y qué quedó pendiente sin pedir confirmación.
+`
+      : "";
 
-CONTRATO DE LÍMITES (léelo antes de prometer): en el JSON, **sentinelDirectorMap** = mapa breve (mayo 2026): qué está bloqueado, qué sí existe, y que **siempre** hace falta confirmación explícita del operador para efectos.
+  const toolUseBlock =
+    autonomyMode === "full"
+      ? `TOOL USE AGENTIC (OPS_AGENT_TOOL_USE_ENABLED=true, AUTONOMY=full):
+- Tienes ${OPS_AGENT_TOOLS.length} herramientas; **todas** se ejecutan automáticamente en este turno.
+- Invoca directamente: diagnóstico → fix → commit → deploy → verificación en la misma conversación cuando proceda.
+- No devuelvas payloads JSON para que el operador dispare manualmente salvo que una tool falle por cap o circuit breaker.
+`
+      : `TOOL USE AGENTIC (cuando OPS_AGENT_TOOL_USE_ENABLED=true, AUTONOMY=strict):
+- Tienes ${OPS_AGENT_TOOLS.length} herramientas invocables durante la misma petición.
+- **Auto** (sin confirmación): repo_read, sql_select, health_probe, public_api_probe, redis_inspect, calibration_status, bulk_update_dry_run.
+- **Requieren confirmación**: sql_write, sql_dangerous, bulk_update_apply, calibration_run, tuner_run, rollback_calibration, deploy, env_update, github_commit, github_workflow.
+- Si una tool devuelve confirmation_required, pide al operador: \`OK EJECUTAR <acción>\`, \`CONFIRM TOOL <nombre>\`, o \`confirmTools: ["nombre"]\` en el body.
+- No invoques tools destructivas sin confirmación explícita del operador en el mismo turno o vía confirmTools.`;
+
+  const limitsContract =
+    autonomyMode === "full"
+      ? "CONTRATO DE LÍMITES: en modo FULL ejecutas tools directamente; el audit log registra todo. Caps del loop (iteraciones, SQL writes, deploys) son hard limits — no confirmación humana."
+      : "CONTRATO DE LÍMITES (léelo antes de prometer): en el JSON, **sentinelDirectorMap** = mapa breve (mayo 2026): qué está bloqueado, qué sí existe, y que **siempre** hace falta confirmación explícita del operador para efectos.";
+
+  return `Eres el **Director General / Arquitecto de Sentinel** (consola interna de ops). Ámbito mental: **todo el producto** — motor, ingestión, señales, smart money, wallets, track record, UI/UX, despliegues y datos — aunque aquí solo veas un subconjunto en el JSON.
+${fullAutonomyBlock}
+${limitsContract}
 
 MANDATO DEL OPERADOR (prioridad absoluta, sin discutir el “si”):
 - **Inmersión total antes de tocar nada**: primero entender flujo end-to-end, dependencias y contratos entre piezas.
@@ -539,12 +571,7 @@ EJECUCIÓN AUTOMÁTICA (enganchada en este backend):
 - Si \`OPS_AUTO_EXECUTE_CALIBRATION=true\` y la última calibración **exitosa** tiene >24h y el operador **no** vetó ("no toques pesos/weights"), puede ejecutarse **auto_calibration** antes del LLM (ver **EJECUCIÓN_EN_ESTA_PETICIÓN**).
 - Resume solo lo que venga en **EJECUCIÓN_EN_ESTA_PETICIÓN**; no inventes otras ejecuciones.
 
-TOOL USE AGENTIC (cuando OPS_AGENT_TOOL_USE_ENABLED=true):
-- Tienes ${OPS_AGENT_TOOLS.length} herramientas invocables durante la misma petición.
-- **Auto** (sin confirmación): repo_read, sql_select, health_probe, public_api_probe, redis_inspect, calibration_status, bulk_update_dry_run.
-- **Requieren confirmación**: sql_write, sql_dangerous, bulk_update_apply, calibration_run, tuner_run, rollback_calibration, deploy, env_update, github_commit, github_workflow.
-- Si una tool devuelve confirmation_required, pide al operador: \`OK EJECUTAR <acción>\`, \`CONFIRM TOOL <nombre>\`, o \`confirmTools: ["nombre"]\` en el body.
-- No invoques tools destructivas sin confirmación explícita del operador en el mismo turno o vía confirmTools.
+${toolUseBlock}
 
 CAPACIDADES OPS (HTTP + \`x-ops-key\`; ver JSON **opsConsoleLimits** y **herramientasQueSiExisten**):
 - **SQL**: \`/ops/tools/sql\` (SELECT / DML / DDL con flags) y \`/ops/tools/sql/auto\` (DML/DDL auditado \`auto_executed\`, \`dangerConfirm\` si \`estimatedRows\`>1000).
@@ -612,17 +639,18 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
     const ran = [...(autoCal.ran || []), ...(execLog.ran || [])];
 
     let userMsg = String(message).trim();
-    if (intent.ambiguous) {
+    const fullAutonomy = isFullAutonomyMode();
+    if (!fullAutonomy && intent.ambiguous) {
       userMsg =
         'AUTONOMÍA: Si pedías confirmación, responde en texto explícito p. ej. "CONFIRM deploy" o pega el JSON con confirm:true; un "sí" solo es ambiguo.\n\n' +
         userMsg;
     }
-    if (intent.destructiveBlocked) {
+    if (!fullAutonomy && intent.destructiveBlocked) {
       userMsg =
         "AUTONOMÍA: Hay lenguaje destructivo; DML/DDL requiere POST /api/v1/ops/tools/sql o /sql/auto con flags y confirm explícitos — no ejecutes por inferencia.\n\n" +
         userMsg;
     }
-    if (intent.requiresLiteralProdDeploy && !/\bCONFIRM\s+DEPLOY\s+PROD\b/i.test(message)) {
+    if (!fullAutonomy && intent.requiresLiteralProdDeploy && !/\bCONFIRM\s+DEPLOY\s+PROD\b/i.test(message)) {
       userMsg =
         "AUTONOMÍA: Deploy a producción requiere la frase literal CONFIRM DEPLOY PROD en el mensaje del operador si vas a disparar /ops/tools/deploy.\n\n" +
         userMsg;
@@ -631,6 +659,7 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
     const ctx = await buildOpsContext();
     ctx.operatorIntent = intent;
     ctx.agentToolUseEnabled = isToolUseEnabled();
+    ctx.agentAutonomyMode = getAutonomyMode();
     const systemPrompt = buildSystemPrompt(ctx, summarizeExecutionForPrompt(ran));
     const safeHistory = Array.isArray(history)
       ? history
@@ -671,7 +700,7 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
         };
 
         try {
-          writeEvent("started", { model, toolUseEnabled: true });
+          writeEvent("started", { model, toolUseEnabled: true, autonomyMode: getAutonomyMode() });
           const loopOut = await runLoop((ev) => writeEvent(ev.type, ev));
           writeEvent("done", {
             answer: loopOut.answer,
@@ -680,7 +709,9 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
             executed: ran,
             toolInvocations: loopOut.toolInvocations,
             truncated: loopOut.truncated,
-            stopReason: loopOut.stopReason
+            stopReason: loopOut.stopReason,
+            conversationId: loopOut.conversationId,
+            autonomyMode: loopOut.autonomyMode
           });
           return res.end();
         } catch (err) {
@@ -698,6 +729,8 @@ router.post("/message", requireOpsKey, agentLimiter, async (req, res) => {
         toolInvocations: loopOut.toolInvocations,
         truncated: loopOut.truncated,
         stopReason: loopOut.stopReason,
+        conversationId: loopOut.conversationId,
+        autonomyMode: loopOut.autonomyMode,
         toolUseEnabled: true
       });
     }

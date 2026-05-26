@@ -2,7 +2,8 @@
 
 /**
  * Anthropic tool definitions + executors for the ops Architect Agent.
- * Read/diagnostic tools auto-run; mutating tools require operator confirmation.
+ * Strict mode: read/diagnostic tools auto-run; mutating tools require confirmation.
+ * Full autonomy (OPS_AGENT_AUTONOMY_MODE=full): all tools auto-run with audit + caps.
  */
 
 const opsToolsRouter = require("../routes/opsTools");
@@ -21,26 +22,31 @@ const redis = require("../lib/cache");
 const PUBLIC_PROBE_TIMEOUT_MS = 2500;
 const MAX_SQL_ROWS = 200;
 
-/** @type {Record<string, "auto"|"requires_confirmation">} */
-const OPS_TOOL_LEVELS = {
-  repo_read: "auto",
-  sql_select: "auto",
-  sql_write: "requires_confirmation",
-  sql_dangerous: "requires_confirmation",
-  bulk_update_dry_run: "auto",
-  bulk_update_apply: "requires_confirmation",
-  health_probe: "auto",
-  public_api_probe: "auto",
-  redis_inspect: "auto",
-  calibration_status: "auto",
-  calibration_run: "requires_confirmation",
-  tuner_run: "requires_confirmation",
-  rollback_calibration: "requires_confirmation",
-  deploy: "requires_confirmation",
-  env_update: "requires_confirmation",
-  github_commit: "requires_confirmation",
-  github_workflow: "requires_confirmation"
+/** @type {Record<string, { level: "auto"|"requires_confirmation", autonomyLevel: "auto"|"requires_confirmation" }>} */
+const OPS_TOOL_META = {
+  repo_read: { level: "auto", autonomyLevel: "auto" },
+  sql_select: { level: "auto", autonomyLevel: "auto" },
+  sql_write: { level: "requires_confirmation", autonomyLevel: "requires_confirmation" },
+  sql_dangerous: { level: "requires_confirmation", autonomyLevel: "requires_confirmation" },
+  bulk_update_dry_run: { level: "auto", autonomyLevel: "auto" },
+  bulk_update_apply: { level: "requires_confirmation", autonomyLevel: "requires_confirmation" },
+  health_probe: { level: "auto", autonomyLevel: "auto" },
+  public_api_probe: { level: "auto", autonomyLevel: "auto" },
+  redis_inspect: { level: "auto", autonomyLevel: "auto" },
+  calibration_status: { level: "auto", autonomyLevel: "auto" },
+  calibration_run: { level: "requires_confirmation", autonomyLevel: "requires_confirmation" },
+  tuner_run: { level: "requires_confirmation", autonomyLevel: "requires_confirmation" },
+  rollback_calibration: { level: "requires_confirmation", autonomyLevel: "requires_confirmation" },
+  deploy: { level: "requires_confirmation", autonomyLevel: "requires_confirmation" },
+  env_update: { level: "requires_confirmation", autonomyLevel: "requires_confirmation" },
+  github_commit: { level: "requires_confirmation", autonomyLevel: "requires_confirmation" },
+  github_workflow: { level: "requires_confirmation", autonomyLevel: "requires_confirmation" }
 };
+
+/** Back-compat map: tool name → strict confirmation level */
+const OPS_TOOL_LEVELS = Object.fromEntries(
+  Object.entries(OPS_TOOL_META).map(([k, v]) => [k, v.level])
+);
 
 const PUBLIC_PROBE_ALLOW = [
   "/health",
@@ -283,8 +289,22 @@ const OPS_AGENT_TOOLS = [
   }
 ];
 
+function getAutonomyMode() {
+  const raw = String(process.env.OPS_AGENT_AUTONOMY_MODE || "strict").trim().toLowerCase();
+  return raw === "full" ? "full" : "strict";
+}
+
+function isFullAutonomyMode() {
+  return getAutonomyMode() === "full";
+}
+
 function getToolLevel(name) {
-  return OPS_TOOL_LEVELS[name] || "requires_confirmation";
+  return OPS_TOOL_META[name]?.level || "requires_confirmation";
+}
+
+function getToolAutonomyLevel(name) {
+  if (isFullAutonomyMode()) return "auto";
+  return OPS_TOOL_META[name]?.autonomyLevel || "requires_confirmation";
 }
 
 function isRedisKeyAllowed(key) {
@@ -548,10 +568,19 @@ const CONFIRM_KEYWORDS = {
 };
 
 /**
+ * Whether operator confirmation is required before executing this tool.
+ * Full autonomy mode never requires confirmation; strict mode uses tool level + manual overrides.
  * @param {string} toolName
- * @param {string} userMessage
- * @param {string[]} confirmTools explicit tool names from request body
+ * @param {object} [_input]
+ * @param {{ confirmed?: boolean, userMessage?: string, confirmTools?: string[] }} [ctx]
  */
+function shouldRequireConfirmation(toolName, _input = {}, ctx = {}) {
+  if (getAutonomyMode() === "full") return false;
+  if (ctx.confirmed === true) return false;
+  if (isToolConfirmed(toolName, ctx.userMessage || "", ctx.confirmTools || [])) return false;
+  return getToolLevel(toolName) === "requires_confirmation";
+}
+
 function isToolConfirmed(toolName, userMessage, confirmTools = []) {
   if (getToolLevel(toolName) === "auto") return true;
   if (Array.isArray(confirmTools) && confirmTools.includes(toolName)) return true;
@@ -593,12 +622,8 @@ async function executeOpsAgentTool(name, input = {}, ctx = {}) {
     return { ok: false, error: "unknown_tool", tool: toolName };
   }
 
-  const needsConfirm = getToolLevel(toolName) === "requires_confirmation";
-  const confirmed =
-    ctx.confirmed === true ||
-    isToolConfirmed(toolName, ctx.userMessage || "", ctx.confirmTools || []);
-
-  if (needsConfirm && !confirmed) {
+  const needsConfirm = shouldRequireConfirmation(toolName, input, ctx);
+  if (needsConfirm) {
     return confirmationRequiredPayload(toolName, input);
   }
 
@@ -685,7 +710,12 @@ async function executeOpsAgentTool(name, input = {}, ctx = {}) {
 module.exports = {
   OPS_AGENT_TOOLS,
   OPS_TOOL_LEVELS,
+  OPS_TOOL_META,
   getToolLevel,
+  getToolAutonomyLevel,
+  getAutonomyMode,
+  isFullAutonomyMode,
+  shouldRequireConfirmation,
   isToolConfirmed,
   executeOpsAgentTool
 };
