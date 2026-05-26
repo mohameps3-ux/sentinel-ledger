@@ -3,6 +3,28 @@ import { clampScore } from "../../lib/scannerTerminalModel.mjs";
 import { TerminalActionIcons } from "../terminal/TerminalActionIcons";
 import { formatCompact } from "../../lib/formatStable";
 
+const RAIL_CHIP = {
+  hot: "border-orange-400/30 bg-orange-500/10 text-orange-200",
+  live: "border-cyan-400/30 bg-cyan-500/10 text-cyan-200",
+  velocity: "border-lime-400/30 bg-lime-500/10 text-lime-200"
+};
+
+function SortHeader({ label, column, sortKey, onSortKeyChange, align = "left" }) {
+  const active = sortKey === column;
+  return (
+    <button
+      type="button"
+      onClick={() => onSortKeyChange(column)}
+      className={`py-2 font-medium transition-colors hover:text-zinc-300 ${align === "right" ? "text-right" : ""} ${
+        active ? "text-cyan-200" : ""
+      }`}
+    >
+      {label}
+      {active ? " ↓" : ""}
+    </button>
+  );
+}
+
 function EmptyState({ status, t }) {
   const isError = status?.kind && status.kind !== "no_data";
   const copy =
@@ -29,17 +51,29 @@ function EmptyState({ status, t }) {
   );
 }
 
-export function ScannerTokenTable({ rows, focusedMint, onFocusMint, t, status }) {
+export function ScannerTokenTable({ rows, focusedMint, onFocusMint, sortKey, onSortKeyChange, t, status }) {
   return (
     <div className="overflow-x-auto px-2 pb-4 pt-2 sm:px-3">
-      <table className="w-full min-w-[640px] border-collapse text-left">
+      <table className="w-full min-w-[720px] border-collapse text-left">
         <thead>
           <tr className="border-b border-white/10 text-[10px] font-mono uppercase tracking-[0.14em] text-zinc-500">
             <th className="py-2 pl-2 pr-3 font-medium sm:pl-3">{t("scanner.table.token")}</th>
-            <th className="py-2 pr-3 text-right font-medium">{t("scanner.table.score")}</th>
-            <th className="py-2 pr-3 text-right font-medium">{t("scanner.table.liquidity")}</th>
-            <th className="py-2 pr-3 text-right font-medium">{t("scanner.table.volume")}</th>
-            <th className="py-2 pr-3 text-right font-medium">{t("scanner.table.change")}</th>
+            <th className="py-2 pr-3 text-right">
+              <SortHeader label="Rail score" column="rail_score" sortKey={sortKey} onSortKeyChange={onSortKeyChange} align="right" />
+            </th>
+            <th className="py-2 pr-3 text-left font-medium">Rails</th>
+            <th className="py-2 pr-3 text-right">
+              <SortHeader label={t("scanner.table.score")} column="sentinelScore" sortKey={sortKey} onSortKeyChange={onSortKeyChange} align="right" />
+            </th>
+            <th className="py-2 pr-3 text-right">
+              <SortHeader label={t("scanner.table.liquidity")} column="liquidityUsd" sortKey={sortKey} onSortKeyChange={onSortKeyChange} align="right" />
+            </th>
+            <th className="py-2 pr-3 text-right">
+              <SortHeader label={t("scanner.table.volume")} column="volume24h" sortKey={sortKey} onSortKeyChange={onSortKeyChange} align="right" />
+            </th>
+            <th className="py-2 pr-3 text-right">
+              <SortHeader label={t("scanner.table.change")} column="change24h" sortKey={sortKey} onSortKeyChange={onSortKeyChange} align="right" />
+            </th>
             <th className="py-2 pr-2 text-right font-medium sm:pr-3">{t("scanner.table.route")}</th>
           </tr>
         </thead>
@@ -48,6 +82,8 @@ export function ScannerTokenTable({ rows, focusedMint, onFocusMint, t, status })
             const mint = token.tokenAddress || token.mint;
             const sym = String(token.token || token.symbol || "-").replace(/^\$/, "");
             const score = clampScore(token.sentinelScore);
+            const railScore = Number(token.rail_score);
+            const rails = Array.isArray(token.rails) ? token.rails : [];
             const liq = Number(token.liquidityUsd ?? token.liquidity ?? 0);
             const vol = Number(token.volume24h || 0);
             const change = Number(token.change ?? token.change24h ?? token.priceChange24h);
@@ -82,6 +118,23 @@ export function ScannerTokenTable({ rows, focusedMint, onFocusMint, t, status })
                   <span className="mt-0.5 block truncate text-[10px] text-zinc-600">
                     {mint ? `${String(mint).slice(0, 6)}...${String(mint).slice(-4)}` : "-"}
                   </span>
+                </td>
+                <td className="py-2.5 pr-3 text-right tabular-nums text-zinc-200">
+                  {Number.isFinite(railScore) ? railScore.toFixed(1) : "—"}
+                </td>
+                <td className="py-2.5 pr-3">
+                  <div className="flex flex-wrap gap-1">
+                    {rails.length
+                      ? rails.slice(0, 3).map((r) => (
+                          <span
+                            key={r}
+                            className={`rounded border px-1.5 py-0.5 text-[9px] uppercase tracking-wide ${RAIL_CHIP[r] || "border-white/10 text-zinc-500"}`}
+                          >
+                            {r}
+                          </span>
+                        ))
+                      : <span className="text-zinc-600">—</span>}
+                  </div>
                 </td>
                 <td className="py-2.5 pr-3 text-right tabular-nums">
                   <span className={`inline-flex min-w-9 justify-center rounded-md border px-2 py-1 ${scoreCls}`}>{score}</span>

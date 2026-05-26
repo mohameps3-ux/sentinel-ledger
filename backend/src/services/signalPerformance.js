@@ -343,6 +343,20 @@ async function recordSignalEmission(score, extra = {}) {
       if (error) return { ok: false, reason: error.message || "insert_failed" };
     }
     void reconcileTrackRecordLedgerAfterEmission(score, entryPriceUsd, payload.asset);
+    try {
+      if (global.io) {
+        const signalPayload = {
+          token_address: payload.asset,
+          confidence: payload.confidence,
+          signals: payload.signals,
+          emitted_at: row.emitted_at
+        };
+        global.io.to(payload.asset).emit("sentinel:signal", signalPayload);
+        global.io.to("rails").emit("sentinel:signal", signalPayload);
+      }
+    } catch (_) {
+      /* non-fatal */
+    }
     return { ok: true, dedupe: !!row.event_id };
   } catch (e) {
     return { ok: false, reason: e?.message || "insert_failed" };

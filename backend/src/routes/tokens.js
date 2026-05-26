@@ -6,6 +6,9 @@ const { getMarketData } = require("../services/marketData");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 
 const router = express.Router();
+const tokensRailsRouter = require("./tokensRails");
+
+router.use(tokensRailsRouter);
 
 function safeSupabase() {
   try {
