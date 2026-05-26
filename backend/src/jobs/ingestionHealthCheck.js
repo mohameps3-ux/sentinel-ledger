@@ -5,6 +5,8 @@ const { getSupabase } = require("../lib/supabase");
 const { getOpsPostgresPool } = require("../lib/opsPostgresPool");
 
 const { getHeliusWebhookTelemetry } = require("../lib/heliusWebhookTelemetry");
+const { getHeliusWebhookSyncTelemetry } = require("../lib/heliusWebhookSyncTelemetry");
+const { STALE_ALERT_MS: HELIUS_SYNC_STALE_MS } = require("./heliusWebhookSyncCron");
 
 const TICK_MS = Math.max(5 * 60 * 1000, Number(process.env.INGESTION_HEALTH_CHECK_MS || 60 * 60 * 1000));
 const HELIUS_SILENT_MINUTES = Math.max(30, Number(process.env.INGESTION_HELIUS_SILENT_MINUTES || 120));
@@ -22,6 +24,7 @@ let intervalRef = null;
 let lastHeliusAlertAt = 0;
 let lastDiscoveryAlertAt = 0;
 let lastWalletTokensAlertAt = 0;
+let lastHeliusSyncAlertAt = 0;
 
 function sortedStringify(value) {
   if (value === null || value === undefined) return "null";
@@ -169,7 +172,30 @@ async function runIngestionHealthCheckTick() {
     console.warn("[ingestion-health] wallet_tokens_silent_failures", metadata);
   }
 
-  return { signalAgeMin, discoveryAgeH, walletTokensErrors24h: wtErrors, walletTokensStale: wtStale };
+  const hs = getHeliusWebhookSyncTelemetry();
+  const hsLastRunIso = hs.helius_sync_last_run_at;
+  const hsLastRunMs = hsLastRunIso ? Date.parse(hsLastRunIso) : NaN;
+  const hsStale = !Number.isFinite(hsLastRunMs) || Date.now() - hsLastRunMs > HELIUS_SYNC_STALE_MS;
+  if (hsStale && now - lastHeliusSyncAlertAt > TICK_MS) {
+    lastHeliusSyncAlertAt = now;
+    const metadata = {
+      helius_sync_last_run_at: hsLastRunIso,
+      helius_sync_last_address_count: Number(hs.helius_sync_last_address_count) || 0,
+      helius_sync_last_error: hs.helius_sync_last_error,
+      stale_threshold_ms: HELIUS_SYNC_STALE_MS
+    };
+    await insertOpsAlertDirect("helius_sync_stale", metadata);
+    await postOpsAlert("helius_sync_stale", metadata);
+    console.warn("[ingestion-health] helius_sync_stale", metadata);
+  }
+
+  return {
+    signalAgeMin,
+    discoveryAgeH,
+    walletTokensErrors24h: wtErrors,
+    walletTokensStale: wtStale,
+    heliusSyncStale: hsStale
+  };
 }
 
 function startIngestionHealthCheckCron() {
@@ -196,7 +222,8 @@ function getIngestionHealthCheckStatus() {
     heliusSilentMinutes: HELIUS_SILENT_MINUTES,
     discoveryStallHours: DISCOVERY_STALL_HOURS,
     walletTokensErrorAlertThreshold: WALLET_TOKENS_ERROR_ALERT_THRESHOLD,
-    walletTokensStaleMs: WALLET_TOKENS_STALE_MS
+    walletTokensStaleMs: WALLET_TOKENS_STALE_MS,
+    heliusSyncStaleMs: HELIUS_SYNC_STALE_MS
   };
 }
 

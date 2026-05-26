@@ -88,6 +88,7 @@ const { startSolanaPoller } = require("./services/solanaPoller");
 const { startValidationOracle } = require("./workers/validationOracle");
 const { startPromotionCron: startAutoDiscoveryPromotionCron } = require("./workers/autoDiscovery");
 const { startIngestionHealthCheckCron } = require("./jobs/ingestionHealthCheck");
+const { startHeliusWebhookSyncCron } = require("./jobs/heliusWebhookSyncCron");
 const publicSurfaceRouter = require("./routes/publicSurface");
 const portfolioRouter = require("./routes/portfolio");
 const signalsRouter = require("./routes/signals");
@@ -116,6 +117,7 @@ const redis = require("./lib/cache");
 const { getIngestionSnapshot } = require("./ingestion/ingestionState");
 const { getDedupeStats } = require("./ingestion/dedupe");
 const { getHeliusWebhookTelemetry } = require("./lib/heliusWebhookTelemetry");
+const { getHeliusWebhookSyncTelemetry } = require("./lib/heliusWebhookSyncTelemetry");
 const { getTokensRailsTelemetry } = require("./lib/tokensRailsTelemetry");
 const { getMarketDataCircuitStatus, getMarketDataProviderStats } = require("./services/marketData");
 const { getDataFreshnessSnapshot } = require("./services/homeTerminalApi");
@@ -361,6 +363,7 @@ app.get("/health/ingestion", (_req, res) => {
     sources: snap.sources,
     dedupe: getDedupeStats(),
     ...helius,
+    ...getHeliusWebhookSyncTelemetry(),
     ...getTokensRailsTelemetry()
   });
 });
@@ -566,6 +569,7 @@ async function bootstrap() {
   startSignalOutcomeCron();
   startValidationOracle();
   startAutoDiscoveryPromotionCron();
+  startHeliusWebhookSyncCron();
   startIngestionHealthCheckCron();
   startCoordinationOutcomeCron({ skipInitialTick: Boolean(coordOutWarmed) });
   startSignalCalibratorCron({ skipInitialTick: true });
