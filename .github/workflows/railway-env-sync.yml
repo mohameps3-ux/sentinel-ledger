@@ -1,0 +1,70 @@
+# Sync ops agent env vars to Railway backend. Requires repository secrets:
+#   RAILWAY_TOKEN, RAILWAY_PROJECT_ID, RAILWAY_SERVICE_ID, RAILWAY_ENVIRONMENT_ID (or RAILWAY_PRODUCTION_ENVIRONMENT_ID)
+name: Railway ops agent env sync
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require Railway secrets
+        run: |
+          test -n "${{ secrets.RAILWAY_TOKEN }}" || (echo "Missing RAILWAY_TOKEN secret" && exit 1)
+          test -n "${{ secrets.RAILWAY_PROJECT_ID }}" || (echo "Missing RAILWAY_PROJECT_ID secret" && exit 1)
+          test -n "${{ secrets.RAILWAY_SERVICE_ID }}" || (echo "Missing RAILWAY_SERVICE_ID secret" && exit 1)
+
+      - name: Upsert variables via Railway GraphQL
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+          RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID || secrets.RAILWAY_PRODUCTION_ENVIRONMENT_ID }}
+        run: |
+          set -euo pipefail
+          ENV_ID="${RAILWAY_ENVIRONMENT_ID:-}"
+          if [ -z "$ENV_ID" ]; then
+            echo "Missing RAILWAY_ENVIRONMENT_ID or RAILWAY_PRODUCTION_ENVIRONMENT_ID"
+            exit 1
+          fi
+          upsert_var() {
+            local name="$1"
+            local value="$2"
+            payload=$(jq -nc --arg name "$name" --arg value "$value" \
+              --arg projectId "$RAILWAY_PROJECT_ID" \
+              --arg environmentId "$ENV_ID" \
+              --arg serviceId "$RAILWAY_SERVICE_ID" \
+              '{query:"mutation($input: VariableUpsertInput!){ variableUpsert(input: $input){ id } }",variables:{input:{projectId:$projectId,environmentId:$environmentId,serviceId:$serviceId,name:$name,value:$value}}}')
+            curl -sf -X POST https://backboard.railway.app/graphql/v2 \
+              -H "Authorization: Bearer $RAILWAY_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$payload" >/dev/null
+            echo "set $name"
+          }
+          upsert_var GITHUB_REPOSITORY "mohameps3-ux/sentinel-ledger"
+          upsert_var OPS_AGENT_TOOL_USE_ENABLED "true"
+          upsert_var OPS_AGENT_AUTONOMY_MODE "full"
+          upsert_var OPS_AGENT_MAX_TOOL_ITERATIONS "12"
+          upsert_var OPS_AGENT_MAX_TOOLS_PER_CONVERSATION "40"
+          upsert_var OPS_AGENT_MAX_SQL_WRITES_PER_CONVERSATION "10"
+          upsert_var OPS_AGENT_MAX_DEPLOYS_PER_CONVERSATION "2"
+          upsert_var OPS_AGENT_MAX_COMMITS_PER_CONVERSATION "5"
+          upsert_var OPS_REPO_READ_FALLBACK_GITHUB "1"
+          upsert_var OPS_REPO_READ_ALLOW_PREFIXES "frontend/,backend/,docs/,.github/"
+          upsert_var OPS_GITHUB_WRITE_ALLOW_PREFIXES "frontend/,backend/src/,docs/,.github/workflows/"
+
+      - name: Trigger redeploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+          RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID || secrets.RAILWAY_PRODUCTION_ENVIRONMENT_ID }}
+        run: |
+          payload=$(jq -nc \
+            --arg serviceId "$RAILWAY_SERVICE_ID" \
+            --arg environmentId "$RAILWAY_ENVIRONMENT_ID" \
+            '{query:"mutation($input: ServiceInstanceRedeployInput!){ serviceInstanceRedeploy(input: $input) }",variables:{input:{serviceId:$serviceId,environmentId:$environmentId}}}')
+          curl -sf -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$payload" || echo "redeploy mutation best-effort"

@@ -7,6 +7,8 @@
 
 const assert = require("assert");
 
+process.env.RULE_NEWWALLET_ENABLED = "true";
+
 const {
   normalizeEvent,
   assertSentinelEvent,

@@ -165,7 +165,7 @@ function parseGithubRepo() {
   const owner = String(process.env.GITHUB_REPO_OWNER || "").trim();
   const repo = String(process.env.GITHUB_REPO_NAME || "").trim();
   if (owner && repo) return { owner, repo };
-  return null;
+  return { owner: "mohameps3-ux", repo: "sentinel-ledger" };
 }
 
 function getGithubToken() {

@@ -1,4 +1,5 @@
 require("dotenv").config();
+require("./opsAgentProductionDefaults");
 
 const express = require("express");
 const http = require("http");
@@ -328,7 +329,12 @@ app.get("/health", async (_, res) => {
     },
     signalGate: getSignalGateOpsSnapshot(),
     signalGateTuner: getSignalGateTunerCronStatus(),
-    classifier: getClassifierStats()
+    classifier: getClassifierStats(),
+    autonomyMode: process.env.OPS_AGENT_AUTONOMY_MODE || "strict",
+    toolUseEnabled: String(process.env.OPS_AGENT_TOOL_USE_ENABLED || "").toLowerCase() === "true",
+    githubRepoConfigured: Boolean(String(process.env.GITHUB_REPOSITORY || "").trim()),
+    githubRepository: String(process.env.GITHUB_REPOSITORY || "").trim() || null,
+    opsAuditLog: require("./lib/ensureOpsAuditSchema").getOpsAuditSchemaState()
   };
   if (missingCritical.length) {
     return res.status(503).json(body);
@@ -536,6 +542,15 @@ async function bootstrap() {
   const tunerWarmed =
     isSignalGateTunerCronEnabled() && hydration[1] && hydration[1].status === "fulfilled";
   const coordOutWarmed = isCoordinationResolutionActive() && hydration[2] && hydration[2].status === "fulfilled";
+
+  try {
+    const { getOpsPostgresPool } = require("./lib/opsPostgresPool");
+    const { ensureOpsAuditSchema } = require("./lib/ensureOpsAuditSchema");
+    const pool = getOpsPostgresPool();
+    if (pool) await ensureOpsAuditSchema(pool);
+  } catch (e) {
+    console.warn("[bootstrap] ops audit schema ensure:", e?.message || e);
+  }
 
   if (isWorkersEnabled()) {
     startDeployerWorker();
