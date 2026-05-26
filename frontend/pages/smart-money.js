@@ -119,6 +119,11 @@ export default function SmartMoneyPage() {
     return Number.isFinite(n) && n > 0 ? n : null;
   }, [data?.meta?.totalSmartWallets]);
 
+  const totalBehaviorProfiles = useMemo(() => {
+    const n = Number(data?.meta?.totalBehaviorProfiles);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [data?.meta?.totalBehaviorProfiles]);
+
   // Server-counted active probes in the last 24h (NOT capped by the activity page limit).
   const activeProbes24hServer = useMemo(() => {
     const n = Number(activity.data?.meta?.activeProbes24h);
@@ -255,6 +260,7 @@ export default function SmartMoneyPage() {
           meanUnifiedScore={meanUnifiedScore}
           activeProbes24h={activeProbes24h}
           totalSmartWallets={totalSmartWallets}
+          totalBehaviorProfiles={totalBehaviorProfiles}
           dataComputedAt={dataComputedAt}
           onRefreshAll={refreshAll}
           profitableOnly={profitableOnly}

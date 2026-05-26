@@ -147,25 +147,94 @@ function buildNeighborWalletCounts(rows, windowMs = 10 * 60 * 1000) {
   return out;
 }
 
+/** Wallets to refresh on next behavior tick (signal outcomes, manual ops, etc.). */
+const behaviorRefreshQueue = new Set();
+
+const ELITE_MIN_RESOLVED_FOR_QUERY = Math.max(
+  3,
+  Number(process.env.WALLET_REPUTATION_ELITE_MIN_RESOLVED || 5)
+);
+
+function requestWalletBehaviorRefresh(walletAddress) {
+  const w = String(walletAddress || "").trim();
+  if (!w) return false;
+  behaviorRefreshQueue.add(w);
+  // Bound queue so a burst of signals cannot grow memory unbounded.
+  if (behaviorRefreshQueue.size > 500) {
+    const drop = behaviorRefreshQueue.size - 400;
+    const iter = behaviorRefreshQueue.values();
+    for (let i = 0; i < drop; i += 1) {
+      const next = iter.next();
+      if (next.done) break;
+      behaviorRefreshQueue.delete(next.value);
+    }
+  }
+  return true;
+}
+
+function drainBehaviorRefreshQueue(limit = 50) {
+  const lim = Math.max(0, Math.min(200, Math.floor(Number(limit) || 50)));
+  const out = [];
+  for (const w of behaviorRefreshQueue) {
+    out.push(w);
+    behaviorRefreshQueue.delete(w);
+    if (out.length >= lim) break;
+  }
+  return out;
+}
+
+async function getTopBehaviorWallets(limit = 80) {
+  const supabase = safeSupabase();
+  if (!supabase) return [];
+  const lim = Math.min(200, Math.max(1, Math.floor(Number(limit) || 80)));
+  const { data, error } = await supabase
+    .from("wallet_behavior_stats")
+    .select("wallet_address")
+    .gte("resolved_signals", ELITE_MIN_RESOLVED_FOR_QUERY)
+    .order("win_rate_real", { ascending: false })
+    .limit(lim);
+  if (error || !Array.isArray(data)) return [];
+  return data.map((r) => String(r.wallet_address || "")).filter(Boolean);
+}
+
 async function getActiveWallets(limit = 200) {
   const supabase = safeSupabase();
   if (!supabase) return { ok: false, reason: "supabase_unconfigured", rows: [] };
   const lim = Math.min(1000, Math.max(10, Math.floor(Number(limit) || 200)));
 
-  // Prefer wallets that recently emitted signals (last 7d) — these are the
-  // ones that actually matter for behavior memory. Stale wallets in smart_wallets
-  // by updated_at often have no recent activity and waste tick budget.
+  const seen = new Set();
+  const rows = [];
+
+  // 1) Priority queue from learning loop (signal resolves, ops, etc.)
+  for (const w of drainBehaviorRefreshQueue(Math.ceil(lim * 0.3))) {
+    if (seen.has(w)) continue;
+    seen.add(w);
+    rows.push(w);
+  }
+
+  // 2) Keep proven winners warm — top behavior by observed win rate.
+  const winnerShare = Math.ceil(lim * 0.4);
+  const topBehavior = await getTopBehaviorWallets(winnerShare);
+  for (const w of topBehavior) {
+    if (seen.has(w)) continue;
+    seen.add(w);
+    rows.push(w);
+    if (rows.length >= lim) break;
+  }
+
+  if (rows.length >= lim) return { ok: true, rows: rows.slice(0, lim) };
+
+  // 3) Recent signal emitters (last 7d) — wallets actively touching Sentinel.
   const since7d = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+  const remaining = lim - rows.length;
   const { data: recent, error: recentErr } = await supabase
     .from("smart_wallet_signals")
     .select("wallet_address")
     .gte("created_at", since7d)
     .order("created_at", { ascending: false })
-    .limit(lim * 3); // overfetch then dedupe
+    .limit(remaining * 3);
 
   if (!recentErr && Array.isArray(recent) && recent.length > 0) {
-    const seen = new Set();
-    const rows = [];
     for (const r of recent) {
       const w = String(r?.wallet_address || "").trim();
       if (!w || seen.has(w)) continue;
@@ -173,17 +242,24 @@ async function getActiveWallets(limit = 200) {
       rows.push(w);
       if (rows.length >= lim) break;
     }
-    if (rows.length > 0) return { ok: true, rows };
   }
+
+  if (rows.length >= lim) return { ok: true, rows: rows.slice(0, lim) };
 
   // Fallback: smart_wallets ordered by updated_at (original behavior).
   const { data, error } = await supabase
     .from("smart_wallets")
     .select("wallet_address")
     .order("updated_at", { ascending: false })
-    .limit(lim);
-  if (error) return { ok: false, reason: error.message || "query_failed", rows: [] };
-  return { ok: true, rows: (data || []).map((r) => String(r.wallet_address || "")).filter(Boolean) };
+    .limit(lim - rows.length);
+  if (error) return { ok: false, reason: error.message || "query_failed", rows: rows };
+  for (const r of data || []) {
+    const w = String(r?.wallet_address || "").trim();
+    if (!w || seen.has(w)) continue;
+    seen.add(w);
+    rows.push(w);
+  }
+  return { ok: true, rows };
 }
 
 async function computeWalletBehaviorForWindow({
@@ -541,6 +617,8 @@ module.exports = {
   getWalletBehaviorSummary,
   getWalletBehaviorTop,
   getWalletBehaviorTokenFeatures,
-  smartWalletProfileScoresFromBehaviorSummary
+  smartWalletProfileScoresFromBehaviorSummary,
+  requestWalletBehaviorRefresh,
+  drainBehaviorRefreshQueue
 };
 
