@@ -45,6 +45,10 @@ export default function SmartMoneyPage() {
   const [minTrades, setMinTrades] = useState(0);
   const [urlHydrated, setUrlHydrated] = useState(false);
   const [timeframe, setTimeframe] = useState("24h");
+  // Profitable-only mode: when ON, send minPnl30d=0 to the leaderboard so
+  // wallets with negative 30d PnL are filtered out at the SQL level. Default
+  // ON because the explicit user goal is "wallets rentables".
+  const [profitableOnly, setProfitableOnly] = useState(true);
 
   useEffect(() => {
     setUrlHydrated(true);
@@ -68,6 +72,19 @@ export default function SmartMoneyPage() {
     return s === "1" || s === "true";
   }, [urlHydrated, router.isReady, router.query.favorites]);
 
+  // Honour ?profitable=0 to opt out of the profitable-only default (e.g. for
+  // research, showing the full universe including money-losing bots).
+  useEffect(() => {
+    if (!urlHydrated || !router.isReady) return;
+    const raw = router.query.profitable;
+    const s = Array.isArray(raw) ? raw[0] : raw;
+    if (s === "0" || s === "false") {
+      setProfitableOnly(false);
+    } else if (s === "1" || s === "true") {
+      setProfitableOnly(true);
+    }
+  }, [urlHydrated, router.isReady, router.query.profitable]);
+
   const pushQuery = useCallback(
     (patch) => {
       if (!router.isReady) return;
@@ -84,6 +101,7 @@ export default function SmartMoneyPage() {
     chain,
     minWinRate,
     minTrades,
+    minPnl30d: profitableOnly ? 0 : null,
     limit,
     refetchInterval: 5000
   });
@@ -239,6 +257,11 @@ export default function SmartMoneyPage() {
           totalSmartWallets={totalSmartWallets}
           dataComputedAt={dataComputedAt}
           onRefreshAll={refreshAll}
+          profitableOnly={profitableOnly}
+          setProfitableOnly={(next) => {
+            setProfitableOnly(next);
+            pushQuery({ profitable: next ? undefined : "0" });
+          }}
           rawRowCount={rows.length}
           onClearFavoritesFilter={() => pushQuery({ favorites: undefined })}
           t={t}

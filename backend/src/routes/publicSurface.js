@@ -611,6 +611,15 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
     const minTrades = Math.min(100000, Math.max(0, Number(req.query.minTrades || 0)));
     const chain = String(req.query.chain || "solana").toLowerCase();
     const pageLimit = Math.min(100, Math.max(1, Number(req.query.limit ?? 50)));
+    // New: hard PnL gate so users can ask for "profitable wallets only".
+    // Pass minPnl30d=0 to require non-negative PnL; >0 for strictly profitable.
+    const minPnl30dRaw = req.query.minPnl30d;
+    const minPnl30d =
+      minPnl30dRaw === undefined || minPnl30dRaw === ""
+        ? null
+        : Number.isFinite(Number(minPnl30dRaw))
+          ? Number(minPnl30dRaw)
+          : null;
     const includeZeroTrade =
       String(req.query.includeZeroTrade || "")
         .trim()
@@ -625,6 +634,17 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       String(req.query.includeZeroWinRate || "")
         .trim()
         .toLowerCase() === "true";
+    // Exclude unvetted Helius webhook "shell" upserts (smart_score = 1) unless caller
+    // explicitly asks for the raw pool with ?includeShells=1. These are every swap
+    // signer Helius has ever seen — not real smart money.
+    const includeShells =
+      String(req.query.includeShells || "")
+        .trim()
+        .toLowerCase() === "1" ||
+      String(req.query.includeShells || "")
+        .trim()
+        .toLowerCase() === "true";
+    const SHELL_SMART_SCORE_THRESHOLD = 5;
 
     let q = supabase.from("smart_wallets").select("*");
     if (!includeZeroTrade) {
@@ -634,11 +654,20 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
       q = q.gt("win_rate", 0);
     }
     if (minWr > 0) q = q.gte("win_rate", minWr);
+    if (minPnl30d != null) q = q.gte("pnl_30d", minPnl30d);
+    if (!includeShells) q = q.gte("smart_score", SHELL_SMART_SCORE_THRESHOLD);
     if (maxStaleDays > 0) {
       const cutoffIso = new Date(Date.now() - maxStaleDays * 86_400_000).toISOString();
       q = q.gte("last_seen", cutoffIso);
     }
-    q = q.order("total_trades", { ascending: false }).limit(240);
+    // Pull a wider candidate pool ordered by quality (smart_score), not raw volume.
+    // total_trades DESC surfaced MEV/arbitrage bots with huge trade counts and
+    // negative PnL at the top. smart_score reflects Sentinel's composite quality
+    // signal; fall back to total_trades only as a tiebreaker.
+    q = q
+      .order("smart_score", { ascending: false, nullsFirst: false })
+      .order("total_trades", { ascending: false })
+      .limit(240);
     const { data, error } = await q;
     if (error) throw error;
 
@@ -871,10 +900,14 @@ router.get("/smart-wallets-leaderboard", async (req, res) => {
         filters: {
           minWinRate: minWr,
           minTrades,
+          minPnl30d,
           includeZeroTradeRows: includeZeroTrade,
           includeZeroWinRateRows: includeZeroWinRate,
+          includeShells,
+          shellSmartScoreThreshold: includeShells ? null : SHELL_SMART_SCORE_THRESHOLD,
           maxStaleDays: maxStaleDays || null,
-          freshnessColumn: "last_seen"
+          freshnessColumn: "last_seen",
+          orderBy: "smart_score DESC NULLS LAST, total_trades DESC"
         }
       }
     });
