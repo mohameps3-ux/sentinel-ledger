@@ -5,6 +5,8 @@ const DUST_TOLERANCE_BPS = 50; // 0.5%
 const BPS_DENOMINATOR = 10_000n;
 const MIN_ABSOLUTE_DUST_RAW = 1000n;
 const LAMPORTS_PER_SOL = 1_000_000_000;
+/** Fixed-point scale for Helius Enhanced UI token amounts (bigint inventory math). */
+const HELIUS_ENHANCED_TOKEN_SCALE = 1_000_000n;
 
 function asRawAmount(balance) {
   const raw = balance?.uiTokenAmount?.amount;
@@ -49,6 +51,91 @@ function nativeSolDelta(tx, walletAddress) {
   const post = Number(tx?.meta?.postBalances?.[idx]);
   if (!Number.isFinite(pre) || !Number.isFinite(post)) return 0;
   return (post - pre) / LAMPORTS_PER_SOL;
+}
+
+function isHeliusEnhancedTx(tx) {
+  return Boolean(
+    tx &&
+    typeof tx === "object" &&
+    tx.signature &&
+    (Array.isArray(tx.tokenTransfers) || Array.isArray(tx.nativeTransfers)) &&
+    !tx.meta?.preTokenBalances
+  );
+}
+
+function parseHeliusTokenAmountRaw(transfer) {
+  const amt = transfer?.tokenAmount;
+  if (amt == null) return 0n;
+  if (typeof amt === "object") {
+    const ui = amt.uiAmount ?? amt.uiAmountString;
+    if (ui != null) {
+      const n = Number(ui);
+      if (Number.isFinite(n) && n !== 0) {
+        return BigInt(Math.round(Math.abs(n) * Number(HELIUS_ENHANCED_TOKEN_SCALE)));
+      }
+    }
+  }
+  const n = Number(amt);
+  if (!Number.isFinite(n) || n === 0) return 0n;
+  return BigInt(Math.round(Math.abs(n) * Number(HELIUS_ENHANCED_TOKEN_SCALE)));
+}
+
+function buildInventoryEventFromHeliusEnhanced(enhanced, walletAddress) {
+  if (!enhanced || enhanced.transactionError) return null;
+
+  const tokenDeltas = new Map();
+  let realSolDelta = 0;
+
+  for (const nt of Array.isArray(enhanced.nativeTransfers) ? enhanced.nativeTransfers : []) {
+    const sol = Number(nt?.amount || 0) / LAMPORTS_PER_SOL;
+    if (nt?.toUserAccount === walletAddress) realSolDelta += sol;
+    if (nt?.fromUserAccount === walletAddress) realSolDelta -= sol;
+  }
+  if (enhanced.feePayer === walletAddress) {
+    realSolDelta -= Number(enhanced.fee || 0) / LAMPORTS_PER_SOL;
+  }
+
+  for (const transfer of Array.isArray(enhanced.tokenTransfers) ? enhanced.tokenTransfers : []) {
+    const mint = transfer?.mint;
+    if (!mint) continue;
+    const raw = parseHeliusTokenAmountRaw(transfer);
+    if (raw === 0n) continue;
+
+    if (mint === WSOL_MINT) {
+      const ui = Number(transfer.tokenAmount);
+      if (Number.isFinite(ui) && ui !== 0) {
+        if (transfer.toUserAccount === walletAddress) realSolDelta += ui;
+        if (transfer.fromUserAccount === walletAddress) realSolDelta -= ui;
+      }
+      continue;
+    }
+
+    if (transfer.toUserAccount === walletAddress) {
+      addBalance(tokenDeltas, mint, raw);
+    } else if (transfer.fromUserAccount === walletAddress) {
+      addBalance(tokenDeltas, mint, -raw);
+    }
+  }
+
+  if (!tokenDeltas.size) return null;
+
+  return {
+    signature: enhanced.signature || null,
+    blockTime: Number(enhanced.timestamp) || 0,
+    slot: Number(enhanced.slot) || 0,
+    tokenDeltas,
+    realSolDelta
+  };
+}
+
+function resolveInventoryEvent(entry, walletAddress) {
+  const tx = entry?.tx || entry;
+  const signature =
+    entry?.signature || tx?.signature || tx?.transaction?.signatures?.[0] || null;
+  if (isHeliusEnhancedTx(tx)) {
+    return buildInventoryEventFromHeliusEnhanced(tx, walletAddress);
+  }
+  return buildInventoryEvent(tx, walletAddress, signature);
 }
 
 function buildInventoryEvent(tx, walletAddress, signature = null) {
@@ -160,7 +247,7 @@ function scoreClosedCycles({ closedCycles, openPositions }) {
 
 function detectInventoryRoundTrips(parsedTransactions, walletAddress) {
   const events = (parsedTransactions || [])
-    .map((entry) => buildInventoryEvent(entry?.tx || entry, walletAddress, entry?.signature || null))
+    .map((entry) => resolveInventoryEvent(entry, walletAddress))
     .filter((event) => event && event.blockTime && event.tokenDeltas.size)
     .sort((a, b) => a.blockTime - b.blockTime || a.slot - b.slot);
 
@@ -221,6 +308,8 @@ function detectInventoryRoundTrips(parsedTransactions, walletAddress) {
 module.exports = {
   WSOL_MINT,
   DUST_TOLERANCE: 0.005,
+  isHeliusEnhancedTx,
   buildInventoryEvent,
+  buildInventoryEventFromHeliusEnhanced,
   detectInventoryRoundTrips
 };

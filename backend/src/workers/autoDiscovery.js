@@ -47,6 +47,9 @@ const ENRICHMENT_SIG_LIMIT = Math.max(
 );
 const ENRICHMENT_ENABLED =
   String(process.env.AUTO_DISCOVERY_ROUND_TRIP_ENRICHMENT_ENABLED || "true").toLowerCase() !== "false";
+// TODO: remove enrichment audit log after 72h (disable via AUTO_DISCOVERY_ENRICHMENT_AUDIT_LOG=false).
+const ENRICHMENT_AUDIT_LOG =
+  String(process.env.AUTO_DISCOVERY_ENRICHMENT_AUDIT_LOG || "true").toLowerCase() !== "false";
 
 let promotionIntervalRef = null;
 let batchDiscoveryIntervalRef = null;
@@ -121,7 +124,7 @@ async function enrichCandidateWithRoundTripMetrics(supabase, candidate) {
     });
     parsedTransactions = (Array.isArray(transactions) ? transactions : []).map((tx) => ({
       tx,
-      signature: tx?.transaction?.signatures?.[0] || null
+      signature: tx?.signature || tx?.transaction?.signatures?.[0] || null
     }));
   } catch (e) {
     console.warn(`[auto-discovery] round-trip fetch ${wallet}: ${e?.message || e}`);
@@ -134,7 +137,7 @@ async function enrichCandidateWithRoundTripMetrics(supabase, candidate) {
 
   // Cheap tx-rate heuristic from the fetched window.
   const blockTimes = parsedTransactions
-    .map((entry) => Number(entry?.tx?.blockTime))
+    .map((entry) => Number(entry?.tx?.blockTime || entry?.tx?.timestamp))
     .filter((n) => Number.isFinite(n) && n > 0);
   let txPerHour = 0;
   if (blockTimes.length >= 2) {
@@ -142,6 +145,26 @@ async function enrichCandidateWithRoundTripMetrics(supabase, candidate) {
     txPerHour = (blockTimes.length / spanSec) * 3600;
   }
   const isLikelyBot = txPerHour > BOT_TX_PER_HOUR_THRESHOLD;
+
+  if (ENRICHMENT_AUDIT_LOG) {
+    const auditRow = {
+      ...candidate,
+      closed_trades: Number(m.closedTrades || 0),
+      win_rate_observed: Number(m.winRateObserved || 0),
+      weighted_avg_sol_pnl: Number(m.weightedAvgSolPnl || 0),
+      is_likely_bot: isLikelyBot
+    };
+    const reject = promotionRejectionGate(auditRow, {
+      minScore: PROMOTION_MIN_SCORE,
+      minClosed: PROMOTION_MIN_CLOSED_TRADES,
+      minWinRate: PROMOTION_MIN_WIN_RATE_OBSERVED,
+      minPnl: PROMOTION_MIN_WEIGHTED_SOL_PNL,
+      botTxPerHour: BOT_TX_PER_HOUR_THRESHOLD
+    });
+    console.info(
+      `[auto-discovery] wallet=${wallet} sigs=${parsedTransactions.length} parsed=${parsedTransactions.length} closed_trades=${Number(m.closedTrades || 0)} win_rate=${Number(m.winRateObserved || 0).toFixed(3)} candidate_score=${Number(m.candidateScore || 0).toFixed(3)} reject=${reject}`
+    );
+  }
 
   const metricsPayload = {
     closed_trades: Number(m.closedTrades || 0),
