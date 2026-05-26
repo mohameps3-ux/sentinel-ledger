@@ -81,10 +81,25 @@ function sourceWeight(source) {
   return 1.0;
 }
 
+/** Product win threshold: +1% (fraction 0.01 or percent points when |v| > 2). */
+const SIGNAL_WIN_MIN_FRAC = 0.01;
+
+function outcomeAsFraction(s) {
+  const raw = outcomeRaw(s);
+  if (raw == null || !Number.isFinite(Number(raw))) return null;
+  const n = Number(raw);
+  return Math.abs(n) > 2 ? n / 100 : n;
+}
+
+function isResolvedWin(s) {
+  const frac = outcomeAsFraction(s);
+  return frac != null && frac >= SIGNAL_WIN_MIN_FRAC;
+}
+
 function computeInstitutionalMetrics(signals) {
   const completed = (signals ?? []).filter((s) => outcomeRaw(s) != null);
-  const wins = completed.filter((s) => (outcomeRaw(s) ?? 0) > 0);
-  const losses = completed.filter((s) => (outcomeRaw(s) ?? 0) <= 0);
+  const wins = completed.filter(isResolvedWin);
+  const losses = completed.filter((s) => !isResolvedWin(s));
   const winRate = completed.length > 0 ? wins.length / completed.length : 0;
   const lossRate = 1 - winRate;
   const avgWinPct =
@@ -542,7 +557,7 @@ export default function GraveyardPage() {
   const hasLedgerHeadline = serverResolved > 0 && serverWinRate != null;
   const showHeadlineFallback = !hasMetrics && hasLedgerHeadline;
 
-  const wins = completed.filter((s) => (outcomeRaw(s) ?? 0) > 0);
+  const wins = completed.filter(isResolvedWin);
   const losses = completed.filter((s) => (outcomeRaw(s) ?? 0) <= 0);
 
   const avgOutcome =
@@ -609,7 +624,7 @@ export default function GraveyardPage() {
     [...completed].sort((a, b) => (outcomeRaw(a) ?? 999) - (outcomeRaw(b) ?? 999))[0] ?? null;
 
   const filteredRows = useMemo(() => {
-    if (filter === "wins") return allRows.filter((s) => outcomeRaw(s) > 0);
+    if (filter === "wins") return allRows.filter(isResolvedWin);
     if (filter === "losses") return allRows.filter((s) => outcomeRaw(s) != null && outcomeRaw(s) <= 0);
     if (filter === "pending") return allRows.filter((s) => outcomeRaw(s) == null);
     return allRows;
@@ -1287,7 +1302,7 @@ export default function GraveyardPage() {
               const rawOriginal = outcomeRaw(s);
               const raw = rawOriginal == null ? null : Math.max(-0.1, Math.min(0.2, rawOriginal));
               const pct = raw != null ? raw * 100 : null;
-              const isWin = pct != null && pct > 0;
+              const isWin = pct != null && pct >= 1;
               const isKilled = rawOriginal != null && rawOriginal < STOP_LOSS_CAP_FRAC;
               const isPending = rawOriginal == null;
               const sym = s.asset || s.symbol || s.mint?.slice(0, 6) || "???";

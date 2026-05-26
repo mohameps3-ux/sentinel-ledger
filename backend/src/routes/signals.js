@@ -60,9 +60,10 @@ function isValidCachedOutcomesLedger(cached) {
   );
 }
 
-/** Oracle decisive thresholds (fraction of return); must match oracleResult + UI. */
-const TR_DECISIVE_WIN = 0.05;
-const TR_DECISIVE_LOSS = -0.05;
+/** Oracle decisive thresholds (fraction of return); aligned with SIGNAL_PERF_SUCCESS_MIN_PCT (1%). */
+const SIGNAL_PERF_SUCCESS_MIN_PCT = Number(process.env.SIGNAL_PERF_SUCCESS_MIN_PCT || 1);
+const TR_DECISIVE_WIN = SIGNAL_PERF_SUCCESS_MIN_PCT / 100;
+const TR_DECISIVE_LOSS = -TR_DECISIVE_WIN;
 
 function trackRecordAggSampleLimit() {
   const n = Number(process.env.TRACK_RECORD_AGG_SAMPLE_LIMIT);
@@ -116,11 +117,11 @@ async function computeSignalOutcomesLedgerAggregatesFallback(supabase, opts = {}
   let winsQ = supabase
     .from("signal_outcomes")
     .select("id", { count: "exact", head: true })
-    .gt("outcome_60m", TR_DECISIVE_WIN);
+    .gte("outcome_60m", TR_DECISIVE_WIN);
   let lossesQ = supabase
     .from("signal_outcomes")
     .select("id", { count: "exact", head: true })
-    .lt("outcome_60m", TR_DECISIVE_LOSS);
+    .lt("outcome_60m", TR_DECISIVE_WIN);
   let sampleQ = supabase
     .from("signal_outcomes")
     .select("outcome_60m")
@@ -152,7 +153,7 @@ async function computeSignalOutcomesLedgerAggregatesFallback(supabase, opts = {}
   const aggSample = aggSampleRes.data || [];
   const returns = aggSample.map((row) => Number(row.outcome_60m)).filter(Number.isFinite);
   const winReturnsFromSample = aggSample
-    .filter((row) => Number(row.outcome_60m) > TR_DECISIVE_WIN)
+    .filter((row) => Number(row.outcome_60m) >= TR_DECISIVE_WIN)
     .map((row) => Number(row.outcome_60m))
     .filter(Number.isFinite);
   return {
@@ -220,12 +221,11 @@ async function resolveSignalOutcomesLedgerAggregates(supabase) {
 /**
  * Same shape as the non-RPC branch of `resolveSignalOutcomesLedgerAggregates`, but sourced from
  * `signal_performance` when `signal_outcomes` is empty (e.g. ledger insert/sync failed after resolve).
- * Thresholds: `outcome_pct` is percent points; decisive bands match ±5% fractional oracle rules.
+ * Thresholds: `outcome_pct` is percent points; wins use outcome_pct >= SIGNAL_PERF_SUCCESS_MIN_PCT.
  */
 async function resolveSignalPerformanceLedgerAggregates(supabase, opts = {}) {
   const sinceIso = opts.sinceIso || null;
-  const winPctThresh = TR_DECISIVE_WIN * 100;
-  const lossPctThresh = TR_DECISIVE_LOSS * 100;
+  const winPctThresh = SIGNAL_PERF_SUCCESS_MIN_PCT;
   const aggLimit = trackRecordAggSampleLimit();
   let totalQ = supabase.from("signal_performance").select("id", { count: "exact", head: true });
   let resolvedQ = supabase
@@ -237,12 +237,12 @@ async function resolveSignalPerformanceLedgerAggregates(supabase, opts = {}) {
     .from("signal_performance")
     .select("id", { count: "exact", head: true })
     .eq("status", "resolved")
-    .gt("outcome_pct", winPctThresh);
+    .gte("outcome_pct", winPctThresh);
   let lossesQ = supabase
     .from("signal_performance")
     .select("id", { count: "exact", head: true })
     .eq("status", "resolved")
-    .lt("outcome_pct", lossPctThresh);
+    .lt("outcome_pct", winPctThresh);
   let sampleQ = supabase
     .from("signal_performance")
     .select("outcome_pct")
@@ -275,7 +275,7 @@ async function resolveSignalPerformanceLedgerAggregates(supabase, opts = {}) {
   const aggSample = aggSampleRes.data || [];
   const returns = aggSample.map((row) => Number(row.outcome_pct) / 100).filter(Number.isFinite);
   const winReturnsFromSample = aggSample
-    .filter((row) => Number(row.outcome_pct) > winPctThresh)
+    .filter((row) => Number(row.outcome_pct) >= winPctThresh)
     .map((row) => Number(row.outcome_pct) / 100)
     .filter(Number.isFinite);
   // Median is robust to pump.fun outliers (e.g., a single +2290x signal would otherwise pull mean to +228%).
@@ -405,9 +405,8 @@ function oracleResult(row = {}) {
     if (Number.isFinite(createdMs) && Date.now() - createdMs <= 60 * 60 * 1000) return "PENDING";
     return "MISSING";
   }
-  if (outcome > TR_DECISIVE_WIN) return "WIN";
-  if (outcome < TR_DECISIVE_LOSS) return "LOSS";
-  return "NEUTRAL";
+  if (outcome >= TR_DECISIVE_WIN) return "WIN";
+  return "LOSS";
 }
 
 function confidenceBadge(row = {}) {
@@ -620,10 +619,10 @@ async function buildTrackRecordPayload(
   if (rowSource === "signal_performance") {
     pageQuery = supabase.from("signal_performance").select(perfSelect).order("emitted_at", { ascending: false });
     if (filter === "wins") {
-      pageQuery = pageQuery.eq("status", "resolved").gt("outcome_pct", TR_DECISIVE_WIN * 100);
+      pageQuery = pageQuery.eq("status", "resolved").gte("outcome_pct", TR_DECISIVE_WIN * 100);
     }
     if (filter === "losses") {
-      pageQuery = pageQuery.eq("status", "resolved").lt("outcome_pct", TR_DECISIVE_LOSS * 100);
+      pageQuery = pageQuery.eq("status", "resolved").lt("outcome_pct", TR_DECISIVE_WIN * 100);
     }
     if (filter === "pending") {
       pageQuery = pageQuery.eq("status", "pending");
@@ -633,14 +632,14 @@ async function buildTrackRecordPayload(
       .from("signal_performance")
       .select(perfSelect)
       .eq("status", "resolved")
-      .gt("outcome_pct", TR_DECISIVE_WIN * 100)
+      .gte("outcome_pct", TR_DECISIVE_WIN * 100)
       .order("outcome_pct", { ascending: false })
       .limit(5);
     lossesQuery = supabase
       .from("signal_performance")
       .select(perfSelect)
       .eq("status", "resolved")
-      .lt("outcome_pct", TR_DECISIVE_LOSS * 100)
+      .lt("outcome_pct", TR_DECISIVE_WIN * 100)
       .order("outcome_pct", { ascending: true })
       .limit(3);
   } else {
@@ -650,20 +649,20 @@ async function buildTrackRecordPayload(
         "id,signal_id,mint,rule_id,price_at_signal,wallets_involved,regime,price_5m,price_15m,price_60m,outcome_5m,outcome_15m,outcome_60m,validated,rule_snapshot,min_price_observed,validated_at,created_at"
       )
       .order("created_at", { ascending: false });
-    if (filter === "wins") pageQuery = pageQuery.gt("outcome_60m", TR_DECISIVE_WIN);
-    if (filter === "losses") pageQuery = pageQuery.lt("outcome_60m", TR_DECISIVE_LOSS);
+    if (filter === "wins") pageQuery = pageQuery.gte("outcome_60m", TR_DECISIVE_WIN);
+    if (filter === "losses") pageQuery = pageQuery.lt("outcome_60m", TR_DECISIVE_WIN);
     if (filter === "pending") pageQuery = pageQuery.is("outcome_60m", null);
     pageQuery = pageQuery.range(from, to);
     winsQuery = supabase
       .from("signal_outcomes")
       .select("id,signal_id,mint,rule_id,outcome_60m,created_at,rule_snapshot")
-      .gt("outcome_60m", TR_DECISIVE_WIN)
+      .gte("outcome_60m", TR_DECISIVE_WIN)
       .order("outcome_60m", { ascending: false })
       .limit(5);
     lossesQuery = supabase
       .from("signal_outcomes")
       .select("id,signal_id,mint,rule_id,outcome_60m,created_at,rule_snapshot")
-      .lt("outcome_60m", TR_DECISIVE_LOSS)
+      .lt("outcome_60m", TR_DECISIVE_WIN)
       .order("outcome_60m", { ascending: true })
       .limit(3);
   }
@@ -702,8 +701,8 @@ async function buildTrackRecordPayload(
       const toN = fromN + safePageSize - 1;
       if (rowSource === "signal_performance") {
         let q2 = supabase.from("signal_performance").select(perfSelect).order("emitted_at", { ascending: false });
-        if (filter === "wins") q2 = q2.eq("status", "resolved").gt("outcome_pct", TR_DECISIVE_WIN * 100);
-        if (filter === "losses") q2 = q2.eq("status", "resolved").lt("outcome_pct", TR_DECISIVE_LOSS * 100);
+        if (filter === "wins") q2 = q2.eq("status", "resolved").gte("outcome_pct", TR_DECISIVE_WIN * 100);
+        if (filter === "losses") q2 = q2.eq("status", "resolved").lt("outcome_pct", TR_DECISIVE_WIN * 100);
         if (filter === "pending") q2 = q2.eq("status", "pending");
         extraReqs.push(q2.range(fromN, toN));
       } else {
@@ -713,8 +712,8 @@ async function buildTrackRecordPayload(
             "id,signal_id,mint,rule_id,price_at_signal,wallets_involved,regime,price_5m,price_15m,price_60m,outcome_5m,outcome_15m,outcome_60m,validated,rule_snapshot,min_price_observed,validated_at,created_at"
           )
           .order("created_at", { ascending: false });
-        if (filter === "wins") q2 = q2.gt("outcome_60m", TR_DECISIVE_WIN);
-        if (filter === "losses") q2 = q2.lt("outcome_60m", TR_DECISIVE_LOSS);
+        if (filter === "wins") q2 = q2.gte("outcome_60m", TR_DECISIVE_WIN);
+        if (filter === "losses") q2 = q2.lt("outcome_60m", TR_DECISIVE_WIN);
         if (filter === "pending") q2 = q2.is("outcome_60m", null);
         extraReqs.push(q2.range(fromN, toN));
       }
@@ -1262,47 +1261,84 @@ router.get("/graveyard", async (req, res) => {
 router.get("/track-record/summary", async (req, res) => {
   try {
     const sb = getSupabase();
-    const windowParam = String(req.query.window || "48h").toLowerCase();
-    const hours =
-      windowParam === "24h" ? 24 : windowParam === "7d" ? 168 : windowParam === "30d" ? 720 : 48;
-    const sinceIso = new Date(Date.now() - hours * 3600_000).toISOString();
+    const windowParam = String(req.query.window || req.query.days || "30d").toLowerCase();
+    const days =
+      windowParam === "7d" || windowParam === "7"
+        ? 7
+        : windowParam === "90d" || windowParam === "90"
+          ? 90
+          : windowParam === "24h"
+            ? 1
+            : windowParam === "48h"
+              ? 2
+              : 30;
+    const sinceIso = new Date(Date.now() - days * 86_400_000).toISOString();
+    const winMin = SIGNAL_PERF_SUCCESS_MIN_PCT;
 
-    const { data, error } = await sb
-      .from("signal_performance")
-      .select("id,outcome_60m,confidence,action,token_name,mint,emitted_at,time,signals")
-      .not("outcome_60m", "is", null)
-      .gte("emitted_at", sinceIso)
-      .order("emitted_at", { ascending: false })
-      .limit(500);
-    if (error) throw error;
+    const [resolvedRes, winsRes, sampleRes] = await Promise.all([
+      sb
+        .from("signal_performance")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "resolved")
+        .gte("emitted_at", sinceIso),
+      sb
+        .from("signal_performance")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "resolved")
+        .gte("outcome_pct", winMin)
+        .gte("emitted_at", sinceIso),
+      sb
+        .from("signal_performance")
+        .select("outcome_pct, asset, emitted_at, signals, confidence")
+        .eq("status", "resolved")
+        .not("outcome_pct", "is", null)
+        .gte("emitted_at", sinceIso)
+        .order("emitted_at", { ascending: false })
+        .limit(5000)
+    ]);
+    if (resolvedRes.error) throw resolvedRes.error;
+    if (winsRes.error) throw winsRes.error;
+    if (sampleRes.error) throw sampleRes.error;
 
-    const rows = data || [];
-    const wins = rows.filter((s) => Number(s.outcome_60m) > 0);
-    const losses = rows.filter((s) => Number(s.outcome_60m) < 0);
-    const resolved = wins.length + losses.length;
-    const avgReturn = rows.length
-      ? rows.reduce((a, s) => a + (Number(s.outcome_60m) || 0), 0) / rows.length
-      : 0;
-    const grossWin = wins.reduce((a, s) => a + Math.max(Number(s.outcome_60m) || 0, 0), 0);
-    const grossLoss = Math.abs(
-      losses.reduce((a, s) => a + Math.min(Number(s.outcome_60m) || 0, 0), 0)
-    );
-    const profitFactor = grossLoss ? grossWin / grossLoss : grossWin ? 99 : 0;
-    const winRate = resolved ? (wins.length / resolved) * 100 : 0;
+    const rows = sampleRes.data || [];
+    const pctRows = rows.map((r) => Number(r.outcome_pct)).filter(Number.isFinite);
+    const winRows = pctRows.filter((n) => n >= winMin);
+    const lossRows = pctRows.filter((n) => n < winMin);
+    const totalResolved = Number(resolvedRes.count || 0);
+    const wins = Number(winsRes.count || 0);
+    const losses = Math.max(0, totalResolved - wins);
+    const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
+    const grossWin = winRows.reduce((a, b) => a + b, 0);
+    const grossLoss = Math.abs(lossRows.reduce((a, b) => a + b, 0));
+    const profitFactor = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? 99 : 0;
+    const winRate = totalResolved > 0 ? (wins / totalResolved) * 100 : 0;
+
+    const topWins = [...rows]
+      .filter((r) => Number(r.outcome_pct) >= winMin)
+      .sort((a, b) => Number(b.outcome_pct) - Number(a.outcome_pct))
+      .slice(0, 5);
+    const worstLosses = [...rows]
+      .filter((r) => Number(r.outcome_pct) < winMin)
+      .sort((a, b) => Number(a.outcome_pct) - Number(b.outcome_pct))
+      .slice(0, 5);
 
     return res.json({
       ok: true,
-      window: windowParam,
-      total_signals: rows.length,
-      resolved,
+      window: `${days}d`,
+      window_days: days,
+      total_signals: totalResolved,
+      resolved: totalResolved,
       pending: 0,
-      wins: wins.length,
-      losses: losses.length,
+      wins,
+      losses,
       win_rate_60m: Number(winRate.toFixed(2)),
-      avg_return: Number(avgReturn.toFixed(4)),
+      win_rate_pct: Number(winRate.toFixed(1)),
+      win_definition: `outcome_pct >= ${winMin}%`,
+      avg_return: pctRows.length ? Number((avg(pctRows) / 100).toFixed(4)) : 0,
+      avg_outcome_pct: pctRows.length ? Number(avg(pctRows).toFixed(2)) : null,
       profit_factor: Number(profitFactor.toFixed(2)),
-      top_wins: [...wins].sort((a, b) => Number(b.outcome_60m) - Number(a.outcome_60m)).slice(0, 5),
-      worst_losses: [...losses].sort((a, b) => Number(a.outcome_60m) - Number(b.outcome_60m)).slice(0, 5),
+      top_wins: topWins,
+      worst_losses: worstLosses,
       recent_signals: rows.slice(0, 100),
       last_updated: new Date().toISOString()
     });
