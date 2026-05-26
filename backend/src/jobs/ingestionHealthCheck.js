@@ -6,7 +6,15 @@ const { getOpsPostgresPool } = require("../lib/opsPostgresPool");
 
 const { getHeliusWebhookTelemetry } = require("../lib/heliusWebhookTelemetry");
 const { getHeliusWebhookSyncTelemetry } = require("../lib/heliusWebhookSyncTelemetry");
+const { getAutoDiscoveryPromotionTelemetry } = require("../lib/autoDiscoveryTelemetry");
 const { STALE_ALERT_MS: HELIUS_SYNC_STALE_MS } = require("./heliusWebhookSyncCron");
+
+const AUTO_DISCOVERY_DEAD_ALERT_MS = Math.max(
+  60 * 60 * 1000,
+  Number(process.env.AUTO_DISCOVERY_DEAD_ALERT_MS || 72 * 60 * 60 * 1000)
+);
+const AUTO_DISCOVERY_DEAD_ALERT_ENABLED =
+  String(process.env.AUTO_DISCOVERY_DEAD_ALERT_ENABLED || "false").toLowerCase() === "true";
 
 const TICK_MS = Math.max(5 * 60 * 1000, Number(process.env.INGESTION_HEALTH_CHECK_MS || 60 * 60 * 1000));
 const HELIUS_SILENT_MINUTES = Math.max(30, Number(process.env.INGESTION_HELIUS_SILENT_MINUTES || 120));
@@ -25,6 +33,7 @@ let lastHeliusAlertAt = 0;
 let lastDiscoveryAlertAt = 0;
 let lastWalletTokensAlertAt = 0;
 let lastHeliusSyncAlertAt = 0;
+let lastAutoDiscoveryDeadAlertAt = 0;
 
 function sortedStringify(value) {
   if (value === null || value === undefined) return "null";
@@ -189,6 +198,26 @@ async function runIngestionHealthCheckTick() {
     console.warn("[ingestion-health] helius_sync_stale", metadata);
   }
 
+  if (AUTO_DISCOVERY_DEAD_ALERT_ENABLED) {
+    const ad = getAutoDiscoveryPromotionTelemetry();
+    const lastPromoIso = ad.auto_discovery_last_promotion_at;
+    const lastPromoMs = lastPromoIso ? Date.parse(lastPromoIso) : NaN;
+    const promoStale =
+      !Number.isFinite(lastPromoMs) || Date.now() - lastPromoMs > AUTO_DISCOVERY_DEAD_ALERT_MS;
+    if (promoStale && now - lastAutoDiscoveryDeadAlertAt > TICK_MS) {
+      lastAutoDiscoveryDeadAlertAt = now;
+      const metadata = {
+        auto_discovery_last_promotion_at: lastPromoIso,
+        auto_discovery_24h_promoted: Number(ad.auto_discovery_24h_promoted) || 0,
+        auto_discovery_24h_rejection_reasons: ad.auto_discovery_24h_rejection_reasons,
+        stale_threshold_ms: AUTO_DISCOVERY_DEAD_ALERT_MS
+      };
+      await insertOpsAlertDirect("auto_discovery_dead", metadata);
+      await postOpsAlert("auto_discovery_dead", metadata);
+      console.warn("[ingestion-health] auto_discovery_dead", metadata);
+    }
+  }
+
   return {
     signalAgeMin,
     discoveryAgeH,
@@ -223,7 +252,9 @@ function getIngestionHealthCheckStatus() {
     discoveryStallHours: DISCOVERY_STALL_HOURS,
     walletTokensErrorAlertThreshold: WALLET_TOKENS_ERROR_ALERT_THRESHOLD,
     walletTokensStaleMs: WALLET_TOKENS_STALE_MS,
-    heliusSyncStaleMs: HELIUS_SYNC_STALE_MS
+    heliusSyncStaleMs: HELIUS_SYNC_STALE_MS,
+    autoDiscoveryDeadAlertEnabled: AUTO_DISCOVERY_DEAD_ALERT_ENABLED,
+    autoDiscoveryDeadAlertMs: AUTO_DISCOVERY_DEAD_ALERT_MS
   };
 }
 
