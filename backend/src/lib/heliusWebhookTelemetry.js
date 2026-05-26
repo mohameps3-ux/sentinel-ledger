@@ -10,6 +10,8 @@ let count24h = 0;
 let count24hWindowStart = Date.now();
 
 let walletTokensWrites24h = 0;
+let walletTokensInsertsNew24h = 0;
+let walletTokensConflicts24h = 0;
 let walletTokensErrors24h = 0;
 let walletTokensTimeouts24h = 0;
 let walletTokensLastWriteAt = null;
@@ -22,6 +24,8 @@ function roll24hWindow() {
     count24h = 0;
     count24hWindowStart = now;
     walletTokensWrites24h = 0;
+    walletTokensInsertsNew24h = 0;
+    walletTokensConflicts24h = 0;
     walletTokensErrors24h = 0;
     walletTokensTimeouts24h = 0;
   }
@@ -40,6 +44,16 @@ function walletTokensWrittenInc() {
   roll24hWindow();
   walletTokensWrites24h += 1;
   walletTokensLastWriteAt = Date.now();
+}
+
+function walletTokensInsertNewInc() {
+  roll24hWindow();
+  walletTokensInsertsNew24h += 1;
+}
+
+function walletTokensConflictInc() {
+  roll24hWindow();
+  walletTokensConflicts24h += 1;
 }
 
 function isStatementTimeout(code, message) {
@@ -76,6 +90,8 @@ function getHeliusWebhookTelemetry() {
     helius_webhook_last_wallets_in_payload: lastWalletsInPayload,
     helius_webhook_last_error: lastError,
     wallet_tokens_24h_writes: walletTokensWrites24h,
+    wallet_tokens_24h_inserts_new: walletTokensInsertsNew24h,
+    wallet_tokens_24h_conflicts: walletTokensConflicts24h,
     wallet_tokens_24h_errors: walletTokensErrors24h,
     wallet_tokens_24h_timeouts: walletTokensTimeouts24h,
     wallet_tokens_last_write_at: walletTokensLastWriteAt
@@ -94,6 +110,8 @@ function _resetHeliusWebhookTelemetry() {
   count24h = 0;
   count24hWindowStart = Date.now();
   walletTokensWrites24h = 0;
+  walletTokensInsertsNew24h = 0;
+  walletTokensConflicts24h = 0;
   walletTokensErrors24h = 0;
   walletTokensTimeouts24h = 0;
   walletTokensLastWriteAt = null;
@@ -105,6 +123,8 @@ module.exports = {
   recordHeliusWebhookReceipt,
   getHeliusWebhookTelemetry,
   walletTokensWrittenInc,
+  walletTokensInsertNewInc,
+  walletTokensConflictInc,
   walletTokensErrorInc,
   walletTokensTimeoutInc,
   _resetHeliusWebhookTelemetry
