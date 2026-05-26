@@ -11,6 +11,7 @@ function tokenMint(tok) {
   return tok?.mint ?? tok?.address ?? tok?.tokenAddress ?? "";
 }
 
+/** Velocity tab panel inside TacticalFeed. Hot/Live/Velocity discovery rails live in `HomeRailsBoard` (index.js). */
 export function WarRoomLayout({
   velocityTokens = [],
   strategyMode,

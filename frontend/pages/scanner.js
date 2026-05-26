@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { PageHead } from "../components/seo/PageHead";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
+import { useTokensRails, buildRailsIndex } from "../hooks/useTokensRails";
 import { useLocale } from "../contexts/LocaleContext";
 import { ScannerStatusStrip } from "../components/scanner/ScannerStatusStrip";
 import { ScannerDecisionHeader } from "../components/scanner/ScannerDecisionHeader";
@@ -13,6 +14,30 @@ import { ScannerTokenTable } from "../components/scanner/ScannerTokenTable";
 const NARRATIVE_OPTIONS = ["ALL", "AI", "DeFi", "Gaming", "Meme", "RWA", "L2", "Dog", "Cat"];
 const VENUE_FILTERS = ["all", "pump", "raydium", "new24h", "highScore"];
 const TABLE_ROWS_MAX = 24;
+const DEFAULT_SORT = "rail_score";
+
+function compareRows(a, b, sortKey) {
+  if (sortKey === "rail_score") {
+    const sa = Number(a.rail_score);
+    const sb = Number(b.rail_score);
+    const va = Number.isFinite(sa) ? sa : -1;
+    const vb = Number.isFinite(sb) ? sb : -1;
+    return vb - va || (Number(b.sentinelScore) || 0) - (Number(a.sentinelScore) || 0);
+  }
+  if (sortKey === "sentinelScore") {
+    return (Number(b.sentinelScore) || 0) - (Number(a.sentinelScore) || 0);
+  }
+  if (sortKey === "liquidityUsd") {
+    return (Number(b.liquidityUsd) || 0) - (Number(a.liquidityUsd) || 0);
+  }
+  if (sortKey === "volume24h") {
+    return (Number(b.volume24h) || 0) - (Number(a.volume24h) || 0);
+  }
+  if (sortKey === "change24h") {
+    return (Number(b.priceChange24h) || 0) - (Number(a.priceChange24h) || 0);
+  }
+  return 0;
+}
 
 /** Scanner universe must NOT use `useSortedTokens` (war mode + sniper/liquidity profiles strip rows). */
 
@@ -61,29 +86,41 @@ export default function ScannerPage() {
   const [error, setError] = useState("");
   const [narrative, setNarrative] = useState("ALL");
   const [venueFilter, setVenueFilter] = useState("all");
+  const [sortKey, setSortKey] = useState(DEFAULT_SORT);
   const [focusedMint, setFocusedMint] = useState(null);
   const router = useRouter();
   // Always fetch full /hot universe; narrative is filtered client-side (API narrativeTags are often empty).
   const trending = useTrendingTokens([], {}, "", { limit: 24 });
+  const railsQuery = useTokensRails({ refetchMs: 30_000 });
+  const railsIndex = useMemo(
+    () => buildRailsIndex({ hot: railsQuery.hot, live: railsQuery.live, velocity: railsQuery.velocity }),
+    [railsQuery.hot, railsQuery.live, railsQuery.velocity]
+  );
 
   const scannerSource = useMemo(() => trending.data?.data || [], [trending.data?.data]);
   const normalizedScanner = useMemo(
     () =>
-      scannerSource.map((row) => ({
-        ...row,
-        mint: row.mint ?? row.address ?? row.tokenAddress,
-        tokenAddress: row.tokenAddress ?? row.mint ?? row.address,
-        sentinelScore: row.sentinelScore ?? row.score ?? row.signalStrength ?? 0,
-        smartMoneyCount: row.smartMoneyCount ?? row.smartWallets ?? 0,
-        liquidityUsd: row.liquidityUsd ?? row.liquidity ?? 0,
-        priceChange24h: row.priceChange24h ?? row.change24h ?? row.priceChange ?? row.change ?? 0
-      })),
-    [scannerSource]
+      scannerSource.map((row) => {
+        const mint = row.mint ?? row.address ?? row.tokenAddress;
+        const railMeta = railsIndex.get(String(mint || ""));
+        return {
+          ...row,
+          mint,
+          tokenAddress: row.tokenAddress ?? row.mint ?? row.address,
+          sentinelScore: row.sentinelScore ?? row.score ?? row.signalStrength ?? 0,
+          smartMoneyCount: row.smartMoneyCount ?? row.smartWallets ?? 0,
+          liquidityUsd: row.liquidityUsd ?? row.liquidity ?? 0,
+          priceChange24h: row.priceChange24h ?? row.change24h ?? row.priceChange ?? row.change ?? 0,
+          rail_score: railMeta?.rail_score ?? null,
+          rails: railMeta?.rails ?? []
+        };
+      }),
+    [scannerSource, railsIndex]
   );
   const sorted = useMemo(() => {
     const rows = normalizedScanner.filter((row) => tokenMatchesNarrativeClient(row, narrative));
-    return [...rows].sort((a, b) => (Number(b.sentinelScore) || 0) - (Number(a.sentinelScore) || 0));
-  }, [normalizedScanner, narrative]);
+    return [...rows].sort((a, b) => compareRows(a, b, sortKey));
+  }, [normalizedScanner, narrative, sortKey]);
   const filteredSorted = useMemo(
     () => sorted.filter((row) => tokenMatchesVenueFilter(row, venueFilter)),
     [sorted, venueFilter]
@@ -236,6 +273,8 @@ export default function ScannerPage() {
                   rows={tableRows}
                   focusedMint={focusedMint}
                   onFocusMint={(mint) => setFocusedMint(mint)}
+                  sortKey={sortKey}
+                  onSortKeyChange={setSortKey}
                   t={t}
                   status={scannerStatus}
                 />

@@ -2,6 +2,9 @@ import { Component, useCallback, useEffect, useLayoutEffect, useMemo, useRef, us
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { useTrendingTokens } from "../hooks/useTrendingTokens";
+import { useTokensRails, buildRailsIndex } from "../hooks/useTokensRails";
+import { useTokensRailsLive } from "../hooks/useTokensRailsLive";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSignalsFeed } from "../hooks/useSignalsFeed";
 import { useDecisionFeedQuotes } from "../hooks/useDecisionFeedQuotes";
 import { useRankDeltas } from "../hooks/useRankDeltas";
@@ -26,6 +29,7 @@ import {
 } from "../lib/deskRadarCtx.mjs";
 import TacticalFeed from "@/features/war-home/TacticalFeed";
 import { WarRoomLayout } from "../components/home/WarRoomLayout";
+import { HomeRailsBoard } from "../components/home/RailSection";
 import {
   TACTICAL_TAB_LS_KEY,
   UI_CONFIG
@@ -538,6 +542,22 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
     limit: UI_CONFIG.TRENDING_API_LIMIT_EXPANDED,
     refetchMs: isWarMode ? UI_CONFIG.TRENDING_REFETCH_WAR_MS : UI_CONFIG.TRENDING_REFETCH_NORMAL_MS
   });
+  const queryClient = useQueryClient();
+  const railsQuery = useTokensRails({ refetchMs: 30_000 });
+  const railsByMint = useMemo(
+    () => buildRailsIndex({ hot: railsQuery.hot, live: railsQuery.live, velocity: railsQuery.velocity }),
+    [railsQuery.hot, railsQuery.live, railsQuery.velocity]
+  );
+  const { pulsingMints } = useTokensRailsLive(queryClient, railsByMint);
+  const [railsSlowLoad, setRailsSlowLoad] = useState(false);
+  useEffect(() => {
+    if (!railsQuery.isLoading) {
+      setRailsSlowLoad(false);
+      return undefined;
+    }
+    const t = setTimeout(() => setRailsSlowLoad(true), 1500);
+    return () => clearTimeout(t);
+  }, [railsQuery.isLoading]);
   // Stable poll for signals (fixed limit) â must run before any memo that uses `apiFeedCards`.
   const signalsFeedQuery = useSignalsFeed({
     strategy: strategyMode,
@@ -1101,6 +1121,14 @@ export default function Home({ initialTrending = [], initialTrendingMeta = {} })
               activeWallets={homeMetrics.activeWallets}
               avgConfidence={homeMetrics.avgConfidence}
               bestSignal={homeMetrics.bestSignal}
+            />
+            <HomeRailsBoard
+              hot={railsQuery.hot}
+              live={railsQuery.live}
+              velocity={railsQuery.velocity}
+              isLoading={railsQuery.isLoading}
+              isSlowLoad={railsSlowLoad}
+              pulsingMints={pulsingMints}
             />
             <TacticalFeed
               tacticalTab={tacticalTab}

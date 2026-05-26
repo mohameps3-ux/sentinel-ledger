@@ -116,6 +116,7 @@ const redis = require("./lib/cache");
 const { getIngestionSnapshot } = require("./ingestion/ingestionState");
 const { getDedupeStats } = require("./ingestion/dedupe");
 const { getHeliusWebhookTelemetry } = require("./lib/heliusWebhookTelemetry");
+const { getTokensRailsTelemetry } = require("./lib/tokensRailsTelemetry");
 const { getMarketDataCircuitStatus, getMarketDataProviderStats } = require("./services/marketData");
 const { getDataFreshnessSnapshot } = require("./services/homeTerminalApi");
 const { getBudgetHealthJson } = require("./services/budgetGuard");
@@ -359,7 +360,8 @@ app.get("/health/ingestion", (_req, res) => {
     bufferDepth: snap.bufferDepth,
     sources: snap.sources,
     dedupe: getDedupeStats(),
-    ...helius
+    ...helius,
+    ...getTokensRailsTelemetry()
   });
 });
 
@@ -466,6 +468,12 @@ io.on("connection", (socket) => {
   socket.on("leave-token", (address) => {
     if (typeof address !== "string" || !isProbableSolanaPubkey(address)) return;
     socket.leave(address);
+  });
+  socket.on("join-rails", () => {
+    socket.join("rails");
+  });
+  socket.on("leave-rails", () => {
+    socket.leave("rails");
   });
   socket.on("join-track-record", () => {
     socket.join("track-record");
