@@ -32,6 +32,8 @@ const { wireSmartWalletsAfterSignal } = require("./smartWalletWebhookWire");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 const {
   walletTokensWrittenInc,
+  walletTokensInsertNewInc,
+  walletTokensConflictInc,
   walletTokensErrorInc
 } = require("../lib/heliusWebhookTelemetry");
 
@@ -148,15 +150,29 @@ function pgErrorCode(err) {
 }
 
 async function upsertWalletTokenRow(supabase, row) {
-  const { error } = await supabase.from("wallet_tokens").upsert(row, {
-    onConflict: "wallet_address,token_address,tx_signature"
-  });
+  const { data, error } = await supabase
+    .from("wallet_tokens")
+    .upsert(row, {
+      onConflict: "wallet_address,token_address,tx_signature",
+      ignoreDuplicates: true
+    })
+    .select("wallet_address");
   if (error) {
     const err = new Error(error.message || "wallet_tokens upsert failed");
     err.code = error.code;
     throw err;
   }
   walletTokensWrittenInc();
+  if (Array.isArray(data) && data.length > 0) {
+    walletTokensInsertNewInc();
+    return "insert";
+  }
+  walletTokensConflictInc();
+  return "conflict";
+}
+
+function walletTokensTxAgeLogEnabled() {
+  return String(process.env.WALLET_TOKENS_TX_AGE_LOG || "false").trim().toLowerCase() === "true";
 }
 
 /**
@@ -201,9 +217,17 @@ async function processHeliusWebhookRaw(raw) {
         ).trim();
         if (txSig) {
           const tsSec = Number(raw.timestamp);
-          const boughtAt = new Date(
-            (Number.isFinite(tsSec) && tsSec > 0 ? tsSec : Date.now() / 1000) * 1000
-          ).toISOString();
+          const tsMs =
+            Number.isFinite(tsSec) && tsSec > 0 ? tsSec * 1000 : Date.now();
+          const boughtAt = new Date(tsMs).toISOString();
+          if (walletTokensTxAgeLogEnabled()) {
+            console.log("[helius] tx age", {
+              sig: txSig.slice(0, 16),
+              payload_ts: new Date(tsMs).toISOString(),
+              now: new Date().toISOString(),
+              age_min: Math.round((Date.now() - tsMs) / 60000)
+            });
+          }
           for (const t of raw.tokenTransfers || []) {
             const mint = t?.mint && String(t.mint).trim();
             if (!mint || !isProbableSolanaPubkey(mint)) continue;
