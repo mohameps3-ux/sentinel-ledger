@@ -3,7 +3,7 @@
 const { getSupabase } = require("../lib/supabase");
 const { isProbableSolanaPubkey } = require("../lib/solanaAddress");
 const { fetchWalletTransactions } = require("../services/heliusTransactions");
-const { detectInventoryRoundTrips } = require("../services/walletRoundTripDetector");
+const { detectInventoryRoundTrips, isHeliusEnhancedTx, buildInventoryEventFromHeliusEnhanced, buildInventoryEvent } = require("../services/walletRoundTripDetector");
 const {
   promotionRejectionGate,
   autoDiscoveryCandidateInc,
@@ -33,11 +33,18 @@ const PROMOTION_MIN_CLOSED_TRADES = Math.max(
   Number(process.env.AUTO_DISCOVERY_MIN_CLOSED_TRADES || 5)
 );
 const PROMOTION_MIN_WEIGHTED_SOL_PNL = Number(process.env.AUTO_DISCOVERY_MIN_WEIGHTED_SOL_PNL ?? 0);
-// Bot heuristic: tx-per-hour above this flags is_likely_bot. 30/hr is aggressive
-// (legitimate sniper wallets rarely sustain >0.5 tx/hr; arbitrage bots hit 100s).
+// Bot heuristic: soft limit triggers human-sniper exception; hard limit always flags bot.
 const BOT_TX_PER_HOUR_THRESHOLD = Math.max(
   1,
-  Number(process.env.AUTO_DISCOVERY_BOT_TX_PER_HOUR || 30)
+  Number(process.env.AUTO_DISCOVERY_BOT_TX_PER_HOUR || 60)
+);
+const BOT_HARD_TX_PER_HOUR_THRESHOLD = Math.max(
+  BOT_TX_PER_HOUR_THRESHOLD + 1,
+  Number(process.env.AUTO_DISCOVERY_BOT_HARD_TX_PER_HOUR || 150)
+);
+const BOT_PRIORITY_FEE_P95_SOL = Math.max(
+  0,
+  Number(process.env.AUTO_DISCOVERY_BOT_PRIORITY_FEE_P95_SOL || 0.02)
 );
 // How many signatures of the candidate's recent history to fetch from Helius.
 // Bounded so we don't blow the Helius budget on the cron.
@@ -101,6 +108,88 @@ function promotionEligible(row) {
   return true;
 }
 
+function resolveInventoryEventForBot(entry, wallet) {
+  const tx = entry?.tx || entry;
+  if (isHeliusEnhancedTx(tx)) return buildInventoryEventFromHeliusEnhanced(tx, wallet);
+  return buildInventoryEvent(tx, wallet, tx?.transaction?.signatures?.[0] || tx?.signature || null);
+}
+
+function percentile(values, pct) {
+  const nums = values.filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+  if (!nums.length) return 0;
+  const idx = Math.min(nums.length - 1, Math.floor(nums.length * pct));
+  return nums[idx];
+}
+
+/**
+ * Derive sniper/bot behavior signals from the same Helius sample used for round-trips.
+ */
+function computeWalletBehaviorSignals(parsedTransactions, wallet, closedCycles = []) {
+  const sideEvents = [];
+  for (const entry of parsedTransactions) {
+    const ev = resolveInventoryEventForBot(entry, wallet);
+    if (!ev || !ev.blockTime) continue;
+    for (const [mint, delta] of ev.tokenDeltas.entries()) {
+      if (delta === 0n) continue;
+      sideEvents.push({
+        mint,
+        side: delta > 0n ? "buy" : "sell",
+        blockTime: ev.blockTime
+      });
+    }
+  }
+
+  const uniqueTokens = new Set(sideEvents.map((e) => e.mint)).size;
+  const buysByMint = new Map();
+  let manualTimingCount = 0;
+  for (const e of sideEvents.filter((x) => x.side === "buy")) {
+    const prev = buysByMint.get(e.mint);
+    if (prev != null && e.blockTime - prev > 30) manualTimingCount += 1;
+    buysByMint.set(e.mint, e.blockTime);
+  }
+
+  const holdMinutes = (closedCycles || [])
+    .map((c) => Number(c.duration_hours || 0) * 60)
+    .filter((n) => n > 0);
+  const medianHoldMinutes =
+    holdMinutes.length === 0
+      ? 0
+      : (() => {
+          const sorted = holdMinutes.sort((a, b) => a - b);
+          const mid = Math.floor(sorted.length / 2);
+          return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        })();
+
+  const feesSol = (parsedTransactions || [])
+    .map((entry) => Number(entry?.tx?.fee ?? entry?.fee ?? entry?.tx?.meta?.fee ?? 0) / 1e9)
+    .filter((n) => n >= 0);
+
+  return {
+    unique_tokens: uniqueTokens,
+    manual_timing_count: manualTimingCount,
+    median_hold_minutes: medianHoldMinutes,
+    priority_fee_p95_sol: percentile(feesSol, 0.95)
+  };
+}
+
+function isLikelyBot(metrics) {
+  const txPerHour = Number(metrics?.tx_per_hour || 0);
+  const priorityFeeP95 = Number(metrics?.priority_fee_p95_sol || 0);
+  const manualTiming = Number(metrics?.manual_timing_count || 0);
+  const uniqueTokens = Number(metrics?.unique_tokens || 0);
+  const medianHold = Number(metrics?.median_hold_minutes || 0);
+
+  if (priorityFeeP95 > BOT_PRIORITY_FEE_P95_SOL) return true;
+  if (txPerHour > BOT_HARD_TX_PER_HOUR_THRESHOLD) return true;
+
+  if (txPerHour > BOT_TX_PER_HOUR_THRESHOLD) {
+    const humanSniper = manualTiming >= 3 && uniqueTokens >= 6 && medianHold >= 5;
+    return !humanSniper;
+  }
+
+  return false;
+}
+
 /**
  * Pull the candidate's recent Solana history via Helius, run the SPL-inventory
  * round-trip detector, and persist the resulting metrics back onto the
@@ -144,7 +233,17 @@ async function enrichCandidateWithRoundTripMetrics(supabase, candidate) {
     const spanSec = Math.max(1, Math.max(...blockTimes) - Math.min(...blockTimes));
     txPerHour = (blockTimes.length / spanSec) * 3600;
   }
-  const isLikelyBot = txPerHour > BOT_TX_PER_HOUR_THRESHOLD;
+
+  const behaviorSignals = computeWalletBehaviorSignals(
+    parsedTransactions,
+    wallet,
+    result?.closedCycles || []
+  );
+  const botMetrics = {
+    tx_per_hour: txPerHour,
+    ...behaviorSignals
+  };
+  const isLikelyBotFlag = isLikelyBot(botMetrics);
 
   const computedCandidateScore = Number(m.candidateScore || 0);
 
@@ -155,7 +254,7 @@ async function enrichCandidateWithRoundTripMetrics(supabase, candidate) {
       closed_trades: Number(m.closedTrades || 0),
       win_rate_observed: Number(m.winRateObserved || 0),
       weighted_avg_sol_pnl: Number(m.weightedAvgSolPnl || 0),
-      is_likely_bot: isLikelyBot
+      is_likely_bot: isLikelyBotFlag
     };
     const reject = promotionRejectionGate(auditRow, {
       minScore: PROMOTION_MIN_SCORE,
@@ -178,7 +277,8 @@ async function enrichCandidateWithRoundTripMetrics(supabase, candidate) {
     weighted_avg_sol_pnl: Number(m.weightedAvgSolPnl || 0),
     total_sol_moved: Number(m.totalSolMoved || 0),
     tx_per_hour: Number(txPerHour),
-    is_likely_bot: isLikelyBot,
+    is_likely_bot: isLikelyBotFlag,
+    bot_rejection_reason: isLikelyBotFlag ? "velocity_or_mev_heuristic" : null,
     updated_at: new Date().toISOString()
   };
 
@@ -490,6 +590,8 @@ function getAutoDiscoveryStatus() {
     promotionMinClosedTrades: PROMOTION_MIN_CLOSED_TRADES,
     promotionMinWeightedSolPnl: PROMOTION_MIN_WEIGHTED_SOL_PNL,
     botTxPerHourThreshold: BOT_TX_PER_HOUR_THRESHOLD,
+    botHardTxPerHourThreshold: BOT_HARD_TX_PER_HOUR_THRESHOLD,
+    botPriorityFeeP95Sol: BOT_PRIORITY_FEE_P95_SOL,
     enrichmentEnabled: ENRICHMENT_ENABLED,
     enrichmentSigLimit: ENRICHMENT_SIG_LIMIT,
     maxWalletsPerSignal: MAX_WALLETS_PER_SIGNAL,
