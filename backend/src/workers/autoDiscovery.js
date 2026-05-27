@@ -146,9 +146,12 @@ async function enrichCandidateWithRoundTripMetrics(supabase, candidate) {
   }
   const isLikelyBot = txPerHour > BOT_TX_PER_HOUR_THRESHOLD;
 
+  const computedCandidateScore = Number(m.candidateScore || 0);
+
   if (ENRICHMENT_AUDIT_LOG) {
     const auditRow = {
       ...candidate,
+      candidate_score: computedCandidateScore,
       closed_trades: Number(m.closedTrades || 0),
       win_rate_observed: Number(m.winRateObserved || 0),
       weighted_avg_sol_pnl: Number(m.weightedAvgSolPnl || 0),
@@ -167,6 +170,7 @@ async function enrichCandidateWithRoundTripMetrics(supabase, candidate) {
   }
 
   const metricsPayload = {
+    candidate_score: computedCandidateScore,
     closed_trades: Number(m.closedTrades || 0),
     wins_observed: Number(m.wins || 0),
     win_rate_observed: Number(m.winRateObserved || 0),
