@@ -139,6 +139,8 @@ function computeWalletBehaviorSignals(parsedTransactions, wallet, closedCycles =
     }
   }
 
+  sideEvents.sort((a, b) => a.blockTime - b.blockTime);
+
   const uniqueTokens = new Set(sideEvents.map((e) => e.mint)).size;
   const buysByMint = new Map();
   let manualTimingCount = 0;
