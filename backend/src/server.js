@@ -21,7 +21,11 @@ const openaiAgentRouter = require("./routes/openaiAgent");
 const { startDeployerWorker } = require("./queues/deployerWorker");
 const { startSmartWalletWorker } = require("./workers/smartWallet.worker");
 const { startWebhookScoringWorker } = require("./workers/webhookScoringWorker");
-const { startSmartWalletCron, getLastSmartWalletCronRun } = require("./jobs/smartWalletCron");
+const {
+  startSmartWalletCron,
+  getSmartWalletCronHealthSnapshot,
+  getSmartWalletPollStalenessMinutes
+} = require("./jobs/smartWalletCron");
 const { getLeadershipHealthSnapshot, probeLeadershipLockRemote } = require("./services/leaderService");
 const { startProAlertCron, getProAlertCronStatus } = require("./jobs/proAlertCron");
 const {
@@ -305,7 +309,10 @@ app.get("/health", async (_, res) => {
     webPushVapidKeysConfigured: isVapidKeyMaterialPresent(),
     missingCriticalSecrets: missingCritical,
     smartWorkersEnabled: isWorkersEnabled(),
-    lastSmartWalletCronRun: getLastSmartWalletCronRun(),
+    smartWalletCron: {
+      ...getSmartWalletCronHealthSnapshot(),
+      pollStalenessMin: await getSmartWalletPollStalenessMinutes()
+    },
     leadership: {
       ...getLeadershipHealthSnapshot(),
       redisProbe: leadershipRedisProbe
