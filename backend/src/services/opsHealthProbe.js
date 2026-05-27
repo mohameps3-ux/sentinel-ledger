@@ -10,7 +10,10 @@ const { getIngestionSnapshot, getDedupeStats } = require("../ingestion/ingestion
 const { getMarketDataCircuitStatus, getMarketDataProviderStats } = require("../services/marketData");
 const { getDataFreshnessSnapshot } = require("../services/homeTerminalApi");
 const { getLeadershipHealthSnapshot, probeLeadershipLockRemote } = require("../services/leaderService");
-const { getLastSmartWalletCronRun } = require("../jobs/smartWalletCron");
+const {
+  getSmartWalletCronHealthSnapshot,
+  getSmartWalletPollStalenessMinutes
+} = require("../jobs/smartWalletCron");
 const { getProAlertCronStatus } = require("../jobs/proAlertCron");
 const { getTacticalRegimeNotifyCronStatus } = require("../jobs/tacticalRegimeNotifyCron");
 const { getSignalPriceCronStatus } = require("../jobs/smartWalletSignalPriceCron");
@@ -81,7 +84,10 @@ async function probeHealthMain() {
     webPushVapidKeysConfigured: isVapidKeyMaterialPresent(),
     missingCriticalSecrets: missingCritical,
     smartWorkersEnabled: isWorkersEnabled(),
-    lastSmartWalletCronRun: getLastSmartWalletCronRun(),
+    smartWalletCron: {
+      ...getSmartWalletCronHealthSnapshot(),
+      pollStalenessMin: await getSmartWalletPollStalenessMinutes()
+    },
     leadership: {
       ...getLeadershipHealthSnapshot(),
       redisProbe: leadershipRedisProbe
