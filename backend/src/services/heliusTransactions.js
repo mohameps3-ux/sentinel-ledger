@@ -187,11 +187,19 @@ async function fetchWalletTransactions(walletAddress, limitOrOpts = 100) {
     }
   }
 
-  if (!signatures.length || !endpointUsed) {
+  if (!endpointUsed) {
     return {
       transactions: [],
       deltaStats: { newSignatures: 0, cacheHits: 0, rpcParsed: 0, headSignature: null },
       pollOk: false
+    };
+  }
+
+  if (!signatures.length) {
+    return {
+      transactions: [],
+      deltaStats: { newSignatures: 0, cacheHits: 0, rpcParsed: 0, headSignature: null },
+      pollOk: true
     };
   }
 
