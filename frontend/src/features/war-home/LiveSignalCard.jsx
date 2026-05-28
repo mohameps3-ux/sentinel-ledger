@@ -13,6 +13,7 @@ import { pairCreatedRawToUnixMs, poolAgeMinutesFromCreatedMs } from "@/lib/pairT
 import { resolveTokenStateChip } from "@/lib/tokenStateChip.mjs";
 import { TokenStateChip } from "../../../components/cockpit/TokenStateChip";
 import { SignalEdgeTag } from "../../../components/token/SignalEdgeTag";
+import { resolveDominantRule } from "../../../lib/ruleTagMap.mjs";
 import { buildJupiterSwapUrl, EXTERNAL_ANCHOR_REL } from "../../../lib/terminalLinks";
 
 function normalizeSignalDecision(action) {
@@ -47,7 +48,41 @@ function formatPct(value) {
   return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 }
 
-/** Map signal tag to display label */
+function wrColorClass(winRate) {
+  const wr = Number(winRate);
+  if (!Number.isFinite(wr)) return "text-zinc-400";
+  if (wr >= 30) return "text-emerald-300";
+  if (wr >= 20) return "text-amber-300";
+  return "text-rose-300/90";
+}
+
+function regimeBadgeMeta(regime) {
+  const key = String(regime || "").trim().toLowerCase();
+  if (key === "volatile") {
+    return {
+      label: "⚡ VOLATILE EDGE",
+      cls: "border-emerald-400/35 bg-emerald-500/10 text-emerald-200"
+    };
+  }
+  if (key === "trending") {
+    return {
+      label: "📈 TRENDING",
+      cls: "border-amber-400/35 bg-amber-500/10 text-amber-200"
+    };
+  }
+  if (key === "calm") {
+    return {
+      label: "🔇 LOW EDGE",
+      cls: "border-zinc-500/30 bg-zinc-500/10 text-zinc-400"
+    };
+  }
+  return null;
+}
+
+const SCORE_FOOTER_TOOLTIP =
+  "Engine score blends rule signal, smart wallet activity, and recency. Pearson correlation to return is near zero; for outcomes prefer rule WR above.";
+
+/** Map signal tag to display label (legacy helper for SignalEdgeTag). */
 function ruleLabel(signal, ruleId) {
   const map = {
     cluster_buy:     "R03 · Cluster Buy",
@@ -159,22 +194,6 @@ function TokenAvatar({ sig, symbol, tone }) {
   );
 }
 
-function ScoreRing({ value, tone }) {
-  const score = Math.max(0, Math.min(100, Number(value) || 0));
-  const deg = Math.round(score * 3.6);
-  return (
-    <div className={`relative flex h-12 w-12 shrink-0 items-center justify-center ${tone.ring}`}>
-      <div
-        className="absolute inset-0 rounded-full opacity-95"
-        style={{ background: `conic-gradient(currentColor ${deg}deg, rgba(255,255,255,0.08) 0deg)` }}
-      />
-      <div className="relative flex h-9 w-9 flex-col items-center justify-center rounded-full bg-[#080b10] ring-1 ring-white/[0.07]">
-        <span className="font-mono text-[13px] font-black leading-none text-zinc-50 tabular-nums">{Math.round(score)}</span>
-      </div>
-    </div>
-  );
-}
-
 function WalletDots({ count }) {
   const n = Math.max(0, Number(count) || 0);
   const visible = Math.min(4, n);
@@ -189,11 +208,11 @@ function WalletDots({ count }) {
   );
 }
 
-function Metric({ label, value, good }) {
+function Metric({ label, value, good, valueClassName = "" }) {
   return (
     <div className="min-w-0 border-r border-white/[0.06] last:border-r-0 px-2 py-1.5">
       <p className="text-[8px] uppercase tracking-[0.12em] text-zinc-500">{label}</p>
-      <p className={`mt-1 truncate font-mono text-[12px] font-black tabular-nums ${good === true ? "text-emerald-300" : good === false ? "text-rose-300" : "text-zinc-100"}`}>
+      <p className={`mt-1 truncate font-mono text-[12px] font-black tabular-nums ${valueClassName || (good === true ? "text-emerald-300" : good === false ? "text-rose-300" : "text-zinc-100")}`}>
         {value}
       </p>
     </div>
@@ -337,20 +356,34 @@ export function LiveSignalCard({
 
         // Phase 7: honest signal edge data
         const rulePerf = sig._api?.rulePerformance ?? null;
+        const emissionSignals = sig._api?.emissionSignals ?? null;
+        const emissionRegimeRaw = sig._api?.emissionRegime ?? null;
         const ruleSamples = rulePerf?.totalSignals != null ? Number(rulePerf.totalSignals) : null;
         const ruleWr =
           ruleSamples != null && ruleSamples > 0 && rulePerf?.successCount60m != null
             ? Number((rulePerf.successCount60m / ruleSamples) * 100)
             : null;
-        // rulePerf.avgReturn60m is stored as decimal (0.06 = +6%) because
-        // validationOracle.pctFromPrices returns (later-entry)/entry directly.
-        // We display as %, so multiply by 100.
         const ruleAvgReturn = rulePerf?.avgReturn60m != null && Number.isFinite(Number(rulePerf.avgReturn60m))
           ? Number(rulePerf.avgReturn60m) * 100
           : null;
         const ruleCalibrated = ruleSamples != null && ruleSamples >= 80;
-        const edgeLabel = ruleLabel(rulePerf?.signal, rulePerf?.ruleId);
-        const showEdgeTag = edgeLabel != null || cardRegime != null;
+        const dominantRule = resolveDominantRule(emissionSignals, rulePerf);
+        const edgeLabel = dominantRule.label || ruleLabel(rulePerf?.signal, rulePerf?.ruleId);
+        const effectiveRegime = (() => {
+          const server = String(emissionRegimeRaw || "").trim().toLowerCase();
+          if (server && server !== "unknown") return server;
+          return cardRegime;
+        })();
+        const regimeBadge = regimeBadgeMeta(effectiveRegime);
+        const showEdgeTag = edgeLabel != null || effectiveRegime != null;
+        const wrLineParts = [];
+        if (ruleWr != null) wrLineParts.push(`WR ${Math.round(ruleWr)}%`);
+        if (ruleAvgReturn != null) {
+          wrLineParts.push(`avg ${ruleAvgReturn >= 0 ? "+" : ""}${ruleAvgReturn.toFixed(1)}%`);
+        }
+        if (ruleSamples != null && ruleSamples > 0) {
+          wrLineParts.push(`n=${Number(ruleSamples).toLocaleString()}`);
+        }
         return (
           <div className="relative flex h-full min-h-[246px] flex-col p-3">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.045] via-transparent to-black/20" />
@@ -370,11 +403,34 @@ export function LiveSignalCard({
               </div>
             </div>
 
-            <div className="relative mt-3 grid grid-cols-[auto_minmax(0,1fr)_74px] items-center gap-3 border-b border-white/[0.07] pb-3">
+            <div className="relative mt-3 grid grid-cols-[auto_minmax(0,1fr)_68px] items-start gap-3 border-b border-white/[0.07] pb-3">
               <TokenAvatar sig={sig} symbol={symbol} tone={liveTone} />
               <div className="min-w-0">
                 <p className="truncate text-xl font-black leading-none tracking-[-0.04em] text-zinc-50" title={`$${symbol}`}>${symbol}</p>
                 <p className="mt-1 truncate text-[11px] text-zinc-400" title={tokenName}>{tokenName}</p>
+                {edgeLabel ? (
+                  <p className="mt-2 truncate text-[12px] font-black uppercase leading-tight tracking-[-0.02em] text-zinc-100">
+                    {edgeLabel}
+                  </p>
+                ) : null}
+                {wrLineParts.length > 0 ? (
+                  <p className={`mt-1 truncate font-mono text-[11px] font-bold tabular-nums ${wrColorClass(ruleWr)}`}>
+                    {wrLineParts.join(" · ")}
+                  </p>
+                ) : null}
+                {regimeBadge ? (
+                  <span
+                    className={`mt-1.5 inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.06em] ${regimeBadge.cls}`}
+                  >
+                    {regimeBadge.label}
+                  </span>
+                ) : null}
+                <p
+                  className="mt-1.5 truncate text-[9px] font-mono text-zinc-500 tabular-nums"
+                  title={SCORE_FOOTER_TOOLTIP}
+                >
+                  Score {displayScoreSafe} · combines wallets + recency
+                </p>
                 <div className={`mt-2 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 font-mono ${quotesPricesFetching ? "opacity-80" : ""}`}>
                   <span className="text-sm font-black text-zinc-100 tabular-nums">{px != null && px > 0 ? `$${formatTokenPrice(px)}` : "Price —"}</span>
                   <span className={`text-xs font-bold tabular-nums ${Number(chg24) >= 0 ? "text-emerald-300" : "text-rose-300"}`}>{formatPct(chg24)}</span>
@@ -388,20 +444,23 @@ export function LiveSignalCard({
                   </span>
                 </p>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <ScoreRing value={displayScoreSafe} tone={liveTone} />
+              <div className="flex flex-col items-end gap-2 pt-1">
                 <HomeCardSparkline
                   mint={sig.mint}
                   change24h={chg24}
                   change5m={chg5}
                   compact
-                  className="!h-8 !w-[68px] rounded bg-transparent ring-0 [&_svg]:!h-8 [&_svg]:!w-[68px]"
+                  className="!h-10 !w-[68px] rounded bg-transparent ring-0 [&_svg]:!h-10 [&_svg]:!w-[68px]"
                 />
               </div>
             </div>
 
             <div className="relative mt-2 grid grid-cols-3 rounded-xl border border-white/[0.07] bg-black/20">
-              <Metric label="Conviction" value={`${displayScoreSafe}/100`} good={displayScoreSafe >= 80 ? true : displayScoreSafe < 45 ? false : null} />
+              <Metric
+                label="Hist WR"
+                value={ruleWr != null ? `${Math.round(ruleWr)}%` : "—"}
+                valueClassName={wrColorClass(ruleWr)}
+              />
               <Metric label="Type" value={normalizedDecision === "BUILD" ? "BUILD" : liveTone.name} />
               <div className="min-w-0 px-2 py-1.5">
                 <p className="text-[8px] uppercase tracking-[0.12em] text-zinc-500">Hi-win wallets</p>
@@ -426,7 +485,7 @@ export function LiveSignalCard({
                   winRate={ruleWr}
                   samples={ruleSamples}
                   avgReturn={ruleAvgReturn}
-                  regime={cardRegime}
+                  regime={effectiveRegime}
                   calibrated={ruleCalibrated}
                 />
               </div>
