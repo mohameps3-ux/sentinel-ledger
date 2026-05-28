@@ -2,6 +2,10 @@
 
 const { claimMintEmission } = require("./emissionMintCooldown");
 const { getSupabase } = require("../lib/supabase");
+const {
+  applyClusterBoostToShadow,
+  buildEmissionConfidenceMeta
+} = require("../scoring/confidenceModel");
 
 function clamp(n, lo, hi) {
   const v = Number(n);
@@ -460,6 +464,7 @@ async function evaluateSignalEmission(score, ctx = {}) {
                 if (boost > 0) {
                   const hitRate = Number(intel.hit_rate ?? 0);
                   score.confidence = Math.min(100, Number(score.confidence ?? 0) + boost);
+                  applyClusterBoostToShadow(score, boost);
                   score.meta = {
                     ...(score.meta ?? {}),
                     clusterBoost: true,
@@ -489,6 +494,7 @@ async function evaluateSignalEmission(score, ctx = {}) {
   const signals = Array.isArray(score?.signals) ? score.signals.length : 0;
   const confidence = clamp(Number(score?.confidence || 0), 0, 100);
   const confGate = effectiveConfidenceForGate(score);
+  const confMeta = buildEmissionConfidenceMeta(score);
   const risk = clamp(Number(score?.scores?.risk || 0), 0, 100);
   const liqUsd = Number(ctx?.liquidityUsd);
   const us = computeUnifiedScore(score, ctx, cfg.minLiquidityUsd);
@@ -610,6 +616,8 @@ async function evaluateSignalEmission(score, ctx = {}) {
     reasons,
     confidence,
     confidenceGated: confGate,
+    confidence_v1: confMeta?.confidence_v1 ?? confidence,
+    confidence_v2: confMeta?.confidence_v2 ?? null,
     risk,
     liquidityUsd: Number.isFinite(liqUsd) ? liqUsd : null,
     unifiedScore: us.unified,
@@ -654,6 +662,7 @@ async function evaluateSignalEmission(score, ctx = {}) {
     unifiedScore: us.unified,
     components: us.components,
     regime: entry.regime,
+    confidenceMeta: confMeta,
     effectiveGate: {
       minConfidence: cfg.minConfidence,
       minUnifiedScore: cfg.minUnifiedScore,

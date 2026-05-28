@@ -45,6 +45,7 @@ const { sign: signScoreResult } = require("../lib/scoreSigner");
 const { getActiveSignalWeightMap } = require("../services/signalCalibrator");
 const { combinedPerformanceWeight, clampQualityStack } = require("../services/signalFeedQuality");
 const { isSystemMint } = require("../lib/systemMints");
+const { buildEngineConfidenceShadow } = require("./confidenceModel");
 
 const CONFIG = {
   whaleMinUsd: Number(process.env.RULE_WHALE_MIN_USD || 5_000),
@@ -319,16 +320,31 @@ async function evaluate(event, extraCtx = {}) {
 
   let perfWeightForMeta = null;
   let confStackForMeta = null;
+  let perfStack = 1;
   if (fired.length) {
     const perfW = combinedPerformanceWeight(
       fired.map((r) => r.signal),
       getActiveSignalWeightMap()
     );
     const stack = clampQualityStack(perfW, 1);
+    perfStack = stack;
     perfWeightForMeta = Math.round(perfW * 10000) / 10000;
     confStackForMeta = Math.round(stack * 10000) / 10000;
     confidence = clamp(Math.round(confidence * stack), 0, 100);
   }
+
+  const absChangeRaw = Number(extraCtx?.priceChange24h);
+  const absChange24hPct = Number.isFinite(absChangeRaw) ? Math.abs(absChangeRaw) : null;
+  const confidenceShadow = buildEngineConfidenceShadow({
+    rulesTriggered: fired.length,
+    uniqueWallets: assetStats.uniqueWalletsInWindow,
+    recentActivityBoost,
+    contradictions: detectContradictions(fired),
+    absChange24hPct,
+    perfStack
+  });
+  // Keep score.confidence aligned with shadow v1 (gate + persistence use this field).
+  confidence = confidenceShadow.confidence_v1;
 
   const result = {
     asset: event.data.asset,
@@ -352,6 +368,7 @@ async function evaluate(event, extraCtx = {}) {
       baselinePerMin: Number(assetStats.baselinePerMin.toFixed(2)),
       liquidityProvided: ctx.liquidityUsd != null,
       amountUsdProvided: ctx.amountUsd != null,
+      confidenceShadow,
       ...(perfWeightForMeta != null
         ? {
             signalQuality: {

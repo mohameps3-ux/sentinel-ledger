@@ -3,6 +3,7 @@
 const { getSupabase } = require("../lib/supabase");
 const { getMarketData } = require("./marketData");
 const { isSystemMint } = require("../lib/systemMints");
+const { buildEmissionConfidenceMeta } = require("../scoring/confidenceModel");
 const { shouldKillSignal } = require("./signalEmissionGate");
 const { resolveBaseSentinelScoreAtEmission } = require("./signalCardScore");
 
@@ -258,7 +259,11 @@ function emissionArchiveFromScore(score) {
     components: eg.components && typeof eg.components === "object" ? eg.components : null,
     regime: eg.regime && typeof eg.regime === "object" ? eg.regime : null,
     effectiveGate: eg.effectiveGate && typeof eg.effectiveGate === "object" ? eg.effectiveGate : null,
-    alphaLayer: alphaSnapshot
+    alphaLayer: alphaSnapshot,
+    meta:
+      (eg.meta && typeof eg.meta === "object" ? eg.meta : null) ||
+      buildEmissionConfidenceMeta(score) ||
+      null
   };
   return { emission_regime, emission_gate };
 }

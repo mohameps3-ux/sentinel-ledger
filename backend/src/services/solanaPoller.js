@@ -282,7 +282,8 @@ async function emitScore(tx, sentinelEvent) {
       components: gate.components,
       regime: gate.regime,
       effectiveGate: gate.effectiveGate,
-      alphaLayer: score.meta?.alphaLayer || null
+      alphaLayer: score.meta?.alphaLayer || null,
+      meta: gate.confidenceMeta || null
     }
   };
   global.io.to(tx.tokenAddress).emit("sentinel:score", score);

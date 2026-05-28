@@ -19,6 +19,7 @@ const {
   shouldAllowMint
 } = require("../ingestion/entropyGuard");
 const { evaluate: evaluateScore } = require("../scoring/engine");
+const { buildProbeConfidenceShadow } = require("../scoring/confidenceModel");
 const { recordSignalEmission } = require("./signalPerformance");
 const { getMarketData } = require("./marketData");
 const { evaluateSignalEmission } = require("./signalEmissionGate");
@@ -328,6 +329,11 @@ async function processHeliusWebhookRaw(raw) {
             wallets: probingResult.wallets.length,
             priceSkew: probingResult.priceSkew
           });
+          const ctx = buildScoringContext(market, tx.amount);
+          ctx.wallets = Array.isArray(probingResult.wallets) ? probingResult.wallets : [];
+          const absChg = Number.isFinite(Number(ctx.priceChange24h))
+            ? Math.abs(Number(ctx.priceChange24h))
+            : null;
           const probingScore = {
             asset: probingResult.mint,
             confidence: probingResult.confidence,
@@ -341,11 +347,15 @@ async function processHeliusWebhookRaw(raw) {
               clusterSig: probingResult.clusterSig,
               wallets: probingResult.wallets,
               priceSkew: probingResult.priceSkew,
-              reason: probingResult.reason
+              reason: probingResult.reason,
+              confidenceShadow: buildProbeConfidenceShadow(probingResult.priceSkew, {
+                minSkew: Number(process.env.CLUSTER_PROBE_MIN_PRICE_SKEW || 0),
+                maxSkew: Number(process.env.CLUSTER_PROBE_MAX_PRICE_SKEW || 0.015),
+                absChange24hPct: absChg,
+                uniqueWallets: Array.isArray(probingResult.wallets) ? probingResult.wallets.length : 0
+              })
             }
           };
-          const ctx = buildScoringContext(market, tx.amount);
-          ctx.wallets = Array.isArray(probingResult.wallets) ? probingResult.wallets : [];
           const gate = await evaluateSignalEmission(probingScore, ctx);
           if (gate.allow) {
             probingScore.meta = {
@@ -361,7 +371,8 @@ async function processHeliusWebhookRaw(raw) {
                   patchKeys: []
                 },
                 effectiveGate: gate.effectiveGate,
-                alphaLayer: null
+                alphaLayer: null,
+                meta: gate.confidenceMeta || null
               }
             };
             if (global.io) {
@@ -424,7 +435,8 @@ async function processHeliusWebhookRaw(raw) {
                 components: gate.components,
                 regime: gate.regime,
                 effectiveGate: gate.effectiveGate,
-                alphaLayer: score.meta?.alphaLayer || null
+                alphaLayer: score.meta?.alphaLayer || null,
+                meta: gate.confidenceMeta || null
               }
             };
             if (global.io) {

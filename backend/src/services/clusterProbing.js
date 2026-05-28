@@ -1,6 +1,10 @@
 "use strict";
 
 const { createHash } = require("crypto");
+const {
+  computeProbeConfidenceV1,
+  buildProbeConfidenceShadow
+} = require("../scoring/confidenceModel");
 const WINDOW_MS = 120_000;
 const MIN_WALLETS = 3;
 /**
@@ -76,12 +80,16 @@ async function evaluateIntent(mint, wallet, priceUsd) {
 
   const sorted = [...wallets].sort();
   const clusterSig = clusterHash(sorted);
-  const confidence = Math.min(95, 55 + Math.round(priceSkew * 800));
+  const confidence = computeProbeConfidenceV1(priceSkew);
 
   return {
     action: "CLUSTER_ACTIVATION",
     mint: m,
     confidence,
+    confidenceShadow: buildProbeConfidenceShadow(priceSkew, {
+      minSkew: MIN_PRICE_SKEW,
+      maxSkew: MAX_PRICE_SKEW
+    }),
     wallets: sorted,
     priceSkew,
     clusterSig,
