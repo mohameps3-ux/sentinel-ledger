@@ -570,7 +570,7 @@ async function bootstrap() {
   } else {
     console.log("Background workers disabled via SMART_WORKERS_ENABLED=false");
   }
-  startWebhookScoringWorker();
+  await startWebhookScoringWorker();
   startTelegramBot();
   startSolanaPoller();
   startWebhookPollerWatchdog();
