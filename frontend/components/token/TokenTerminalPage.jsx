@@ -38,10 +38,8 @@ const DeployerPanel = dynamic(
   () => import("./DeployerPanel").then((mod) => mod.DeployerPanel),
   { ssr: false }
 );
-const LiveFlowPanel = dynamic(
-  () => import("./LiveFlowPanel").then((mod) => mod.LiveFlowPanel),
-  { ssr: false, loading: () => <div className="border border-white/[0.06] bg-sl-card p-4 text-sm text-sl-muted">Loading live flow…</div> }
-);
+import { LiveTransactionsWide } from "./LiveTransactionsWide";
+
 const NotesPanel = dynamic(
   () => import("./NotesPanel").then((mod) => mod.NotesPanel),
   { ssr: false }
@@ -503,39 +501,13 @@ function TerminalCenter({
   );
 }
 
-function TerminalRight({ address, tokenData, recentTransactions, tokenPriceUsd, flaggedWallets }) {
+function TerminalRight({ address, tokenData, flaggedWallets }) {
   const market = tokenData?.market ?? {};
-  const analysis = tokenData?.analysis ?? {};
-  const score = { ...analysis, ...tokenData?.terminal, holderConcentration: tokenData?.holders?.top10Percentage };
   const dexUnique = dedupeDexPairs(market?.dexPairs).length;
   const deployerAddr = tokenData?.deployer?.address;
 
   return (
     <div className="tpt-right">
-      <div className="tpt-r-tx-hdr">
-        <span className="tpt-r-tx-title">LIVE TRANSACTIONS</span>
-        <span className="tpt-r-tx-filter">FILTER: &gt;0.1 SOL</span>
-        <span className="tpt-r-tx-rate">● LIVE</span>
-      </div>
-
-      <div className="tpt-r-tx-cols">
-        <span>TIME</span>
-        <span>TYPE</span>
-        <span>WALLET/ENTITY</span>
-        <span>BEHAVIOR</span>
-        <span>AMOUNT</span>
-        <span>PRICE</span>
-      </div>
-
-      <div
-        id="flow"
-        className="tpt-r-tx-list scroll-mt-[calc(var(--sl-nav-actual,52px)+var(--sl-token-section-nav-h,2.75rem))]"
-      >
-        <LiveFlowPanel transactions={recentTransactions} tokenPriceUsd={tokenPriceUsd} isLive={recentTransactions.length > 0} />
-      </div>
-
-      <div className="tpt-r-view-all">VIEW ALL TRANSACTIONS →</div>
-
       <div className="tpt-r-accordions">
         <details className="tpt-r-accord">
           <summary className="tpt-r-accord-sum">
@@ -854,16 +826,11 @@ export default function TokenTerminalPage() {
           pumpUrl={pumpUrl}
           isWatchlisted={isWatchlisted}
         />
-        <TerminalRight
-          address={address}
-          tokenData={tokenData}
-          recentTransactions={recentTransactions}
-          tokenPriceUsd={market.price}
-          flaggedWallets={flaggedWallets}
-        />
+        <TerminalRight address={address} tokenData={tokenData} flaggedWallets={flaggedWallets} />
       </div>
 
       <div className="sl-container py-4 pb-10 space-y-4">
+        <LiveTransactionsWide recentTransactions={recentTransactions} tokenPriceUsd={market.price} />
         {hasToken ? <NotesPanel tokenAddress={address} initialNote={note} /> : null}
         <Ticker />
         <FinancialDisclaimer />
