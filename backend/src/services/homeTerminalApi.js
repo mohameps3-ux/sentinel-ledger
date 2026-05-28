@@ -123,7 +123,7 @@ function decisionFromScore(score, strategy = "balanced") {
   return "STAY OUT";
 }
 
-const SIGNALS_LATEST_CACHE_KEY_PREFIX = "terminal:signals:latest:v8:";
+const SIGNALS_LATEST_CACHE_KEY_PREFIX = "terminal:signals:latest:v9:";
 const SIGNALS_LATEST_STRATEGIES = ["balanced", "conservative", "aggressive"];
 const SIGNALS_LATEST_FEED_TIERS = ["realtime", "delayed"];
 const SIGNALS_LATEST_LIMITS = [8, 10, 12, 16, 24, 32, 50, 56, 64];
@@ -810,6 +810,23 @@ function whyNowLines({ walletCount, entryWindowMinutesLeft, sentinelScore, symbo
   ];
 }
 
+/** Honest emission fields for /signals/latest cards (rule tags + gate regime at emit). */
+function honestEmissionFieldsFromRow(row) {
+  const tags = Array.isArray(row?.signal_tags)
+    ? row.signal_tags.map((s) => String(s).trim()).filter(Boolean)
+    : [];
+  const regimeRaw =
+    row?.emission_regime != null && String(row.emission_regime).trim() !== ""
+      ? String(row.emission_regime).trim().toLowerCase()
+      : "unknown";
+  const conf = Number(row?.confidence);
+  return {
+    emissionSignals: tags,
+    emissionRegime: regimeRaw || "unknown",
+    engineConfidence: Number.isFinite(conf) ? conf : null
+  };
+}
+
 /** Normalize signal_performance rows for buildLatestSignalsFeed (internal feed shape). */
 function mapSignalPerformanceRowsToFeedRows(perfRows) {
   return (perfRows || [])
@@ -825,6 +842,7 @@ function mapSignalPerformanceRowsToFeedRows(perfRows) {
       price_4h_usd: null,
       result_pct: row.outcome_pct,
       signal_tags: Array.isArray(row.signals) ? row.signals.map((s) => String(s)).filter(Boolean).slice(0, 16) : [],
+      emission_regime: row.emission_regime != null ? String(row.emission_regime).trim() : null,
       persisted_sentinel_score: row.sentinel_score
     }));
 }
@@ -836,7 +854,7 @@ async function fetchLatestSignalRowsSupabase(supabase, since, limitRows) {
   // Live emissions land in signal_performance first (see countSignalsTodayPrimary / smart-money-activity).
   const { data: perfRows, error: perfError } = await supabase
     .from("signal_performance")
-    .select("id, asset, emitted_at, confidence, entry_price_usd, outcome_pct, signals, sentinel_score")
+    .select("id, asset, emitted_at, confidence, entry_price_usd, outcome_pct, signals, sentinel_score, emission_regime")
     .gte("emitted_at", since)
     .order("emitted_at", { ascending: false })
     .limit(limitRows);
@@ -860,7 +878,11 @@ async function fetchLatestSignalRowsSupabase(supabase, since, limitRows) {
     .limit(limitRows);
   if (signalsError) throw signalsError;
 
-  const rows = (rawSignals || []).map((row) => ({ ...row, signal_tags: [] }));
+  const rows = (rawSignals || []).map((row) => ({
+    ...row,
+    signal_tags: [],
+    emission_regime: null
+  }));
   return {
     rows,
     sourceTable: "smart_wallet_signals"
@@ -1073,7 +1095,8 @@ async function buildLatestSignalsFeed(
         stack: Math.round(stack * 10000) / 10000
       },
       rulePerformance,
-      topWallet
+      topWallet,
+      ...honestEmissionFieldsFromRow(row)
     });
   }
 
