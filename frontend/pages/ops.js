@@ -926,7 +926,7 @@ export default function OpsPage() {
                                 <th className="data-th py-2 pr-3">rule_id</th>
                                 <th className="data-th py-2 pr-3 text-right">total_signals</th>
                                 <th className="data-th py-2 pr-3 text-right">win_rate_60m</th>
-                                <th className="data-th py-2 pr-3 text-right">avg_return</th>
+                                <th className="data-th py-2 pr-3 text-right">avg · median</th>
                                 <th className="data-th py-2 pr-3 text-right">confidence_score</th>
                               </tr>
                             </thead>
@@ -935,6 +935,7 @@ export default function OpsPage() {
                                 const total = Number(row.total_signals || 0);
                                 const winRate = total > 0 ? (Number(row.success_count_60m || 0) / total) * 100 : 0;
                                 const avgReturn = Number(row.avg_return_60m || 0) * 100;
+                                const medianReturn = Number(row.median_return_60m || 0) * 100;
                                 const conf = Number(row.confidence_score || 0) * 100;
                                 const regimes = row.regime_performance && typeof row.regime_performance === "object" ? row.regime_performance : {};
                                 const regimeLine = ["bull", "crab", "volatile"]
@@ -955,8 +956,12 @@ export default function OpsPage() {
                                     <td className="data-td py-2 pr-3 text-right">{formatInteger(total)}</td>
                                     <td className="data-td py-2 pr-3 text-right">{winRate.toFixed(1)}%</td>
                                     <td className={`data-td py-2 pr-3 text-right ${avgReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                                      {avgReturn >= 0 ? "+" : ""}
-                                      {avgReturn.toFixed(1)}%
+                                      avg {avgReturn >= 0 ? "+" : ""}
+                                      {avgReturn.toFixed(2)}%
+                                      <span className="text-sl-muted">
+                                        {" · "}median {medianReturn >= 0 ? "+" : ""}
+                                        {medianReturn.toFixed(2)}%
+                                      </span>
                                     </td>
                                     <td className="data-td py-2 pr-3 text-right">{total >= 10 ? `${conf.toFixed(1)}%` : "n<10"}</td>
                                   </tr>

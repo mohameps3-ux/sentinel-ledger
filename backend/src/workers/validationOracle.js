@@ -27,6 +27,21 @@ const ORACLE_BATCH = Math.max(1, Math.min(200, Number(process.env.VALIDATION_ORA
 const SUCCESS_THRESHOLD_60M = Number(process.env.VALIDATION_ORACLE_SUCCESS_60M || 0.01);
 const DRAWDOWN_WARN_THRESHOLD = Number(process.env.VALIDATION_ORACLE_DRAWDOWN_WARN || -0.1);
 
+const ORACLE_WINSORIZE_CAP_FRAC = Number(
+  process.env.VALIDATION_ORACLE_WINSORIZE_CAP_FRAC ??
+    Number(process.env.SIGNAL_PERF_WINSORIZE_CAP_PCT ?? 200) / 100
+);
+
+/** Clip magnitude for aggregate avg only; raw outcome_60m in DB unchanged. Fraction scale (0.01 = +1%). */
+function winsorizeOutcomeFrac(frac, cap = ORACLE_WINSORIZE_CAP_FRAC) {
+  const n = Number(frac);
+  if (!Number.isFinite(n)) return 0;
+  if (cap <= 0) return n;
+  if (n > cap) return cap;
+  if (n < -cap) return -cap;
+  return n;
+}
+
 let intervalRef = null;
 let lastTickStartedAt = null;
 let lastTickFinishedAt = null;
@@ -338,7 +353,7 @@ async function recomputeRulePerformance(supabase, ruleId) {
     success_count_60m: success60,
     avg_return_5m: average(returns5),
     avg_return_15m: average(returns15),
-    avg_return_60m: average(returns60),
+    avg_return_60m: average(returns60.map((n) => winsorizeOutcomeFrac(n))),
     median_return_60m: median(returns60),
     max_drawdown: Math.max(
       maxDrawdown(returns60),
@@ -365,7 +380,7 @@ function buildRegimePerformance(rows) {
       total,
       success,
       confidence: total >= 10 ? success / total : 0,
-      avgReturn60m: average(returns),
+      avgReturn60m: average(returns.map((n) => winsorizeOutcomeFrac(n))),
       hasSample: total >= 10
     };
   }
