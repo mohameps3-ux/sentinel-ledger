@@ -21,6 +21,7 @@ import { useLocale } from "../../contexts/LocaleContext";
 import { buildRegimeAnalysisFromDesk } from "@/lib/tripleRiskRegime";
 import { resolveTokenStateChip } from "@/lib/tokenStateChip.mjs";
 import { TokenStateChip } from "@/components/cockpit/TokenStateChip";
+import { RegimeCautionBanner } from "@/components/token/RegimeCautionBanner";
 import { wrColorClass } from "@/lib/ruleTagMap.mjs";
 
 /**
