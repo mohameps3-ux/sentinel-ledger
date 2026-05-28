@@ -99,6 +99,7 @@ const state = {
   decisions: 0,
   emitted: 0,
   blocked: 0,
+  r03AloneBlocked: 0,
   blockedByReason: {},
   lastDecisionAt: null,
   recent: [],
@@ -567,23 +568,29 @@ async function evaluateSignalEmission(score, ctx = {}) {
     }
   }
 
-  // Phase 3 bypass: R03 (cluster_buy) in volatile regime.
+  // Phase 3 bypass: R03 (cluster_buy / cluster_probing) in volatile regime.
   // Confidence has Pearson correlation ≈ 0.015 with returns — it's noise.
-  // Unified score inherits the same noisy confidence component.
-  // Also bypass insufficient_signals: when score.signals is empty/untagged
-  // (e.g. signal entered via a path that didn't populate rule tags), the
-  // cluster logic already ran and determined there IS a cluster — the tag
-  // absence is a pipeline gap, not a quality signal. WR 43% in volatile
-  // confirms these signals have real edge.
+  // C9.5: when SIGNAL_GATE_PHASE3_REQUIRE_COMBO=true (default), bypass only applies
+  // when ≥2 rules fired (combo). R03-alone goes through normal gates (minConfidence 45).
   const PHASE3_BYPASS_ENABLED =
     String(process.env.SIGNAL_GATE_R03_VOLATILE_BYPASS ?? "true").toLowerCase() !== "false";
+  const PHASE3_REQUIRE_COMBO =
+    String(process.env.SIGNAL_GATE_PHASE3_REQUIRE_COMBO ?? "true").toLowerCase() !== "false";
+  let r03BypassActive = false;
   if (PHASE3_BYPASS_ENABLED && regime.key === "volatile" && isR03DominatedEmission(score)) {
-    const bypassed = new Set(["low_confidence", "low_unified_score", "insufficient_signals"]);
-    const before = reasons.length;
-    reasons = reasons.filter((r) => !bypassed.has(r));
-    if (reasons.length < before) {
-      console.log(`[gate] Phase3 R03+volatile bypass removed ${before - reasons.length} block(s) on ${asset}`);
+    const ruleCount = Array.isArray(score?.signals) ? score.signals.length : 0;
+    if (!PHASE3_REQUIRE_COMBO || ruleCount >= 2) {
+      r03BypassActive = true;
+      const bypassed = new Set(["low_confidence", "low_unified_score", "insufficient_signals"]);
+      const before = reasons.length;
+      reasons = reasons.filter((r) => !bypassed.has(r));
+      if (reasons.length < before) {
+        console.log(`[gate] Phase3 R03+volatile bypass removed ${before - reasons.length} block(s) on ${asset}`);
+      }
     }
+  }
+  if (PHASE3_BYPASS_ENABLED && regime.key === "volatile" && isR03DominatedEmission(score) && !r03BypassActive) {
+    state.r03AloneBlocked += 1;
   }
 
   let allow = !cfg.enabled || reasons.length === 0;
@@ -696,6 +703,9 @@ function getSignalGateOpsSnapshot() {
     alpha: alphaGateConfigSnapshot(),
     calibration: {
       blockR03Calm: GATE_BLOCK_R03_CALM,
+      r03VolatileBypass: String(process.env.SIGNAL_GATE_R03_VOLATILE_BYPASS ?? "true").toLowerCase() !== "false",
+      phase3RequireCombo:
+        String(process.env.SIGNAL_GATE_PHASE3_REQUIRE_COMBO ?? "true").toLowerCase() !== "false",
       walletQuality: {
         enabled: GATE_FILTER_WALLET_QUALITY,
         minWinRate: GATE_MIN_WALLET_WIN_RATE,
@@ -707,6 +717,7 @@ function getSignalGateOpsSnapshot() {
       decisions: state.decisions,
       emitted: state.emitted,
       blocked: state.blocked,
+      r03AloneBlocked: state.r03AloneBlocked,
       emitRate: Number(rate.toFixed(4)),
       blockedByReason: state.blockedByReason,
       lastDecisionAt: state.lastDecisionAt
