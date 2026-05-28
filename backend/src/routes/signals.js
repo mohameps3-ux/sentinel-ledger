@@ -1010,7 +1010,9 @@ router.get("/outcomes", async (req, res) => {
 
 /**
  * GET /api/v1/signals/desk-proof-of-edge
- * Cohort stats from resolved `signal_performance` (confidence band, optional regime, excludes current mint).
+ * Cohort stats from resolved `signal_performance`.
+ * Preferred: ?rule=R03&regime=volatile (30d lookback, rule tag + emission regime).
+ * Legacy: ?confidence=NN&regime=… (confidence band ±12).
  */
 router.get("/desk-proof-of-edge", async (req, res) => {
   const supabase = safeSupabase();
@@ -1022,8 +1024,25 @@ router.get("/desk-proof-of-edge", async (req, res) => {
   const confRaw = Number(req.query.confidence);
   const confidence = Number.isFinite(confRaw) ? Math.max(0, Math.min(100, confRaw)) : null;
   const regime = String(req.query.regime || "").trim().slice(0, 48) || null;
+  const rule = String(req.query.rule || "").trim().slice(0, 16) || null;
+  const cacheKey = `signals:desk-poe:v2:${mint || "na"}:${rule || "na"}:${regime || "na"}:${confidence ?? "na"}`;
+  const cacheSec = Math.min(600, Math.max(60, Number(process.env.DESK_POE_CACHE_SEC || 300)));
   try {
-    const body = await buildDeskProofOfEdge(supabase, { mint: mint || null, confidence, regime });
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      const body = typeof cached === "string" ? JSON.parse(cached) : cached;
+      return res.json({ ...body, cached: true });
+    }
+  } catch (error) {
+    console.warn("[desk-proof-of-edge] cache read failed:", error?.message || error);
+  }
+  try {
+    const body = await buildDeskProofOfEdge(supabase, { mint: mint || null, confidence, regime, rule });
+    try {
+      await redis.set(cacheKey, JSON.stringify(body), { ex: cacheSec });
+    } catch (error) {
+      console.warn("[desk-proof-of-edge] cache write failed:", error?.message || error);
+    }
     return res.json(body);
   } catch (e) {
     const code = /unconfigured/i.test(String(e?.message || "")) ? 503 : 500;

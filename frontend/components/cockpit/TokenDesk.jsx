@@ -479,6 +479,8 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
     return classifyDeskRegime(token);
   }, [token?.emissionRegime, regimeKeyFromScore, token]);
 
+  const deskRuleId = token?.rulePerformance?.ruleId ? String(token.rulePerformance.ruleId) : null;
+
   if (!mint) {
     return (
       <div className="flex h-full min-h-[8.25rem] sm:min-h-[12rem] flex-col items-center justify-center gap-2 px-3 sm:px-4 py-4 sm:py-8 text-center overflow-y-auto">
@@ -570,11 +572,7 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
         </DeskSection>
 
         <DeskSection title="Oracle Outcomes">
-          <ProofOfEdgeBlock
-            mint={mint}
-            confidence={conf != null && Number.isFinite(Number(conf)) ? Number(conf) : null}
-            regime={deskEmissionRegime}
-          />
+          <ProofOfEdgeBlock mint={mint} ruleId={deskRuleId} regime={deskEmissionRegime} />
         </DeskSection>
 
         <DeskSection title="Smart Money">
