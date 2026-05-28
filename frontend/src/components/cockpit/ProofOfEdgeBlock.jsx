@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicApiUrl } from "../../../lib/publicRuntime";
 import { useLocale } from "../../../contexts/LocaleContext";
+import { wrColorClass } from "../../../lib/ruleTagMap.mjs";
 
 function fmtPct(v) {
   if (v == null || !Number.isFinite(Number(v))) return "—";
@@ -15,10 +16,10 @@ function fmtHit(v) {
   return `${Math.round(Number(v))}%`;
 }
 
-async function fetchDeskProofOfEdge({ mint, confidence, regime }) {
+async function fetchDeskProofOfEdge({ mint, ruleId, regime }) {
   const u = new URL(`${getPublicApiUrl()}/api/v1/signals/desk-proof-of-edge`);
   if (mint) u.searchParams.set("mint", mint);
-  if (confidence != null && Number.isFinite(confidence)) u.searchParams.set("confidence", String(Math.round(confidence)));
+  if (ruleId) u.searchParams.set("rule", ruleId);
   if (regime) u.searchParams.set("regime", regime);
   const r = await fetch(u.toString());
   if (!r.ok) throw new Error("desk_proof_of_edge");
@@ -40,20 +41,26 @@ function useAgeSeconds(iso) {
   return sec;
 }
 
+const COHORT_TOOLTIP =
+  "Cohort based on the rule that fired and current regime, last 30 days. Computes how this signal type usually plays out, independent of confidence score.";
+
 /**
- * Zone C — always-visible quantitative proof block (no accordion).
+ * Zone C — quantitative proof block (rule + regime cohort by default).
  */
-export function ProofOfEdgeBlock({ mint, confidence, regime }) {
+export function ProofOfEdgeBlock({ mint, ruleId, regime }) {
   const { t, locale } = useLocale();
   const listLocale =
     locale === "zh" ? "zh-Hans" : locale === "pt" ? "pt-BR" : locale === "ar" ? "ar" : locale;
 
+  const cohortReady =
+    Boolean(ruleId && regime && String(regime).trim() && String(regime).toLowerCase() !== "unknown");
+
   const q = useQuery({
-    queryKey: ["desk-proof-of-edge", mint || "", confidence ?? null, regime || ""],
-    queryFn: () => fetchDeskProofOfEdge({ mint: mint || "", confidence, regime }),
+    queryKey: ["desk-proof-of-edge", mint || "", ruleId || "", regime || ""],
+    queryFn: () => fetchDeskProofOfEdge({ mint: mint || "", ruleId, regime }),
     staleTime: 45_000,
     refetchInterval: 60_000,
-    enabled: Boolean(mint)
+    enabled: Boolean(mint && cohortReady)
   });
 
   const updatedIso = q.data?.updatedAt || (q.dataUpdatedAt ? new Date(q.dataUpdatedAt).toISOString() : "");
@@ -70,6 +77,10 @@ export function ProofOfEdgeBlock({ mint, confidence, regime }) {
   const hits = q.data?.hits;
   const sufficient = Boolean(q.data?.sufficient);
   const n = Number(q.data?.comparableCount || 0);
+  const ruleStats = q.data?.ruleStats;
+  const ruleApplied = q.data?.ruleApplied || ruleId;
+  const regimeApplied = q.data?.regimeApplied || regime;
+  const ruleMode = q.data?.cohortMode === "rule_regime";
 
   return (
     <section
@@ -91,7 +102,9 @@ export function ProofOfEdgeBlock({ mint, confidence, regime }) {
         </div>
       </div>
 
-      {q.isPending ? (
+      {!cohortReady ? (
+        <p className="text-[11px] text-gray-500 font-mono py-2">Cohort unavailable — rule and regime required.</p>
+      ) : q.isPending ? (
         <p className="text-[11px] text-gray-500 font-mono py-2">{t("cockpit.proof.loading")}</p>
       ) : q.isError ? (
         <p className="text-[11px] text-amber-200/90 py-2">{t("cockpit.proof.error")}</p>
@@ -109,6 +122,23 @@ export function ProofOfEdgeBlock({ mint, confidence, regime }) {
         </div>
       ) : (
         <>
+          {ruleMode && ruleStats ? (
+            <div className="mb-3 rounded-md border border-white/[0.06] bg-black/25 px-2.5 py-2" title={COHORT_TOOLTIP}>
+              <p className="text-[10px] uppercase tracking-[0.08em] text-gray-500 font-semibold mb-1.5">
+                When {ruleApplied} fires in {regimeApplied} regime
+              </p>
+              <div className="space-y-1 font-mono text-[11px] sm:text-xs tabular-nums">
+                <p className={wrColorClass(ruleStats.wrPct)}>
+                  Win rate: {fmtHit(ruleStats.wrPct)} (n={Number(ruleStats.n || n).toLocaleString(listLocale)})
+                </p>
+                <p className="text-gray-200">Avg outcome: {fmtPct(ruleStats.avgOutcomePct)}</p>
+                <p className="text-gray-400">
+                  Avg winner: {fmtPct(ruleStats.avgWinnerPct)} · Avg loser: {fmtPct(ruleStats.avgLoserPct)}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
           <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center mb-3">
             {["m5", "m30", "m2h"].map((key) => {
               const cell = h?.[key];
