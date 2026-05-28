@@ -45,7 +45,7 @@ if (profile !== "strict") {
 
   // Unlock volatile: lower every threshold below the base so R03+volatile passes.
   // Base values: minConf=25, minUnified=0.25, minLiq=5000.
-  process.env.SIGNAL_GATE_REGIME_VOLATILE_MIN_CONFIDENCE = "20";
+  process.env.SIGNAL_GATE_REGIME_VOLATILE_MIN_CONFIDENCE = "45";
   process.env.SIGNAL_GATE_REGIME_VOLATILE_MIN_UNIFIED_SCORE = "0.18";
   process.env.SIGNAL_GATE_REGIME_VOLATILE_MIN_LIQUIDITY_USD = "3000";
 

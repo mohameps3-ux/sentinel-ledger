@@ -235,6 +235,18 @@ function computeRegimePatch(regimeKey, baseCfg) {
   const envU = String(regimeKey || "unknown").toUpperCase();
   const defaults = defaultRegimePatch(regimeKey, baseCfg);
   const fromEnv = readRegimeEnvOverrides(envU);
+
+  // Defensive: never allow volatile minConfidence below
+  // SIGNAL_GATE_REGIME_VOLATILE_MIN_CONF (default 45). Set to 0 to disable.
+  if (regimeKey === "volatile") {
+    const volFloor = Number(process.env.SIGNAL_GATE_REGIME_VOLATILE_MIN_CONF ?? 45);
+    const desired =
+      fromEnv.minConfidence ?? defaults.minConfidence ?? baseCfg.minConfidence;
+    if (Number.isFinite(volFloor) && volFloor > 0 && Number.isFinite(desired) && desired < volFloor) {
+      fromEnv.minConfidence = volFloor;
+    }
+  }
+
   return { ...defaults, ...fromEnv };
 }
 
