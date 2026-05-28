@@ -20,6 +20,7 @@ export function HoldersPanel({ holders }) {
   }
 
   const fromBirdeye = data.holderCountSource === "birdeye";
+  const birdeyeRestExhausted = data.birdeyeRestStatus === "exhausted";
   const sampled = data.largestAccountsSampled > 0 ? data.largestAccountsSampled : null;
 
   return (
@@ -42,7 +43,14 @@ export function HoldersPanel({ holders }) {
           ) : null}
         </div>
         <div className="text-right">
-          {data.totalHolders > 0 ? (
+          {birdeyeRestExhausted ? (
+            <div className="text-right max-w-[220px]">
+              <span className="text-amber-300/90 font-mono text-sm">—</span>
+              <p className="text-[10px] text-amber-300/80 mt-1 leading-snug">
+                Holder count no disponible: cuota Birdeye REST agotada.
+              </p>
+            </div>
+          ) : data.totalHolders > 0 ? (
             <>
               <span className="font-mono text-sm font-semibold text-white">{formatInteger(data.totalHolders)}</span>
               {fromBirdeye ? (

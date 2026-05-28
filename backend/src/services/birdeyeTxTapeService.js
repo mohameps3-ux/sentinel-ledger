@@ -4,6 +4,7 @@ const WebSocket = require("ws");
 const axios = require("axios");
 const { getSupabase } = require("../lib/supabase");
 const { fetchLeaderboardWalletAddresses } = require("../lib/smartWalletLeaderboardPool");
+const { inspectBirdeyeRestResponse, isBirdeyeRestBlocked } = require("./birdeyeRestStatus");
 
 const BIRDEYE_BASE = "https://public-api.birdeye.so";
 const BIRDEYE_WS_BASE = "wss://public-api.birdeye.so/socket/solana";
@@ -131,6 +132,10 @@ async function backfillMint(mint) {
   const session = mintSessions.get(mint);
   if (!session || session.backfilled) return;
   session.backfilled = true;
+  if (isBirdeyeRestBlocked()) {
+    console.warn("[birdeye-tape] backfill skipped: Birdeye REST blocked (CU/circuit)");
+    return;
+  }
 
   try {
     const { data, status } = await axios.get(`${BIRDEYE_BASE}/defi/txs/token`, {
@@ -146,6 +151,7 @@ async function backfillMint(mint) {
       timeout: REST_TIMEOUT_MS,
       validateStatus: () => true
     });
+    inspectBirdeyeRestResponse(status, data, "txs_backfill");
     if (status !== 200 || !data?.success) {
       console.warn("[birdeye-tape] backfill failed", { mint: mint.slice(0, 8), status, message: data?.message });
       return;

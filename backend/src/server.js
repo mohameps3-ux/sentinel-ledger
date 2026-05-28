@@ -391,6 +391,7 @@ app.get("/health/ingestion", (_req, res) => {
 app.get("/health/sync", async (_req, res) => {
   const snap = getIngestionSnapshot();
   const market = getMarketDataCircuitStatus();
+  const birdeyeRest = market?.birdeye_rest || { status: "operational" };
   const providerRates = getMarketDataProviderStats();
   const freshness = await getDataFreshnessSnapshot();
   const dexTokenState = market?.providers?.dex_token || market?.dexscreener || {};
@@ -408,8 +409,10 @@ app.get("/health/sync", async (_req, res) => {
     services: {
       scoring_engine: "operational",
       alert_dispatcher: "operational",
-      market_data: market.degraded ? "degraded" : "operational"
+      market_data: market.degraded ? "degraded" : "operational",
+      birdeye_rest: birdeyeRest.status === "operational" ? "operational" : birdeyeRest.status
     },
+    birdeye_rest: birdeyeRest,
     providers: {
       dex: {
         "429Rate": dexToken429Rate,

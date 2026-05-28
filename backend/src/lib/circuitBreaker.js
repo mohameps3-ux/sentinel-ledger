@@ -34,13 +34,19 @@ function createCircuitBreaker(options = {}) {
   let totalCalls = 0;
   let totalRejected = 0;
 
-  function open(reason) {
+  function open(reason, opts = {}) {
     state = "OPEN";
     openedAt = nowMs();
-    nextProbeAt = openedAt + cfg.openMs;
+    const openForMs = Number(opts.openMs);
+    nextProbeAt = openedAt + (Number.isFinite(openForMs) && openForMs > 0 ? openForMs : cfg.openMs);
     halfOpenCalls = 0;
     halfOpenSuccesses = 0;
     if (reason) lastError = String(reason).slice(0, 240);
+  }
+
+  function forceOpen(reason, opts = {}) {
+    failures = cfg.failureThreshold;
+    open(reason, opts);
   }
 
   function close() {
@@ -115,7 +121,7 @@ function createCircuitBreaker(options = {}) {
     }
   }
 
-  return { execute, snapshot, config: cfg };
+  return { execute, snapshot, forceOpen, config: cfg };
 }
 
 module.exports = { createCircuitBreaker };

@@ -171,6 +171,7 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
   const meta = payload?.meta || {};
   const isOnChain = meta.source === "on_chain";
   const hasBirdeye = meta.pnlProvider === "birdeye";
+  const birdeyeRestExhausted = meta.birdeyeRestStatus === "exhausted";
   const strengthLabel = hasBirdeye ? "Score" : isOnChain ? "Signal" : "WR";
 
   if (!tokenAddress) {
@@ -257,13 +258,18 @@ export function SmartMoneyPanel({ tokenAddress, flaggedWallets }) {
         </div>
         <div className="rounded-[10px] border border-white/[0.08] bg-white/[0.03] px-3 py-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">PnL data</p>
-          <p className="text-sm font-semibold text-emerald-300 mt-1 inline-flex items-center gap-1">
-            <Zap size={14} />
-            {hasBirdeye ? "Birdeye live" : "On-chain only"}
+          <p className="text-sm font-semibold mt-1 inline-flex items-center gap-1">
+            <Zap size={14} className={birdeyeRestExhausted ? "text-amber-300/90" : hasBirdeye ? "text-emerald-300" : "text-gray-400"} />
+            {birdeyeRestExhausted ? "Cuota agotada" : hasBirdeye ? "Birdeye live" : "On-chain only"}
           </p>
         </div>
       </div>
 
+      {birdeyeRestExhausted ? (
+        <p className="text-[11px] text-amber-300/90 leading-relaxed border border-amber-500/25 bg-amber-500/10 px-3 py-2 rounded-md">
+          PnL no disponible: cuota Birdeye REST agotada. Mostrando señal on-chain solamente.
+        </p>
+      ) : null}
       {meta.tierLegend ? (
         <p className="text-[11px] text-gray-500 leading-relaxed border-l-2 border-purple-500/40 pl-3">{meta.tierLegend}</p>
       ) : null}

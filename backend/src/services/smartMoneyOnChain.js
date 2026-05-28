@@ -179,14 +179,15 @@ async function buildOnChainSmartMoney(tokenMint, options = {}) {
     .map(({ _kind, ...rest }) => rest);
 
   const scoreMap = new Map(wallets.map((w) => [w.wallet, w.confidence]));
-  const birdeyeMap = await getCachedOrFetchTokenWalletPnl(
+  const pnlFetch = await getCachedOrFetchTokenWalletPnl(
     tokenMint,
     wallets.map((w) => w.wallet)
   );
-  wallets = enrichWalletsWithBirdeye(wallets, birdeyeMap, scoreMap);
+  wallets = enrichWalletsWithBirdeye(wallets, pnlFetch.map, scoreMap);
   wallets.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
 
   const anyBirdeye = wallets.some((w) => w.pnlSource === "birdeye");
+  const birdeyeRestExhausted = pnlFetch.restStatus === "exhausted";
 
   wallets = wallets.map((w) => ({
     ...w,
@@ -200,12 +201,16 @@ async function buildOnChainSmartMoney(tokenMint, options = {}) {
       heliusTxSample: txs.length,
       whaleAccounts: holdersPack.owners.length,
       pnlProvider: anyBirdeye ? "birdeye" : null,
+      birdeyeRestStatus: pnlFetch.restStatus || "operational",
+      birdeyeRestReason: pnlFetch.restReason || null,
       eliteCount: wallets.filter((w) => w.tier === 1).length,
       activeCount: wallets.filter((w) => w.tier === 2).length,
       competitiveLens: true,
       tierLegend:
         "Elite / Active / Scout = relative strength on this mint (flow, recency, whale overlap; Birdeye upgrades when realized PnL exists). Not financial advice.",
-      metricLabel: anyBirdeye
+      metricLabel: birdeyeRestExhausted
+        ? "PnL no disponible: cuota Birdeye REST agotada. Mostrando señal on-chain solamente."
+        : anyBirdeye
         ? "On-chain activity + Birdeye realized PnL for this token (per wallet). Bar score blends flow + profitability."
         : process.env.BIRDEYE_API_KEY
           ? "On-chain signal (activity + size). Birdeye had no PnL rows for these wallets on this token."

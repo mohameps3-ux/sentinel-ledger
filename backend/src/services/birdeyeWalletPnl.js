@@ -1,6 +1,11 @@
 const axios = require("axios");
 const crypto = require("crypto");
 const redis = require("../lib/cache");
+const {
+  inspectBirdeyeRestResponse,
+  isBirdeyeRestBlocked,
+  getBirdeyeRestHealth
+} = require("./birdeyeRestStatus");
 
 const BIRDEYE_BASE = "https://public-api.birdeye.so";
 const CACHE_TTL_SECONDS = 300;
@@ -28,7 +33,10 @@ function scoreFromBirdeyePnl(pnl) {
 async function fetchTokenWalletPnlMap(tokenAddress, walletAddresses) {
   const key = process.env.BIRDEYE_API_KEY;
   if (!key || !tokenAddress || !walletAddresses?.length) {
-    return new Map();
+    return { map: new Map(), restStatus: getBirdeyeRestHealth().status };
+  }
+  if (isBirdeyeRestBlocked()) {
+    return { map: new Map(), restStatus: getBirdeyeRestHealth().status };
   }
 
   const unique = [...new Set(walletAddresses)].filter(Boolean).slice(0, 50);
@@ -47,29 +55,36 @@ async function fetchTokenWalletPnlMap(tokenAddress, walletAddresses) {
     validateStatus: () => true
   });
 
-  if (status !== 200 || !data?.success) {
-    console.warn(
-      "Birdeye pnl/multiple:",
-      status,
-      data?.message || data?.error || ""
-    );
-    return new Map();
+  const inspected = inspectBirdeyeRestResponse(status, data, "wallet_pnl");
+  if (inspected.exhausted || status !== 200 || !data?.success) {
+    if (!inspected.exhausted) {
+      console.warn("Birdeye pnl/multiple:", status, data?.message || data?.error || "");
+    }
+    return { map: new Map(), restStatus: getBirdeyeRestHealth().status };
   }
 
   const inner = data.data;
   const mapRaw = inner?.data;
-  if (!mapRaw || typeof mapRaw !== "object") return new Map();
+  if (!mapRaw || typeof mapRaw !== "object") {
+    return { map: new Map(), restStatus: getBirdeyeRestHealth().status };
+  }
 
   const out = new Map();
   for (const w of unique) {
     if (mapRaw[w]) out.set(w, mapRaw[w]);
   }
-  return out;
+  return { map: out, restStatus: getBirdeyeRestHealth().status };
 }
 
 async function getCachedOrFetchTokenWalletPnl(tokenAddress, walletAddresses) {
   const key = process.env.BIRDEYE_API_KEY;
-  if (!key) return new Map();
+  if (!key) {
+    return { map: new Map(), restStatus: "operational", restReason: null };
+  }
+  if (isBirdeyeRestBlocked()) {
+    const health = getBirdeyeRestHealth();
+    return { map: new Map(), restStatus: health.status, restReason: health.reason };
+  }
 
   const sorted = [...walletAddresses].filter(Boolean).sort();
   const hash = crypto
@@ -84,7 +99,11 @@ async function getCachedOrFetchTokenWalletPnl(tokenAddress, walletAddresses) {
     if (cached) {
       const parsed = typeof cached === "string" ? JSON.parse(cached) : cached;
       if (parsed && typeof parsed === "object") {
-        return new Map(Object.entries(parsed));
+        return {
+          map: new Map(Object.entries(parsed)),
+          restStatus: getBirdeyeRestHealth().status,
+          restReason: getBirdeyeRestHealth().reason
+        };
       }
     }
   } catch (e) {
@@ -92,14 +111,21 @@ async function getCachedOrFetchTokenWalletPnl(tokenAddress, walletAddresses) {
   }
 
   const fresh = await fetchTokenWalletPnlMap(tokenAddress, walletAddresses);
-  try {
-    const obj = Object.fromEntries(fresh);
-    await redis.set(cacheKey, JSON.stringify(obj), { ex: CACHE_TTL_SECONDS });
-  } catch (e) {
-    console.warn("Birdeye cache write:", e.message);
+  const health = getBirdeyeRestHealth();
+  if (fresh.map.size > 0 && health.status === "operational") {
+    try {
+      const obj = Object.fromEntries(fresh.map);
+      await redis.set(cacheKey, JSON.stringify(obj), { ex: CACHE_TTL_SECONDS });
+    } catch (e) {
+      console.warn("Birdeye cache write:", e.message);
+    }
   }
 
-  return fresh;
+  return {
+    map: fresh.map,
+    restStatus: fresh.restStatus || health.status,
+    restReason: health.reason
+  };
 }
 
 /**

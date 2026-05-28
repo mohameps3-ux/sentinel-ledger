@@ -4,6 +4,11 @@ const redis = require("../lib/cache");
 const { detectNarrativeTags } = require("./narrativeTags");
 const { createCircuitBreaker } = require("../lib/circuitBreaker");
 const { getRecentMarketSnapshot, upsertMarketSnapshot } = require("./marketSnapshots");
+const {
+  registerBirdeyeBreakerHooks,
+  assertBirdeyeRestOk,
+  getBirdeyeRestHealth
+} = require("./birdeyeRestStatus");
 
 const CACHE_TTL_SECONDS = Math.max(
   5,
@@ -47,6 +52,10 @@ const BIRDEYE_TOKEN_BREAKER = createCircuitBreaker({
   openMs: Number(process.env.MARKETDATA_BIRDEYE_CB_OPEN_MS || 45_000),
   halfOpenMaxCalls: Number(process.env.MARKETDATA_BIRDEYE_CB_HALF_OPEN_CALLS || 2),
   halfOpenSuccessThreshold: Number(process.env.MARKETDATA_BIRDEYE_CB_HALF_OPEN_SUCCESS || 2)
+});
+registerBirdeyeBreakerHooks({
+  forceOpen: (reason, opts) => BIRDEYE_TOKEN_BREAKER.forceOpen(reason, opts),
+  isOpen: () => BIRDEYE_TOKEN_BREAKER.snapshot().state !== "CLOSED"
 });
 const CG_BREAKER = createCircuitBreaker({
   name: "coingecko",
@@ -116,6 +125,7 @@ async function with429Retry(fn, label = "") {
     } catch (error) {
       noteProviderAttempt(label, toHttpStatus(error) || 0);
       lastError = error;
+      if (error?.code === "BIRDEYE_REST_EXHAUSTED" || error?.code === "CIRCUIT_OPEN") break;
       if (!isRetryable429(error) || attempts >= totalAttempts) break;
       const jitter = Math.floor(
         RETRY_429_MIN_JITTER_MS + Math.random() * (RETRY_429_MAX_JITTER_MS - RETRY_429_MIN_JITTER_MS)
@@ -339,25 +349,18 @@ async function fetchBirdeyeTokenOverview(address) {
   const headers = getBirdeyeHeaders();
   if (!headers) return { data: null, attempts: 0, skipped: "missing_api_key", circuitState: BIRDEYE_TOKEN_BREAKER.snapshot()?.state || "UNKNOWN" };
   const { out, attempts } = await with429Retry(() =>
-    BIRDEYE_TOKEN_BREAKER.execute(() =>
-      axios.get(`${BIRDEYE_BASE}/defi/token_overview`, {
+    BIRDEYE_TOKEN_BREAKER.execute(async () => {
+      const response = await axios.get(`${BIRDEYE_BASE}/defi/token_overview`, {
         timeout: BIRDEYE_TOKEN_TIMEOUT_MS,
         params: { address },
         headers,
         validateStatus: () => true
-      })
-    ),
+      });
+      assertBirdeyeRestOk(response.status, response.data, "token_overview");
+      return response;
+    }),
     "birdeye_token"
   );
-  const status = Number(out?.status || 0);
-  if (status !== 200) {
-    const err = new Error(`birdeye_overview_status_${status || "unknown"}`);
-    err.status = status;
-    throw err;
-  }
-  if (out?.data?.success !== true) {
-    throw new Error(String(out?.data?.message || out?.data?.error || "birdeye_overview_failed"));
-  }
   return {
     data: out?.data?.data || null,
     attempts,
@@ -377,21 +380,18 @@ async function fetchBirdeyeHotCandidates(limit = 120) {
   for (const endpoint of tryEndpoints) {
     try {
       const { out, attempts } = await with429Retry(() =>
-        BIRDEYE_TOKEN_BREAKER.execute(() =>
-          axios.get(`${BIRDEYE_BASE}${endpoint.path}`, {
+        BIRDEYE_TOKEN_BREAKER.execute(async () => {
+          const response = await axios.get(`${BIRDEYE_BASE}${endpoint.path}`, {
             timeout: 5000,
             params: endpoint.params,
             headers,
             validateStatus: () => true
-          })
-        ),
+          });
+          assertBirdeyeRestOk(response.status, response.data, `hot${endpoint.path}`);
+          return response;
+        }),
         "birdeye_token"
       );
-      const status = Number(out?.status || 0);
-      if (status !== 200 || out?.data?.success !== true) {
-        lastError = new Error(`birdeye_hot_status_${status || "unknown"}_${endpoint.path}`);
-        continue;
-      }
       const raw = out?.data?.data;
       const rows = Array.isArray(raw) ? raw : Array.isArray(raw?.tokens) ? raw.tokens : [];
       const mints = rows
@@ -466,13 +466,20 @@ function getMarketDataCircuitStatus() {
   const dexHot = DEX_HOT_BREAKER.snapshot();
   const birdeyeToken = BIRDEYE_TOKEN_BREAKER.snapshot();
   const cg = CG_BREAKER.snapshot();
+  const birdeyeRest = getBirdeyeRestHealth();
+  const birdeyeRestDown = birdeyeRest.status !== "operational";
   const degraded =
     dexToken.state !== "CLOSED" ||
     dexHot.state !== "CLOSED" ||
     birdeyeToken.state !== "CLOSED" ||
-    cg.state !== "CLOSED";
+    cg.state !== "CLOSED" ||
+    birdeyeRestDown;
   const reason =
-    dexToken.state !== "CLOSED"
+    birdeyeRest.status === "exhausted"
+      ? "birdeye_rest_exhausted"
+      : birdeyeRest.status === "degraded"
+        ? "birdeye_rest_degraded"
+        : dexToken.state !== "CLOSED"
       ? `dex_token_${dexToken.state.toLowerCase()}`
       : dexHot.state !== "CLOSED"
         ? `dex_hot_${dexHot.state.toLowerCase()}`
@@ -485,6 +492,7 @@ function getMarketDataCircuitStatus() {
     // Legacy alias kept for compatibility.
     dexscreener: dexToken,
     coingecko: cg,
+    birdeye_rest: birdeyeRest,
     providers: {
       dex_token: dexToken,
       dex_hot: dexHot,

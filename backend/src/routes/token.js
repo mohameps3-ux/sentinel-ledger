@@ -268,6 +268,8 @@ router.get("/:address", async (req, res) => {
           totalHolders: holdersData.totalHolders || 0,
           holderCountSource: holdersData.holderCountSource || null,
           largestAccountsSampled: holdersData.largestAccountsSampled ?? 0,
+          birdeyeRestStatus: holdersData.birdeyeRestStatus || null,
+          birdeyeRestReason: holdersData.birdeyeRestReason || null,
           topAccounts
         },
         security,

@@ -31,15 +31,25 @@ async function getTokenSecurity(mintAddress) {
   return { mintEnabled: false, freezeEnabled: false };
 }
 
+const {
+  inspectBirdeyeRestResponse,
+  isBirdeyeRestBlocked,
+  getBirdeyeRestHealth
+} = require("./birdeyeRestStatus");
+
 async function fetchBirdeyeHolderCount(mintAddress) {
   const key = process.env.BIRDEYE_API_KEY;
   if (!key || !mintAddress) return null;
+  if (isBirdeyeRestBlocked()) return null;
   try {
-    const { data } = await axios.get("https://public-api.birdeye.so/defi/token_overview", {
+    const { data, status } = await axios.get("https://public-api.birdeye.so/defi/token_overview", {
       params: { address: mintAddress },
       headers: { "X-API-KEY": key, "x-chain": "solana", accept: "application/json" },
-      timeout: 6000
+      timeout: 6000,
+      validateStatus: () => true
     });
+    inspectBirdeyeRestResponse(status, data, "holder_count");
+    if (status !== 200 || data?.success !== true) return null;
     const raw =
       data?.data?.holder ??
       data?.data?.holders ??
@@ -53,8 +63,18 @@ async function fetchBirdeyeHolderCount(mintAddress) {
   }
 }
 
+function holderRestMeta() {
+  const health = getBirdeyeRestHealth();
+  if (health.status === "operational") return {};
+  return {
+    birdeyeRestStatus: health.status,
+    birdeyeRestReason: health.reason
+  };
+}
+
 async function getHolderConcentration(mintAddress) {
   const birdeyeHolders = await fetchBirdeyeHolderCount(mintAddress);
+  const restMeta = holderRestMeta();
 
   for (const rpcUrl of getSolanaJsonRpcUrlList()) {
     try {
@@ -88,7 +108,8 @@ async function getHolderConcentration(mintAddress) {
         top10Percentage: Math.min(top10Percentage, 100),
         totalHolders,
         holderCountSource,
-        largestAccountsSampled
+        largestAccountsSampled,
+        ...restMeta
       };
     } catch (error) {
       console.error(`Holders RPC error (${rpcUrl}):`, error.message);
@@ -98,7 +119,8 @@ async function getHolderConcentration(mintAddress) {
     top10Percentage: 0,
     totalHolders: birdeyeHolders || 0,
     holderCountSource: birdeyeHolders != null ? "birdeye" : null,
-    largestAccountsSampled: 0
+    largestAccountsSampled: 0,
+    ...restMeta
   };
 }
 
