@@ -11,20 +11,32 @@ let workerInstance = null;
 async function cleanStalledActiveJobs(connection) {
   try {
     const q = new Queue(WEBHOOK_SCORING_QUEUE_NAME, { connection });
-    const STALE_MS = 5 * 60 * 1000;
-    const activeJobs = await q.getJobs(["active"], 0, 100);
-    const now = Date.now();
-    let cleaned = 0;
-    for (const job of activeJobs) {
-      const age = now - (job.processedOn || job.timestamp || now);
-      if (age > STALE_MS) {
-        await job.remove().catch(() => {});
-        cleaned++;
+
+    const counts = await q.getJobCounts("active", "waiting", "failed", "completed");
+    const activeCount = counts.active || 0;
+    const waitingCount = counts.waiting || 0;
+
+    if (activeCount > 0 && waitingCount === 0) {
+      const activeJobs = await q.getJobs(["active"], 0, 10);
+      const now = Date.now();
+      const STALE_MS = 5 * 60 * 1000;
+      const allStale =
+        activeJobs.length > 0 &&
+        activeJobs.every((j) => now - (j.processedOn || j.timestamp || now) > STALE_MS);
+
+      if (allStale) {
+        console.log(
+          `[webhook-worker] obliterating queue: ${activeCount} stale active zombies, 0 waiting`
+        );
+        await q.obliterate({ force: true });
+        console.log("[webhook-worker] queue obliterated, will rebuild from new webhooks");
+      } else {
+        console.log("[webhook-worker] active jobs present but not all stale, skipping obliterate");
       }
+    } else {
+      console.log(`[webhook-worker] no cleanup needed: active=${activeCount} waiting=${waitingCount}`);
     }
-    if (cleaned > 0) {
-      console.log(`[webhook-worker] cleaned ${cleaned} stalled active zombies on startup`);
-    }
+
     await q.close();
   } catch (e) {
     console.warn("[webhook-worker] zombie cleanup failed (non-fatal):", e?.message);
