@@ -2827,8 +2827,16 @@ main:has(.tpt-root) [data-sentinel-wayfinding="1"] {
 .tpt-tx-wide-rate {
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
-  color: #22c55e;
   font-weight: 700;
+}
+.tpt-tx-wide-rate--live {
+  color: #22c55e;
+}
+.tpt-tx-wide-rate--reconnecting {
+  color: rgba(251, 191, 36, 0.85);
+}
+.tpt-tx-wide-rate--stale {
+  color: rgba(251, 191, 36, 0.65);
 }
 .tpt-tx-wide-body {
   overflow: visible;

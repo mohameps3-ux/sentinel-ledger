@@ -20,7 +20,13 @@ function isWhaleTx(tx, tokenPriceUsd) {
   return amt * price >= WHALE_USD_MIN;
 }
 
-export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0, isLive = false }) {
+export function LiveFlowPanel({
+  transactions = [],
+  tokenPriceUsd = 0,
+  isLive = false,
+  isConnected = false,
+  connectionState = "disconnected"
+}) {
   const flowWalletAddrs = useMemo(() => {
     const s = new Set();
     transactions.forEach((tx) => {
@@ -50,11 +56,16 @@ export function LiveFlowPanel({ transactions = [], tokenPriceUsd = 0, isLive = f
               <span className="text-gray-600">·</span>
               <span>Speed: <span className="text-gray-200 font-semibold">{txPerMinute}</span> tx/min</span>
             </span>
+          ) : connectionState === "reconnecting" || !isConnected ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400/70 animate-pulse" />
+              <span className="text-amber-300/90 font-semibold text-[11px] uppercase tracking-wide">Reconnecting…</span>
+            </span>
           ) : transactions.length > 0 ? (
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400/70" />
-              <span className="text-amber-300/80 font-semibold text-[11px] uppercase tracking-wide">Recent</span>
-              <span className="text-gray-600 text-[10px]">· Last 4h smart wallet activity</span>
+              <span className="text-amber-300/80 font-semibold text-[11px] uppercase tracking-wide">Stale</span>
+              <span className="text-gray-600 text-[10px]">· No txs in the last 60s</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5">

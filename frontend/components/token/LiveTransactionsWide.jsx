@@ -1,4 +1,5 @@
 import dynamic from "next/dynamic";
+import { useMemo } from "react";
 
 const LiveFlowPanel = dynamic(
   () => import("./LiveFlowPanel").then((mod) => mod.LiveFlowPanel),
@@ -10,17 +11,53 @@ const LiveFlowPanel = dynamic(
   }
 );
 
+const LIVE_WINDOW_MS = 60_000;
+
+function hasRecentTransaction(transactions, windowMs = LIVE_WINDOW_MS) {
+  const now = Date.now();
+  return transactions.some((tx) => {
+    const t = Date.parse(tx?.timestamp);
+    return Number.isFinite(t) && now - t <= windowMs;
+  });
+}
+
+function resolveFeedStatus({ isConnected, connectionState, isLive }) {
+  if (isLive) {
+    return { label: "● LIVE", className: "tpt-tx-wide-rate tpt-tx-wide-rate--live" };
+  }
+  if (connectionState === "reconnecting" || (!isConnected && connectionState !== "disconnected")) {
+    return { label: "Reconnecting…", className: "tpt-tx-wide-rate tpt-tx-wide-rate--reconnecting" };
+  }
+  if (!isConnected) {
+    return { label: "Reconnecting…", className: "tpt-tx-wide-rate tpt-tx-wide-rate--reconnecting" };
+  }
+  return { label: "Stale", className: "tpt-tx-wide-rate tpt-tx-wide-rate--stale" };
+}
+
 /**
  * Full-width live transaction feed (below the 3-col terminal grid).
  * Presentational only — data wired from TokenTerminalPage (single WS/REST subscription).
  */
-export function LiveTransactionsWide({ recentTransactions = [], tokenPriceUsd = 0 }) {
+export function LiveTransactionsWide({
+  recentTransactions = [],
+  tokenPriceUsd = 0,
+  isConnected = false,
+  connectionState = "disconnected"
+}) {
+  const isLive = useMemo(
+    () => isConnected && hasRecentTransaction(recentTransactions),
+    [isConnected, recentTransactions]
+  );
+  const feedStatus = useMemo(
+    () => resolveFeedStatus({ isConnected, connectionState, isLive }),
+    [isConnected, connectionState, isLive]
+  );
+
   return (
     <section className="tpt-tx-wide" aria-label="Live transactions">
       <div className="tpt-tx-wide-hdr">
         <span className="tpt-tx-wide-title">LIVE TRANSACTIONS</span>
-        <span className="tpt-tx-wide-filter">FILTER: &gt;0.1 SOL</span>
-        <span className="tpt-tx-wide-rate">● LIVE</span>
+        <span className={feedStatus.className}>{feedStatus.label}</span>
       </div>
 
       <div
@@ -30,7 +67,9 @@ export function LiveTransactionsWide({ recentTransactions = [], tokenPriceUsd = 
         <LiveFlowPanel
           transactions={recentTransactions}
           tokenPriceUsd={tokenPriceUsd}
-          isLive={recentTransactions.length > 0}
+          isConnected={isConnected}
+          connectionState={connectionState}
+          isLive={isLive}
         />
       </div>
 
