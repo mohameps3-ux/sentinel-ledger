@@ -40,7 +40,7 @@ export function useWebSocket(tokenAddress) {
       isMock: false,
       shouldNotify
     };
-    setTransactions((prev) => [nextTx, ...prev].slice(0, 50));
+    setTransactions((prev) => [nextTx, ...prev].slice(0, 30));
   }, []);
 
   useEffect(() => {

@@ -312,9 +312,7 @@ async function processHeliusWebhookRaw(raw) {
       if (!first) continue;
     }
 
-    if (global.io) {
-      global.io.to(tx.tokenAddress).emit("transaction", tx);
-    }
+    // Live transaction tape is fed by Birdeye WS (birdeyeTxTapeService). Helius still drives signals/alerts.
 
     if (tx.type === "buy" || tx.type === "BUY") {
       try {

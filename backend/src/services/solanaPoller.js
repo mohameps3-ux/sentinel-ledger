@@ -374,7 +374,7 @@ async function emitTransaction(tx, logIndex) {
     const r = await reserveEventId(sentinelEvent.id);
     if (r.duplicate) return false;
   }
-  global.io.to(tx.tokenAddress).emit("transaction", tx);
+  // Live transaction tape is fed by Birdeye WS (birdeyeTxTapeService).
   if (sentinelEvent) {
     global.io.to(tx.tokenAddress).emit("sentinel:event", sentinelEvent);
     recordEventEmitted(sentinelEvent, Date.now() - startedAt);

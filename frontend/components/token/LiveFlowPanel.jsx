@@ -13,11 +13,24 @@ function shortWallet(wallet = "") {
 }
 
 function isWhaleTx(tx, tokenPriceUsd) {
+  const usdDirect = Number(tx.amountUsd);
+  if (Number.isFinite(usdDirect) && usdDirect > 0) {
+    return usdDirect >= WHALE_USD_MIN;
+  }
   const price = Number(tokenPriceUsd);
   const amt = Number(tx.amount);
   if (!Number.isFinite(price) || price <= 0) return false;
   if (!Number.isFinite(amt) || amt <= 0) return false;
   return amt * price >= WHALE_USD_MIN;
+}
+
+function formatTradeAmount(tx) {
+  const usd = Number(tx.amountUsd);
+  if (Number.isFinite(usd) && usd > 0) {
+    if (usd >= 1000) return `$${formatUsdWhole(usd)}`;
+    return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return Number(tx.amount || 0).toFixed(2);
 }
 
 export function LiveFlowPanel({
@@ -97,7 +110,7 @@ export function LiveFlowPanel({
         <div className="hidden md:grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-gray-500 bg-[#0E1318]">
           <span>Type</span>
           <span>Wallet</span>
-          <span className="text-right">Amount</span>
+          <span className="text-right">Amount (USD)</span>
           <span className="text-right">Time</span>
           <span className="text-right">View</span>
         </div>
@@ -108,7 +121,7 @@ export function LiveFlowPanel({
               <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-base">⟳</span>
             </span>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-gray-500">Listening for swaps</p>
-            <p className="text-[11px] text-gray-600 max-w-[220px]">No smart wallet activity on this token in the last 4 hours. Try a more active token.</p>
+            <p className="text-[11px] text-gray-600 max-w-[260px]">Full on-chain tape for this token. Smart-wallet trades are highlighted when detected.</p>
           </div>
         )}
         {transactions.map((tx, idx) => {
@@ -121,7 +134,7 @@ export function LiveFlowPanel({
           return (
             <div
               key={tx.signature || `${tx.wallet}-${tx.timestamp}-${idx}`}
-              className={`${idx % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"} ${whale ? "ring-1 ring-inset ring-blue-500/20 bg-blue-500/[0.04]" : ""} ${tx.shouldNotify ? "glow-animation" : ""}`}
+              className={`${idx % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"} ${whale ? "ring-1 ring-inset ring-blue-500/20 bg-blue-500/[0.04]" : tx.isSmartMoney ? "ring-1 ring-inset ring-violet-500/20 bg-violet-500/[0.03]" : ""} ${tx.shouldNotify ? "glow-animation" : ""}`}
             >
               <div className="hidden md:grid grid-cols-[92px_1fr_110px_88px_70px] gap-2 px-3 py-2 text-sm">
                 <div className="flex flex-col gap-1">
@@ -145,13 +158,18 @@ export function LiveFlowPanel({
                       {tx.type === "buy" ? "BUY" : tx.type === "swap" ? "SWAP" : "SELL"}
                     </span>
                   </span>
+                  {tx.isSmartMoney ? (
+                    <span className="text-[9px] font-bold uppercase tracking-wide text-violet-200/95 inline-flex items-center gap-0.5">
+                      SMART
+                    </span>
+                  ) : null}
                   {whale ? (
                     <span className="text-[9px] font-bold uppercase tracking-wide text-blue-200/90 inline-flex items-center gap-0.5">
                       <Sparkles size={10} />
                       Whale
                     </span>
                   ) : null}
-                  {tx.source === "rest" ? (
+                  {tx.source === "rest" || tx.source === "birdeye-backfill" ? (
                     <span className="text-[9px] font-semibold uppercase tracking-wide text-amber-400/70">hist.</span>
                   ) : tx.isMock ? (
                     <span className="text-[9px] font-bold uppercase tracking-wide text-cyan-200/90">🔬 Simulated</span>
@@ -160,7 +178,7 @@ export function LiveFlowPanel({
                 <span className="mono text-gray-300 self-center truncate min-w-0" title={walletTitle}>
                   {walletLine}
                 </span>
-                <span className="text-right mono self-center">{Number(tx.amount || 0).toFixed(2)}</span>
+                <span className="text-right mono self-center">{formatTradeAmount(tx)}</span>
                 <span className="text-gray-500 text-xs text-right self-center">{formatTime(tx.timestamp)}</span>
                 <a
                   href={buildSolscanTxUrl(tx.signature)}
@@ -186,6 +204,9 @@ export function LiveFlowPanel({
                     >
                       {tx.type === "buy" ? "BUY" : tx.type === "swap" ? "SWAP" : "SELL"}
                     </span>
+                    {tx.isSmartMoney ? (
+                      <span className="text-[9px] font-bold uppercase text-violet-200/95">SMART</span>
+                    ) : null}
                     {whale ? (
                       <span className="text-[9px] font-bold uppercase text-blue-200/90 inline-flex items-center gap-0.5">
                         <Sparkles size={10} />
@@ -200,7 +221,7 @@ export function LiveFlowPanel({
                   {walletLine}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm mono">{Number(tx.amount || 0).toFixed(2)} tokens</span>
+                  <span className="text-sm mono">{formatTradeAmount(tx)}</span>
                   <a
                     href={buildSolscanTxUrl(tx.signature)}
                     target="_blank"

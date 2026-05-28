@@ -115,6 +115,11 @@ const { startTelegramBot } = require("./bots/telegramBot");
 const { startSubscriptionExpiryCron } = require("./services/subscriptionCron");
 const { corsMiddlewareOptions, socketIoCors } = require("./lib/corsOptions");
 const { isProbableSolanaPubkey } = require("./lib/solanaAddress");
+const {
+  initBirdeyeTxTape,
+  onTokenRoomJoin,
+  onTokenRoomLeave
+} = require("./services/birdeyeTxTapeService");
 const { getSupabase } = require("./lib/supabase");
 const { checkWalletProStatus } = require("./services/subscriptionAccess");
 const redis = require("./lib/cache");
@@ -475,13 +480,28 @@ app.use("/api/v1/webhooks", heliusWebhookRouter);
 app.use("/api/v1/bots/omni", omniBotsRouter);
 
 io.on("connection", (socket) => {
+  const tokenRoomsJoined = new Set();
+
   socket.on("join-token", (address) => {
     if (typeof address !== "string" || !isProbableSolanaPubkey(address)) return;
     socket.join(address);
+    if (!tokenRoomsJoined.has(address)) {
+      tokenRoomsJoined.add(address);
+      onTokenRoomJoin(address);
+    }
   });
   socket.on("leave-token", (address) => {
     if (typeof address !== "string" || !isProbableSolanaPubkey(address)) return;
     socket.leave(address);
+    if (tokenRoomsJoined.delete(address)) {
+      onTokenRoomLeave(address);
+    }
+  });
+  socket.on("disconnect", () => {
+    for (const address of tokenRoomsJoined) {
+      onTokenRoomLeave(address);
+    }
+    tokenRoomsJoined.clear();
   });
   socket.on("join-rails", () => {
     socket.join("rails");
@@ -602,6 +622,7 @@ async function bootstrap() {
   startSignalGateTunerCron({ skipInitialTick: tunerWarmed });
   startSubscriptionExpiryCron();
   sentinelOrchestrator.start(io);
+  initBirdeyeTxTape();
   return new Promise((resolve, reject) => {
     server.listen(port, () => {
       console.log(
