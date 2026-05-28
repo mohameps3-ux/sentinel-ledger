@@ -54,7 +54,7 @@ async function runCalibrationOnce(options = {}) {
   const minSamples = Math.max(5, Number(options.minSamplesPerSignal || CONFIG.minSamplesPerSignal));
   const maxDeltaPct = clamp(Number(options.maxDeltaPct || CONFIG.maxDeltaPct), 0.05, 0.8);
 
-  const summary = await getSignalPerformanceSummary({ lookbackHours, maxRows: 5000 });
+  const summary = await getSignalPerformanceSummary({ lookbackHours, maxRows: 25000 });
   if (!summary?.ok) {
     lastCalibration = {
       at: Date.now(),

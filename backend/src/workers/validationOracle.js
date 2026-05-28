@@ -281,17 +281,49 @@ async function validateHorizon(supabase, horizonMin) {
   return { examined: (rows || []).length, updated, rules: [...rules], error: null };
 }
 
-async function recomputeRulePerformance(supabase, ruleId) {
-  const { data: rows, error } = await supabase
-    .from("signal_outcomes")
-    .select("rule_id,regime,outcome_5m,outcome_15m,outcome_60m,min_price_observed,price_at_signal,validated_at")
-    .eq("rule_id", ruleId)
-    .not("outcome_60m", "is", null)
-    .order("created_at", { ascending: true })
-    .limit(5000);
-  if (error) return { ok: false, reason: error.message || "query_failed" };
+const SUPABASE_PAGE_SIZE = 1000;
 
-  const resolved = rows || [];
+function clampOraclePerfMaxRows(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return 5000;
+  return Math.min(30000, Math.max(1000, Math.floor(v)));
+}
+
+const ORACLE_PERF_MAX_ROWS = clampOraclePerfMaxRows(process.env.VALIDATION_ORACLE_PERF_MAX_ROWS || 5000);
+
+async function fetchSignalOutcomesForRule(supabase, ruleId, maxRows) {
+  const select =
+    "rule_id,regime,outcome_5m,outcome_15m,outcome_60m,min_price_observed,price_at_signal,validated_at,created_at";
+  const all = [];
+  let from = 0;
+
+  while (all.length < maxRows) {
+    const take = Math.min(SUPABASE_PAGE_SIZE, maxRows - all.length);
+    const to = from + take - 1;
+    const { data, error } = await supabase
+      .from("signal_outcomes")
+      .select(select)
+      .eq("rule_id", ruleId)
+      .not("outcome_60m", "is", null)
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    if (error) return { ok: false, reason: error.message || "query_failed", rows: [] };
+    if (!data || data.length === 0) break;
+
+    all.push(...data);
+    from += data.length;
+    if (data.length < take) break;
+  }
+
+  return { ok: true, rows: all };
+}
+
+async function recomputeRulePerformance(supabase, ruleId) {
+  const fetched = await fetchSignalOutcomesForRule(supabase, ruleId, ORACLE_PERF_MAX_ROWS);
+  if (!fetched.ok) return { ok: false, reason: fetched.reason };
+
+  const resolved = [...fetched.rows].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
   const total = resolved.length;
   const returns5 = resolved.map((r) => Number(r.outcome_5m)).filter(Number.isFinite);
   const returns15 = resolved.map((r) => Number(r.outcome_15m)).filter(Number.isFinite);

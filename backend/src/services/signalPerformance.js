@@ -609,6 +609,35 @@ function pearson(xs, ys) {
   return Math.round((num / den) * 1e4) / 1e4;
 }
 
+const SUPABASE_PAGE_SIZE = 1000;
+
+async function fetchSignalPerformanceRows(supabase, sinceIso, maxRows) {
+  const select =
+    "asset,emitted_at,resolved_at,confidence,signals,entry_price_usd,outcome_price_usd,outcome_pct,success,status,failure_reason,emission_regime";
+  const all = [];
+  let from = 0;
+
+  while (all.length < maxRows) {
+    const take = Math.min(SUPABASE_PAGE_SIZE, maxRows - all.length);
+    const to = from + take - 1;
+    const { data, error } = await supabase
+      .from("signal_performance")
+      .select(select)
+      .gte("emitted_at", sinceIso)
+      .order("emitted_at", { ascending: false })
+      .range(from, to);
+
+    if (error) return { ok: false, error: error.message || "query_failed", rows: [] };
+    if (!data || data.length === 0) break;
+
+    all.push(...data);
+    from += data.length;
+    if (data.length < take) break;
+  }
+
+  return { ok: true, rows: all };
+}
+
 async function getSignalPerformanceSummary(options = {}) {
   let supabase;
   try {
@@ -617,21 +646,15 @@ async function getSignalPerformanceSummary(options = {}) {
     return { ok: false, error: "supabase_unconfigured" };
   }
   const lookbackHours = clampInt(options.lookbackHours || 48, 1, 24 * 30, 48);
-  const maxRows = clampInt(options.maxRows || 2000, 50, 5000, 2000);
+  const maxRows = clampInt(options.maxRows || 15000, 50, 30000, 15000);
   const sinceIso = toIso(Date.now() - lookbackHours * 60 * 60 * 1000);
 
-  const { data: rows, error } = await supabase
-    .from("signal_performance")
-    .select(
-      "asset,emitted_at,resolved_at,confidence,signals,entry_price_usd,outcome_price_usd,outcome_pct,success,status,failure_reason,emission_regime"
-    )
-    .gte("emitted_at", sinceIso)
-    .order("emitted_at", { ascending: true })
-    .limit(maxRows);
-  if (error) return { ok: false, error: error.message || "query_failed" };
+  const fetched = await fetchSignalPerformanceRows(supabase, sinceIso, maxRows);
+  if (!fetched.ok) return { ok: false, error: fetched.error };
 
-  const all = rows || [];
+  const all = fetched.rows;
   const resolved = all.filter((r) => r.status === "resolved" && Number.isFinite(Number(r.outcome_pct)));
+  resolved.sort((a, b) => Date.parse(a.emitted_at) - Date.parse(b.emitted_at));
   const wins = resolved.filter((r) => Number(r.outcome_pct) >= SUCCESS_MIN_PCT);
   const losses = resolved.filter((r) => Number(r.outcome_pct) < SUCCESS_MIN_PCT);
   const sumWin = wins.reduce((a, r) => a + winsorizeOutcomePct(r.outcome_pct), 0);
