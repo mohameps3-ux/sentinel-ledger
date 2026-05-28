@@ -12,7 +12,7 @@ const { getSmartWalletsForToken } = require("../services/smartMoneyService");
 const { computeTerminalSignal } = require("../lib/tokenTerminalSignal");
 const { getConvergenceState } = require("../services/convergenceService");
 const { pairCreatedRawToUnixMs } = require("../lib/pairTime");
-const { getLatestRulePerformanceForMint } = require("../workers/validationOracle");
+const { getLatestRulePerformanceForMint, getLatestEmissionMetaForMint } = require("../workers/validationOracle");
 
 const router = express.Router();
 
@@ -172,7 +172,7 @@ router.get("/:address", async (req, res) => {
       }
     }
 
-    const [walletIntel, smartTok, convergence, privateData, rulePerformance] = await Promise.all([
+    const [walletIntel, smartTok, convergence, privateData, rulePerformance, emissionMeta] = await Promise.all([
       withTimeout(
         getWalletSpamIntel(address, {
           deployerAddress,
@@ -205,6 +205,12 @@ router.get("/:address", async (req, res) => {
         TOKEN_ROUTE_OPTIONAL_TIMEOUT_MS,
         null,
         "rule_performance"
+      ),
+      withTimeout(
+        getLatestEmissionMetaForMint(address),
+        TOKEN_ROUTE_OPTIONAL_TIMEOUT_MS,
+        null,
+        "emission_meta"
       )
     ]);
 
@@ -267,6 +273,9 @@ router.get("/:address", async (req, res) => {
         security,
         terminal,
         rulePerformance,
+        emissionSignals: emissionMeta?.emissionSignals ?? [],
+        emissionRegime: emissionMeta?.emissionRegime ?? "unknown",
+        engineConfidence: emissionMeta?.engineConfidence ?? null,
         smartMoneyForToken: (smartTok?.wallets || []).slice(0, 20),
         smartMoneyMeta: smartTok?.meta || {},
         convergence: convergence || { detected: false, wallets: [], threshold: 3, windowMinutes: 10 },
