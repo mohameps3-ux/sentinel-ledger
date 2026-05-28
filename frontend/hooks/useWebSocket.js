@@ -83,6 +83,7 @@ export function useWebSocket(tokenAddress) {
         const onConnect = () => {
           setIsConnected(true);
           setConnectionState("connected");
+          socket.emit("join-token", tokenAddress);
         };
         const onDisconnect = () => {
           setIsConnected(false);
@@ -118,7 +119,9 @@ export function useWebSocket(tokenAddress) {
         socket.on("convergence", handleConvergence);
         socket.on("coordination:red-signal", handleRedSignal);
 
-        socket.emit("join-token", tokenAddress);
+        if (socket.connected) {
+          onConnect();
+        }
 
         dispose = () => {
           try {
@@ -133,11 +136,6 @@ export function useWebSocket(tokenAddress) {
           socket.off("convergence", handleConvergence);
           socket.off("coordination:red-signal", handleRedSignal);
         };
-
-        if (socket.connected) {
-          setIsConnected(true);
-          setConnectionState("connected");
-        }
       })
       .catch((e) => {
         console.warn("[useWebSocket] socket.io-client load failed:", e?.message || e);

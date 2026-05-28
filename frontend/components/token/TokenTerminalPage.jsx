@@ -620,7 +620,7 @@ export default function TokenTerminalPage() {
   const { t } = useLocale();
   const address = normalizeAddress(router.query);
   const query = useTokenData(address);
-  const { transactions } = useWebSocket(address || undefined);
+  const { transactions, isConnected, connectionState } = useWebSocket(address || undefined);
   const { rows: flowRows } = useTokenFlow(address || undefined);
   const [hasToken, setHasToken] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -830,7 +830,12 @@ export default function TokenTerminalPage() {
       </div>
 
       <div className="sl-container py-4 pb-10 space-y-4">
-        <LiveTransactionsWide recentTransactions={recentTransactions} tokenPriceUsd={market.price} />
+        <LiveTransactionsWide
+          recentTransactions={recentTransactions}
+          tokenPriceUsd={market.price}
+          isConnected={isConnected}
+          connectionState={connectionState}
+        />
         {hasToken ? <NotesPanel tokenAddress={address} initialNote={note} /> : null}
         <Ticker />
         <FinancialDisclaimer />
