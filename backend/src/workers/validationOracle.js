@@ -524,6 +524,32 @@ function attachLatestOutcome(perf, latest) {
   };
 }
 
+async function getLatestEmissionMetaForMint(mint) {
+  const supabase = await safeSupabase();
+  if (!supabase || !mint) return null;
+  const asset = String(mint).trim();
+  if (asset.length < 32) return null;
+  const { data, error } = await supabase
+    .from("signal_performance")
+    .select("signals, emission_regime, confidence")
+    .eq("asset", asset)
+    .order("emitted_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  const conf = Number(data.confidence);
+  return {
+    emissionSignals: Array.isArray(data.signals)
+      ? data.signals.map((s) => String(s).trim()).filter(Boolean)
+      : [],
+    emissionRegime:
+      data.emission_regime != null && String(data.emission_regime).trim() !== ""
+        ? String(data.emission_regime).trim()
+        : "unknown",
+    engineConfidence: Number.isFinite(conf) ? conf : null
+  };
+}
+
 module.exports = {
   RULE_ID_BY_SIGNAL,
   asRuleId,
@@ -536,5 +562,6 @@ module.exports = {
   listRulePerformance,
   getRulePerformanceMap,
   getLatestRulePerformanceForMint,
+  getLatestEmissionMetaForMint,
   formatRulePerformance
 };

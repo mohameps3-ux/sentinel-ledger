@@ -38,13 +38,6 @@ export function ruleLabelFromSignalTag(tag) {
   return RULE_LABEL_BY_SIGNAL[key] || key;
 }
 
-/**
- * Dominant rule for a card: prefer this emission's tags, else historical rulePerformance.
- *
- * @param {string[] | null | undefined} emissionSignals
- * @param {{ ruleId?: string, signal?: string } | null | undefined} rulePerformance
- * @returns {{ label: string | null, ruleId: string | null, tag: string | null }}
- */
 export function resolveDominantRule(emissionSignals, rulePerformance) {
   const tags = Array.isArray(emissionSignals)
     ? emissionSignals.map((s) => String(s).trim()).filter(Boolean)
@@ -71,4 +64,13 @@ export function resolveDominantRule(emissionSignals, rulePerformance) {
   }
 
   return { label: null, ruleId: null, tag: null };
+}
+
+/** @param {number | null | undefined} winRate */
+export function wrColorClass(winRate) {
+  const wr = Number(winRate);
+  if (!Number.isFinite(wr)) return "text-zinc-400";
+  if (wr >= 30) return "text-emerald-300";
+  if (wr >= 20) return "text-amber-300";
+  return "text-rose-300/90";
 }

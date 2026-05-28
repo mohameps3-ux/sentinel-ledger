@@ -21,7 +21,7 @@ import { useLocale } from "../../contexts/LocaleContext";
 import { buildRegimeAnalysisFromDesk } from "@/lib/tripleRiskRegime";
 import { resolveTokenStateChip } from "@/lib/tokenStateChip.mjs";
 import { TokenStateChip } from "@/components/cockpit/TokenStateChip";
-import { RegimeCautionBanner } from "@/components/token/RegimeCautionBanner";
+import { wrColorClass } from "@/lib/ruleTagMap.mjs";
 
 /**
  * Classify current market regime from price/volume/liquidity.
@@ -180,7 +180,17 @@ function DeskMintRow({ mint, copied, onCopy }) {
   );
 }
 
-function DeskVerdict({ hasEngineScore, conf, confLabel, regime, t, fallbackSignal, stateChip }) {
+function DeskVerdict({
+  hasEngineScore,
+  conf,
+  confLabel,
+  regime,
+  t,
+  fallbackSignal,
+  stateChip,
+  rulePerformance,
+  emissionRegime
+}) {
   const usingFallback = !hasEngineScore && fallbackSignal?.confidence != null;
 
   if (!hasEngineScore && !usingFallback) {
@@ -201,13 +211,29 @@ function DeskVerdict({ hasEngineScore, conf, confLabel, regime, t, fallbackSigna
   const action = hasEngineScore ? regime?.action : fallbackDecisionToAction(fallbackSignal?.decision);
   const actionLabel = action ? t(`cockpit.desk.tripleAction.${action}`) || action : null;
 
+  const ruleId = rulePerformance?.ruleId ? String(rulePerformance.ruleId) : null;
+  const totalSignals = Number(rulePerformance?.totalSignals || 0);
+  const ruleWr =
+    ruleId && totalSignals > 0 && rulePerformance?.successCount60m != null
+      ? (Number(rulePerformance.successCount60m) / totalSignals) * 100
+      : null;
+  const avgReturnRaw = Number(rulePerformance?.avgReturn60m);
+  const avgReturnPct = Number.isFinite(avgReturnRaw) ? avgReturnRaw * 100 : null;
+  const regimeLabel =
+    emissionRegime && String(emissionRegime).trim() && String(emissionRegime).toLowerCase() !== "unknown"
+      ? String(emissionRegime).trim()
+      : null;
+
+  const ruleHistoryTitle =
+    "Win rate for the rule that fired this signal, computed from the last 1000+ historical emissions in the same regime.";
+
   return (
     <div
-      className="rounded-md border border-white/[0.1] bg-gradient-to-b from-white/[0.04] to-black/40 px-3 py-3 space-y-1.5"
+      className="rounded-md border border-white/[0.1] bg-gradient-to-b from-white/[0.04] to-black/40 px-3 py-3 space-y-2"
       aria-label={
-        actionLabel
-          ? `${actionLabel}. ${t("cockpit.desk.confidence")} ${confPct}${effectiveConfLabel ? `, ${effectiveConfLabel} tier` : ""}`
-          : `${t("cockpit.desk.confidence")} ${confPct}${effectiveConfLabel ? `, ${effectiveConfLabel} tier` : ""}`
+        actionLabel && ruleWr != null
+          ? `${actionLabel}. ${ruleId} historical WR ${Math.round(ruleWr)}%`
+          : actionLabel || undefined
       }
     >
       {actionLabel ? (
@@ -223,15 +249,38 @@ function DeskVerdict({ hasEngineScore, conf, confLabel, regime, t, fallbackSigna
           {stateChip ? <TokenStateChip state={stateChip} className="mt-1" /> : null}
         </div>
       )}
-      <p className="text-xs text-gray-400 leading-snug">
-        {t("cockpit.desk.confidence")}: {confPct}
-        {effectiveConfLabel ? (
-          <>
-            {" · "}
-            {String(effectiveConfLabel)} tier
-          </>
-        ) : null}
-      </p>
+
+      {ruleId && ruleWr != null ? (
+        <p
+          className={`text-xs leading-snug font-mono tabular-nums ${wrColorClass(ruleWr)}`}
+          title={ruleHistoryTitle}
+        >
+          {ruleId} historical WR {Math.round(ruleWr)}%
+          {regimeLabel ? ` (${regimeLabel})` : ""}
+          {totalSignals > 0 ? ` · n=${totalSignals.toLocaleString()}` : ""}
+          {avgReturnPct != null
+            ? ` · avg ${avgReturnPct >= 0 ? "+" : ""}${avgReturnPct.toFixed(1)}%`
+            : ""}
+        </p>
+      ) : (
+        <p className="text-xs text-gray-500 leading-snug">Rule history building — check back after more resolved signals.</p>
+      )}
+
+      <AccordionSection title="Engine internals" summaryTone="neutral" defaultOpen={false}>
+        <p className="text-[11px] text-gray-400 font-mono leading-snug">
+          {t("cockpit.desk.confidence")}: {confPct}
+          {effectiveConfLabel ? (
+            <>
+              {" · "}
+              {String(effectiveConfLabel)} tier
+            </>
+          ) : null}
+        </p>
+        <p className="text-[10px] text-gray-600 leading-snug mt-1.5">
+          Raw engine score; weak predictor of outcome (Pearson r ≈ 0 vs return).
+        </p>
+      </AccordionSection>
+
       {usingFallback ? (
         <p className="text-[10px] text-gray-500 leading-snug pt-0.5">{t("cockpit.desk.feedSnapshotPending")}</p>
       ) : null}
@@ -416,6 +465,20 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
     }
   }, [mint]);
 
+  const regimeKeyFromScore =
+    score?.meta?.emissionGate?.regime && typeof score.meta.emissionGate.regime === "object"
+      ? String(score.meta.emissionGate.regime.key || "").trim() || null
+      : null;
+
+  const deskEmissionRegime = useMemo(() => {
+    const fromToken = token?.emissionRegime;
+    if (fromToken && String(fromToken).trim() && String(fromToken).toLowerCase() !== "unknown") {
+      return String(fromToken).trim();
+    }
+    if (regimeKeyFromScore) return regimeKeyFromScore;
+    return classifyDeskRegime(token);
+  }, [token?.emissionRegime, regimeKeyFromScore, token]);
+
   if (!mint) {
     return (
       <div className="flex h-full min-h-[8.25rem] sm:min-h-[12rem] flex-col items-center justify-center gap-2 px-3 sm:px-4 py-4 sm:py-8 text-center overflow-y-auto">
@@ -433,10 +496,6 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
   const scores = score?.scores;
   const conf = score?.confidence;
   const confLabel = score?.confidenceLabel;
-  const regimeKey =
-    score?.meta?.emissionGate?.regime && typeof score.meta.emissionGate.regime === "object"
-      ? String(score.meta.emissionGate.regime.key || "").trim() || null
-      : null;
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto">
@@ -479,6 +538,8 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
             t={t}
             fallbackSignal={fallbackSignal}
             stateChip={tokenStateChip}
+            rulePerformance={token?.rulePerformance}
+            emissionRegime={deskEmissionRegime}
           />
           {narrative?.message ? (
             <div className="sentinel-narrative narrative-tactical text-[11px] leading-snug">{narrative.message}</div>
@@ -509,7 +570,11 @@ export function TokenDesk({ mint, deskRadarHint = null, fallbackSignal = null })
         </DeskSection>
 
         <DeskSection title="Oracle Outcomes">
-          <ProofOfEdgeBlock mint={mint} confidence={conf != null && Number.isFinite(Number(conf)) ? Number(conf) : null} regime={regimeKey} />
+          <ProofOfEdgeBlock
+            mint={mint}
+            confidence={conf != null && Number.isFinite(Number(conf)) ? Number(conf) : null}
+            regime={deskEmissionRegime}
+          />
         </DeskSection>
 
         <DeskSection title="Smart Money">
