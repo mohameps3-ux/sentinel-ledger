@@ -38,6 +38,13 @@ export function ruleLabelFromSignalTag(tag) {
   return RULE_LABEL_BY_SIGNAL[key] || key;
 }
 
+/**
+ * Dominant rule for a card: prefer this emission's tags, else historical rulePerformance.
+ *
+ * @param {string[] | null | undefined} emissionSignals
+ * @param {{ ruleId?: string, signal?: string } | null | undefined} rulePerformance
+ * @returns {{ label: string | null, ruleId: string | null, tag: string | null }}
+ */
 export function resolveDominantRule(emissionSignals, rulePerformance) {
   const tags = Array.isArray(emissionSignals)
     ? emissionSignals.map((s) => String(s).trim()).filter(Boolean)
