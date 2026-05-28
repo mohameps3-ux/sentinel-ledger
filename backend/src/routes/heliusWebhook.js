@@ -266,8 +266,8 @@ router.post("/helius", enforceHeliusBodyLimit, heliusWebhookAuth, async (req, re
                                                               priority: webhookQueuePriority(),
                                                               attempts: 3,
                                                               backoff: { type: "exponential", delay: 1000 },
-                                                              removeOnComplete: true,
-                                                              removeOnFail: 100
+                                                              removeOnComplete: { count: 1000, age: 3600 },
+                                                              removeOnFail: { count: 500, age: 86400 }
                                             }
                                                         )
                                         );

@@ -122,8 +122,8 @@ async function enqueueAnalyzeWalletJob(queue, walletAddress, requestId) {
       {
         jobId,
         priority: BULLMQ_PRIORITY_LOW,
-        removeOnComplete: 500,
-        removeOnFail: 500
+        removeOnComplete: { count: 1000, age: 3600 },
+        removeOnFail: { count: 500, age: 86400 }
       }
     );
     return true;
@@ -188,8 +188,8 @@ async function scheduleSmartWalletEnqueueAfterWebhookQuiet(triggerRequestId) {
           jobId,
           delay: delayMs,
           priority: BULLMQ_PRIORITY_LOW,
-          removeOnComplete: true,
-          removeOnFail: 50
+          removeOnComplete: { count: 1000, age: 3600 },
+          removeOnFail: { count: 500, age: 86400 }
         }
       );
       console.log(
