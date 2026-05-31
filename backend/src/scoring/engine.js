@@ -363,6 +363,7 @@ async function evaluate(event, extraCtx = {}) {
       lastEventId: event.id,
       lastEventAt: event.timestamp,
       uniqueWalletsInWindow: assetStats.uniqueWalletsInWindow,
+      triggerWalletAddresses: Array.isArray(assetStats.buyersInWindow) ? assetStats.buyersInWindow.slice(0, 10) : [],
       eventsInWindow: assetStats.eventsInWindow,
       txLastMin: assetStats.txLastMin,
       baselinePerMin: Number(assetStats.baselinePerMin.toFixed(2)),

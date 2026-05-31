@@ -372,7 +372,7 @@ async function processHeliusWebhookRaw(raw) {
                 },
                 effectiveGate: gate.effectiveGate,
                 alphaLayer: null,
-                meta: gate.confidenceMeta || null
+                meta: { ...(gate.confidenceMeta || {}), triggerWallets: Array.isArray(ctx.wallets) ? ctx.wallets.slice(0, 10) : [] }
               }
             };
             if (global.io) {
@@ -412,6 +412,7 @@ async function processHeliusWebhookRaw(raw) {
         const ctx = buildScoringContext(market, tx.amount);
         ctx.wallets = [String(tx.wallet || "").trim()].filter(Boolean);
         const score = await evaluateScore(sentinelEvent, ctx);
+        const triggerWallets = [...new Set([...(Array.isArray(score?.meta?.triggerWalletAddresses) ? score.meta.triggerWalletAddresses : []), ...ctx.wallets].map((w) => String(w || "").trim()).filter(Boolean))].slice(0, 10);
         if (score) {
           const alphaLayer = buildAlphaLayer(score, ctx);
           if (alphaLayer) {
@@ -436,7 +437,7 @@ async function processHeliusWebhookRaw(raw) {
                 regime: gate.regime,
                 effectiveGate: gate.effectiveGate,
                 alphaLayer: score.meta?.alphaLayer || null,
-                meta: gate.confidenceMeta || null
+                meta: { ...(gate.confidenceMeta || {}), triggerWallets }
               }
             };
             if (global.io) {
