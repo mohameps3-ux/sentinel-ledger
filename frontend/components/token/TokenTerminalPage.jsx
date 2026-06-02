@@ -320,7 +320,7 @@ function TerminalCenter({
         <div className="tpt-c-header-stats">
           <div className="tpt-c-grade">
             <div className="tpt-c-grade-label">SENTINEL GRADE</div>
-            <div className="tpt-c-grade-val">{score?.grade ?? "A+"}</div>
+            <div className="tpt-c-grade-val">{score?.grade ?? "\u2014"}</div>
             <div className="tpt-c-grade-sub">{displayScore} / 100</div>
           </div>
 
