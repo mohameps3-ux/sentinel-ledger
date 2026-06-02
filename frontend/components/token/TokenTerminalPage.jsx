@@ -331,7 +331,7 @@ function TerminalCenter({
               {entryWindow === "EARLY" ? "EARLY ENTRY" : entryWindow === "MID" ? "MID ENTRY" : "LATE — CAUTION"}
             </div>
             <div className="tpt-c-regime-exec">
-              Execution: {score?.execution ?? score?.executionScore ?? tokenData?.terminal?.executionScore ?? 82}
+              Execution: {score?.execution ?? score?.executionScore ?? tokenData?.terminal?.executionScore ?? "\u2014"}
             </div>
           </div>
 
