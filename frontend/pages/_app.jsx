@@ -79,6 +79,7 @@ export default function App({ Component, pageProps }) {
       <Head>
         <title>Sentinel Ledger</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="base:app_id" content="6a1f4bc91396f7a4cc57a2a9" />
       </Head>
       <div className={`${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable}`}>
         <AppErrorBoundary>
