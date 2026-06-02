@@ -53,7 +53,7 @@ export function HoldersPanel({ holders }) {
             <div className="text-right max-w-[200px]">
               <span className="text-gray-500 font-mono">—</span>
               <p className="text-[10px] text-gray-600 mt-1 leading-snug">
-                Set <span className="mono text-gray-500">BIRDEYE_API_KEY</span> on the API for aggregate holder count.
+                Recuento total no disponible ahora. Mira la concentracion de holders abajo.
               </p>
             </div>
           )}
