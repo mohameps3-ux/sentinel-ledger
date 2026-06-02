@@ -244,9 +244,10 @@ function TerminalCenter({
   const fdv = Number(market?.fdv ?? tokenData?.fdv ?? 0);
   const top10 = Number(score?.holderConcentration ?? score?.top10Pct ?? tokenData?.holders?.top10Percentage ?? 0);
   const smartPct = Math.round(
-    Number(score?.smartMoney ?? score?.smartMoneyScore ?? tokenData?.terminal?.smartMoneyScore ?? displayScore) || 0
+    Number(score?.smartMoney ?? score?.smartMoneyScore ?? tokenData?.terminal?.smartMoneyScore)
   );
-  const smartPctClamped = Math.min(95, Math.max(5, smartPct));
+  const hasSmartFlow = Number.isFinite(smartPct);
+  const smartPctClamped = hasSmartFlow ? Math.min(95, Math.max(5, smartPct)) : 0;
 
   const fmtUsd = formatCompact;
 
@@ -390,12 +391,18 @@ function TerminalCenter({
             SMART MONEY FLOW
             <span className="tpt-c-live">● LIVE</span>
           </div>
-          <div className="tpt-c-ap-green">BUY PRESSURE {smartPctClamped}%</div>
-          <div className="tpt-c-ap-red">SELL {100 - smartPctClamped}%</div>
-          <div className="tpt-c-pbar">
-            <div className="tpt-c-pbar-buy" style={{ width: `${smartPctClamped}%` }} />
-            <div className="tpt-c-pbar-sell" style={{ width: `${100 - smartPctClamped}%` }} />
-          </div>
+          {hasSmartFlow ? (
+            <>
+              <div className="tpt-c-ap-green">BUY PRESSURE {smartPctClamped}%</div>
+              <div className="tpt-c-ap-red">SELL {100 - smartPctClamped}%</div>
+              <div className="tpt-c-pbar">
+                <div className="tpt-c-pbar-buy" style={{ width: `${smartPctClamped}%` }} />
+                <div className="tpt-c-pbar-sell" style={{ width: `${100 - smartPctClamped}%` }} />
+              </div>
+            </>
+          ) : (
+            <div className="tpt-c-ap-red">Sin datos de flujo</div>
+          )}
         </div>
 
         <div className="tpt-c-ap">
