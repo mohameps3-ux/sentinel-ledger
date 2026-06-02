@@ -438,14 +438,7 @@ function TerminalCenter({
             <span className="tpt-c-ai-badge">AI GENERATED</span>
           </div>
           <div className="tpt-c-narr-text">{narrative}</div>
-          <div className="tpt-c-conf-row">
-            <span className="tpt-c-conf-label">CONFIDENCE:</span>
-            <span className="tpt-c-conf-val">HIGH</span>
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className={`tpt-c-cdot ${i <= 3 ? "tpt-c-cdot-on" : ""}`} />
-            ))}
-            <span className="tpt-c-conf-age">UPDATED 12s AGO</span>
-          </div>
+          
         </div>
 
         <div className="tpt-c-np" style={{ borderRight: "1px solid rgba(255,255,255,.07)" }}>
