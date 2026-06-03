@@ -389,7 +389,6 @@ function TerminalCenter({
         <div className="tpt-c-ap">
           <div className="tpt-c-ap-title">
             SMART MONEY FLOW
-            <span className="tpt-c-live">● LIVE</span>
           </div>
           {hasSmartFlow ? (
             <>
