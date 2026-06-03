@@ -322,7 +322,7 @@ function TerminalCenter({
           <div className="tpt-c-grade">
             <div className="tpt-c-grade-label">SENTINEL GRADE</div>
             <div className="tpt-c-grade-val">{score?.grade ?? "\u2014"}</div>
-            <div className="tpt-c-grade-sub">{displayScore} / 100</div>
+            <div className="tpt-c-grade-sub">{score?.grade ? `${displayScore} / 100` : "\u2014"}</div>
           </div>
 
           <div className={`tpt-c-regime ${regimeClass}`}>
