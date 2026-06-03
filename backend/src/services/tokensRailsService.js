@@ -18,6 +18,7 @@ const { getRecentMarketSnapshot } = require("./marketSnapshots");
 
 const CACHE_TTL_MS = Math.max(5_000, Number(process.env.TOKENS_RAILS_CACHE_MS || 30_000));
 const SNAPSHOT_MAX_AGE_MS = Math.max(60_000, Number(process.env.TOKENS_RAILS_SNAPSHOT_MAX_AGE_MS || 5 * 60_000));
+const RAIL_MIN_LIQUIDITY_USD = Number(process.env.TOKENS_RAILS_MIN_LIQUIDITY_USD || 15000);
 const MARKET_BATCH = Math.max(2, Math.min(8, Number(process.env.TOKENS_RAILS_MARKET_BATCH || 6)));
 const ELITE_WIN_RATE = Math.max(50, Number(process.env.WALLET_REPUTATION_ELITE_WIN_RATE || 55));
 
@@ -238,7 +239,7 @@ async function fetchVelocitySnapshotCandidates(supabase) {
     .from("market_snapshots")
     .select("mint, symbol, price, liquidity, volume24h, price_change24h, updated_at")
     .gte("updated_at", since)
-    .gte("liquidity", 5000)
+    .gte("liquidity", RAIL_MIN_LIQUIDITY_USD)
     .order("volume24h", { ascending: false })
     .limit(80);
   return data || [];
@@ -314,7 +315,9 @@ function computeVelocityScore(m) {
   const v15 = num(m.volume_15m_usd, 0);
   const v60 = num(m.volume_60m_usd, 0);
   if (p15 == null) return null;
-  const priceTerm = p60 != null && p60 !== 0 ? p15 / p60 : p15 > 0 ? p15 : 0;
+  if (p15 <= 0) return null;
+  if (p60 != null && p60 < -15) return null;
+  const priceTerm = p15 + (p60 != null && p60 > 0 ? p60 * 0.25 : 0);
   const volBaseline = v60 > 0 ? v60 / 4 : 0;
   const volTerm = volBaseline > 0 ? v15 / volBaseline : v15 >= 1000 ? 1 : 0;
   return priceTerm + volTerm;
@@ -380,7 +383,7 @@ async function composeTokensRails() {
     const mint = String(row.token_address);
     const market = marketByMint.get(mint);
     const liq = num(market?.liquidity_usd, 0);
-    if (liq < 5000) continue;
+    if (liq < RAIL_MIN_LIQUIDITY_USD) continue;
     const distinct = num(row.distinct_wallets_4h, 0);
     const smart = num(row.smart_wallets_4h, 0);
     const vol = num(row.volume_4h_usd, 0);
@@ -410,7 +413,7 @@ async function composeTokensRails() {
     const market = marketByMint.get(mint);
     if (!market?.fresh) continue;
     const liq = num(market.liquidity_usd, 0);
-    if (liq <= 0) continue;
+    if (liq < RAIL_MIN_LIQUIDITY_USD) continue;
     const types = row.signal_types || [];
     const typeLabel = types.length ? types.slice(0, 3).join(" + ") : "signal";
     live.push(
@@ -461,7 +464,7 @@ async function composeTokensRails() {
     const liq = num(market.liquidity_usd, 0);
     const v15 = num(market.volume_15m_usd, 0);
     const p15 = num(market.price_change_15m_pct, null);
-    if (liq < 5000 || v15 < 1000 || p15 == null) continue;
+    if (liq < RAIL_MIN_LIQUIDITY_USD || v15 < 1000 || p15 == null) continue;
     const p15Label = p15 >= 0 ? `+${p15.toFixed(1)}%` : `${p15.toFixed(1)}%`;
     const volMult =
       num(market.volume_60m_usd, 0) > 0
