@@ -339,6 +339,7 @@ function buildRailItem(base, market, rail, railScore, railReason, extras = {}) {
     price_usd: num(m.price_usd, 0),
     price_change_15m_pct: m.price_change_15m_pct ?? null,
     price_change_60m_pct: m.price_change_60m_pct ?? null,
+    price_change_24h_pct: m.price_change_24h_pct ?? null,
     volume_15m_usd: num(m.volume_15m_usd, 0),
     volume_60m_usd: num(m.volume_60m_usd, 0),
     smart_wallets_active_4h: num(extras.smart_wallets_active_4h, 0),
