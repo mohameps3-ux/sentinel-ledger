@@ -19,6 +19,7 @@ const { getRecentMarketSnapshot } = require("./marketSnapshots");
 const CACHE_TTL_MS = Math.max(5_000, Number(process.env.TOKENS_RAILS_CACHE_MS || 30_000));
 const SNAPSHOT_MAX_AGE_MS = Math.max(60_000, Number(process.env.TOKENS_RAILS_SNAPSHOT_MAX_AGE_MS || 5 * 60_000));
 const RAIL_MIN_LIQUIDITY_USD = Number(process.env.TOKENS_RAILS_MIN_LIQUIDITY_USD || 15000);
+const RAIL_MAX_24H_DRAWDOWN_PCT = Number(process.env.TOKENS_RAILS_MAX_24H_DRAWDOWN_PCT || -50);
 const MARKET_BATCH = Math.max(2, Math.min(8, Number(process.env.TOKENS_RAILS_MARKET_BATCH || 6)));
 const ELITE_WIN_RATE = Math.max(50, Number(process.env.WALLET_REPUTATION_ELITE_WIN_RATE || 55));
 
@@ -276,6 +277,7 @@ async function enrichMarketForMints(mints) {
               liquidity_usd: num(live.liquidity, 0),
               price_change_15m_pct: num(live.priceChange5m, null),
               price_change_60m_pct: num(live.priceChange1h, null),
+              price_change_24h_pct: num(live.priceChange24h, null),
               volume_15m_usd: vol24 > 0 ? vol24 / 96 : null,
               volume_60m_usd: vol24 > 0 ? vol24 / 24 : null,
               volume24h: vol24,
@@ -295,6 +297,7 @@ async function enrichMarketForMints(mints) {
           liquidity_usd: num(snap.liquidity, 0),
           price_change_15m_pct: null,
           price_change_60m_pct: num(snap.priceChange24h, null),
+          price_change_24h_pct: num(snap.priceChange24h, null),
           volume_15m_usd: vol24 > 0 ? vol24 / 96 : null,
           volume_60m_usd: vol24 > 0 ? vol24 / 24 : null,
           volume24h: vol24,
@@ -384,6 +387,8 @@ async function composeTokensRails() {
     const market = marketByMint.get(mint);
     const liq = num(market?.liquidity_usd, 0);
     if (liq < RAIL_MIN_LIQUIDITY_USD) continue;
+    const ch24 = num(market?.price_change_24h_pct, null);
+    if (ch24 != null && ch24 < RAIL_MAX_24H_DRAWDOWN_PCT) continue;
     const distinct = num(row.distinct_wallets_4h, 0);
     const smart = num(row.smart_wallets_4h, 0);
     const vol = num(row.volume_4h_usd, 0);
@@ -414,6 +419,8 @@ async function composeTokensRails() {
     if (!market?.fresh) continue;
     const liq = num(market.liquidity_usd, 0);
     if (liq < RAIL_MIN_LIQUIDITY_USD) continue;
+    const ch24 = num(market?.price_change_24h_pct, null);
+    if (ch24 != null && ch24 < RAIL_MAX_24H_DRAWDOWN_PCT) continue;
     const types = row.signal_types || [];
     const typeLabel = types.length ? types.slice(0, 3).join(" + ") : "signal";
     live.push(
@@ -465,6 +472,8 @@ async function composeTokensRails() {
     const v15 = num(market.volume_15m_usd, 0);
     const p15 = num(market.price_change_15m_pct, null);
     if (liq < RAIL_MIN_LIQUIDITY_USD || v15 < 1000 || p15 == null) continue;
+    const ch24 = num(market?.price_change_24h_pct, null);
+    if (ch24 != null && ch24 < RAIL_MAX_24H_DRAWDOWN_PCT) continue;
     const p15Label = p15 >= 0 ? `+${p15.toFixed(1)}%` : `${p15.toFixed(1)}%`;
     const volMult =
       num(market.volume_60m_usd, 0) > 0
