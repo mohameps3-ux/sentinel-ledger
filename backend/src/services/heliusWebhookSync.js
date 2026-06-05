@@ -106,8 +106,7 @@ async function syncHeliusAccountAddresses(opts = {}) {
     webhookURL: targetUrl,
     transactionTypes: ["ANY"],
     accountAddresses: addresses,
-    webhookType: "enhanced",
-    authHeader
+    webhookType: "enhanced"
   };
 
   if (dryRun) {
